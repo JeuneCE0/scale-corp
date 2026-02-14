@@ -62,7 +62,7 @@ const DS=[
  {id:"virale",nom:"Vidéo Virale",porteur:"À définir",act:"Vidéo",pT:"benefices",pP:20,stat:"signature",color:"#f43f5e",pin:"1009",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
  {id:"mindset",nom:"Coaching Mindset",porteur:"À définir",act:"Mindset",pT:"benefices",pP:20,stat:"signature",color:"#eab308",pin:"1010",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
 ];
-const DH={logiciels:1200,equipe:300,service:500,cabinet:280,remun:3000,reservePct:30,crm:150,treso:2000,revolutToken:"",revolutEnv:"sandbox",slack:{enabled:false,mode:"bob",webhookUrl:"",botToken:"",channel:"",bobWebhook:"",notifyPulse:true,notifyReport:true,notifyValidation:true,notifyReminders:true}};
+const DH={logiciels:1200,equipe:300,service:500,cabinet:280,remun:3000,reservePct:30,crm:150,treso:2000,revolutToken:"",revolutEnv:"sandbox",slack:{enabled:false,mode:"bob",webhookUrl:"",botToken:"",channel:"",bobWebhook:"",notifyPulse:true,notifyReport:true,notifyValidation:true,notifyReminders:true},brand:{name:"SCALE CORP",sub:"Plateforme de pilotage",logoUrl:"",logoLetter:"S",accentColor:"#c8a44e"}};
 const DEAL_STAGES=["Idée","Contact","Négociation","Due Diligence","Signature"];
 function mkPrefill(){ return {}; }
 
@@ -624,7 +624,8 @@ function calcLeaderboard(socs,reps,actions,pulses,allM){
 }
 function buildAIContext(socs,reps,hold,actions,pulses,allM,revData,socBank,okrs,synergies,clients2){
  const cM2=curM();const hc=calcH(socs,reps,hold,cM2);
- let ctx=`Tu es le co-pilote IA de Scale Corp, un incubateur/holding qui gère ${socs.length} sociétés. Réponds en français, sois concis et actionnable.\n\nDonnées actuelles (${ml(cM2)}):\n`;
+ const brandName=hold?.brand?.name||"Scale Corp";
+ let ctx=`Tu es le co-pilote IA de ${brandName}, un incubateur/holding qui gère ${socs.length} sociétés. Réponds en français, sois concis et actionnable.\n\nDonnées actuelles (${ml(cM2)}):\n`;
  ctx+=`Holding: Flux entrant=${fmt(hc.tIn)}€, Disponible=${fmt(hc.dispo)}€, Par fondateur=${fmt(hc.pf)}€, Tréso déclarée=${fmt(hold.treso)}€\n`;
  if(revData&&revData.accounts){ctx+=`Banque Revolut Holding: Solde total=${fmt(revData.totalEUR)}€\n`;revData.accounts.forEach(a=>{ctx+=`  ${a.name}: ${fmt(a.balance)} ${a.currency}\n`;});}
  ctx+="\n";
@@ -849,7 +850,7 @@ function MeetingMode({socs,reps,hold,actions,pulses,allM,onExit}){
   <style>{CSS}</style>
   <div style={{background:`linear-gradient(135deg,${C.card},${C.card2})`,borderBottom:`1px solid ${C.brd}`,padding:"14px 20px"}}>
    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-    <div><div style={{color:C.acc,fontSize:10,fontWeight:700,letterSpacing:2}}>MODE RÉUNION</div><h1 style={{margin:0,fontSize:18,fontWeight:900}}>Scale Corp — {ml(cM2)}</h1></div>
+    <div><div style={{color:C.acc,fontSize:10,fontWeight:700,letterSpacing:2}}>MODE RÉUNION</div><h1 style={{margin:0,fontSize:18,fontWeight:900}}>{hold?.brand?.name||"Scale Corp"} — {ml(cM2)}</h1></div>
     <div style={{display:"flex",alignItems:"center",gap:10}}>
     <div style={{textAlign:"center"}}><div style={{fontSize:28,fontWeight:900,fontVariantNumeric:"tabular-nums",color:running?C.g:C.t}}>{fmtT(timer)}</div><div style={{display:"flex",gap:4,marginTop:4}}><Btn small v={running?"danger":"success"} onClick={()=>setRunning(!running)}>{running?"⏸":"▶"}</Btn><Btn small v="ghost" onClick={()=>setTimer(0)}>↻</Btn></div></div>
     <Btn v="ghost" onClick={onExit}>✕ Quitter</Btn>
@@ -3285,7 +3286,7 @@ function ObTag({selected,onToggle,options}){
   style={{padding:"7px 14px",borderRadius:20,fontSize:11.5,fontWeight:sel?700:400,border:`1.5px solid ${sel?C.acc:C.brd}`,background:sel?C.accD:"transparent",color:sel?C.acc:C.td,cursor:"pointer",fontFamily:FONT,transition:"all .15s"}}>{o}</button>;})}</div>;
 }
 
-function OnboardingWizard({onComplete,onSkip}){
+function OnboardingWizard({onComplete,onSkip,hold}){
  const[step,setStep]=useState(0);const[anim,setAnim]=useState(false);const ref=useRef(null);
  const[form,setForm]=useState({companyName:"",sector:"",website:"",foundedDate:"",description:"",city:"",country:"",founderName:"",founderRole:"",founderEmail:"",founderPhone:"",cofounderName:"",cofounderRole:"",currentMRR:"",teamSize:"",fundingStage:"",goals:[],customGoal:"",timeline:"12",acceptTerms:false,acceptReporting:false,acceptMentorship:false,notifEmail:true,notifSlack:false,notifWeekly:true,dashPublic:false});
  const up=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -3443,8 +3444,8 @@ function OnboardingWizard({onComplete,onSkip}){
   {/* Sidebar stepper */}
   <div style={{width:220,minHeight:"100vh",background:C.card,borderRight:`1px solid ${C.brd}`,padding:"28px 16px",display:"flex",flexDirection:"column"}}>
    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:28}}>
-    <div style={{width:32,height:32,background:`linear-gradient(135deg,${C.acc},#e8c85a)`,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:"#0a0a0f"}}>S</div>
-    <div><div style={{fontWeight:800,fontSize:13,letterSpacing:.5}}>SCALE CORP</div><div style={{color:C.td,fontSize:9}}>Onboarding</div></div>
+    <div style={{width:32,height:32,background:hold?.brand?.logoUrl?"transparent":`linear-gradient(135deg,${hold?.brand?.accentColor||C.acc},#e8c85a)`,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:"#0a0a0f",overflow:"hidden"}}>{hold?.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(hold?.brand?.logoLetter||"S")}</div>
+    <div><div style={{fontWeight:800,fontSize:13,letterSpacing:.5}}>{hold?.brand?.name||"SCALE CORP"}</div><div style={{color:C.td,fontSize:9}}>Onboarding</div></div>
    </div>
    <div style={{flex:1}}>
     {OB_STEPS.map((s,i)=>{const done=i<step,curr=i===step;return <button key={s.id} onClick={()=>{if(i<step)go(i);}}
@@ -3644,7 +3645,6 @@ const SB_ADMIN=[
 
 const SB_PORTEUR=[
  {id:"home",icon:"◉",label:"Accueil",tab:10,accent:C.acc},
- {id:"report",icon:"📊",label:"Rapport",tab:0,accent:C.o},
  {id:"perf",icon:"📈",label:"Performance",accent:C.g,children:[
   {icon:"📉",label:"Statistiques",tab:1},
   {icon:"🏆",label:"Milestones",tab:6},
@@ -3661,7 +3661,7 @@ const SB_PORTEUR=[
  {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
 ];
 
-function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,extra,dataTourPrefix}){
+function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,extra,dataTourPrefix,brand}){
  const[exp,setExp]=useState(()=>{
   const init={};items.forEach(g=>{if(g.children&&g.children.some(c=>c.tab===activeTab))init[g.id]=true;});return init;
  });
@@ -3671,7 +3671,7 @@ function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,ext
 
  return <aside data-tour={`${dataTourPrefix}-nav`} style={{width:210,minWidth:210,height:"100vh",position:"sticky",top:0,background:`linear-gradient(180deg,${C.card} 0%,${C.bg} 100%)`,borderRight:`1px solid ${C.brd}`,display:"flex",flexDirection:"column",fontFamily:FONT,overflow:"hidden",zIndex:50}}>
   <div style={{padding:"16px 14px 14px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",gap:9}}>
-   <div style={{width:30,height:30,background:`linear-gradient(135deg,${C.acc},#e8c85a)`,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:13,color:"#0a0a0f",boxShadow:"0 2px 8px rgba(200,164,78,.25)",flexShrink:0}}>S</div>
+   <div style={{width:30,height:30,background:brand?.logoUrl?"transparent":`linear-gradient(135deg,${brand?.accentColor||C.acc},#e8c85a)`,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:13,color:"#0a0a0f",boxShadow:`0 2px 8px ${(brand?.accentColor||C.acc)}44`,flexShrink:0,overflow:"hidden"}}>{brand?.logoUrl?<img src={brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(brand?.logoLetter||brandTitle?.[0]||"S")}</div>
    <div style={{minWidth:0}}><div style={{fontWeight:800,fontSize:12,letterSpacing:.5,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{brandTitle}</div><div style={{fontSize:8,color:C.td}}>{brandSub}</div></div>
   </div>
   <nav style={{flex:1,overflow:"auto",padding:"8px 6px 8px 6px"}}>
@@ -3835,7 +3835,7 @@ export default function App(){
  const deleteAction=(id)=>{saveAJ(actions.filter(a=>a.id!==id),null);};
  if(!loaded)return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}><style>{CSS}</style><div style={{width:36,height:36,border:`3px solid ${C.brd}`,borderTopColor:C.acc,borderRadius:"50%",animation:"sp 1s linear infinite"}}/></div>;
  /* ONBOARDING (optional, non-blocking) */
- if(showOnboarding)return <OnboardingWizard onSkip={()=>setShowOnboarding(false)} onComplete={async(formData)=>{try{await sSet("scOnboarded",true);await sSet("scObData",formData);}catch{}setObData(formData);setOnboarded(true);setShowOnboarding(false);setShowTour(true);}}/>;
+ if(showOnboarding)return <OnboardingWizard hold={hold} onSkip={()=>setShowOnboarding(false)} onComplete={async(formData)=>{try{await sSet("scOnboarded",true);await sSet("scObData",formData);}catch{}setObData(formData);setOnboarded(true);setShowOnboarding(false);setShowTour(true);}}/>;
  if(!role)return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT,padding:16}}>
   <style>{CSS}</style>
   {/* TUTORIAL OVERLAY ON LOGIN */}
@@ -3858,9 +3858,9 @@ export default function App(){
   </div>}
   <div className="si" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:16,padding:28,width:340,maxWidth:"100%",boxShadow:"0 24px 60px rgba(0,0,0,.5)"}}>
    <div style={{textAlign:"center",marginBottom:24}}>
-    <div className="fl" style={{width:44,height:44,background:`linear-gradient(135deg,${C.acc},#e8c85a)`,borderRadius:10,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:10,boxShadow:"0 4px 16px rgba(200,164,78,.3)"}}>S</div>
-    <h1 style={{margin:0,fontSize:18,fontWeight:900,letterSpacing:.5}}>SCALE CORP</h1>
-    <p style={{color:C.td,fontSize:11,margin:"4px 0 0"}}>Plateforme de pilotage</p>
+    <div className="fl" style={{width:44,height:44,background:hold.brand?.logoUrl?"transparent":`linear-gradient(135deg,${hold.brand?.accentColor||C.acc},#e8c85a)`,borderRadius:10,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:10,boxShadow:`0 4px 16px ${(hold.brand?.accentColor||C.acc)}44`,overflow:"hidden"}}>{hold.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(hold.brand?.logoLetter||"S")}</div>
+    <h1 style={{margin:0,fontSize:18,fontWeight:900,letterSpacing:.5}}>{hold.brand?.name||"SCALE CORP"}</h1>
+    <p style={{color:C.td,fontSize:11,margin:"4px 0 0"}}>{hold.brand?.sub||"Plateforme de pilotage"}</p>
    </div>
    <div style={{animation:shake?"sh .4s ease":"none"}}><Inp label="Code d'accès" value={pin} onChange={v=>{setPin(v);setLErr("");}} type="password" placeholder="Entrez votre PIN" onKeyDown={e=>{if(e.key==="Enter")login();}}/></div>
    {lErr&&<div style={{color:C.r,fontSize:11,marginBottom:8,textAlign:"center"}}>⚠ {lErr}</div>}
@@ -3886,7 +3886,7 @@ export default function App(){
  return <div style={{display:"flex",background:C.bg,minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}</style>
   {showTour&&role==="admin"&&<TutorialOverlay steps={TOUR_ADMIN} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={setTab}/>}
-  <Sidebar items={SB_ADMIN} activeTab={tab} setTab={setTab} brandTitle="SCALE CORP" brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>setRole(null)} onTour={()=>setShowTour(true)} dataTourPrefix="admin" extra={<div style={{display:"flex",flexDirection:"column",gap:2}}>
+  <Sidebar items={SB_ADMIN} activeTab={tab} setTab={setTab} brandTitle={hold.brand?.name||"SCALE CORP"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>setRole(null)} onTour={()=>setShowTour(true)} dataTourPrefix="admin" brand={hold.brand} extra={<div style={{display:"flex",flexDirection:"column",gap:2}}>
    {hold.slack?.enabled&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 4px"}}><span style={{width:5,height:5,borderRadius:3,background:C.g}}/>
     <span style={{fontSize:8,color:C.td}}>{SLACK_MODES[hold.slack?.mode]?.icon} Slack connecté</span>
     {missing.length>0&&<button onClick={async()=>{const results=[];for(const s of missing){const r=await slackSend(hold.slack,buildReminderSlackMsg(s,"report",deadline(cM2)));results.push({nom:s.nom,ok:r.ok});}const ok=results.filter(r=>r.ok).length;alert(`📤 ${ok}/${results.length} rappels envoyés`);}} style={{marginLeft:"auto",fontSize:8,color:C.o,background:C.oD,border:"none",borderRadius:4,padding:"2px 5px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>🔔 {missing.length}</button>}
@@ -4235,8 +4235,23 @@ export default function App(){
     <Toggle on={hold.slack?.notifyReminders!==false} onToggle={()=>setHold({...hold,slack:{...hold.slack,notifyReminders:!hold.slack?.notifyReminders}})} label="🔔 Rappels auto"/>
     </div>
     </div>
-    <div style={{marginTop:8}}><Btn small v="secondary" onClick={async()=>{const r=await slackSend(hold.slack,{text:"🧪 Test Scale Corp — Slack est bien connecté ! 🎉",blocks:[{type:"section",text:{type:"mrkdwn",text:"🧪 *Test Scale Corp*\n\nSlack est bien connecté ! Les notifications de rapports et pulses arriveront ici.\n\n_Mode: "+SLACK_MODES[hold.slack?.mode]?.l+"_"}}]});alert(r.ok?"✅ Message envoyé avec succès !":"❌ Erreur: "+(r.error||"échec"));}}>🧪 Envoyer un test</Btn></div>
+    <div style={{marginTop:8}}><Btn small v="secondary" onClick={async()=>{const r=await slackSend(hold.slack,{text:`🧪 Test ${hold.brand?.name||"Scale Corp"} — Slack est bien connecté ! 🎉`,blocks:[{type:"section",text:{type:"mrkdwn",text:`🧪 *Test ${hold.brand?.name||"Scale Corp"}*\n\nSlack est bien connecté ! Les notifications de rapports et pulses arriveront ici.\n\n_Mode: ${SLACK_MODES[hold.slack?.mode]?.l}_`}}]});alert(r.ok?"✅ Message envoyé avec succès !":"❌ Erreur: "+(r.error||"échec"));}}>🧪 Envoyer un test</Btn></div>
     </>}
+   </div>
+   <div style={{marginTop:12,padding:"12px 14px",background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`}}>
+    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><span style={{fontSize:16}}>🎨</span><span style={{fontWeight:700,fontSize:12,color:C.td}}>BRANDING</span></div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
+    <Inp label="Nom de la plateforme" value={hold.brand?.name||"SCALE CORP"} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),name:v}})}/>
+    <Inp label="Sous-titre" value={hold.brand?.sub||"Plateforme de pilotage"} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),sub:v}})}/>
+    <Inp label="Logo URL (optionnel)" value={hold.brand?.logoUrl||""} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),logoUrl:v}})} placeholder="https://..."/>
+    <Inp label="Lettre logo (fallback)" value={hold.brand?.logoLetter||"S"} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),logoLetter:v.slice(0,2)}})}/>
+    </div>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginTop:4}}>
+     <label style={{fontSize:10,color:C.td,fontWeight:600}}>Couleur accent</label>
+     <input type="color" value={hold.brand?.accentColor||"#c8a44e"} onChange={e=>setHold({...hold,brand:{...(hold.brand||DH.brand),accentColor:e.target.value}})} style={{width:32,height:24,border:`1px solid ${C.brd}`,borderRadius:6,background:C.bg,cursor:"pointer"}}/>
+     <span style={{fontSize:10,color:C.td}}>{hold.brand?.accentColor||"#c8a44e"}</span>
+    </div>
+    {hold.brand?.logoUrl&&<div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:9,color:C.td}}>Aperçu:</span><div style={{width:36,height:36,borderRadius:8,overflow:"hidden",border:`1px solid ${C.brd}`}}><img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/></div></div>}
    </div>
    <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={()=>{save(null,null,hold);setEHold(false);}}>Sauver</Btn><Btn v="secondary" onClick={()=>setEHold(false)}>Annuler</Btn></div></Modal>
    <Sect title="🔄 Charges récurrentes holding" right={<Btn small v="ghost" onClick={()=>setTab(13)}>Tout gérer →</Btn>}>
