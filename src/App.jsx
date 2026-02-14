@@ -2763,7 +2763,51 @@ function SocSettingsPanel({soc,save,socs}){
  </Sect>;
 }
 /* PORTEUR DASHBOARD */
-function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab}){
+function PulseDashWidget({soc,existing,savePulse,hold}){
+ const w=curW();
+ const[mood,setMood]=useState(existing?.mood??-1);
+ const[win,setWin]=useState(existing?.win||"");
+ const[blocker,setBlocker]=useState(existing?.blocker||"");
+ const[conf,setConf]=useState(existing?.conf??3);
+ const[sent,setSent]=useState(false);
+ const submit=()=>{
+  const pulse={mood,win,blocker,conf,at:new Date().toISOString()};
+  savePulse(`${soc.id}_${w}`,pulse);setSent(true);
+  if(hold?.slack?.enabled&&hold.slack.notifyPulse){slackSend(hold.slack,buildPulseSlackMsg(soc,pulse));}
+ };
+ if(existing&&!sent)return <div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:16,marginBottom:20,animationDelay:"0.35s"}}>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+   <span style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,fontFamily:FONT_TITLE}}>⚡ PULSE DE LA SEMAINE</span>
+   <span style={{fontSize:9,color:C.g,fontWeight:600}}>✓ Envoyé</span>
+  </div>
+  <div style={{display:"flex",alignItems:"center",gap:14}}>
+   <span style={{fontSize:32}}>{MOODS[existing.mood]}</span>
+   <div style={{flex:1}}>
+    <div style={{fontWeight:700,fontSize:12,marginBottom:2}}>🏆 {existing.win}</div>
+    {existing.blocker&&<div style={{fontSize:11,color:C.r}}>🚧 {existing.blocker}</div>}
+   </div>
+   <div style={{textAlign:"center"}}><div style={{fontWeight:800,fontSize:18,color:[C.r,C.o,C.td,C.b,C.g][existing.conf-1]}}>{existing.conf}/5</div><div style={{fontSize:8,color:C.td}}>Confiance</div></div>
+  </div>
+ </div>;
+ if(sent)return <div className="fade-up" style={{background:C.gD,border:`1px solid ${C.g}33`,borderRadius:14,padding:16,marginBottom:20,textAlign:"center"}}>
+  <span style={{fontSize:28}}>✅</span><div style={{fontWeight:700,fontSize:13,color:C.g,marginTop:4}}>Pulse envoyé !</div>
+ </div>;
+ return <div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:16,marginBottom:20,animationDelay:"0.35s"}}>
+  <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:10,fontFamily:FONT_TITLE}}>⚡ COMMENT ÇA VA CETTE SEMAINE ?</div>
+  <div style={{display:"flex",gap:6,marginBottom:10}}>{MOODS.map((e,i)=><button key={i} onClick={()=>setMood(i)} style={{fontSize:20,padding:"4px 7px",borderRadius:8,border:`2px solid ${mood===i?C.acc:C.brd}`,background:mood===i?C.accD:"transparent",cursor:"pointer",transition:"all .15s"}}>{e}</button>)}</div>
+  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+   <div><label style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:3}}>🏆 Victoire</label><input value={win} onChange={e=>setWin(e.target.value)} placeholder="Ta win de la semaine" style={{width:"100%",padding:"7px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/></div>
+   <div><label style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:3}}>🚧 Blocage <span style={{fontWeight:400,color:C.tm}}>(optionnel)</span></label><input value={blocker} onChange={e=>setBlocker(e.target.value)} placeholder="Un frein ?" style={{width:"100%",padding:"7px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/></div>
+  </div>
+  <div style={{display:"flex",alignItems:"center",gap:10}}>
+   <span style={{fontSize:10,color:C.td,fontWeight:600}}>Confiance</span>
+   <input type="range" min={1} max={5} value={conf} onChange={e=>setConf(parseInt(e.target.value))} style={{flex:1}}/>
+   <span style={{fontWeight:800,fontSize:13,color:[C.r,C.o,C.td,C.b,C.g][conf-1],minWidth:24}}>{conf}/5</span>
+   <button onClick={submit} disabled={mood<0||!win.trim()} style={{padding:"7px 16px",borderRadius:8,border:"none",background:mood>=0&&win.trim()?C.acc:C.brd,color:mood>=0&&win.trim()?"#000":C.td,fontWeight:700,fontSize:11,cursor:mood>=0&&win.trim()?"pointer":"default",fontFamily:FONT,transition:"all .15s"}}>Envoyer ⚡</button>
+  </div>
+ </div>;
+}
+function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePulse,hold}){
  const cm=curM();const report=gr(reps,soc.id,cm);
  const bankData=socBank?.[soc.id];const acc2=soc.brandColor||soc.color||C.acc;
  const ca=report?pf(report.ca):0;const charges=report?pf(report.charges):0;
@@ -2804,6 +2848,8 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab}){
     {k.sub&&!k.trend&&<div style={{marginTop:4,fontSize:11,fontWeight:700,color:k.accent}}>{k.sub}</div>}
    </div>)}
   </div>
+  {/* Pulse widget */}
+  {(()=>{const w=curW();const existing=pulses?.[`${soc.id}_${w}`];return <PulseDashWidget soc={soc} existing={existing} savePulse={savePulse} hold={hold}/>;})()}
   {/* Revenue chart */}
   <div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:20,marginBottom:20,animationDelay:"0.4s"}}>
    <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:12}}>CA VS CHARGES — 6 DERNIERS MOIS</div>
@@ -2924,7 +2970,7 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
   {celebMs&&<CelebrationOverlay milestone={celebMs} onClose={()=>setCelebMs(null)}/>}
   <div style={{padding:16,maxWidth:680,margin:"0 auto"}}>
   {/* === PORTEUR DASHBOARD (pTab 0) === */}
-  {pTab===0&&<PorteurDashboard soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}} ghlData={ghlData} setPTab={setPTab} soc2={soc} clients={clients}/>}
+  {pTab===0&&<PorteurDashboard soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}} ghlData={ghlData} setPTab={setPTab} soc2={soc} clients={clients} pulses={pulses} savePulse={savePulse} hold={hold}/>}
   {pTab===5&&<><SocBankWidget bankData={socBankData} onSync={()=>syncSocBank(soc.id)} soc={soc}/>
    <SubsTeamPanel socs={[soc]} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId={soc.id} reps={reps} socBankData={socBankData}/>
   </>}
