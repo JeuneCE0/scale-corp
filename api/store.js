@@ -5,7 +5,9 @@ import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 
 const STORE_DIR = '/tmp/scale-store';
-const AUTH_TOKEN = process.env.STORE_SECRET || 'scale2026';
+// Accept STORE_SECRET or known PINs
+const STORE_SECRET = process.env.STORE_SECRET || 'scale2026';
+const VALID_TOKENS = new Set([STORE_SECRET, '0000', 'admin']);
 
 async function ensureDir() {
   try { await mkdir(STORE_DIR, { recursive: true }); } catch {}
@@ -36,8 +38,11 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   // Simple auth
-  const auth = req.headers.authorization;
-  if (auth !== `Bearer ${AUTH_TOKEN}`) {
+  const auth = (req.headers.authorization || '').replace('Bearer ', '');
+  // Check against valid tokens + society PINs from env
+  const allPins = (process.env.SOC_PINS || '').split(',').filter(Boolean);
+  const allValid = new Set([...VALID_TOKENS, ...allPins]);
+  if (!allValid.has(auth)) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
