@@ -6976,7 +6976,7 @@ function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose}){
  // Detect new payments
  useEffect(()=>{const snap=JSON.stringify(Object.keys(sb).map(k=>(sb[k]?.transactions||[]).length));if(prevDataRef.current&&prevDataRef.current!==snap){playCash();addToast("💰 Nouveau mouvement bancaire","#34d399");}prevDataRef.current=snap;},[sb]);
 
- const socCards=useMemo(()=>actS.map(s=>{const r=gr(reps,s.id,cM);const rp=gr(reps,s.id,prevM);const ca=pf(r?.ca);const caP=pf(rp?.ca);const prosp=getProspects(s.id).length;const st=s.status==="active"?"🟢":s.status==="lancement"?"🟡":"🔴";const pipVal=pf(gd[s.id]?.stats?.pipelineValue);const lastAct=(sb[s.id]?.transactions||[])[0]?.createdAt||(gd[s.id]?.ghlClients||[])[0]?.dateAdded||"";return{id:s.id,name:s?.name||"",porteur:s?.porteur||"",status:st,ca,caP,prosp,trend:ca>caP?"↑":ca<caP?"↓":"→",bal:pf(sb[s.id]?.balance),pipVal,lastAct};}).sort((a,b)=>b.ca-a.ca),[actS,reps,cM,prevM,gd,sb]);
+ const socCards=useMemo(()=>actS.map(s=>{const r=gr(reps,s.id,cM);const rp=gr(reps,s.id,prevM);const ca=pf(r?.ca);const caP=pf(rp?.ca);const prosp=getProspects(s.id).length;const st=s.status==="active"?"🟢":s.status==="lancement"?"🟡":"🔴";const pipVal=pf(gd[s.id]?.stats?.pipelineValue);const lastAct=(sb[s.id]?.transactions||[])[0]?.createdAt||(gd[s.id]?.ghlClients||[])[0]?.dateAdded||"";return{id:s.id,name:s?.nom||s?.name||"",porteur:s?.porteur||"",status:st,ca,caP,prosp,trend:ca>caP?"↑":ca<caP?"↓":"→",bal:pf(sb[s.id]?.balance),pipVal,lastAct,logoUrl:s?.logoUrl||"",brandColor:s?.brandColor||"",color:s?.color||"#FFAA00"};}).sort((a,b)=>b.ca-a.ca),[actS,reps,cM,prevM,gd,sb]);
 
  const bestId=socCards[0]?.id;
 
@@ -7048,7 +7048,10 @@ function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose}){
   {socCards.map(s=><div key={s.id} style={{...(s.id===bestId?GCglow:GC),position:"relative"}}>
    {plusOnes.filter(p=>p.socId===s.id).map(p=><span key={p.id} className="pulse-plus1">+1</span>)}
    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-    <div style={{fontWeight:800,fontSize:13,fontFamily:FONT_TITLE,color:"#e4e4e7"}}>{s.status} {s.name}</div>
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+     {s.logoUrl?<img src={s.logoUrl} alt="" style={{width:24,height:24,borderRadius:8,objectFit:"contain"}}/>:<div style={{width:24,height:24,borderRadius:8,background:(s.brandColor||s.color||"#FFAA00")+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:s.brandColor||s.color||"#FFAA00"}}>{(s.name||"?")[0]}</div>}
+     <div style={{fontWeight:800,fontSize:13,fontFamily:FONT_TITLE,color:"#e4e4e7"}}>{s.name}</div>
+    </div>
     <span style={{fontSize:16,color:s.trend==="↑"?"#34d399":s.trend==="↓"?"#f87171":"#71717a"}}>{s.trend}</span>
    </div>
    {s.porteur&&<div style={{fontSize:10,color:"#71717a",marginBottom:6}}>👤 {s.porteur}</div>}
@@ -7068,7 +7071,7 @@ function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose}){
   <div ref={feedRef} style={{flex:1,overflow:"auto",padding:"8px 12px"}}>
    {feed.length===0&&<div style={{color:"#71717a",fontSize:11,textAlign:"center",padding:20}}>Aucune activité récente</div>}
    {feed.map((f,i)=><div key={i} className="pulse-feed-item" style={{padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,.03)",display:"flex",gap:8,alignItems:"flex-start",fontSize:11}}>
-    <span style={{width:6,height:6,borderRadius:"50%",background:f.color,marginTop:4,flexShrink:0}}/>
+    {(()=>{const fs=allActS.find(x=>x.id===f.socId);return fs?.logoUrl?<img src={fs.logoUrl} alt="" style={{width:16,height:16,borderRadius:5,objectFit:"contain",flexShrink:0,marginTop:1}}/>:<div style={{width:16,height:16,borderRadius:5,background:(fs?.brandColor||fs?.color||f.color)+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:900,color:fs?.brandColor||fs?.color||f.color,flexShrink:0,marginTop:1}}>{(fs?.nom||"?")[0]}</div>;})()}
     <span>{f.icon}</span>
     <div style={{flex:1}}>
      <div style={{color:"#e4e4e7",lineHeight:1.3}}>{f.desc}</div>
