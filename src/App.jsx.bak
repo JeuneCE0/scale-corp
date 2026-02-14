@@ -24,8 +24,6 @@ const MOODS=["😫","😟","😐","🙂","🔥"];
 const sinceLbl=d=>{if(!d)return"";const s=new Date(d),n=new Date();const m=(n.getFullYear()-s.getFullYear())*12+n.getMonth()-s.getMonth();if(m<1)return"Ce mois";if(m===1)return"1 mois";if(m<12)return`${m} mois`;const y=Math.floor(m/12),rm=m%12;return rm>0?`${y}a ${rm}m`:`${y} an${y>1?"s":""}`;};
 const sinceMonths=d=>{if(!d)return 0;const s=new Date(d),n=new Date();return(n.getFullYear()-s.getFullYear())*12+n.getMonth()-s.getMonth();};
 const CSS=`*{box-sizing:border-box;margin:0;padding:0}body{margin:0;overflow-x:hidden}
-@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}.fade-up{animation:fadeUp 0.5s ease forwards;opacity:0}
-@keyframes barGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
 @keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fi{from{opacity:0}to{opacity:1}}@keyframes si{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
 @keyframes bg{from{width:0}to{width:var(--w,100%)}}
@@ -646,6 +644,8 @@ function buildAIContext(socs,reps,hold,actions,pulses,allM,revData,socBank,okrs,
   if(pw)ctx+=`  Dernier pulse: ${MOODS[pw[1].mood]} — Win: "${pw[1].win}"${pw[1].blocker?` Blocage: "${pw[1].blocker}"`:""}\n`;
   const ms=calcMilestones(s,reps,actions,pulses,allM);const msU=ms.filter(m2=>m2.unlocked);
   if(msU.length>0){const top3=msU.sort((a2,b2)=>b2.tier-a2.tier).slice(0,3);ctx+=`  Milestones: ${msU.length}/${ms.length} — ${top3.map(m2=>m2.label).join(", ")}\n`;}
+  const sOkrs=(okrs||[]).filter(o=>o.socId===s.id&&o.quarter===curQ());
+  if(sOkrs.length>0){ctx+=`  OKRs ${curQ()}: `;sOkrs.forEach(o=>{const p=o.krs.length?Math.round(o.krs.reduce((a2,kr)=>a2+Math.min(100,kr.target>0?kr.current/kr.target*100:0),0)/o.krs.length):0;ctx+=`"${o.obj}" (${p}%) `;});ctx+="\n";}
   const sCl=(clients2||[]).filter(c=>c.socId===s.id);
   if(sCl.length>0){const actCl=sCl.filter(c=>c.status==="active");const mrr=actCl.reduce((a2,c)=>a2+clientMonthlyRevenue(c),0);ctx+=`  Clients: ${actCl.length} actifs/${sCl.length} total, MRR clients=${fmt(mrr)}€\n`;
    const byT={fixed:sCl.filter(c=>c.billing?.type==="fixed"),percent:sCl.filter(c=>c.billing?.type==="percent"),oneoff:sCl.filter(c=>c.billing?.type==="oneoff")};
@@ -1279,6 +1279,93 @@ function SocBankWidget({bankData,onSync,soc}){
   </Sect>
  </>;
 }
+/* OKRs TRIMESTRIELS */
+function OKRPanel({socs,okrs,saveOkrs,reps,isPorteur,socId}){
+ const q=curQ();const[sel,setSel]=useState(socId||"all");const[editing,setEditing]=useState(null);
+ const filtered=okrs.filter(o=>(sel==="all"||o.socId===sel)&&o.quarter===q);
+ const allQ=[...new Set(okrs.map(o=>o.quarter))].sort().reverse();
+ const[viewQ,setViewQ]=useState(q);
+ const shown=okrs.filter(o=>(sel==="all"||o.socId===sel)&&o.quarter===viewQ);
+ const autoSync=()=>{
+  const cM2=curM();
+  const updated=okrs.map(o=>{
+   const r=reps[`${o.socId}_${cM2}`];if(!r)return o;
+   const newKrs=o.krs.map(kr=>{
+    if(kr.auto==="ca")return{...kr,current:pf(r.ca)};
+    if(kr.auto==="clients")return{...kr,current:pf(r.clients)};
+    if(kr.auto==="pipeline")return{...kr,current:pf(r.pipeline)};
+    if(kr.auto==="margin"){const m=pf(r.ca)>0?Math.round((1-pf(r.charges)/pf(r.ca))*100):0;return{...kr,current:m};}
+    return kr;
+   });return{...o,krs:newKrs};
+  });saveOkrs(updated);
+ };
+ const addOKR=(socId2)=>{
+  const n={id:uid(),socId:socId2,quarter:viewQ,obj:"",krs:[{id:uid(),text:"",target:100,current:0,unit:"",auto:""}]};
+  setEditing(n);
+ };
+ const saveEdit=()=>{if(!editing)return;const idx=okrs.findIndex(o=>o.id===editing.id);saveOkrs(idx>=0?okrs.map(o=>o.id===editing.id?editing:o):[...okrs,editing]);setEditing(null);};
+ const deleteOKR=(id)=>saveOkrs(okrs.filter(o=>o.id!==id));
+ const okrProgress=(o)=>{if(!o.krs.length)return 0;return Math.round(o.krs.reduce((a,kr)=>a+Math.min(100,kr.target>0?(kr.current/kr.target)*100:0),0)/o.krs.length);};
+ return <>
+  <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6,marginBottom:12,flexWrap:"wrap"}}>
+   {!isPorteur&&<select value={sel} onChange={e=>setSel(e.target.value)} style={{background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,color:C.t,padding:"6px 10px",fontSize:11,fontFamily:FONT,outline:"none"}}><option value="all">Toutes</option>{socs.filter(s=>s.stat==="active"&&s.id!=="eco").map(s=><option key={s.id} value={s.id}>{s.nom}</option>)}</select>}
+   <select value={viewQ} onChange={e=>setViewQ(e.target.value)} style={{background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,color:C.t,padding:"6px 10px",fontSize:11,fontFamily:FONT,outline:"none"}}>{allQ.length>0?allQ.map(qq=><option key={qq} value={qq}>{qq}</option>):<option value={q}>{q}</option>}</select>
+   <Btn small v="secondary" onClick={autoSync}>↻ Auto-sync</Btn>
+   {!isPorteur&&<Btn small onClick={()=>addOKR(sel==="all"?socs.filter(s=>s.stat==="active"&&s.id!=="eco")[0]?.id:"leadx")}>+ OKR</Btn>}
+   {isPorteur&&<Btn small onClick={()=>addOKR(socId)}>+ OKR</Btn>}
+  </div>
+  {shown.length>0&&<Card style={{padding:14,marginBottom:12}}>
+   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+    <span style={{fontSize:11,fontWeight:700}}>Progression {viewQ}</span>
+    <span style={{fontWeight:800,fontSize:14,color:C.acc}}>{Math.round(shown.reduce((a,o)=>a+okrProgress(o),0)/shown.length)}%</span>
+   </div>
+   <PBar value={shown.reduce((a,o)=>a+okrProgress(o),0)/shown.length} max={100} color={C.acc} h={5}/>
+  </Card>}
+  {shown.length===0&&<div className="fu" style={{textAlign:"center",padding:40,color:C.td}}>Aucun OKR pour {viewQ}</div>}
+  {shown.map((o,i)=>{const s=socs.find(x=>x.id===o.socId);const prog=okrProgress(o);
+   return <Card key={o.id} accent={s?.color} style={{marginBottom:8,padding:14}} delay={Math.min(i+1,8)}>
+    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:8}}>
+    <div style={{flex:1}}>
+    {!isPorteur&&<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3}}><span style={{width:5,height:5,borderRadius:3,background:s?.color}}/><span style={{fontSize:9,fontWeight:700,color:s?.color}}>{s?.nom}</span></div>}
+    <div style={{fontWeight:700,fontSize:13,color:C.t}}>{o.obj||"Sans titre"}</div>
+    </div>
+    <div style={{display:"flex",alignItems:"center",gap:4}}>
+    <div style={{width:36,height:36,borderRadius:18,background:C.bg,border:`2px solid ${prog>=100?C.g:prog>=60?C.acc:C.brd}`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+    <span style={{fontWeight:800,fontSize:10,color:prog>=100?C.g:prog>=60?C.acc:C.td}}>{prog}%</span>
+    </div>
+    </div>
+    </div>
+    {o.krs.map(kr=>{const krProg=kr.target>0?Math.min(100,Math.round(kr.current/kr.target*100)):0;
+    return <div key={kr.id} style={{marginBottom:6}}>
+    <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+    <span style={{fontSize:10,color:C.t,flex:1}}>{kr.text||"—"} {kr.auto&&<span style={{fontSize:7,color:C.v,background:C.vD,padding:"0px 4px",borderRadius:4}}>auto</span>}</span>
+    <span style={{fontSize:10,fontWeight:700,color:krProg>=100?C.g:krProg>=60?C.acc:C.td}}>{kr.current}{kr.unit}/{kr.target}{kr.unit}</span>
+    </div>
+    <PBar value={kr.current} max={kr.target} color={krProg>=100?C.g:krProg>=60?C.acc:C.b} h={3}/>
+    </div>;
+    })}
+    <div style={{display:"flex",gap:4,marginTop:6}}>
+    <Btn small v="ghost" onClick={()=>setEditing({...o})}>✏️</Btn>
+    <Btn small v="ghost" onClick={()=>deleteOKR(o.id)}>🗑</Btn>
+    </div>
+   </Card>;
+  })}
+  <Modal open={!!editing} onClose={()=>setEditing(null)} title="OKR" wide>{editing&&<>
+   {!isPorteur&&<Sel label="Société" value={editing.socId} onChange={v=>setEditing({...editing,socId:v})} options={socs.filter(s=>s.stat==="active"&&s.id!=="eco").map(s=>({v:s.id,l:s.nom}))}/>}
+   <Inp label="Objectif" value={editing.obj} onChange={v=>setEditing({...editing,obj:v})} placeholder="Ex: Scaler à 10K€/mois"/>
+   <div style={{color:C.td,fontSize:10,fontWeight:700,marginBottom:6,marginTop:8}}>KEY RESULTS</div>
+   {editing.krs.map((kr,ki)=><div key={kr.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 60px auto",gap:6,marginBottom:6,alignItems:"end"}}>
+    <Inp label={ki===0?"Description":""} value={kr.text} onChange={v=>setEditing({...editing,krs:editing.krs.map((k2,j)=>j===ki?{...k2,text:v}:k2)})} placeholder="Key result" small/>
+    <Inp label={ki===0?"Cible":""} type="number" value={kr.target} onChange={v=>setEditing({...editing,krs:editing.krs.map((k2,j)=>j===ki?{...k2,target:pf(v)}:k2)})} small/>
+    <Inp label={ki===0?"Actuel":""} type="number" value={kr.current} onChange={v=>setEditing({...editing,krs:editing.krs.map((k2,j)=>j===ki?{...k2,current:pf(v)}:k2)})} small/>
+    <Sel label={ki===0?"Auto":""} value={kr.auto||""} onChange={v=>setEditing({...editing,krs:editing.krs.map((k2,j)=>j===ki?{...k2,auto:v}:k2)})} options={[{v:"",l:"—"},{v:"ca",l:"CA"},{v:"clients",l:"Clients"},{v:"pipeline",l:"Pipeline"},{v:"margin",l:"Marge%"}]}/>
+    <Btn small v="ghost" onClick={()=>setEditing({...editing,krs:editing.krs.filter((_,j)=>j!==ki)})}>✕</Btn>
+   </div>)}
+   <Btn small v="secondary" onClick={()=>setEditing({...editing,krs:[...editing.krs,{id:uid(),text:"",target:100,current:0,unit:"",auto:""}]})}>+ Key Result</Btn>
+   <div style={{display:"flex",gap:8,marginTop:14}}><Btn onClick={saveEdit}>Sauver</Btn><Btn v="secondary" onClick={()=>setEditing(null)}>Annuler</Btn></div>
+  </>}</Modal>
+ </>;
+}
 /* SYNERGIES MAP */
 function SynergiesPanel({socs,synergies,saveSynergies}){
  const[editing,setEditing]=useState(null);
@@ -1881,11 +1968,12 @@ function ChallengesPanel({socs,reps,allM,pulses,challenges,saveChallenges}){
  </>;
 }
 /* 5. AI WEEKLY COACH */
-function AIWeeklyCoach({soc,reps,allM,actions,pulses,milestones}){
+function AIWeeklyCoach({soc,reps,allM,actions,pulses,milestones,okrs}){
  const cM2=curM();const pm=prevM(cM2);
  const r=gr(reps,soc.id,cM2),rp=gr(reps,soc.id,pm);
  const ca=pf(r?.ca),caPrev=pf(rp?.ca),ch=pf(r?.charges);
  const hs=healthScore(soc,reps);
+ const myOkrs=(okrs||[]).filter(o=>o.socId===soc.id&&o.quarter===curQ());
  const nextMs=milestones.filter(m=>!m.unlocked).sort((a,b)=>a.tier-b.tier)[0];
  const openActs=actions.filter(a=>a.socId===soc.id&&!a.done);
  const insights=useMemo(()=>{
@@ -1900,13 +1988,16 @@ function AIWeeklyCoach({soc,reps,allM,actions,pulses,milestones}){
    if(mPct<20)ins.push({type:"warning",icon:"💸",text:`Marge à ${mPct}% — trop basse. Objectif : passer à 40%+ en optimisant les charges.`});
    else if(mPct>60)ins.push({type:"success",icon:"💎",text:`Marge excellente à ${mPct}%. Réinvestis dans l'acquisition.`});
   }
+  if(myOkrs.length>0){const avgP=Math.round(myOkrs.reduce((a,o)=>a+o.krs.reduce((b,kr)=>b+Math.min(100,kr.target>0?kr.current/kr.target*100:0),0)/Math.max(1,o.krs.length),0)/myOkrs.length);
+   if(avgP<30)ins.push({type:"warning",icon:"🎯",text:`OKRs à ${avgP}% seulement. Focalise tes efforts sur les KR en retard.`});
+   else if(avgP>=70)ins.push({type:"success",icon:"🎯",text:`OKRs à ${avgP}% — tu es sur la bonne voie. Sprint final !`});
   }
   if(openActs.length>3)ins.push({type:"warning",icon:"📋",text:`${openActs.length} actions ouvertes. Ferme-en 2 cette semaine avant d'en créer de nouvelles.`});
   if(nextMs)ins.push({type:"info",icon:"🏆",text:`Prochain milestone : "${nextMs.label}" — ${nextMs.desc}. Tu y es presque !`});
   if(hs.grade==="D"||hs.grade==="F")ins.push({type:"danger",icon:"⚠️",text:`Grade ${hs.grade} — focus sur ${hs.obj<hs.growth?"les objectifs":"la croissance"} en priorité.`});
   if(ins.filter(i=>i.type==="success").length>=2)ins.push({type:"success",icon:"🔥",text:"Tu es en feu ! Garde ce rythme et documente ce qui marche dans la Knowledge Base."});
   return ins;
- },[ca,caPrev,ch,openActs,nextMs,hs]);
+ },[ca,caPrev,ch,myOkrs,openActs,nextMs,hs]);
  const typeStyles={danger:{bg:C.rD,color:C.r},warning:{bg:C.oD,color:C.o},success:{bg:C.gD,color:C.g},info:{bg:C.bD,color:C.b}};
  return <Card accent={C.v} style={{padding:14,marginTop:8}}>
   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
@@ -2708,116 +2799,8 @@ function SocSettingsPanel({soc,save,socs}){
   <Btn onClick={doSave}>💾 Sauvegarder</Btn>
  </Sect>;
 }
-/* PORTEUR DASHBOARD */
-function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab}){
- const cm=curM();const report=gr(reps,soc.id,cm);
- const bankData=socBank?.[soc.id];
- const ca=report?pf(report.ca):0;const charges=report?pf(report.charges):0;
- const marge=ca-charges;const margePct=ca>0?Math.round(marge/ca*100):0;
- const treso=bankData?.balance||0;
- const pm=prevM(cm);const prevReport=gr(reps,soc.id,pm);
- const prevCa=prevReport?pf(prevReport.ca):0;
- const caTrend=prevCa>0?Math.round((ca-prevCa)/prevCa*100):0;
- // Last 6 months chart data
- const chartData=useMemo(()=>{
-  const months=[];let m=cm;for(let i=0;i<6;i++){months.unshift(m);m=prevM(m);}
-  return months.map(mo=>{const r=gr(reps,soc.id,mo);return{month:ml(mo).split(" ")[0],ca:r?pf(r.ca):0,charges:r?pf(r.charges):0};});
- },[reps,soc.id,cm]);
- const maxVal=Math.max(1,...chartData.map(d=>Math.max(d.ca,d.charges)));
- // Recent transactions
- const excluded=EXCLUDED_ACCOUNTS[soc.id]||[];
- const recentTx=useMemo(()=>{
-  if(!bankData?.transactions)return[];
-  return bankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded.includes(leg.account_id))return false;return true;}).slice(0,5);
- },[bankData,excluded]);
- // GHL stats
- const ghlStats=ghlData?.[soc.id]?.stats;
- const ghlStages=ghlData?.[soc.id]?.pipelines?.[0]?.stages||[];
- const ghlOpps=ghlData?.[soc.id]?.opportunities||[];
- const kpis=[
-  {label:"CA du mois",value:`${fmt(ca)}€`,trend:caTrend,accent:C.acc},
-  {label:"Charges",value:`${fmt(charges)}€`,accent:C.r},
-  {label:"Marge",value:`${fmt(marge)}€`,sub:`${margePct}%`,accent:marge>=0?C.g:C.r},
-  {label:"Trésorerie",value:`${fmt(treso)}€`,accent:C.b},
- ];
- return <div className="fu">
-  {/* Hero KPIs */}
-  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:20}}>
-   {kpis.map((k,i)=><div key={i} className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:20,animationDelay:`${i*0.1}s`}}>
-    <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,textTransform:"uppercase",marginBottom:6}}>{k.label}</div>
-    <div style={{fontSize:24,fontWeight:900,color:k.accent||C.t,lineHeight:1}}>{k.value}</div>
-    {k.trend!==undefined&&k.trend!==0&&<div style={{marginTop:4,fontSize:11,fontWeight:700,color:k.trend>0?C.g:C.r}}>{k.trend>0?"↑":"↓"} {Math.abs(k.trend)}% vs mois dernier</div>}
-    {k.sub&&!k.trend&&<div style={{marginTop:4,fontSize:11,fontWeight:700,color:k.accent}}>{k.sub}</div>}
-   </div>)}
-  </div>
-  {/* Revenue chart */}
-  <div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:20,marginBottom:20,animationDelay:"0.4s"}}>
-   <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:12}}>CA VS CHARGES — 6 DERNIERS MOIS</div>
-   <svg viewBox="0 0 480 200" style={{width:"100%",height:"auto"}}>
-    {chartData.map((d,i)=>{
-     const bw=30,gap=50,x=40+i*gap+i*bw;
-     const hCa=maxVal>0?(d.ca/maxVal)*160:0;
-     const hCh=maxVal>0?(d.charges/maxVal)*160:0;
-     return <g key={i}>
-      <rect x={x} y={180-hCa} width={bw} height={hCa} fill={C.acc} rx={4} style={{transformOrigin:`${x+bw/2}px 180px`,animation:`barGrow 0.6s ease ${0.1*i}s both`}}/>
-      <rect x={x+bw+4} y={180-hCh} width={bw} height={hCh} fill={C.r+"88"} rx={4} style={{transformOrigin:`${x+bw+4+bw/2}px 180px`,animation:`barGrow 0.6s ease ${0.1*i+0.05}s both`}}/>
-      <text x={x+bw+2} y={196} textAnchor="middle" fill={C.td} fontSize="9" fontFamily={FONT}>{d.month}</text>
-      {d.ca>0&&<text x={x+bw/2} y={180-hCa-4} textAnchor="middle" fill={C.acc} fontSize="8" fontWeight="700" fontFamily={FONT}>{fK(d.ca)}</text>}
-     </g>;
-    })}
-    <line x1="30" y1="180" x2="470" y2="180" stroke={C.brd} strokeWidth="1"/>
-   </svg>
-   <div style={{display:"flex",gap:16,justifyContent:"center",marginTop:8}}>
-    <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:C.td}}><span style={{width:10,height:10,borderRadius:3,background:C.acc}}/> CA</div>
-    <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:C.td}}><span style={{width:10,height:10,borderRadius:3,background:C.r+"88"}}/> Charges</div>
-   </div>
-  </div>
-  {/* Quick Actions */}
-  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
-   {[{icon:"👥",title:"Mes clients",sub:"Voir le portefeuille",tab:9},{icon:"🏦",title:"Transactions",sub:"Historique bancaire",tab:5},{icon:"⚙️",title:"Paramètres",sub:"Configurer ma société",tab:12}].map((a,i)=>
-    <div key={i} className="fade-up hv" onClick={()=>setPTab(a.tab)} style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:16,cursor:"pointer",textAlign:"center",animationDelay:`${0.5+i*0.1}s`}}>
-     <div style={{fontSize:24,marginBottom:6}}>{a.icon}</div>
-     <div style={{fontWeight:700,fontSize:12,color:C.t}}>{a.title}</div>
-     <div style={{fontSize:10,color:C.td,marginTop:2}}>{a.sub}</div>
-    </div>
-   )}
-  </div>
-  {/* Recent transactions */}
-  {recentTx.length>0&&<div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:16,marginBottom:20,animationDelay:"0.8s"}}>
-   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-    <span style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8}}>DERNIÈRES TRANSACTIONS</span>
-    <span onClick={()=>setPTab(5)} style={{color:C.acc,fontSize:10,fontWeight:600,cursor:"pointer"}}>Voir tout →</span>
-   </div>
-   {recentTx.map((tx,i)=>{const leg=tx.legs?.[0];if(!leg)return null;const isIn=leg.amount>0;const cat=categorizeTransaction(tx);
-    const catColors={"revenus":C.g,"loyer":"#f59e0b","pub":"#ec4899","abonnements":C.b,"equipe":C.o,"transfert":"#6366f1","dividendes":"#7c3aed","autres":C.td};
-    return <div key={tx.id||i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i<recentTx.length-1?`1px solid ${C.brd}`:"none"}}>
-     <span style={{width:22,height:22,borderRadius:6,background:isIn?C.gD:C.rD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:isIn?C.g:C.r,flexShrink:0}}>{cat.icon||"↑"}</span>
-     <div style={{flex:1,minWidth:0}}>
-      <div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontWeight:600,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{leg.description||tx.reference||"—"}</span><span style={{fontSize:8,padding:"1px 5px",borderRadius:8,background:(catColors[cat.id]||C.td)+"22",color:catColors[cat.id]||C.td,fontWeight:600,flexShrink:0}}>{cat.label}</span></div>
-      <div style={{fontSize:9,color:C.td}}>{new Date(tx.created_at).toLocaleDateString("fr-FR")}</div>
-     </div>
-     <span style={{fontWeight:700,fontSize:11,color:isIn?C.g:C.r}}>{isIn?"+":""}{fmt(leg.amount)}€</span>
-    </div>;
-   })}
-  </div>}
-  {/* Pipeline snapshot */}
-  {ghlStats&&<div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:16,animationDelay:"0.9s"}}>
-   <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:10}}>PIPELINE</div>
-   <div style={{display:"flex",gap:12,marginBottom:12}}>
-    <div><div style={{fontSize:20,fontWeight:900,color:C.acc}}>{fmt(ghlStats.pipelineValue)}€</div><div style={{fontSize:9,color:C.td}}>Valeur pipeline</div></div>
-    <div><div style={{fontSize:20,fontWeight:900,color:C.b}}>{ghlStats.openDeals}</div><div style={{fontSize:9,color:C.td}}>Deals actifs</div></div>
-    <div><div style={{fontSize:20,fontWeight:900,color:C.g}}>{ghlStats.wonDeals}</div><div style={{fontSize:9,color:C.td}}>Gagnés</div></div>
-   </div>
-   {ghlStages.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-    {ghlStages.map((stage,i)=>{const count=ghlOpps.filter(o=>o.stage===stage).length;
-     return <span key={i} style={{padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:600,background:GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]+"22",color:GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length],border:`1px solid ${GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]}33`}}>{stage}: {count}</span>;
-    })}
-   </div>}
-  </div>}
- </div>;
-}
 function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,savePulse,socBankData,syncSocBank,okrs,saveOkrs,kb,saveKb,socs,subs,saveSubs,team,saveTeam,clients,saveClients,ghlData,invoices,saveInvoices,hold,onTour}){
- const cM2=curM();const[pTab,setPTab]=useState(0);const[mo,setMo]=useState(cM2);
+ const cM2=curM();const[pTab,setPTab]=useState(10);const[mo,setMo]=useState(cM2);
  const[f,setF]=useState(()=>gr(reps,soc.id,cM2)||{...BF});const[done,setDone]=useState(false);const[showPub,setShowPub]=useState(false);const[jText,setJText]=useState("");
  useEffect(()=>{const ex=gr(reps,soc.id,mo)||{...BF};setF(ex);setShowPub(!!pf(ex.pub));setDone(false);},[mo,soc.id]);
  const ex=gr(reps,soc.id,mo),ca=pf(f.ca),ch=pf(f.charges),marge=ca-ch;
@@ -2869,12 +2852,309 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
   <div style={{flex:1,minWidth:0,height:"100vh",overflow:"auto"}}>
   {celebMs&&<CelebrationOverlay milestone={celebMs} onClose={()=>setCelebMs(null)}/>}
   <div style={{padding:16,maxWidth:680,margin:"0 auto"}}>
-  {/* === PORTEUR DASHBOARD (pTab 0) === */}
-  {pTab===0&&<PorteurDashboard soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}} ghlData={ghlData} setPTab={setPTab} soc2={soc} clients={clients}/>}
+  {/* === HOME DASHBOARD (pTab 10) === */}
+  {pTab===10&&<>
+   {/* Welcome header */}
+   <div className="fu" style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
+    <div style={{width:48,height:48,borderRadius:14,background:hs.color+"18",border:`2px solid ${hs.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:26,color:hs.color}}>{hs.grade}</div>
+    <div style={{flex:1}}>
+     <div style={{fontWeight:800,fontSize:16,color:C.t}}>Bonjour{soc.porteur?`, ${soc.porteur.split(" ")[0]}`:""} 👋</div>
+     <div style={{color:C.td,fontSize:11,marginTop:2}}>{soc.nom} · Score santé : <strong style={{color:hs.color}}>{hs.score}/100</strong></div>
+    </div>
+   </div>
+   {/* Nudges — what to do now */}
+   {(()=>{
+    const nudges=[];
+    if(status==="missing")nudges.push({icon:"📝",label:`Rapport ${ml(cM2)} à soumettre`,sub:`Avant le ${deadline(cM2)}`,color:C.r,action:()=>setPTab(0)});
+    else if(status==="pending")nudges.push({icon:"⏳",label:`Rapport ${ml(cM2)} en attente de validation`,color:C.o,action:()=>setPTab(0)});
+    const w=curW();const hasPulse=pulses[`${soc.id}_${w}`];
+    if(!hasPulse)nudges.push({icon:"💓",label:"Pulse de la semaine",sub:"Partagez votre mood et avancement",color:C.v,action:()=>setPTab(4)});
+    const lateAct=myActions.filter(a2=>!a2.done&&a2.deadline<cM2);
+    if(lateAct.length>0)nudges.push({icon:"⚠",label:`${lateAct.length} action${lateAct.length>1?"s":""} en retard`,color:C.r,action:()=>setPTab(2)});
+    const openAct=myActions.filter(a2=>!a2.done&&a2.deadline>=cM2);
+    if(openAct.length>0)nudges.push({icon:"✅",label:`${openAct.length} action${openAct.length>1?"s":""} à faire`,color:C.b,action:()=>setPTab(2)});
+    if(nudges.length===0)nudges.push({icon:"🎉",label:"Tout est à jour !",sub:"Aucune tâche en attente",color:C.g});
+    return <div style={{marginBottom:16}}>
+     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:6}}>À FAIRE</div>
+     <div style={{display:"flex",flexDirection:"column",gap:4}}>
+     {nudges.map((n,i)=><div key={i} className={`fu d${Math.min(i+1,5)}`} onClick={n.action} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:n.color+"08",border:`1px solid ${n.color}18`,borderRadius:10,cursor:n.action?"pointer":"default",transition:"all .12s"}} onMouseEnter={n.action?e=>{e.currentTarget.style.background=n.color+"15";}:undefined} onMouseLeave={n.action?e=>{e.currentTarget.style.background=n.color+"08";}:undefined}>
+      <span style={{fontSize:16}}>{n.icon}</span>
+      <div style={{flex:1}}><div style={{fontWeight:600,fontSize:12,color:C.t}}>{n.label}</div>{n.sub&&<div style={{fontSize:9,color:C.td,marginTop:1}}>{n.sub}</div>}</div>
+      {n.action&&<span style={{fontSize:10,color:n.color}}>→</span>}
+     </div>)}
+     </div>
+    </div>;
+   })()}
+   {/* KPIs row */}
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:6,marginBottom:16}}>
+    <KPI label="CA" value={evo.length?`${fmt(evo[evo.length-1].ca)}€`:"—"} accent={C.acc} icon="💰" delay={1}/>
+    <KPI label="Marge" value={evo.length?`${evo[evo.length-1].margePct}%`:"—"} accent={evo.length&&evo[evo.length-1].marge>=0?C.g:C.r} icon="📊" delay={2}/>
+    <KPI label="Trésorerie" value={evo.length?`${fmt(evo[evo.length-1].treso)}€`:"—"} accent={C.b} icon="🏦" delay={3}/>
+    {rw&&<KPI label="Runway" value={`${rw.months}m`} accent={rw.months<3?C.r:rw.months<6?C.o:C.g} icon="⏳" delay={4}/>}
+   </div>
+   {/* Proactive Insights */}
+   {insights.length>0&&<div style={{marginBottom:14}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:6}}>💡 INSIGHTS</div>
+    {insights.map((ins,i)=><div key={i} className={`fu d${Math.min(i+1,4)}`} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"10px 12px",marginBottom:4,background:ins.type==="danger"?C.rD:ins.type==="warning"?C.oD:C.gD,border:`1px solid ${ins.type==="danger"?C.r:ins.type==="warning"?C.o:C.g}15`,borderRadius:10}}>
+     <span style={{fontSize:14,flexShrink:0,marginTop:1}}>{ins.icon}</span>
+     <div style={{flex:1,minWidth:0}}>
+      <div style={{fontWeight:700,fontSize:11,color:ins.type==="danger"?C.r:ins.type==="warning"?C.o:C.g}}>{ins.title}</div>
+      <div style={{fontSize:9,color:C.td,marginTop:2,lineHeight:1.4}}>{ins.desc}</div>
+      <div style={{fontSize:8,color:C.tm,marginTop:3,fontStyle:"italic"}}>💡 {ins.tip}</div>
+     </div>
+    </div>)}
+   </div>}
+   {/* Personal Goals */}
+   <GoalEditor goals={goals} setGoals={setGoals} evo={evo}/>
+   {/* Anonymous Benchmark */}
+   {benchmark&&<div style={{marginBottom:14}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:6}}>📊 VOTRE POSITION DANS LE PORTFOLIO ({benchmark.total} sociétés)</div>
+    <Card style={{padding:12}}>
+     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+     {benchmark.metrics.map((m,i)=><div key={i} className={`fu d${i+1}`} style={{padding:"6px 8px",background:C.bg,borderRadius:8}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+       <span style={{fontSize:9,color:C.td,fontWeight:600}}>{m.label}</span>
+       <span style={{fontSize:10,fontWeight:800,color:m.color}}>{m.value}</span>
+      </div>
+      <div style={{height:4,background:C.brd,borderRadius:2,overflow:"hidden",position:"relative"}}>
+       <div style={{height:"100%",width:`${m.pctile}%`,background:m.pctile>=66?C.g:m.pctile>=33?C.o:C.r,borderRadius:2,transition:"width .4s"}}/>
+       <div style={{position:"absolute",top:-2,left:`${50}%`,width:1,height:8,background:C.td+"44"}}/>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",marginTop:2}}>
+       <span style={{fontSize:7,color:C.tm}}>Bas</span>
+       <span style={{fontSize:7,color:m.pctile>=66?C.g:m.pctile>=33?C.o:C.r,fontWeight:700}}>Top {100-m.pctile}%</span>
+       <span style={{fontSize:7,color:C.tm}}>Haut</span>
+      </div>
+     </div>)}
+     </div>
+    </Card>
+   </div>}
+   {/* Mini chart CA evolution */}
+   {evo.length>1&&<Card style={{padding:12,marginBottom:14}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+     <span style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8}}>ÉVOLUTION CA</span>
+     <span style={{fontSize:10,fontWeight:700,color:evo.length>=2&&evo[evo.length-1].ca>=evo[evo.length-2].ca?C.g:C.r}}>{evo.length>=2?(evo[evo.length-1].ca>=evo[evo.length-2].ca?"↑":"↓"):""} {evo.length>=2&&evo[evo.length-2].ca>0?pct(Math.abs(evo[evo.length-1].ca-evo[evo.length-2].ca),evo[evo.length-2].ca):0}%</span>
+    </div>
+    <div style={{height:100}}><ResponsiveContainer><AreaChart data={evo.slice(-6)}><defs><linearGradient id="ghca" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={soc.color} stopOpacity={.3}/><stop offset="100%" stopColor={soc.color} stopOpacity={0}/></linearGradient></defs><XAxis dataKey="mois" tick={{fill:C.td,fontSize:8}} axisLine={false} tickLine={false}/><YAxis hide/><Tooltip content={<CTip/>}/><Area type="monotone" dataKey="ca" stroke={soc.color} strokeWidth={2} fill="url(#ghca)"/></AreaChart></ResponsiveContainer></div>
+   </Card>}
+   {/* Milestones compact */}
+   {(()=>{const un=milestones.filter(m=>m.unlocked);const next=milestones.filter(m=>!m.unlocked).sort((a2,b2)=>a2.tier-b2.tier)[0];
+    return <Card style={{padding:12,marginBottom:14,cursor:"pointer"}} onClick={()=>setPTab(6)}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+     <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:14}}>🏆</span><span style={{fontWeight:700,fontSize:12}}>{un.length} trophées</span><span style={{fontSize:9,color:C.td}}>/ {milestones.length}</span></div>
+     <PBar value={un.length} max={milestones.length} color={C.acc} h={4} style={{flex:1,maxWidth:80,marginLeft:8}}/>
+    </div>
+    <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
+    {un.sort((a2,b2)=>b2.tier-a2.tier).slice(0,8).map(m=><span key={m.id} title={m.label} style={{fontSize:14,padding:"1px 3px",background:TIER_BG[m.tier],borderRadius:5,border:`1px solid ${TIER_COLORS[m.tier]}18`}}>{m.icon}</span>)}
+    {un.length>8&&<span style={{fontSize:9,color:C.td,alignSelf:"center"}}>+{un.length-8}</span>}
+    {next&&<span style={{fontSize:8,color:C.td,alignSelf:"center",marginLeft:4}}>🔜 {next.label}</span>}
+    </div>
+    </Card>;
+   })()}
+   {/* Contextual Playbooks */}
+   {playbooks.length>0&&<div style={{marginBottom:14}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:6}}>📖 RECOMMANDATIONS POUR VOUS</div>
+    {playbooks.map((pb,i)=><CollapsibleSection key={i} title={pb.title} icon={pb.icon}>
+     <div style={{display:"flex",flexDirection:"column",gap:4}}>
+     {pb.items.map((item,j)=><div key={j} style={{display:"flex",alignItems:"flex-start",gap:6,fontSize:10,color:C.t,lineHeight:1.4}}>
+      <span style={{color:pb.color,fontWeight:700,flexShrink:0}}>•</span>
+      <span>{item}</span>
+     </div>)}
+     </div>
+    </CollapsibleSection>)}
+   </div>}
+   {/* Last comment from Scale */}
+   {ex?.comment&&<Card accent={C.acc} style={{padding:12,marginBottom:14}}>
+    <div style={{color:C.acc,fontSize:9,fontWeight:700,marginBottom:3}}>💬 DERNIER RETOUR SCALE</div>
+    <div style={{color:C.t,fontSize:12,lineHeight:1.5}}>{ex.comment}</div>
+   </Card>}
+   {/* Recent activity */}
+   {(()=>{
+    const items=[];
+    myJournal.slice(0,2).forEach(j=>items.push({type:"journal",date:j.date,text:j.text}));
+    myActions.filter(a=>a.done).slice(0,2).forEach(a=>items.push({type:"action",date:a.deadline,text:"✓ "+a.text}));
+    const w=curW();const p=pulses[`${soc.id}_${w}`];
+    if(p)items.push({type:"pulse",date:p.at,text:`Mood ${p.mood}/5${p.win?` — ${p.win}`:""}`});
+    items.sort((a,b)=>new Date(b.date)-new Date(a.date));
+    if(items.length===0)return null;
+    return <div style={{marginBottom:14}}>
+     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:6}}>ACTIVITÉ RÉCENTE</div>
+     {items.slice(0,4).map((it,i)=><div key={i} className={`fu d${Math.min(i+1,4)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 0",borderBottom:i<Math.min(items.length,4)-1?`1px solid ${C.brd}08`:"none"}}>
+      <span style={{fontSize:10}}>{it.type==="journal"?"📝":it.type==="action"?"✅":"💓"}</span>
+      <span style={{flex:1,fontSize:10,color:C.t,lineHeight:1.3}}>{it.text}</span>
+      <span style={{fontSize:8,color:C.tm,whiteSpace:"nowrap"}}>{ago(it.date)}</span>
+     </div>)}
+    </div>;
+   })()}
+  </>}
+  {/* === RAPPORT (pTab 0) — read-only auto-generated === */}
+  {pTab===0&&(()=>{
+   const autoR=autoGenerateReport(soc.id,mo,socBankData?{[soc.id]:socBankData}:{},ghlData||{},subs||[]);
+   const r={...autoR,...(ex?.ok?ex:{})};const rCa=pf(r.ca),rCh=pf(r.charges),rMarge=rCa-rCh,rRem=(soc.pT==="ca"?rCa:Math.max(0,rMarge))*soc.pP/100;const rDiv=pf(r.dividendesHolding);
+   const rvf=v=>v?<span style={{fontWeight:800}}>{fmt(pf(v))}€</span>:<span style={{color:C.td}}>—</span>;
+   return <>
+   <div className="fu" style={{background:"#a78bfa11",border:"1px solid #a78bfa22",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:14}}>🤖</span><div><div style={{color:"#a78bfa",fontWeight:700,fontSize:12}}>Rapport auto-généré</div><div style={{color:C.td,fontSize:10}}>Calculé depuis Revolut + GHL · {ml(mo)}</div></div></div>
+    <Inp type="month" value={mo} onChange={setMo} small/>
+   </div>
+   {ex?.comment&&<Card accent={C.acc} style={{marginBottom:14,padding:"10px 12px"}}><div style={{color:C.acc,fontSize:10,fontWeight:700,marginBottom:3}}>💬 RETOUR SCALE</div><div style={{color:C.t,fontSize:13,lineHeight:1.6}}>{ex.comment}</div></Card>}
+   <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:14}}>
+    <KPI label="CA" value={`${fmt(rCa)}€`} accent={C.g} delay={1}/>
+    <KPI label="Charges" value={`${fmt(rCh)}€`} accent={C.r} delay={2}/>
+    <KPI label="Marge" value={`${fmt(rMarge)}€`} accent={rMarge>=0?C.g:C.r} delay={3} sub={rCa>0?`${pct(rMarge,rCa)}%`:""}/>
+    <KPI label="Trésorerie" value={`${fmt(pf(r.tresoSoc))}€`} accent={C.b} delay={4}/>
+   </div>
+   {rCa>0&&<Card style={{padding:"10px 14px",marginBottom:12}}>
+    <div style={{display:"flex",flexWrap:"wrap",gap:10,fontSize:11}}>
+     <span style={{color:C.acc,fontWeight:700}}>→ Remontée théorique : {fmt(rRem)}€ ({soc.pP}% {soc.pT==="ca"?"du CA":"des bénéfices"})</span>
+     {rDiv>0&&<><span style={{color:"#7c3aed",fontWeight:700}}>🏛️ Déjà viré : {fmt(rDiv)}€</span>
+     <span style={{color:rRem-rDiv>0?C.o:C.g,fontWeight:700}}>{rRem-rDiv>0?`⚠ Reste : ${fmt(rRem-rDiv)}€`:`✅ Trop-perçu : ${fmt(rDiv-rRem)}€`}</span></>}
+    </div>
+   </Card>}
+   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:12}}>
+    {[["Nvx clients",r.clients,"👥"],["Pipeline",r.pipeline+"€","🔮"],["MRR",r.mrr+"€","🔄"],["Leads",r.leads,"🎯"],["Leads closés",r.leadsClos,"✅"],["Budget pub",r.pub+"€","📢"]].filter(([,v])=>pf(v)>0).map(([l,v,ic],i)=>
+     <div key={l} className={`fu d${i+1}`} style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:8,padding:"8px 10px"}}>
+      <div style={{fontSize:9,color:C.td,fontWeight:600}}>{ic} {l}</div>
+      <div style={{fontWeight:800,fontSize:14,color:C.t,marginTop:2}}>{fmt(pf(v))}{v.toString().includes("€")?"€":""}</div>
+     </div>)}
+   </div>
+   {pf(r.salaire)>0&&<div style={{fontSize:10,color:C.td,marginBottom:8}}>💰 Rémunération fondateur: <strong style={{color:C.o}}>{fmt(pf(r.salaire))}€</strong>{rCa>0?` (${pct(pf(r.salaire),rCa)}% du CA)`:""}</div>}
+   {r.notes&&<div style={{fontSize:10,color:C.td,fontStyle:"italic",marginBottom:12}}>📝 {r.notes}</div>}
+   {past.length>0&&<Sect title="Historique">{past.map(([k,rep],i)=>{const m2=k.replace(soc.id+"_","");return <Card key={k} accent={soc.color} style={{marginBottom:4,padding:"8px 12px"}} delay={Math.min(i+1,8)} onClick={()=>{setMo(m2);window.scrollTo({top:0,behavior:"smooth"});}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:600,fontSize:12}}>{ml(m2)}</span><span style={{fontWeight:700,fontSize:13}}>{fmt(rep.ca)}€ {rep.ok?"✓":"⏳"}</span></div></Card>;})}</Sect>}
+  </>;})()}
+  {/* === STATS (pTab 1) — refactored with collapsible === */}
+  {pTab===1&&<>
+   {(()=>{
+    const last=evo.length>0?evo[evo.length-1]:null;
+    const prev=evo.length>1?evo[evo.length-2]:null;
+    if(!last)return <div className="fu" style={{textAlign:"center",padding:40,color:C.td}}>Aucune donnée — soumettez votre premier rapport</div>;
+    const ca2=last.ca,ch2=last.charges,marge2=last.marge,margePct2=last.margePct;
+    return <>
+    {/* Top summary row */}
+    <div className="fu" style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+     <div style={{width:48,height:48,borderRadius:14,background:hs.color+"18",border:`2px solid ${hs.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:26,color:hs.color}}>{hs.grade}</div>
+     <div style={{flex:1}}>
+      <div style={{fontWeight:800,fontSize:14}}>{hs.score}/100</div>
+      <div style={{color:C.td,fontSize:10}}>{soc.incub?`${sinceLbl(soc.incub)} d'incubation · `:""}{evo.length} rapports · CA total: {fmt(totalCA)}€</div>
+     </div>
+     {prev&&<div style={{textAlign:"right"}}>
+      <div style={{fontSize:12,fontWeight:800,color:ca2>=prev.ca?C.g:C.r}}>{ca2>=prev.ca?"↑":"↓"} {prev.ca>0?pct(Math.abs(ca2-prev.ca),prev.ca):0}%</div>
+      <div style={{fontSize:8,color:C.td}}>vs mois dernier</div>
+     </div>}
+    </div>
+    {/* KPI cards */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:6,marginBottom:14}}>
+    <KPI label="CA" value={`${fmt(ca2)}€`} accent={C.acc} icon="💰" delay={1}/>
+    <KPI label="Marge" value={`${margePct2}%`} accent={marge2>=0?C.g:C.r} icon="📊" delay={2}/>
+    <KPI label="Trésorerie" value={`${fmt(last.treso)}€`} accent={C.b} icon="🏦" delay={3}/>
+    {rw&&<KPI label="Runway" value={`${rw.months}m`} accent={rw.months<3?C.r:rw.months<6?C.o:C.g} icon="⏳" delay={4}/>}
+    </div>
+    {/* Score santé — always visible */}
+    <Card style={{padding:12,marginBottom:14}}>
+     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+     {[["Objectif",hs.obj,30],["Croissance",hs.growth,25],["Rentabilité",hs.margin,25],["Rétention",hs.retention,20]].map(([l,v,mx],i)=><div key={i} style={{padding:"6px 8px",background:C.bg,borderRadius:6}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}><span style={{color:C.td,fontSize:9,fontWeight:600}}>{l}</span><span style={{fontSize:9,fontWeight:700,color:v>=mx*.7?C.g:v>=mx*.4?C.o:C.r}}>{v}/{mx}</span></div>
+      <PBar value={v} max={mx} color={v>=mx*.7?C.g:v>=mx*.4?C.o:C.r} h={3}/>
+     </div>)}
+     </div>
+    </Card>
+    {/* CA & Marge chart — always visible */}
+    {evo.length>1&&<Card style={{padding:12,marginBottom:10}}>
+     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:6}}>ÉVOLUTION CA & MARGE</div>
+     <div style={{height:160}}><ResponsiveContainer><AreaChart data={evo}><defs><linearGradient id="gca" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={soc.color} stopOpacity={.3}/><stop offset="100%" stopColor={soc.color} stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis dataKey="mois" tick={{fill:C.td,fontSize:8}} axisLine={false} tickLine={false}/><YAxis tick={{fill:C.td,fontSize:8}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/><Tooltip content={<CTip/>}/><Legend wrapperStyle={{fontSize:9}}/><Area type="monotone" dataKey="ca" stroke={soc.color} strokeWidth={2} fill="url(#gca)" name="CA"/><Area type="monotone" dataKey="marge" stroke={C.g} strokeWidth={1.5} fill="transparent" name="Marge"/></AreaChart></ResponsiveContainer></div>
+    </Card>}
+    {/* Collapsible: Finances détaillées */}
+    <CollapsibleSection title="Finances détaillées" icon="💰">
+     {(()=>{const avgCh3=evo.slice(-3).reduce((a,d)=>a+d.charges,0)/Math.min(3,evo.length);const coussin=avgCh3*3;const investissable=Math.max(0,last.treso-coussin);
+     return <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+      <div style={{width:36,height:36,borderRadius:10,background:investissable>0?C.gD:C.oD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>💡</div>
+      <div style={{flex:1}}>
+       <div style={{color:C.td,fontSize:9,fontWeight:700}}>BUDGET INVESTISSABLE</div>
+       <div style={{fontWeight:800,fontSize:16,color:investissable>0?C.g:C.o}}>{fmt(investissable)}€</div>
+       <div style={{fontSize:8,color:C.td}}>Tréso {fmt(last.treso)}€ − Coussin 3m {fmt(Math.round(coussin))}€</div>
+      </div>
+     </div>;})()}
+     {(()=>{const sal=last.salaire,ops=last.chargesOps,form=last.formation,pub2=last.pub;const autres=Math.max(0,ch2-sal-ops-form-pub2);
+      const chargeSlices=[{name:"Opérationnel",value:ops,color:C.b},{name:"Rémunération",value:sal,color:C.acc},{name:"Formation",value:form,color:C.v},{name:"Pub/Ads",value:pub2,color:C.o},{name:"Autres",value:autres,color:C.td}].filter(s=>s.value>0);
+      return chargeSlices.length>0?<div style={{display:"flex",gap:12,alignItems:"center"}}>
+       <div style={{width:80,height:80,flexShrink:0}}><ResponsiveContainer width="100%" height={80}><PieChart><Pie data={chargeSlices} dataKey="value" cx="50%" cy="50%" innerRadius={22} outerRadius={36} paddingAngle={2}>{chargeSlices.map((s,i)=><Cell key={i} fill={s.color} stroke="transparent"/>)}</Pie></PieChart></ResponsiveContainer></div>
+       <div style={{flex:1}}>{chargeSlices.map((s,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:3}}><span style={{width:6,height:6,borderRadius:2,background:s.color,flexShrink:0}}/><span style={{flex:1,fontSize:9,color:C.t}}>{s.name}</span><span style={{fontWeight:700,fontSize:9,color:s.color}}>{fmt(s.value)}€</span><span style={{fontSize:7,color:C.td,width:24,textAlign:"right"}}>{pct(s.value,ch2)}%</span></div>)}</div>
+      </div>:null;
+     })()}
+    </CollapsibleSection>
+    {/* Collapsible: Prévisions CA */}
+    {evo.length>=2&&<CollapsibleSection title="Prévisions CA" icon="🔮">
+     {(()=>{const recent=evo.slice(-6);const n=recent.length;const xMean=(n-1)/2,yMean=recent.reduce((a,d)=>a+d.ca,0)/n;
+      const slope=n>1?recent.reduce((a,d,i)=>a+(i-xMean)*(d.ca-yMean),0)/recent.reduce((a,_,i)=>a+(i-xMean)**2,0):0;
+      const forecast=[1,2,3].map(i=>Math.max(0,Math.round(yMean+slope*(n-1+i))));
+      return <>
+      <div style={{height:120}}><ResponsiveContainer><AreaChart data={[...evo.slice(-6).map(d=>({mois:d.mois,ca:d.ca})),...forecast.map((v,i)=>({mois:`M+${i+1}`,forecast:v}))]}>
+       <defs><linearGradient id="gfca2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={soc.color} stopOpacity={.2}/><stop offset="100%" stopColor={soc.color} stopOpacity={0}/></linearGradient><linearGradient id="gffc2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.v} stopOpacity={.2}/><stop offset="100%" stopColor={C.v} stopOpacity={0}/></linearGradient></defs>
+       <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis dataKey="mois" tick={{fill:C.td,fontSize:7}} axisLine={false} tickLine={false}/><YAxis tick={{fill:C.td,fontSize:7}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/><Tooltip content={<CTip/>}/>
+       <Area type="monotone" dataKey="ca" stroke={soc.color} strokeWidth={2} fill="url(#gfca2)" name="Réel"/>
+       <Area type="monotone" dataKey="forecast" stroke={C.v} strokeWidth={2} strokeDasharray="6 3" fill="url(#gffc2)" name="Prévision"/>
+      </AreaChart></ResponsiveContainer></div>
+      <div style={{display:"flex",gap:6,marginTop:6}}>{forecast.map((v,i)=><div key={i} style={{flex:1,textAlign:"center",padding:"3px 4px",background:C.vD,borderRadius:5}}><div style={{fontSize:7,color:C.td}}>M+{i+1}</div><div style={{fontWeight:800,fontSize:11,color:C.v}}>{fmt(v)}€</div></div>)}</div>
+      </>;
+     })()}
+    </CollapsibleSection>}
+    {/* Collapsible: Funnel leads */}
+    {evo.some(d=>d.leads>0)&&<CollapsibleSection title="Funnel leads" icon="🎯">
+     <div style={{height:110}}><ResponsiveContainer><BarChart data={evo.filter(d=>d.leads>0)}><CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis dataKey="mois" tick={{fill:C.td,fontSize:7}} axisLine={false} tickLine={false}/><YAxis tick={{fill:C.td,fontSize:7}} axisLine={false} tickLine={false}/><Tooltip content={<CTip/>}/><Bar dataKey="leads" fill={C.b} radius={[3,3,0,0]} name="Leads" opacity={.4}/><Bar dataKey="leadsContact" fill={C.o} radius={[3,3,0,0]} name="Contactés"/><Bar dataKey="leadsClos" fill={C.g} radius={[3,3,0,0]} name="Closés"/></BarChart></ResponsiveContainer></div>
+     {last.leads>0&&<div style={{display:"flex",justifyContent:"center",gap:12,marginTop:6}}>
+      {[{l:"Taux contact",v:pct(last.leadsContact,last.leads),c:C.o},{l:"Taux closing",v:pct(last.leadsClos,last.leads),c:C.g}].map((s,i)=><div key={i} style={{textAlign:"center"}}><div style={{fontWeight:800,fontSize:14,color:s.c}}>{s.v}%</div><div style={{fontSize:8,color:C.td}}>{s.l}</div></div>)}
+     </div>}
+    </CollapsibleSection>}
+    {/* Collapsible: Pipeline */}
+    {evo.some(d=>d.pipeline>0)&&<CollapsibleSection title="Pipeline vs Réalisé" icon="📐">
+     <div style={{height:120}}><ResponsiveContainer><BarChart data={evo.filter(d=>d.pipeline>0||d.ca>0)}><CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis dataKey="mois" tick={{fill:C.td,fontSize:7}} axisLine={false} tickLine={false}/><YAxis tick={{fill:C.td,fontSize:7}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/><Tooltip content={<CTip/>}/><Bar dataKey="pipeline" fill={C.b} radius={[3,3,0,0]} name="Prévu" opacity={.5}/><Bar dataKey="ca" fill={soc.color} radius={[3,3,0,0]} name="Réalisé"/></BarChart></ResponsiveContainer></div>
+    </CollapsibleSection>}
+    </>;
+   })()}
+   <AIWeeklyCoach soc={soc} reps={reps} allM={allM} actions={actions} pulses={pulses} milestones={milestones} okrs={okrs}/>
+  </>}
+  {/* === ACTIVITÉ (merged Actions + Journal) === */}
+  {pTab===2&&<>
+   {/* Actions à faire */}
+   {myActions.filter(a2=>!a2.done).length>0&&<Sect title="Actions à faire" sub={`${myActions.filter(a2=>!a2.done).length} ouvertes`}>
+    {myActions.filter(a2=>!a2.done).map(a2=><ActionItem key={a2.id} a={a2} socs={[soc]} onToggle={toggleAction}/>)}
+   </Sect>}
+   {/* Journal input */}
+   <div style={{marginBottom:14}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:6}}>📝 NOTER UNE ENTRÉE</div>
+    <div style={{display:"flex",gap:8}}><div style={{flex:1}}><Inp value={jText} onChange={setJText} placeholder="Décision, apprentissage, idée…" onKeyDown={e=>{if(e.key==="Enter")addJournal();}}/></div><Btn onClick={addJournal} small>+</Btn></div>
+   </div>
+   {/* Unified timeline */}
+   {(()=>{
+    const timeline=[];
+    myJournal.forEach(j=>timeline.push({type:"journal",id:j.id,date:j.date,text:j.text}));
+    myActions.filter(a2=>a2.done).forEach(a2=>timeline.push({type:"action_done",id:a2.id,date:a2.deadline,text:a2.text}));
+    timeline.sort((a,b)=>new Date(b.date)-new Date(a.date));
+    if(timeline.length===0&&myActions.filter(a2=>!a2.done).length===0)return <div className="fu" style={{textAlign:"center",padding:40,color:C.td}}>Aucune activité pour le moment</div>;
+    if(timeline.length===0)return null;
+    return <Sect title="Historique">
+     {timeline.map((it,i)=><div key={it.id} className={`fu d${Math.min(i+1,6)}`} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"8px 0",borderBottom:i<timeline.length-1?`1px solid ${C.brd}08`:"none"}}>
+      <div style={{width:24,height:24,borderRadius:6,background:it.type==="journal"?C.vD:C.gD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,flexShrink:0,marginTop:1}}>{it.type==="journal"?"📝":"✓"}</div>
+      <div style={{flex:1,minWidth:0}}>
+       <div style={{fontSize:11,color:C.t,lineHeight:1.4}}>{it.text}</div>
+       <div style={{fontSize:8,color:C.tm,marginTop:2}}>{it.type==="journal"?"Journal":"Action terminée"} · {new Date(it.date).toLocaleDateString("fr-FR")}</div>
+      </div>
+     </div>)}
+    </Sect>;
+   })()}
+  </>}
+  {/* pTab===3 kept for backward compat but hidden from sidebar */}
+  {pTab===3&&<Sect title="Journal stratégique"><div style={{display:"flex",gap:8,marginBottom:14}}><div style={{flex:1}}><Inp value={jText} onChange={setJText} placeholder="Nouvelle entrée…" onKeyDown={e=>{if(e.key==="Enter")addJournal();}}/></div><Btn onClick={addJournal} small>+</Btn></div>{myJournal.map(j=><Card key={j.id} accent={soc.color} style={{marginBottom:5,padding:"10px 14px"}}><div style={{display:"flex",justifyContent:"space-between"}}><div style={{fontSize:12,color:C.t,lineHeight:1.5}}>{j.text}</div><div style={{color:C.td,fontSize:10,whiteSpace:"nowrap",marginLeft:10}}>{new Date(j.date).toLocaleDateString("fr-FR")}</div></div></Card>)}</Sect>}
+  {pTab===4&&<PulseForm soc={soc} pulses={pulses} savePulse={savePulse} hold={hold}/>}
   {pTab===5&&<><SocBankWidget bankData={socBankData} onSync={()=>syncSocBank(soc.id)} soc={soc}/>
    <SubsTeamPanel socs={[soc]} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId={soc.id} reps={reps} socBankData={socBankData}/>
   </>}
+  {pTab===6&&<MilestonesWall milestones={milestones} soc={soc}/>}
+  {pTab===7&&<OKRPanel socs={socs||[soc]} okrs={okrs} saveOkrs={saveOkrs} reps={reps} isPorteur socId={soc.id}/>}
+  {pTab===8&&<KnowledgeBase socs={socs||[soc]} kb={kb} saveKb={saveKb} isPorteur socId={soc.id}/>}
   {pTab===9&&<ClientsPanel soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices}/>}
+  {/* === MEETING PREP (pTab 11) === */}
+  {pTab===11&&<MeetingPrepView soc={soc} evo={evo} myActions={myActions} myJournal={myJournal} pulses={pulses} hs={hs} rw={rw} milestones={milestones} cM2={cM2} insights={insights}/>}
   {pTab===12&&<SocSettingsPanel soc={soc} save={save} socs={socs}/>}
   </div>
   </div>
@@ -3333,6 +3613,7 @@ const SB_ADMIN=[
  {id:"portfolio",icon:"▣",label:"Portfolio",accent:C.b,children:[
   {icon:"📋",label:"Sociétés",tab:1},
   {icon:"📊",label:"Analytique",tab:2},
+  {icon:"🎯",label:"OKR",tab:9},
   {icon:"⚡",label:"Challenges",tab:12},
  ]},
  {id:"finance",icon:"💰",label:"Finance",accent:C.g,children:[
@@ -3351,9 +3632,21 @@ const SB_ADMIN=[
 ];
 
 const SB_PORTEUR=[
- {id:"dashboard",icon:"📊",label:"Dashboard",tab:0,accent:C.acc},
+ {id:"home",icon:"◉",label:"Accueil",tab:10,accent:C.acc},
+ {id:"perf",icon:"📈",label:"Performance",accent:C.g,children:[
+  {icon:"📊",label:"Rapport",tab:0},
+  {icon:"📉",label:"Statistiques",tab:1},
+  {icon:"🏆",label:"Milestones",tab:6},
+  {icon:"🎯",label:"OKR",tab:7},
+ ]},
+ {id:"suivi",icon:"✅",label:"Suivi",accent:C.b,children:[
+  {icon:"📋",label:"Activité",tab:2},
+  {icon:"💓",label:"Pulse",tab:4},
+ ]},
  {id:"bank",icon:"🏦",label:"Banque",tab:5,accent:C.g},
  {id:"clients",icon:"👥",label:"Clients",tab:9,accent:C.o},
+ {id:"meeting",icon:"📋",label:"Prépa point",tab:11,accent:"#a78bfa"},
+ {id:"kb2",icon:"📚",label:"Ressources",tab:8,accent:C.v},
  {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
 ];
 
@@ -3636,7 +3929,33 @@ export default function App(){
     </Card>
     </div>
    </div>
-   <div data-tour="admin-okr-actions" style={{display:"grid",gridTemplateColumns:"1fr",gap:12,marginTop:14}}>
+   <div data-tour="admin-okr-actions" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:14}}>
+    <Card style={{padding:12}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8}}>🎯 OBJECTIFS {curQ()}</div>
+    <Btn small v="ghost" onClick={()=>setTab(9)}>Voir tout</Btn>
+    </div>
+    {(()=>{
+    const qOkrs=okrs.filter(o=>o.quarter===curQ());
+    if(qOkrs.length===0)return <div style={{color:C.td,fontSize:11,padding:10,textAlign:"center"}}>Aucun OKR ce trimestre</div>;
+    return qOkrs.slice(0,4).map((o,i)=>{
+    const s=socs.find(x=>x.id===o.socId);
+    const okrPct=o.krs.length?Math.round(o.krs.reduce((a,kr)=>{
+    const r=gr(reps,o.socId,cM2);let cur=kr.current;
+    if(kr.auto&&r){if(kr.auto==="ca")cur=pf(r.ca);if(kr.auto==="clients")cur=pf(r.clients);if(kr.auto==="pipeline")cur=pf(r.pipeline);if(kr.auto==="margin")cur=pf(r.ca)>0?Math.round((1-pf(r.charges)/pf(r.ca))*100):0;}
+    return a+Math.min(100,kr.target>0?cur/kr.target*100:0);
+    },0)/o.krs.length):0;
+    return <div key={o.id} className={`fu d${Math.min(i+1,4)}`} style={{marginBottom:6}}>
+    <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:3}}>
+    {s&&<span style={{width:4,height:4,borderRadius:2,background:s.color}}/>}
+    <span style={{flex:1,fontWeight:600,fontSize:10,lineHeight:1.2}}>{o.obj}</span>
+    <span style={{fontWeight:800,fontSize:11,color:okrPct>=80?C.g:okrPct>=50?C.o:C.r}}>{okrPct}%</span>
+    </div>
+    <PBar value={okrPct} max={100} color={okrPct>=80?C.g:okrPct>=50?C.o:C.r} h={3}/>
+    </div>;
+    });
+    })()}
+    </Card>
     <Card style={{padding:12}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8}}>⚡ ACTIONS PRIORITAIRES</div>
@@ -3717,6 +4036,21 @@ export default function App(){
     </div>
    </Sect></div>
    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:14}}>
+    <Card style={{padding:12,cursor:"pointer"}} onClick={()=>setTab(9)}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+    <span style={{fontSize:11,fontWeight:700}}>🎯 OKRs {curQ()}</span>
+    <span style={{fontSize:8,color:C.acc}}>Voir →</span>
+    </div>
+    {(()=>{const qOkrs=okrs.filter(o=>o.quarter===curQ());
+    if(qOkrs.length===0)return <div style={{color:C.td,fontSize:10}}>Aucun OKR défini</div>;
+    const avgP=Math.round(qOkrs.reduce((a,o)=>{const p=o.krs.length?o.krs.reduce((b,kr)=>b+Math.min(100,kr.target>0?kr.current/kr.target*100:0),0)/o.krs.length:0;return a+p;},0)/qOkrs.length);
+    return <><PBar value={avgP} max={100} color={avgP>=70?C.g:avgP>=40?C.acc:C.b} h={4}/>
+    <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+    <span style={{fontSize:9,color:C.td}}>{qOkrs.length} objectifs</span>
+    <span style={{fontSize:10,fontWeight:800,color:avgP>=70?C.g:avgP>=40?C.acc:C.b}}>{avgP}%</span>
+    </div></>;
+    })()}
+    </Card>
     <Card style={{padding:12,cursor:"pointer"}} onClick={()=>setTab(10)}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
     <span style={{fontSize:11,fontWeight:700}}>🤝 Synergies</span>
@@ -3940,6 +4274,7 @@ export default function App(){
   {tab===6&&<DealFlow deals={deals} saveDeals={saveDeals}/>}
   {tab===7&&<TabCRM socs={socs} ghlData={ghlData} onSync={syncGHL}/>}
   {tab===8&&<BankingPanel revData={revData} onSync={syncRev}/>}
+  {tab===9&&<OKRPanel socs={socs} okrs={okrs} saveOkrs={saveOkrs} reps={reps}/>}
   {tab===10&&<SynergiesPanel socs={socs} synergies={synergies} saveSynergies={saveSynergies}/>}
   {tab===11&&<KnowledgeBase socs={socs} kb={kb} saveKb={saveKb}/>}
   {tab===12&&<ChallengesPanel socs={socs} reps={reps} allM={allM} pulses={pulses} challenges={challenges} saveChallenges={saveChallenges}/>}
