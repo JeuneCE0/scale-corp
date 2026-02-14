@@ -419,7 +419,7 @@ async function syncGHLForSoc(soc){
  const ghlClients=rawContacts.map(c=>({
   id:`ghl_${c.id}`,socId:soc.id,name:c.contactName||[c.firstName,c.lastName].filter(Boolean).join(" ")||"Sans nom",
   contact:c.contactName||[c.firstName,c.lastName].filter(Boolean).join(" ")||"",
-  email:c.email||"",phone:c.phone||"",
+  email:c.email||"",phone:c.phone||"",company:c.companyName||"",
   billing:contactOppStatus[c.id]==="active"?{type:"fixed",amount:0,freq:"monthly",commitment:0,startDate:c.dateAdded?.slice(0,10)||""}:null,
   status:contactOppStatus[c.id]||"prospect",
   domain:((c.tags||[]).find(t=>t.startsWith("domaine:"))||"").replace("domaine:",""),
@@ -2331,7 +2331,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     {clOverdue>0&&<span style={{fontSize:7,color:C.r,background:C.rD,padding:"1px 5px",borderRadius:8,fontWeight:700}}>⚠ {clOverdue} retard</span>}
     {clDraft>0&&<span style={{fontSize:7,color:C.td,background:C.card2,padding:"1px 5px",borderRadius:8}}>{clDraft} brouillon{clDraft>1?"s":""}</span>}
     </div>
-    {cl.contact&&<div style={{color:C.td,fontSize:9,marginTop:1}}>{cl.contact}{cl.email?` · ${cl.email}`:""}</div>}
+    {(cl.contact||cl.company||cl.email)&&<div style={{color:C.td,fontSize:9,marginTop:1}}>{cl.company&&<span style={{fontWeight:600,color:"#60a5fa"}}>{cl.company}</span>}{cl.company&&(cl.contact||cl.email)?" · ":""}{cl.contact||""}{cl.email?` · ${cl.email}`:""}</div>}
     {cl.notes&&<div style={{color:C.td,fontSize:9,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cl.notes}</div>}
     <div style={{display:"flex",gap:8,marginTop:3,flexWrap:"wrap"}}>
     {b.type==="fixed"&&<>
@@ -2487,8 +2487,8 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     {editCl.ghlId&&<span style={{fontSize:8,color:C.td,marginLeft:"auto",fontFamily:"monospace"}}>{editCl.ghlId.slice(0,12)}…</span>}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
-    <Inp label="Nom / Entreprise" value={editCl.name} onChange={v=>setEditCl({...editCl,name:v})} placeholder="Ex: Studio Fitness Paris"/>
-    <Inp label="Contact" value={editCl.contact} onChange={v=>setEditCl({...editCl,contact:v})} placeholder="Nom du contact"/>
+    <Inp label="Nom du contact" value={editCl.name} onChange={v=>setEditCl({...editCl,name:v})} placeholder="Ex: Marion Pothin"/>
+    <Inp label="Entreprise" value={editCl.company||""} onChange={v=>setEditCl({...editCl,company:v})} placeholder="Ex: Studio Fitness Paris"/>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="Email" value={editCl.email} onChange={v=>setEditCl({...editCl,email:v})} placeholder="email@client.com"/>
