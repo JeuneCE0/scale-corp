@@ -12,13 +12,17 @@ const LOCATION_KEY_MAP = {
 
 const GHL_BASE = "https://services.leadconnectorhq.com";
 
+// Action whitelist
+const VALID_ACTIONS = ['contacts','pipelines','opportunities','contacts_list','opportunities_all','calendars','conversations','contact_update','contact_create','contact_delete','calendar_events','conversations_list','conversations_messages','conversation_send','calendar_slots','notes_list','notes_create','webhook_events'];
+
 // Basic in-memory rate limiting (per serverless instance)
-const rateLimit = {};
+if (!globalThis._ghlRateLimit) globalThis._ghlRateLimit = {};
 const RATE_LIMIT_WINDOW = 60_000; // 1 minute
 const RATE_LIMIT_MAX = 30; // max requests per window per IP
 
 function checkRateLimit(ip) {
   const now = Date.now();
+  const rateLimit = globalThis._ghlRateLimit;
   if (!rateLimit[ip] || now - rateLimit[ip].start > RATE_LIMIT_WINDOW) {
     rateLimit[ip] = { start: now, count: 1 };
     return true;
@@ -41,6 +45,14 @@ export default async function handler(req, res) {
   if (!checkRateLimit(ip)) return res.status(429).json({ error: "Too many requests" });
 
   const { action, locationId, ...params } = req.body || {};
+
+  // Validate action
+  if (!action || !VALID_ACTIONS.includes(action)) {
+    console.log(`[${new Date().toISOString()}] GHL BLOCKED invalid action="${action}" ip=${ip}`);
+    return res.status(400).json({ error: "Invalid action" });
+  }
+
+  console.log(`[${new Date().toISOString()}] GHL action=${action} loc=${locationId||'-'} ip=${ip}`);
 
   // webhook_events doesn't need locationId
   if (action === "webhook_events") {

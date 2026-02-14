@@ -1,7 +1,33 @@
-// Vercel Serverless — Supabase Auth Proxy
+// Vercel Serverless — Supabase Auth Proxy (Hardened)
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
+// --- Brute force protection ---
+if (!globalThis._authBrute) globalThis._authBrute = {};
+const BRUTE_WINDOW = 15 * 60_000; // 15 minutes
+const BRUTE_MAX = 5;
+
+function checkBrute(email) {
+  const now = Date.now();
+  const b = globalThis._authBrute;
+  if (!b[email] || now - b[email].start > BRUTE_WINDOW) {
+    b[email] = { start: now, count: 0 };
+  }
+  return b[email].count < BRUTE_MAX;
+}
+function recordFail(email) {
+  const b = globalThis._authBrute;
+  if (!b[email]) b[email] = { start: Date.now(), count: 0 };
+  b[email].count++;
+}
+function resetBrute(email) {
+  delete globalThis._authBrute[email];
+}
+
+// --- Validation ---
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const VALID_ACTIONS = ['signup','login','logout','me','update_password','list_users','delete_user'];
 
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -20,12 +46,22 @@ export default async function handler(req, res) {
   const { action } = req.query || {};
   if (!action) return res.status(400).json({ error: "Missing action param" });
 
+  // Validate action
+  if (!VALID_ACTIONS.includes(action)) {
+    return res.status(400).json({ error: "Invalid action" });
+  }
+
+  const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
+  console.log(`[${new Date().toISOString()}] AUTH action=${action} ip=${ip}`);
+
   try {
     // === SIGNUP (admin creates user) ===
     if (action === "signup") {
       if (req.method !== "POST") return res.status(405).json({ error: "POST required" });
       const { email, password, name, role, society_id } = req.body || {};
       if (!email || !password) return res.status(400).json({ error: "Missing email or password" });
+      if (!EMAIL_RE.test(email)) return res.status(400).json({ error: "Format email invalide" });
+      if (password.length < 8) return res.status(400).json({ error: "Mot de passe : 8 caractères minimum" });
       const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
         method: "POST",
         headers: {
@@ -48,7 +84,16 @@ export default async function handler(req, res) {
     if (action === "login") {
       if (req.method !== "POST") return res.status(405).json({ error: "POST required" });
       const { email, password } = req.body || {};
-      if (!email || !password) return res.status(400).json({ error: "Missing email or password" });
+      if (!email || !password) return res.status(400).json({ error: "Email ou mot de passe incorrect" });
+      if (!EMAIL_RE.test(email)) return res.status(400).json({ error: "Email ou mot de passe incorrect" });
+      if (password.length < 8) return res.status(400).json({ error: "Email ou mot de passe incorrect" });
+
+      // Brute force check
+      if (!checkBrute(email)) {
+        console.log(`[${new Date().toISOString()}] AUTH BRUTE_BLOCKED email=${email} ip=${ip}`);
+        return res.status(429).json({ error: "Trop de tentatives. Réessayez dans 15 minutes." });
+      }
+
       const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
         method: "POST",
         headers: {
@@ -59,13 +104,15 @@ export default async function handler(req, res) {
       });
       const data = await r.json();
       if (r.ok) {
+        resetBrute(email);
         return res.status(200).json({
           access_token: data.access_token,
           refresh_token: data.refresh_token,
           user: data.user,
         });
       }
-      return res.status(r.status).json(data);
+      recordFail(email);
+      return res.status(401).json({ error: "Email ou mot de passe incorrect" });
     }
 
     // === LOGOUT ===

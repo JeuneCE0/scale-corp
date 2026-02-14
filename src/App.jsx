@@ -682,9 +682,15 @@ async function storeCall(action,key,value){
   if(!r.ok)return null;return await r.json();
  }catch{return null;}
 }
+// Auth header helper
+function sbAuthHeaders(){
+ const h={'Content-Type':'application/json'};
+ try{const t=localStorage.getItem('sc_auth_token');if(t){const v=JSON.parse(t);if(v)h['Authorization']=`Bearer ${v}`;}}catch{}
+ return h;
+}
 // Supabase helper — fire-and-forget upsert
 function sbUpsert(table, data){
- fetch('/api/supabase?action=upsert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({table,data})}).catch(()=>{});
+ fetch('/api/supabase?action=upsert',{method:'POST',headers:sbAuthHeaders(),body:JSON.stringify({table,data})}).catch(()=>{});
 }
 // Supabase helper — get rows
 async function sbGet(table, societyId, filters){
@@ -692,16 +698,25 @@ async function sbGet(table, societyId, filters){
   let url=`/api/supabase?action=get&table=${encodeURIComponent(table)}`;
   if(societyId)url+=`&society_id=${encodeURIComponent(societyId)}`;
   if(filters)url+=`&filters=${encodeURIComponent(JSON.stringify(filters))}`;
-  const r=await fetch(url);if(!r.ok)return null;return await r.json();
+  const r=await fetch(url,{headers:sbAuthHeaders()});if(!r.ok)return null;return await r.json();
  }catch{return null;}
 }
 async function sbList(table, societyId){
  try{
   let url=`/api/supabase?action=list&table=${encodeURIComponent(table)}`;
   if(societyId)url+=`&society_id=${encodeURIComponent(societyId)}`;
-  const r=await fetch(url);if(!r.ok)return null;return await r.json();
+  const r=await fetch(url,{headers:sbAuthHeaders()});if(!r.ok)return null;return await r.json();
  }catch{return null;}
 }
+// Session timeout: auto-logout after 24h inactivity
+(function(){
+ const TIMEOUT=24*60*60*1000;
+ const KEY='sc_last_activity';
+ function touch(){localStorage.setItem(KEY,Date.now().toString());}
+ function check(){const last=parseInt(localStorage.getItem(KEY)||'0');if(last&&Date.now()-last>TIMEOUT){localStorage.removeItem('sc_auth_token');localStorage.removeItem('sc_user');localStorage.removeItem(KEY);window.location.reload();}}
+ ['click','keydown','scroll','mousemove'].forEach(e=>document.addEventListener(e,touch,{passive:true}));
+ touch();setInterval(check,60000);
+})();
 async function sGet(k){
  try{
   const ls=localStorage.getItem(k);const local=ls?JSON.parse(ls):null;

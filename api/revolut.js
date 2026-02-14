@@ -9,13 +9,17 @@ const COMPANY_TOKEN_MAP = {
 
 const REV_BASE = "https://b2b.revolut.com/api/1.0";
 
+// Action whitelist
+const VALID_ACTIONS = ['accounts', 'transactions'];
+
 // Basic in-memory rate limiting (per serverless instance)
-const rateLimit = {};
+if (!globalThis._revRateLimit) globalThis._revRateLimit = {};
 const RATE_LIMIT_WINDOW = 60_000;
 const RATE_LIMIT_MAX = 30;
 
 function checkRateLimit(ip) {
   const now = Date.now();
+  const rateLimit = globalThis._revRateLimit;
   if (!rateLimit[ip] || now - rateLimit[ip].start > RATE_LIMIT_WINDOW) {
     rateLimit[ip] = { start: now, count: 1 };
     return true;
@@ -42,6 +46,14 @@ export default async function handler(req, res) {
   if (!action || !company) {
     return res.status(400).json({ error: "Missing action or company" });
   }
+
+  // Validate action
+  if (!VALID_ACTIONS.includes(action)) {
+    console.log(`[${new Date().toISOString()}] REV BLOCKED invalid action="${action}" ip=${ip}`);
+    return res.status(400).json({ error: "Invalid action" });
+  }
+
+  console.log(`[${new Date().toISOString()}] REV action=${action} company=${company} ip=${ip}`);
 
   const envVar = COMPANY_TOKEN_MAP[company];
   if (!envVar) {
