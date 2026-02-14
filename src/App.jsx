@@ -6996,6 +6996,266 @@ function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose}){
  </div>;
 }
 
+/* ============ LIVE ACTIVITY FEED ============ */
+function LiveFeed({socs,reps,allM,ghlData,socBank,clients,maxEvents=50}){
+ const events=useMemo(()=>{
+  const evts=[];const now=Date.now();
+  (socs||[]).forEach(s=>{
+   const gd=ghlData?.[s.id];
+   (gd?.opportunities||[]).forEach(o=>{
+    if(o.status==="won")evts.push({ts:o.updatedAt||o.createdAt,icon:"✅",desc:`Deal gagné: ${o.name||o.contact?.name||"—"}`,amt:o.value||0,soc:s,type:"won"});
+    if(o.status==="lost")evts.push({ts:o.updatedAt||o.createdAt,icon:"❌",desc:`Deal perdu: ${o.name||o.contact?.name||"—"}`,soc:s,type:"lost"});
+   });
+   (gd?.calendarEvents||[]).filter(e=>e.startTime).forEach(e=>{
+    evts.push({ts:e.startTime,icon:"📞",desc:`RDV: ${e.title||e.contactName||"Appel"}`,soc:s,type:"call"});
+   });
+   (gd?.ghlClients||[]).slice(0,5).forEach(c=>{
+    evts.push({ts:c.dateAdded||c.createdAt,icon:"👤",desc:`Nouveau lead: ${c.name||c.email||"Contact"}`,soc:s,type:"lead"});
+   });
+   const bk=socBank?.[s.id];
+   (bk?.transactions||[]).slice(0,10).forEach(tx=>{
+    const leg=tx.legs?.[0];if(!leg)return;
+    if(leg.amount>0)evts.push({ts:tx.created_at,icon:"💰",desc:`Paiement reçu: ${tx.reference||leg.description||"—"}`,amt:leg.amount,soc:s,type:"payment"});
+   });
+  });
+  return evts.filter(e=>e.ts).sort((a,b)=>new Date(b.ts)-new Date(a.ts)).slice(0,maxEvents);
+ },[socs,ghlData,socBank]);
+ if(events.length===0)return <div style={{color:C.td,fontSize:11,textAlign:"center",padding:20}}>Aucune activité récente</div>;
+ return <div style={{maxHeight:400,overflowY:"auto"}}>{events.map((e,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderBottom:`1px solid ${C.brd}08`,animation:`slideInRight .3s ease ${i*0.03}s both`}}>
+  <span style={{fontSize:16,flexShrink:0}}>{e.icon}</span>
+  <div style={{flex:1,minWidth:0}}>
+   <div style={{fontSize:11,color:C.t,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.desc}</div>
+   <div style={{display:"flex",gap:6,alignItems:"center",marginTop:2}}>
+    <span style={{fontSize:9,color:C.td}}>{e.ts?ago(e.ts):""}</span>
+    <span style={{fontSize:8,fontWeight:700,color:e.soc?.color||C.acc,background:(e.soc?.color||C.acc)+"18",padding:"1px 5px",borderRadius:4}}>{e.soc?.nom||""}</span>
+   </div>
+  </div>
+  {e.amt?<span style={{fontWeight:700,fontSize:11,color:C.g,whiteSpace:"nowrap"}}>+{fmt(e.amt)}€</span>:null}
+ </div>)}</div>;
+}
+
+/* ============ REPLAY MENSUEL ============ */
+function ReplayMensuel({soc,reps,allM,socBank,clients,ghlData}){
+ const[open,setOpen]=useState(false);
+ const[slide,setSlide]=useState(0);
+ const[confetti,setConfetti]=useState(false);
+ const timerRef=useRef(null);
+ const cm=curM();const pm=prevM(cm);
+ const r=gr(reps,soc?.id,cm);const rp=gr(reps,soc?.id,pm);
+ const ca=pf(r?.ca);const prevCa=pf(rp?.ca);const ch=pf(r?.charges);const marge=ca-ch;
+ const myCl=(clients||[]).filter(c=>c.socId===soc?.id);
+ const activeCl=myCl.filter(c=>c.status==="active");
+ const mrr=activeCl.reduce((a,c)=>a+clientMonthlyRevenue(c),0);
+ const growth=prevCa>0?Math.round((ca-prevCa)/prevCa*100):0;
+ const topClient=activeCl.map(c=>({name:c.name,rev:clientMonthlyRevenue(c)})).sort((a,b)=>b.rev-a.rev)[0];
+ const gd=ghlData?.[soc?.id];const leads=pf(r?.leads)||(gd?.ghlClients||[]).length;
+ // Score calculation
+ const goalPct=soc?.obj?Math.min(100,Math.round(ca/soc.obj*100)):50;
+ const margePct=ca>0?Math.round(marge/ca*100):0;
+ const score=Math.min(100,Math.round(goalPct*0.4+Math.min(100,margePct*2)*0.3+(growth>0?Math.min(100,growth*2):0)*0.3));
+ // Records
+ const records=useMemo(()=>{
+  const recs=[];const allCas=allM.slice(0,-1).map(m=>pf(gr(reps,soc?.id,m)?.ca));const maxPrev=Math.max(0,...allCas);
+  if(ca>maxPrev&&maxPrev>0)recs.push(`🏆 Record CA: ${fmt(ca)}€ (ancien: ${fmt(maxPrev)}€)`);
+  if(activeCl.length>0){const prevClCounts=allM.slice(0,-1).map(m=>(clients||[]).filter(c=>c.socId===soc?.id&&c.status==="active").length);const maxCl=Math.max(0,...prevClCounts);if(activeCl.length>maxCl&&maxCl>0)recs.push(`👥 Record clients: ${activeCl.length}`);}
+  if(mrr>0)recs.push(`💰 MRR record: ${fmt(mrr)}€/mois`);
+  return recs;
+ },[ca,activeCl,mrr,allM,reps,soc,clients]);
+ const proj=project(reps,soc?.id,allM);
+ const slides=[
+  {title:"📊 Ton mois en chiffres",bg:"linear-gradient(135deg,#1a1a4e,#0a0a2e)",render:()=><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginTop:20}}>{[{l:"CA",v:fmt(ca)+"€",c:C.g},{l:"Charges",v:fmt(ch)+"€",c:C.r},{l:"Leads",v:String(leads),c:C.b},{l:"Clients",v:String(activeCl.length),c:C.acc}].map((k,i)=><div key={i} style={{textAlign:"center",animation:`celebIn .5s ease ${i*0.1}s both`}}><div style={{fontSize:36,fontWeight:900,color:k.c,fontFamily:FONT_TITLE}}>{k.v}</div><div style={{fontSize:12,color:C.td,marginTop:4}}>{k.l}</div></div>)}</div>},
+  {title:"🏆 Ton meilleur client",bg:"linear-gradient(135deg,#2d1a00,#1a0a00)",render:()=><div style={{textAlign:"center",marginTop:30}}>{topClient?<><div style={{fontSize:48,marginBottom:10,animation:"celebIn .5s ease both"}}>🏆</div><div style={{fontSize:24,fontWeight:900,color:C.acc}}>{topClient.name}</div><div style={{fontSize:18,color:C.g,fontWeight:700,marginTop:8}}>{fmt(topClient.rev)}€/mois</div><div style={{marginTop:12,display:"inline-block",padding:"4px 14px",borderRadius:20,background:C.accD,color:C.acc,fontSize:11,fontWeight:700}}>⭐ MVP du mois</div></>:<div style={{color:C.td,fontSize:14}}>Pas encore de client ce mois</div>}</div>},
+  {title:"📈 Ta croissance",bg:"linear-gradient(135deg,#001a2d,#000a1a)",render:()=><div style={{textAlign:"center",marginTop:30}}><div style={{fontSize:56,fontWeight:900,color:growth>=0?C.g:C.r,animation:"celebIn .5s ease both"}}>{growth>=0?"+":""}{growth}%</div><div style={{fontSize:13,color:C.td,marginTop:8}}>vs {ml(pm)}</div><div style={{marginTop:16,display:"flex",justifyContent:"center",gap:20}}><div><div style={{fontSize:14,fontWeight:700,color:C.td}}>Avant</div><div style={{fontSize:20,fontWeight:800,color:C.t}}>{fmt(prevCa)}€</div></div><div style={{fontSize:24,color:C.td}}>→</div><div><div style={{fontSize:14,fontWeight:700,color:C.td}}>Maintenant</div><div style={{fontSize:20,fontWeight:800,color:C.g}}>{fmt(ca)}€</div></div></div></div>},
+  {title:"🔥 Tes records battus",bg:"linear-gradient(135deg,#2d0a00,#1a0500)",render:()=><div style={{marginTop:20}}>{records.length>0?records.map((r2,i)=><div key={i} style={{padding:"14px 18px",background:"rgba(255,255,255,.05)",borderRadius:12,marginBottom:10,fontSize:14,color:C.t,animation:`slideInRight .3s ease ${i*0.1}s both`}}>{r2}</div>):<div style={{textAlign:"center",color:C.td,fontSize:14,marginTop:30}}>Continue comme ça, les records arrivent ! 💪</div>}</div>},
+  {title:"⭐ Score du mois",bg:"linear-gradient(135deg,#1a0a2d,#0a051a)",render:()=>{
+   if(score>80&&!confetti)setConfetti(true);
+   return <div style={{textAlign:"center",marginTop:20}}><svg width="160" height="160" viewBox="0 0 160 160"><circle cx="80" cy="80" r="70" fill="none" stroke={C.brd} strokeWidth="8"/><circle cx="80" cy="80" r="70" fill="none" stroke={score>=80?C.g:score>=50?C.acc:C.r} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${score/100*440} 440`} transform="rotate(-90 80 80)" style={{transition:"stroke-dasharray 1.5s ease"}}/><text x="80" y="75" textAnchor="middle" fill={C.t} fontSize="36" fontWeight="900" fontFamily={FONT_TITLE}>{score}</text><text x="80" y="95" textAnchor="middle" fill={C.td} fontSize="11">/100</text></svg><div style={{marginTop:12,fontSize:14,color:score>=80?C.g:score>=50?C.acc:C.r,fontWeight:700}}>{score>=80?"🔥 Exceptionnel !":score>=60?"👍 Bon mois !":score>=40?"📊 Peut mieux faire":"⚠️ Mois difficile"}</div></div>;
+  }},
+  {title:"🚀 Objectif prochain mois",bg:"linear-gradient(135deg,#0a1a0a,#051a05)",render:()=><div style={{textAlign:"center",marginTop:30}}>{proj?<><div style={{fontSize:32,fontWeight:900,color:C.acc,animation:"celebIn .5s ease both"}}>{fmt(proj[0])}€</div><div style={{fontSize:12,color:C.td,marginTop:6}}>Projection {ml(nextM(cm))}</div><div style={{marginTop:20,padding:"12px 20px",background:"rgba(255,170,0,.08)",borderRadius:12,display:"inline-block"}}><div style={{fontSize:11,color:C.acc,fontWeight:700}}>🎯 Si tu maintiens le rythme :</div><div style={{fontSize:11,color:C.td,marginTop:4}}>T+2: {fmt(proj[1])}€ · T+3: {fmt(proj[2])}€</div></div></>:<div style={{color:C.td}}>Pas assez de données pour projeter</div>}</div>}
+ ];
+ const TOTAL=slides.length;
+ useEffect(()=>{if(!open)return;timerRef.current=setInterval(()=>setSlide(p=>(p+1)%TOTAL),3000);return()=>clearInterval(timerRef.current);},[open]);
+ const copyShare=()=>{const txt=`📊 Replay ${soc?.nom} — ${ml(cm)}\nCA: ${fmt(ca)}€ | Marge: ${fmt(marge)}€ (${margePct}%)\nClients: ${activeCl.length} | MRR: ${fmt(mrr)}€\nCroissance: ${growth>=0?"+":""}${growth}%\nScore: ${score}/100`;navigator.clipboard?.writeText(txt);};
+ if(!open)return <button onClick={()=>{setOpen(true);setSlide(0);setConfetti(false);}} style={{padding:"8px 16px",borderRadius:10,border:`1px solid ${C.acc}44`,background:C.accD,color:C.acc,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:6}}>🎬 Replay du mois</button>;
+ return <div style={{position:"fixed",inset:0,zIndex:9999,background:"#06060b",fontFamily:FONT,display:"flex",flexDirection:"column",animation:"fi .3s ease"}}>
+  {confetti&&<div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:10}}>{Array.from({length:40}).map((_,i)=><div key={i} style={{position:"absolute",left:`${Math.random()*100}%`,top:-20,width:8,height:8,borderRadius:i%2?4:0,background:["#FFAA00","#34d399","#f87171","#60a5fa","#a78bfa","#fb923c"][i%6],animation:`confetti ${2+Math.random()*2}s ease ${Math.random()}s both`}}/>)}</div>}
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 24px"}}>
+   <div style={{display:"flex",gap:6}}>{slides.map((_,i)=><div key={i} onClick={()=>{clearInterval(timerRef.current);setSlide(i);}} style={{width:i===slide?24:8,height:8,borderRadius:4,background:i===slide?C.acc:C.brd,cursor:"pointer",transition:"all .3s"}}/>)}</div>
+   <div style={{display:"flex",gap:8}}>
+    <button onClick={copyShare} style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:"transparent",color:C.t,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>📋 Partager</button>
+    <button onClick={()=>setOpen(false)} style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:"transparent",color:C.t,fontSize:11,cursor:"pointer",fontFamily:FONT}}>✕ Fermer</button>
+   </div>
+  </div>
+  <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+   <div key={slide} style={{width:"100%",maxWidth:500,padding:40,borderRadius:24,background:slides[slide].bg,border:"1px solid rgba(255,255,255,.08)",backdropFilter:"blur(20px)",animation:"celebIn .4s ease both"}}>
+    <div style={{textAlign:"center",fontSize:22,fontWeight:800,color:C.t,marginBottom:8,fontFamily:FONT_TITLE}}>{slides[slide].title}</div>
+    {slides[slide].render()}
+   </div>
+  </div>
+  <div style={{display:"flex",justifyContent:"center",gap:12,padding:"16px 24px"}}>
+   <button onClick={()=>{clearInterval(timerRef.current);setSlide(p=>Math.max(0,p-1));}} disabled={slide===0} style={{padding:"8px 20px",borderRadius:10,border:`1px solid ${C.brd}`,background:"transparent",color:slide===0?C.tm:C.t,fontSize:12,cursor:slide===0?"default":"pointer",fontFamily:FONT}}>← Précédent</button>
+   <button onClick={()=>{clearInterval(timerRef.current);setSlide(p=>Math.min(TOTAL-1,p+1));}} disabled={slide===TOTAL-1} style={{padding:"8px 20px",borderRadius:10,border:`1px solid ${C.acc}44`,background:C.accD,color:C.acc,fontSize:12,cursor:slide===TOTAL-1?"default":"pointer",fontFamily:FONT}}>Suivant →</button>
+  </div>
+ </div>;
+}
+
+/* ============ PREDICTIONS & SCORING ============ */
+function PredictionsCard({soc,reps,allM,clients,ghlData,socBank}){
+ const[expanded,setExpanded]=useState(false);
+ const cm=curM();
+ const proj=project(reps,soc?.id,allM);
+ const myCl=(clients||[]).filter(c=>c.socId===soc?.id);
+ const activeCl=myCl.filter(c=>c.status==="active");
+ const gd=ghlData?.[soc?.id];
+ const opps=gd?.opportunities||[];
+ const openOpps=opps.filter(o=>o.status==="open");
+ const wonOpps=opps.filter(o=>o.status==="won");
+ const convRate=opps.length>0?wonOpps.length/opps.length:0;
+ const expectedNew=Math.round(openOpps.length*convRate);
+ // Churn risk per client
+ const churnRisks=useMemo(()=>{
+  const bk=socBank?.[soc?.id];
+  return activeCl.map(c=>{
+   let risk=0;const cn=(c.name||"").toLowerCase().trim();
+   // Days since last interaction
+   const calEvts=gd?.calendarEvents||[];const lastCall=calEvts.filter(e=>(e.title||e.contactName||"").toLowerCase().includes(cn)).sort((a,b)=>new Date(b.startTime||0)-new Date(a.startTime||0))[0];
+   const daysSinceInteraction=lastCall?Math.floor((Date.now()-new Date(lastCall.startTime).getTime())/864e5):30;
+   if(daysSinceInteraction>30)risk+=40;else if(daysSinceInteraction>14)risk+=20;
+   // Payment regularity
+   const txs=(bk?.transactions||[]).filter(t=>{const leg=t.legs?.[0];return leg&&leg.amount>0&&(leg.description||t.reference||"").toLowerCase().includes(cn);});
+   if(txs.length===0)risk+=30;else if(txs.length<3)risk+=10;
+   // Engagement from commitment
+   const rem=commitmentRemaining(c);if(rem!==null&&rem<=1)risk+=20;else if(rem!==null&&rem<=3)risk+=10;
+   return{name:c.name,risk:Math.min(100,risk),confidence:risk>50?"🔴":risk>25?"🟡":"🟢"};
+  }).sort((a,b)=>b.risk-a.risk);
+ },[activeCl,gd,socBank,soc]);
+ const forecastConf=proj?"🟢":"🔴";
+ const newClConf=opps.length>5?"🟢":opps.length>0?"🟡":"🔴";
+ return <div className="glass-card-static fu d5" style={{padding:14,marginBottom:10,cursor:"pointer"}} onClick={()=>setExpanded(!expanded)}>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+   <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:16}}>🔮</span><div><div style={{fontWeight:800,fontSize:13,color:C.t}}>Prédictions</div><div style={{fontSize:9,color:C.td}}>Forecast, churn, croissance</div></div></div>
+   <span style={{fontSize:10,color:C.td}}>{expanded?"▲":"▼"}</span>
+  </div>
+  {expanded&&<div style={{marginTop:14,animation:"slideDown .3s ease both"}}>
+   <div style={{padding:10,background:C.bg,borderRadius:10,marginBottom:8,border:`1px solid ${C.brd}`}}>
+    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}><span>{forecastConf}</span><span style={{fontWeight:700,fontSize:11,color:C.t}}>CA prochain mois</span></div>
+    <div style={{fontSize:20,fontWeight:900,color:C.acc}}>{proj?fmt(proj[0])+"€":"— données insuffisantes"}</div>
+    {proj&&<div style={{fontSize:9,color:C.td,marginTop:2}}>T+2: {fmt(proj[1])}€ · T+3: {fmt(proj[2])}€</div>}
+   </div>
+   <div style={{padding:10,background:C.bg,borderRadius:10,marginBottom:8,border:`1px solid ${C.brd}`}}>
+    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}><span>{newClConf}</span><span style={{fontWeight:700,fontSize:11,color:C.t}}>Nouveaux clients attendus</span></div>
+    <div style={{fontSize:20,fontWeight:900,color:C.b}}>{expectedNew}</div>
+    <div style={{fontSize:9,color:C.td}}>Basé sur {openOpps.length} prospects × {Math.round(convRate*100)}% taux conversion</div>
+   </div>
+   {churnRisks.length>0&&<div style={{padding:10,background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`}}>
+    <div style={{fontWeight:700,fontSize:11,color:C.t,marginBottom:6}}>Risque churn</div>
+    {churnRisks.slice(0,5).map((c,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",borderBottom:`1px solid ${C.brd}08`}}>
+     <span>{c.confidence}</span>
+     <span style={{flex:1,fontSize:10,color:C.t}}>{c.name}</span>
+     <span style={{fontSize:10,fontWeight:700,color:c.risk>50?C.r:c.risk>25?C.o:C.g}}>{c.risk}%</span>
+    </div>)}
+   </div>}
+  </div>}
+ </div>;
+}
+
+/* ============ CLIENT PORTAL ============ */
+function ClientPortal({socId,clientId,socs,clients,ghlData}){
+ const soc=socs.find(s=>s.id===socId);
+ const client=(clients||[]).find(c=>c.id===clientId&&c.socId===socId);
+ if(!soc||!client)return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#06060b",fontFamily:FONT,color:"#71717a"}}>Portail introuvable</div>;
+ const gd=ghlData?.[socId];
+ const calEvts=(gd?.calendarEvents||[]).filter(e=>new Date(e.startTime||0)>new Date()).sort((a,b)=>new Date(a.startTime)-new Date(b.startTime));
+ const nextCall=calEvts[0];
+ const statusInfo=CLIENT_STATUS[client.status]||{l:client.status,c:C.td,icon:"?"};
+ const monthsSince=sinceMonths(client.startDate);
+ const totalMonths=client.billing?.commitment||12;
+ const progress=Math.min(100,Math.round(monthsSince/totalMonths*100));
+ const accent=soc.brandColor||soc.color||C.acc;
+ return <div className="glass-bg" style={{minHeight:"100vh",fontFamily:FONT,padding:"40px 16px",display:"flex",justifyContent:"center"}}>
+  <style>{CSS}</style>
+  <div style={{width:"100%",maxWidth:500}}>
+   <div className="glass-card-static" style={{padding:28,textAlign:"center",marginBottom:16}}>
+    <div style={{width:64,height:64,borderRadius:32,background:accent+"22",border:`2px solid ${accent}44`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:28,fontWeight:900,color:accent,marginBottom:12}}>{(soc.nom||"?")[0]}</div>
+    <div style={{fontSize:20,fontWeight:900,color:C.t}}>{client.name}</div>
+    <div style={{fontSize:12,color:C.td,marginTop:4}}>{soc.nom} · {soc.act}</div>
+    <div style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:8,padding:"4px 12px",borderRadius:20,background:statusInfo.c+"18",color:statusInfo.c,fontSize:11,fontWeight:700}}>{statusInfo.icon} {statusInfo.l}</div>
+   </div>
+   {nextCall&&<div className="glass-card-static" style={{padding:18,marginBottom:16}}>
+    <div style={{fontWeight:700,fontSize:12,color:C.t,marginBottom:8}}>📅 Prochain rendez-vous</div>
+    <div style={{fontSize:14,fontWeight:800,color:C.acc}}>{new Date(nextCall.startTime).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div>
+    <div style={{fontSize:12,color:C.td,marginTop:2}}>{new Date(nextCall.startTime).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})} — {nextCall.title||"RDV"}</div>
+   </div>}
+   <div className="glass-card-static" style={{padding:18,marginBottom:16}}>
+    <div style={{fontWeight:700,fontSize:12,color:C.t,marginBottom:8}}>📊 Progression</div>
+    <div style={{background:C.brd,borderRadius:6,height:10,overflow:"hidden",marginBottom:6}}><div style={{height:"100%",borderRadius:6,background:`linear-gradient(90deg,${accent},${accent}cc)`,width:`${progress}%`,transition:"width 1s ease"}}/></div>
+    <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.td}}><span>{monthsSince} mois</span><span>{progress}%</span><span>{totalMonths} mois</span></div>
+   </div>
+   {client.billing&&<div className="glass-card-static" style={{padding:18,marginBottom:16}}>
+    <div style={{fontWeight:700,fontSize:12,color:C.t,marginBottom:8}}>💳 Facturation</div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+     <span style={{fontSize:13,color:C.t}}>{fmt(clientMonthlyRevenue(client))}€/{client.billing?.freq==="yearly"?"an":"mois"}</span>
+     <span style={{padding:"3px 10px",borderRadius:12,background:C.gD,color:C.g,fontSize:10,fontWeight:700}}>✅ Actif</span>
+    </div>
+   </div>}
+   <div style={{textAlign:"center",marginTop:20}}>
+    <a href={`mailto:${soc.email||""}`} style={{display:"inline-block",padding:"12px 28px",borderRadius:12,background:`linear-gradient(135deg,${accent},${accent}cc)`,color:"#0a0a0f",fontSize:13,fontWeight:800,textDecoration:"none",fontFamily:FONT}}>📧 Contacter {soc.nom}</a>
+   </div>
+   <div style={{textAlign:"center",marginTop:24,fontSize:10,color:C.tm}}>Propulsé par L'Incubateur ECS</div>
+  </div>
+ </div>;
+}
+
+/* ============ INVESTOR BOARD ============ */
+function InvestorBoard({socs,reps,allM,hold,pin:inputPin}){
+ const[authed,setAuthed]=useState(false);
+ const[pinInput,setPinInput]=useState("");
+ const boardPin=hold?.boardPin||"investor";
+ const cm=curM();const pm=prevM(cm);
+ useEffect(()=>{if(inputPin===boardPin)setAuthed(true);},[inputPin,boardPin]);
+ if(!authed)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}>
+  <style>{CSS}</style>
+  <div className="glass-card-static" style={{padding:32,textAlign:"center",width:340}}>
+   <div style={{fontSize:40,marginBottom:12}}>🔒</div>
+   <div style={{fontWeight:800,fontSize:16,color:C.t,marginBottom:4}}>Investor Board</div>
+   <div style={{fontSize:11,color:C.td,marginBottom:16}}>Entrez le code d'accès</div>
+   <input value={pinInput} onChange={e=>setPinInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&pinInput===boardPin)setAuthed(true);}} placeholder="Code PIN" type="password" style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:14,fontFamily:FONT,textAlign:"center",outline:"none",marginBottom:12}}/>
+   <button onClick={()=>{if(pinInput===boardPin)setAuthed(true);}} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"none",background:`linear-gradient(135deg,${C.acc},#FF9D00)`,color:"#0a0a0f",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FONT}}>Accéder</button>
+  </div>
+ </div>;
+ const actS=socs.filter(s=>s.stat==="active"&&s.id!=="eco");
+ const totalCA=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cm)?.ca),0);
+ const prevTotalCA=actS.reduce((a,s)=>a+pf(gr(reps,s.id,pm)?.ca),0);
+ const growthPct=prevTotalCA>0?Math.round((totalCA-prevTotalCA)/prevTotalCA*100):0;
+ return <div className="glass-bg" style={{minHeight:"100vh",fontFamily:FONT,padding:"32px 24px"}}>
+  <style>{CSS}</style>
+  <div style={{maxWidth:900,margin:"0 auto"}}>
+   <div style={{textAlign:"center",marginBottom:32}}>
+    <div style={{fontSize:14,fontWeight:700,color:C.acc,letterSpacing:2,marginBottom:4}}>INVESTOR BOARD</div>
+    <div style={{fontSize:28,fontWeight:900,color:C.t,fontFamily:FONT_TITLE}}>{hold?.name||"L'Incubateur ECS"}</div>
+    <div style={{fontSize:12,color:C.td,marginTop:4}}>{ml(cm)}</div>
+   </div>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,marginBottom:32}}>
+    {[{l:"Sociétés",v:actS.length,c:C.b},{l:"CA Total",v:fmt(totalCA)+"€",c:C.g},{l:"Croissance",v:`${growthPct>=0?"+":""}${growthPct}%`,c:growthPct>=0?C.g:C.r}].map((k,i)=><div key={i} className="glass-card-static" style={{padding:24,textAlign:"center"}}><div style={{fontSize:32,fontWeight:900,color:k.c,fontFamily:FONT_TITLE}}>{k.v}</div><div style={{fontSize:11,color:C.td,marginTop:6}}>{k.l}</div></div>)}
+   </div>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:16}}>
+    {actS.map(s=>{const sCa=pf(gr(reps,s.id,cm)?.ca);const sPrev=pf(gr(reps,s.id,pm)?.ca);const sTrend=sPrev>0?Math.round((sCa-sPrev)/sPrev*100):0;const hs=healthScore(s,reps);
+     return <div key={s.id} className="glass-card" style={{padding:20}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+       <div style={{width:36,height:36,borderRadius:18,background:s.color+"22",border:`1.5px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:s.color}}>{(s.nom||"?")[0]}</div>
+       <div style={{flex:1}}><div style={{fontWeight:800,fontSize:14,color:C.t}}>{s.nom}</div><div style={{fontSize:10,color:C.td}}>{s.act}</div></div>
+       <GradeBadge grade={hs.grade} color={hs.color}/>
+      </div>
+      <div style={{fontSize:22,fontWeight:900,color:C.t}}>{fmt(sCa)}€</div>
+      <div style={{fontSize:11,color:sTrend>=0?C.g:C.r,fontWeight:700,marginTop:2}}>{sTrend>=0?"📈 +":"📉 "}{sTrend}%</div>
+     </div>;
+    })}
+   </div>
+   <div style={{textAlign:"center",marginTop:40,fontSize:11,color:C.tm}}>Propulsé par L'Incubateur ECS</div>
+  </div>
+ </div>;
+}
+
 function WarRoomReadOnly({socId,socs,reps,allM,ghlData,clients,socBank}){
  const soc=socs.find(s=>s.id===socId);
  if(!soc)return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#06060b",fontFamily:FONT,color:"#71717a"}}>Société introuvable</div>;
