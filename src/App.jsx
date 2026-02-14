@@ -3751,6 +3751,14 @@ export default function App(){
    });
   }
  },[socs]);
+ // Auto-sync GHL every 30s + on mount
+ useEffect(()=>{
+  if(!loaded)return;
+  const doSync=()=>{syncGHL().catch(e=>console.warn("Auto-sync GHL failed:",e));};
+  doSync();
+  const id=setInterval(doSync,30000);
+  return()=>clearInterval(id);
+ },[loaded,syncGHL]);
  const syncRev=useCallback(async()=>{
   let data=null;
   if(hold.revolutToken){data=await syncRevolut(hold.revolutToken,hold.revolutEnv||"sandbox");}
