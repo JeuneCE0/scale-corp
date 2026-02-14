@@ -3830,13 +3830,12 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
   {/* Mini Funnel */}
   {funnelData.length>0&&funnelData[0].count>0&&<div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.3s"}}>
    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>🔄 FUNNEL DE CONVERSION</div>
-   <div style={{display:"flex",alignItems:"center",gap:4}}>
-    {funnelData.map((f,i)=>{const maxW=funnelData[0].count||1;const w=Math.max(15,Math.round(f.count/maxW*100));const conv=i>0&&funnelData[i-1].count>0?Math.round(f.count/funnelData[i-1].count*100):null;
+   <div style={{display:"flex",flexDirection:"column",gap:0}}>
+    {funnelData.map((f,i)=>{const maxW=funnelData[0].count||1;const w=Math.max(20,Math.round(f.count/maxW*100));const conv=i>0&&funnelData[i-1].count>0?Math.round(f.count/funnelData[i-1].count*100):null;
      return <Fragment key={i}>
-      {i>0&&<div style={{fontSize:8,color:C.td,fontWeight:700,flexShrink:0}}>{conv}%→</div>}
-      <div style={{flex:`0 0 ${w}%`,background:f.color+"22",border:`1px solid ${f.color}44`,borderRadius:8,padding:"8px 6px",textAlign:"center",transition:"all .3s"}}>
-       <div style={{fontWeight:900,fontSize:16,color:f.color}}>{f.count}</div>
-       <div style={{fontSize:7,color:C.td,fontWeight:600,marginTop:2}}>{f.stage}</div>
+      {i>0&&<div style={{fontSize:9,color:C.td,fontWeight:700,textAlign:"center",padding:"2px 0"}}>↓ {conv}%</div>}
+      <div style={{width:`${w}%`,margin:"0 auto",background:f.color+"22",border:`1px solid ${f.color}44`,borderRadius:8,padding:"10px 12px",textAlign:"center",transition:"all .3s"}}>
+       <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><span style={{fontWeight:900,fontSize:18,color:f.color}}>{f.count}</span><span style={{fontSize:10,color:C.td,fontWeight:600}}>{f.stage}</span></div>
       </div>
      </Fragment>;
     })}
