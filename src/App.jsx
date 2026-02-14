@@ -2987,53 +2987,41 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
     </div>;
    })()}
   </>}
-  {/* === RAPPORT (pTab 0) — simplified === */}
-  {pTab===0&&<>
-   <div data-tour="porteur-status" className="fu" style={{background:status==="validated"?C.gD:status==="pending"?C.oD:C.rD,border:`1px solid ${statusColor}22`,borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}><div><div style={{color:statusColor,fontWeight:700,fontSize:12}}>{statusText}</div><div style={{color:C.td,fontSize:11}}>Rapport {ml(cM2)} · avant le {deadline(cM2)}</div></div></div>
+  {/* === RAPPORT (pTab 0) — read-only auto-generated === */}
+  {pTab===0&&(()=>{
+   const autoR=autoGenerateReport(soc.id,mo,socBankData?{[soc.id]:socBankData}:{},ghlData||{},subs||[]);
+   const r={...autoR,...(ex?.ok?ex:{})};const rCa=pf(r.ca),rCh=pf(r.charges),rMarge=rCa-rCh,rRem=(soc.pT==="ca"?rCa:Math.max(0,rMarge))*soc.pP/100;const rDiv=pf(r.dividendesHolding);
+   const rvf=v=>v?<span style={{fontWeight:800}}>{fmt(pf(v))}€</span>:<span style={{color:C.td}}>—</span>;
+   return <>
+   <div className="fu" style={{background:"#a78bfa11",border:"1px solid #a78bfa22",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:14}}>🤖</span><div><div style={{color:"#a78bfa",fontWeight:700,fontSize:12}}>Rapport auto-généré</div><div style={{color:C.td,fontSize:10}}>Calculé depuis Revolut + GHL · {ml(mo)}</div></div></div>
+    <Inp type="month" value={mo} onChange={setMo} small/>
+   </div>
    {ex?.comment&&<Card accent={C.acc} style={{marginBottom:14,padding:"10px 12px"}}><div style={{color:C.acc,fontSize:10,fontWeight:700,marginBottom:3}}>💬 RETOUR SCALE</div><div style={{color:C.t,fontSize:13,lineHeight:1.6}}>{ex.comment}</div></Card>}
-   <div data-tour="porteur-report"><Sect title={`Rapport — ${ml(mo)}`} right={<div style={{display:"flex",gap:6,alignItems:"center"}}>{f._auto&&<span style={{fontSize:9,background:"#a78bfa22",color:"#a78bfa",padding:"2px 8px",borderRadius:8,fontWeight:700}}>🤖 Auto-généré</span>}<Btn small v="ai" onClick={()=>{const auto=autoGenerateReport(soc.id,mo,socBankData?{[soc.id]:socBankData}:{},ghlData||{},subs||[]);setF(prev=>({...auto,...(prev.ok?prev:{})}));}} title="Recalculer depuis Revolut + GHL">🔄</Btn>{bankFin&&<Btn small v="ai" onClick={autoFill}>🏦 Pré-remplir</Btn>}<Inp type="month" value={mo} onChange={setMo} small/></div>}>
-    {bankFin&&<div className="fu" style={{background:C.gD,border:`1px solid ${C.g}22`,borderRadius:8,padding:"6px 10px",marginBottom:10,display:"flex",alignItems:"center",gap:8,fontSize:11}}><span style={{fontSize:14}}>🏦</span><span style={{color:C.g,fontWeight:600}}>Revolut : Encaissé {fmt(bankFin.ca)}€ · Décaissé {fmt(bankFin.charges)}€ · Solde {fmt(bankFin.tresoSoc)}€</span></div>}
-    {/* Essential fields */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}><Inp label="CA" value={f.ca} onChange={v=>setF({...f,ca:v})} type="number" suffix="€"/><Inp label="Charges totales" value={f.charges} onChange={v=>setF({...f,charges:v})} type="number" suffix="€"/></div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}><Inp label="Nvx clients" value={f.clients} onChange={v=>setF({...f,clients:v})} type="number"/><Inp label="Trésorerie" value={f.tresoSoc} onChange={v=>setF({...f,tresoSoc:v})} type="number" suffix="€"/></div>
-    {soc.rec&&<Inp label="MRR" value={f.mrr} onChange={v=>setF({...f,mrr:v})} type="number" suffix="€"/>}
-    <Inp label="Pipeline M+1" value={f.pipeline} onChange={v=>setF({...f,pipeline:v})} type="number" suffix="€"/>
-    {pf(f.ca)>0&&<div style={{marginTop:4,marginBottom:8,padding:"6px 8px",background:C.card2,borderRadius:6,display:"flex",flexWrap:"wrap",gap:8}}>
-     <span style={{fontSize:10,color:C.g,fontWeight:700}}>Marge : {fmt(pf(f.ca)-pf(f.charges))}€ ({pct(pf(f.ca)-pf(f.charges),pf(f.ca))}%)</span>
-     <span style={{fontSize:10,color:C.acc,fontWeight:700}}>→ Remontée théorique : {fmt(remontee)}€</span>
-     {pf(f.dividendesHolding)>0&&<><span style={{fontSize:10,color:"#7c3aed",fontWeight:700}}>🏛️ Déjà viré : {fmt(pf(f.dividendesHolding))}€</span>
-     <span style={{fontSize:10,color:remontee-pf(f.dividendesHolding)>0?C.o:C.g,fontWeight:700}}>{remontee-pf(f.dividendesHolding)>0?`⚠ Reste à verser : ${fmt(remontee-pf(f.dividendesHolding))}€`:`✅ Trop-perçu : ${fmt(pf(f.dividendesHolding)-remontee)}€`}</span></>}
-    </div>}
-    {/* Collapsible: détail charges */}
-    <CollapsibleSection title="Détail des charges" icon="🧾">
-     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
-     <Inp label="Charges opé (logiciels, outils)" value={f.chargesOps} onChange={v=>setF({...f,chargesOps:v})} type="number" suffix="€" small/>
-     <Inp label="Ma rémunération" value={f.salaire} onChange={v=>setF({...f,salaire:v})} type="number" suffix="€" small/>
-     <Inp label="Formations achetées" value={f.formation} onChange={v=>setF({...f,formation:v})} type="number" suffix="€" small/>
-     </div>
-     {pf(f.salaire)>0&&pf(f.ca)>0&&<div style={{fontSize:9,color:C.td,marginTop:4}}>Rémun: {pct(pf(f.salaire),pf(f.ca))}% du CA</div>}
-    </CollapsibleSection>
-    {/* Collapsible: funnel leads */}
-    <CollapsibleSection title="Funnel leads" icon="🎯">
-     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 8px"}}>
-     <Inp label="Leads générés" value={f.leads} onChange={v=>setF({...f,leads:v})} type="number" small/>
-     <Inp label="Contactés" value={f.leadsContact} onChange={v=>setF({...f,leadsContact:v})} type="number" small/>
-     <Inp label="Closés" value={f.leadsClos} onChange={v=>setF({...f,leadsClos:v})} type="number" small/>
-     </div>
-     {pf(f.leads)>0&&pf(f.leadsClos)>0&&<div style={{fontSize:9,color:C.g,fontWeight:600,marginTop:4}}>Taux closing : {pct(pf(f.leadsClos),pf(f.leads))}%</div>}
-     {soc.rec&&<Inp label="Clients perdus" value={f.churn} onChange={v=>setF({...f,churn:v})} type="number"/>}
-    </CollapsibleSection>
-    {/* Collapsible: pub */}
-    <CollapsibleSection title="Publicité" icon="📢">
-     <Inp label="Budget pub" value={f.pub} onChange={v=>setF({...f,pub:v})} type="number" suffix="€"/>
-     {pf(f.pub)>0&&pf(f.ca)>0&&<div style={{fontSize:9,color:C.td,marginTop:4}}>ROAS: {(pf(f.ca)/pf(f.pub)).toFixed(1)}x · Pub = {pct(pf(f.pub),pf(f.ca))}% du CA</div>}
-    </CollapsibleSection>
-    <Inp label="Notes" value={f.notes} onChange={v=>setF({...f,notes:v})} textarea placeholder="Faits marquants…"/>
-    <Btn onClick={doSub} full v={done?"success":"primary"}>{done?"✓ Envoyé":ex?.at?"Mettre à jour":"Envoyer"}</Btn>
-    {done&&hold?.slack?.enabled&&hold.slack.notifyReport&&<div style={{textAlign:"center",fontSize:9,color:C.g,marginTop:4}}>💬 Notification Slack envoyée</div>}
-   </Sect></div>
-   {past.length>0&&<Sect title="Historique">{past.map(([k,r],i)=>{const m2=k.replace(soc.id+"_","");return <Card key={k} accent={soc.color} style={{marginBottom:4,padding:"8px 12px"}} delay={Math.min(i+1,8)} onClick={()=>{setMo(m2);window.scrollTo({top:0,behavior:"smooth"});}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:600,fontSize:12}}>{ml(m2)}</span><span style={{fontWeight:700,fontSize:13}}>{fmt(r.ca)}€ {r.ok?"✓":"⏳"}</span></div></Card>;})}</Sect>}
-  </>}
+   <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:14}}>
+    <KPI label="CA" value={`${fmt(rCa)}€`} accent={C.g} delay={1}/>
+    <KPI label="Charges" value={`${fmt(rCh)}€`} accent={C.r} delay={2}/>
+    <KPI label="Marge" value={`${fmt(rMarge)}€`} accent={rMarge>=0?C.g:C.r} delay={3} sub={rCa>0?`${pct(rMarge,rCa)}%`:""}/>
+    <KPI label="Trésorerie" value={`${fmt(pf(r.tresoSoc))}€`} accent={C.b} delay={4}/>
+   </div>
+   {rCa>0&&<Card style={{padding:"10px 14px",marginBottom:12}}>
+    <div style={{display:"flex",flexWrap:"wrap",gap:10,fontSize:11}}>
+     <span style={{color:C.acc,fontWeight:700}}>→ Remontée théorique : {fmt(rRem)}€ ({soc.pP}% {soc.pT==="ca"?"du CA":"des bénéfices"})</span>
+     {rDiv>0&&<><span style={{color:"#7c3aed",fontWeight:700}}>🏛️ Déjà viré : {fmt(rDiv)}€</span>
+     <span style={{color:rRem-rDiv>0?C.o:C.g,fontWeight:700}}>{rRem-rDiv>0?`⚠ Reste : ${fmt(rRem-rDiv)}€`:`✅ Trop-perçu : ${fmt(rDiv-rRem)}€`}</span></>}
+    </div>
+   </Card>}
+   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:12}}>
+    {[["Nvx clients",r.clients,"👥"],["Pipeline",r.pipeline+"€","🔮"],["MRR",r.mrr+"€","🔄"],["Leads",r.leads,"🎯"],["Leads closés",r.leadsClos,"✅"],["Budget pub",r.pub+"€","📢"]].filter(([,v])=>pf(v)>0).map(([l,v,ic],i)=>
+     <div key={l} className={`fu d${i+1}`} style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:8,padding:"8px 10px"}}>
+      <div style={{fontSize:9,color:C.td,fontWeight:600}}>{ic} {l}</div>
+      <div style={{fontWeight:800,fontSize:14,color:C.t,marginTop:2}}>{fmt(pf(v))}{v.toString().includes("€")?"€":""}</div>
+     </div>)}
+   </div>
+   {pf(r.salaire)>0&&<div style={{fontSize:10,color:C.td,marginBottom:8}}>💰 Rémunération fondateur: <strong style={{color:C.o}}>{fmt(pf(r.salaire))}€</strong>{rCa>0?` (${pct(pf(r.salaire),rCa)}% du CA)`:""}</div>}
+   {r.notes&&<div style={{fontSize:10,color:C.td,fontStyle:"italic",marginBottom:12}}>📝 {r.notes}</div>}
+   {past.length>0&&<Sect title="Historique">{past.map(([k,rep],i)=>{const m2=k.replace(soc.id+"_","");return <Card key={k} accent={soc.color} style={{marginBottom:4,padding:"8px 12px"}} delay={Math.min(i+1,8)} onClick={()=>{setMo(m2);window.scrollTo({top:0,behavior:"smooth"});}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:600,fontSize:12}}>{ml(m2)}</span><span style={{fontWeight:700,fontSize:13}}>{fmt(rep.ca)}€ {rep.ok?"✓":"⏳"}</span></div></Card>;})}</Sect>}
+  </>;})()}
   {/* === STATS (pTab 1) — refactored with collapsible === */}
   {pTab===1&&<>
    {(()=>{
@@ -3646,6 +3634,7 @@ const SB_ADMIN=[
 const SB_PORTEUR=[
  {id:"home",icon:"◉",label:"Accueil",tab:10,accent:C.acc},
  {id:"perf",icon:"📈",label:"Performance",accent:C.g,children:[
+  {icon:"📊",label:"Rapport",tab:0},
   {icon:"📉",label:"Statistiques",tab:1},
   {icon:"🏆",label:"Milestones",tab:6},
   {icon:"🎯",label:"OKR",tab:7},
