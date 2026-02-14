@@ -164,6 +164,7 @@ function subMonthly(sub){return sub.freq==="annual"?Math.round(sub.amount/12):su
 const BILL_TYPES={
  fixed:{l:"Forfait fixe",icon:"💰",c:C.acc,desc:"Montant fixe mensuel avec ou sans engagement"},
  percent:{l:"% du CA/bénéfice",icon:"📊",c:C.v,desc:"Pourcentage sur le CA ou bénéfice généré"},
+ hybrid:{l:"Fixe + %",icon:"💎",c:"#ec4899",desc:"Forfait fixe + pourcentage sur CA ou bénéfice"},
  oneoff:{l:"Prestation unique",icon:"🎯",c:C.b,desc:"Paiement unique (formation, accompagnement)"},
 };
 const CLIENT_STATUS={active:{l:"Actif",c:C.g,icon:"✓"},paused:{l:"En pause",c:C.o,icon:"⏸"},churned:{l:"Perdu",c:C.r,icon:"✗"},completed:{l:"Terminé",c:C.td,icon:"✓"},prospect:{l:"Prospect",c:C.b,icon:"◌"}};
@@ -174,6 +175,12 @@ function clientMonthlyRevenue(cl){
  if(b.type==="percent"&&cl.status==="active"){
   const base=b.basis==="benefice"?Math.max(0,(cl.clientCA||0)-(cl.clientCharges||0)):(cl.clientCA||0);
   return Math.round(base*(b.percent||0)/100);
+ }
+ if(b.type==="hybrid"&&cl.status==="active"){
+  const fixed=Number(b.amount)||0;
+  const base=b.basis==="benefice"?Math.max(0,(cl.clientCA||0)-(cl.clientCharges||0)):(cl.clientCA||0);
+  const pct=Math.round(base*(b.percent||0)/100);
+  return fixed+pct;
  }
  return 0;
 }
@@ -1986,13 +1993,14 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
  const allOpps=Object.values(ghlData||{}).flatMap(d=>(d?.opportunities||[]));
  const uniqueStages=[...new Set(allOpps.map(o=>o.stage).filter(Boolean))];
  const ghlIdsInStage=stageFilter==="all"?null:new Set(allOpps.filter(o=>o.stage===stageFilter).map(o=>o.id));
- const afterType=filter==="all"?myClients:myClients.filter(c=>filter==="type_fixed"?c.billing?.type==="fixed":filter==="type_percent"?c.billing?.type==="percent":filter==="type_oneoff"?c.billing?.type==="oneoff":c.status===filter);
+ const afterType=filter==="all"?myClients:myClients.filter(c=>filter==="type_fixed"?c.billing?.type==="fixed":filter==="type_percent"?c.billing?.type==="percent":filter==="type_hybrid"?c.billing?.type==="hybrid":filter==="type_oneoff"?c.billing?.type==="oneoff":c.status===filter);
  const afterStage=stageFilter==="all"?afterType:afterType.filter(c=>{if(!c.ghlId)return false;const opps2=allOpps.filter(o=>o.stage===stageFilter);return opps2.some(o=>o.name===c.name||o.email===c.email||o.id===c.ghlId);});
  const filtered=search.trim()===""?afterStage:afterStage.filter(c=>{const q=search.toLowerCase();return(c.name||"").toLowerCase().includes(q)||(c.email||"").toLowerCase().includes(q)||(c.phone||"").includes(q)||(c.contact||"").toLowerCase().includes(q)||(c.notes||"").toLowerCase().includes(q);});
  const addClient=(type)=>{
   const base={id:uid(),socId:soc.id,name:"",contact:"",email:"",phone:"",status:"active",notes:"",ghlId:"",stripeId:"",at:new Date().toISOString()};
   if(type==="fixed")base.billing={type:"fixed",amount:0,freq:"monthly",commitment:0,startDate:new Date().toISOString().slice(0,10)};
   else if(type==="percent")base.billing={type:"percent",percent:0,basis:"ca",startDate:new Date().toISOString().slice(0,10)};
+  else if(type==="hybrid")base.billing={type:"hybrid",amount:0,freq:"monthly",percent:0,basis:"ca",commitment:0,startDate:new Date().toISOString().slice(0,10)};
   else base.billing={type:"oneoff",amount:0,product:"",deliveredDate:"",paidDate:"",installments:1};
   setEditCl(base);
  };
@@ -2247,13 +2255,14 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:14}}>✕</button>}
    </div>
    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-   {[{v:"all",l:`Tous (${myClients.length})`},{v:"type_fixed",l:`💰 Fixes (${byType("fixed").length})`},{v:"type_percent",l:`📊 % (${byType("percent").length})`},{v:"type_oneoff",l:`🎯 One-off (${byType("oneoff").length})`}].map(f2=>
+   {[{v:"all",l:`Tous (${myClients.length})`},{v:"type_fixed",l:`💰 Fixes (${byType("fixed").length})`},{v:"type_percent",l:`📊 % (${byType("percent").length})`},{v:"type_hybrid",l:`💎 Fixe+% (${byType("hybrid").length})`},{v:"type_oneoff",l:`🎯 One-off (${byType("oneoff").length})`}].map(f2=>
     <button key={f2.v} onClick={()=>setFilter(f2.v)} style={{padding:"4px 10px",borderRadius:6,fontSize:9,fontWeight:filter===f2.v?700:500,border:`1px solid ${filter===f2.v?C.acc:C.brd}`,background:filter===f2.v?C.accD:"transparent",color:filter===f2.v?C.acc:C.td,cursor:"pointer",fontFamily:FONT}}>{f2.l}</button>
    )}
    {uniqueStages.length>0&&<select value={stageFilter} onChange={e=>setStageFilter(e.target.value)} style={{padding:"4px 10px",borderRadius:6,fontSize:9,border:`1px solid ${stageFilter!=="all"?C.acc:C.brd}`,background:stageFilter!=="all"?C.accD:"transparent",color:stageFilter!=="all"?C.acc:C.td,cursor:"pointer",fontFamily:FONT,outline:"none"}}><option value="all">🔀 Stage Pipeline: Tous</option>{uniqueStages.map(s=><option key={s} value={s}>{s}</option>)}</select>}
    <div style={{marginLeft:"auto",display:"flex",gap:4}}>
     <Btn small onClick={()=>addClient("fixed")}>+ Forfait</Btn>
     <Btn small v="secondary" onClick={()=>addClient("percent")}>+ %</Btn>
+    <Btn small v="secondary" onClick={()=>addClient("hybrid")}>+ Fixe+%</Btn>
     <Btn small v="secondary" onClick={()=>addClient("oneoff")}>+ One-off</Btn>
    </div>
   </div>
@@ -2290,6 +2299,10 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     {b.type==="percent"&&<>
     <span style={{fontSize:9,color:C.v,fontWeight:700}}>{b.percent}% {b.basis==="benefice"?"du bénéfice":"du CA"}</span>
     {cl.clientCA>0&&<span style={{fontSize:8,color:C.td}}>CA client: {fmt(cl.clientCA)}€ → <strong style={{color:C.v}}>{fmt(monthly)}€/mois</strong></span>}
+    </>}
+    {b.type==="hybrid"&&<>
+    <span style={{fontSize:9,color:"#ec4899",fontWeight:700}}>{fmt(b.amount)}€/{b.freq==="annual"?"an":"mois"} + {b.percent}% {b.basis==="benefice"?"bénéf.":"CA"}</span>
+    {cl.clientCA>0&&<span style={{fontSize:8,color:C.td}}>→ <strong style={{color:"#ec4899"}}>{fmt(clientMonthlyRevenue(cl))}€/mois</strong></span>}
     </>}
     {b.type==="oneoff"&&<>
     <span style={{fontSize:9,color:C.b,fontWeight:700}}>{fmt(b.amount)}€</span>
@@ -2469,6 +2482,27 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     </div>
     {(editCl.clientCA||0)>0&&(b.percent||0)>0&&<div style={{padding:"6px 8px",background:C.vD,borderRadius:6,fontSize:10,color:C.v,fontWeight:600,marginTop:4}}>
     Revenu estimé : {fmt(clientMonthlyRevenue(editCl))}€/mois ({b.percent}% de {b.basis==="benefice"?fmt(Math.max(0,(editCl.clientCA||0)-(editCl.clientCharges||0))):fmt(editCl.clientCA)}€)
+    </div>}
+    </>}
+    {b.type==="hybrid"&&<>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <Inp label="Montant fixe" value={b.amount} onChange={v=>setEditCl({...editCl,billing:{...b,amount:pf(v)}})} type="number" suffix="€"/>
+    <Sel label="Fréquence" value={b.freq||"monthly"} onChange={v=>setEditCl({...editCl,billing:{...b,freq:v}})} options={[{v:"monthly",l:"Mensuel"},{v:"annual",l:"Annuel"}]}/>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <Inp label="Pourcentage" value={b.percent||0} onChange={v=>setEditCl({...editCl,billing:{...b,percent:pf(v)}})} type="number" suffix="%"/>
+    <Sel label="Base de calcul" value={b.basis||"ca"} onChange={v=>setEditCl({...editCl,billing:{...b,basis:v}})} options={[{v:"ca",l:"% du CA"},{v:"benefice",l:"% du bénéfice"}]}/>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <Inp label="Engagement (mois)" value={b.commitment||0} onChange={v=>setEditCl({...editCl,billing:{...b,commitment:pf(v)}})} type="number" suffix="mois"/>
+    <Inp label="Date de début" value={b.startDate||""} onChange={v=>setEditCl({...editCl,billing:{...b,startDate:v}})} type="date"/>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <Inp label="CA mensuel du client" value={editCl.clientCA||""} onChange={v=>setEditCl({...editCl,clientCA:pf(v)})} type="number" suffix="€"/>
+    {b.basis==="benefice"&&<Inp label="Charges client" value={editCl.clientCharges||""} onChange={v=>setEditCl({...editCl,clientCharges:pf(v)})} type="number" suffix="€"/>}
+    </div>
+    {((b.amount||0)>0||(b.percent||0)>0)&&<div style={{padding:"8px 10px",background:"rgba(236,72,153,.1)",borderRadius:6,fontSize:10,color:"#ec4899",fontWeight:600,marginTop:4}}>
+    Fixe: {fmt(b.amount)}€/mois + Variable: {b.percent}% = <strong>{fmt(clientMonthlyRevenue(editCl))}€/mois estimé</strong>
     </div>}
     </>}
     {b.type==="oneoff"&&<>
