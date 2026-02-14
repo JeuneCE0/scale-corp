@@ -3242,17 +3242,33 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
    </div>;
   })()}
   {/* Pipeline Funnel */}
-  {ghlStats&&ghlStages.length>0&&<div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,animationDelay:"0.6s"}}>
-   <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>🔮 PIPELINE PAR ÉTAPE</div>
-   {ghlStages.map((stage,i)=>{const stageOpps=ghlOpps.filter(o=>o.stage===stage);const count=stageOpps.length;const val=stageOpps.reduce((a,o)=>a+o.value,0);const w=ghlOpps.length>0?Math.max(8,Math.round(count/ghlOpps.length*100)):0;
-    return <div key={i} className={`fu d${Math.min(i+1,6)}`} style={{marginBottom:6}}>
-     <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-      <div style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:10,height:10,borderRadius:3,background:GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]}}/><span style={{fontWeight:600,fontSize:11}}>{stage}</span></div>
-      <div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:10,color:C.td}}>{count} deal{count>1?"s":""}</span><span style={{fontWeight:700,fontSize:11,color:C.acc}}>{fmt(val)}€</span></div>
-     </div>
-     <div style={{height:8,background:C.brd,borderRadius:4,overflow:"hidden"}}><div className="pg" style={{height:"100%",width:`${w}%`,background:`linear-gradient(90deg,${GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]},${GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]}88)`,borderRadius:4,"--w":`${w}%`}}/></div>
+  {ghlStats&&<div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,animationDelay:"0.6s"}}>
+   <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>📊 CHIFFRES CLÉS</div>
+   {(()=>{
+    const totalContacts=ghlData?.[soc.id]?.ghlClients?.length||0;
+    const inPipeline=ghlOpps.filter(o=>o.status==="open").length;
+    const wonAll=ghlOpps.filter(o=>o.status==="won");
+    const lostAll=ghlOpps.filter(o=>o.status==="lost");
+    const wonVal=wonAll.reduce((a,o)=>a+o.value,0);
+    const pipeVal=ghlOpps.filter(o=>o.status==="open").reduce((a,o)=>a+o.value,0);
+    const convRate=ghlOpps.length>0?Math.round(wonAll.length/(wonAll.length+lostAll.length)*100||0):0;
+    const kpis=[
+     {icon:"👥",label:"Contacts total",value:totalContacts,color:"#60a5fa"},
+     {icon:"🎯",label:"Dans la pipeline",value:inPipeline,sub:fmt(pipeVal)+"€",color:C.acc},
+     {icon:"✅",label:"Clients gagnés",value:wonAll.length,sub:fmt(wonVal)+"€",color:C.g},
+     {icon:"❌",label:"Clients perdus",value:lostAll.length,color:C.r},
+     {icon:"📈",label:"Taux de conversion",value:convRate+"%",color:"#a78bfa"},
+     {icon:"💰",label:"Valeur moyenne",value:fmt(ghlStats.avgDealSize)+"€",color:C.acc},
+    ];
+    return <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+     {kpis.map((k,i)=><div key={i} style={{padding:"12px 10px",background:k.color+"10",borderRadius:10,border:`1px solid ${k.color}22`,textAlign:"center"}}>
+      <div style={{fontSize:18,marginBottom:4}}>{k.icon}</div>
+      <div style={{fontWeight:900,fontSize:20,color:k.color}}>{k.value}</div>
+      {k.sub&&<div style={{fontSize:9,color:k.color,fontWeight:600,opacity:.8}}>{k.sub}</div>}
+      <div style={{fontSize:8,color:C.td,marginTop:2,fontWeight:600}}>{k.label}</div>
+     </div>)}
     </div>;
-   })}
+   })()}
   </div>}
   {/* Quick Actions */}
   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
