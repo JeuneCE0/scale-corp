@@ -1242,6 +1242,12 @@ function MilestoneCount({milestones}){
 }
 /* PER-SOCIÉTÉ BANKING WIDGET */
 function SocBankWidget({bankData,onSync,soc}){
+ const[txFilter,setTxFilter]=useState("all");
+ const[txCatOverrides,setTxCatOverrides]=useState(()=>{try{return JSON.parse(localStorage.getItem(`scTxCat_${soc?.id}`)||"{}");}catch{return{};}});
+ const[catDropdown,setCatDropdown]=useState(null);
+ const saveCatOverride=(txId,catId)=>{const next={...txCatOverrides,[txId]:catId};setTxCatOverrides(next);try{localStorage.setItem(`scTxCat_${soc?.id}`,JSON.stringify(next));}catch{}setCatDropdown(null);};
+ const getCat=(tx)=>txCatOverrides[tx.id]?TX_CATEGORIES.find(c=>c.id===txCatOverrides[tx.id])||categorizeTransaction(tx):categorizeTransaction(tx);
+ const FILTER_PILLS=[{id:"all",label:"Toutes"},{id:"revenus",label:"💰 Revenus"},{id:"abonnements",label:"💻 Abonnements"},{id:"equipe",label:"👤 Prestataires"},{id:"dividendes",label:"🏛️ Dividendes"},{id:"transfert",label:"📤 Transferts"},{id:"autres",label:"📦 Autres"}];
  if(!bankData)return <Card style={{textAlign:"center",padding:20}}>
   <div style={{fontSize:28,marginBottom:6}}>🏦</div>
   <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>Revolut Business</div>
@@ -1256,6 +1262,10 @@ function SocBankWidget({bankData,onSync,soc}){
  const cmData=monthly?.[cm],pmData=monthly?.[pm];
  const inflow=transactions.filter(t=>t.legs?.[0]?.amount>0).reduce((s,t)=>s+t.legs[0].amount,0);
  const outflow=Math.abs(transactions.filter(t=>t.legs?.[0]?.amount<0).reduce((s,t)=>s+t.legs[0].amount,0));
+ const now2=new Date();const mStart=new Date(now2.getFullYear(),now2.getMonth(),1);
+ const monthTx=transactions.filter(tx=>{const leg=tx.legs?.[0];if(!leg)return false;if(excl.includes(leg.account_id))return false;return new Date(tx.created_at)>=mStart;});
+ const filteredTx=txFilter==="all"?monthTx:monthTx.filter(tx=>getCat(tx).id===txFilter);
+ const catColors={"revenus":C.g,"loyer":"#f59e0b","pub":"#ec4899","abonnements":C.b,"equipe":C.o,"transfert":"#6366f1","dividendes":"#7c3aed","autres":C.td};
  return <>
   {isDemo&&<div className="fu" style={{background:C.oD,border:`1px solid ${C.o}22`,borderRadius:10,padding:"6px 12px",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{color:C.o,fontSize:10,fontWeight:600}}>⚠ Demo — Ajoute le token Revolut via l'admin</span><Btn small v="ghost" onClick={onSync} style={{fontSize:9}}>↻</Btn></div>}
   <Card style={{padding:16,textAlign:"center",marginBottom:10}} accent={C.g}>
@@ -1276,13 +1286,14 @@ function SocBankWidget({bankData,onSync,soc}){
    </div>
   </Card>}
   {accounts.length>0&&<Sect title="Comptes">{accounts.map((a,i)=><div key={a.id} className={`fu d${Math.min(i+1,4)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",background:C.card,borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:2}}><span style={{fontSize:12}}>🏦</span><span style={{flex:1,fontWeight:600,fontSize:12}}>{a.name}</span><span style={{fontWeight:800,fontSize:13,color:C.g}}>{fmt(a.balance)} {CURR_SYMBOLS[a.currency]||a.currency}</span></div>)}</Sect>}
-  <Sect title={`Transactions du mois`} sub={`${(()=>{const excl=EXCLUDED_ACCOUNTS[soc?.id]||[];const now2=new Date();const mStart=new Date(now2.getFullYear(),now2.getMonth(),1);return transactions.filter(tx=>{const leg=tx.legs?.[0];if(!leg)return false;if(excl.includes(leg.account_id))return false;return new Date(tx.created_at)>=mStart;}).length;})()} transactions`}>
-   {(()=>{const excl=EXCLUDED_ACCOUNTS[soc?.id]||[];const now2=new Date();const mStart=new Date(now2.getFullYear(),now2.getMonth(),1);const monthTx=transactions.filter(tx=>{const leg=tx.legs?.[0];if(!leg)return false;if(excl.includes(leg.account_id))return false;return new Date(tx.created_at)>=mStart;});return monthTx.length===0?<div style={{color:C.td,fontSize:11,padding:12,textAlign:"center"}}>Aucune transaction ce mois</div>:monthTx.map((tx,i)=>{const leg=tx.legs?.[0];if(!leg)return null;const isIn=leg.amount>0;const cat=categorizeTransaction(tx);const isDiv=cat.id==="dividendes";const catColors={"revenus":C.g,"loyer":"#f59e0b","pub":"#ec4899","abonnements":C.b,"equipe":C.o,"transfert":"#6366f1","dividendes":"#7c3aed","autres":C.td};
+  <Sect title={`Transactions du mois`} sub={`${filteredTx.length} transactions`}>
+   <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8}}>{FILTER_PILLS.map(p=><span key={p.id} onClick={()=>setTxFilter(p.id)} style={{padding:"3px 10px",borderRadius:12,fontSize:10,fontWeight:600,cursor:"pointer",background:txFilter===p.id?C.acc+"22":"transparent",color:txFilter===p.id?C.acc:C.td,border:`1px solid ${txFilter===p.id?C.acc:C.brd}`,transition:"all .15s"}}>{p.label}</span>)}</div>
+   {filteredTx.length===0?<div style={{color:C.td,fontSize:11,padding:12,textAlign:"center"}}>Aucune transaction ce mois</div>:filteredTx.map((tx,i)=>{const leg=tx.legs?.[0];if(!leg)return null;const isIn=leg.amount>0;const cat=getCat(tx);const isDiv=cat.id==="dividendes";
     return <div key={tx.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",background:isDiv?"#7c3aed11":C.card,borderRadius:7,border:`1px solid ${isDiv?"#7c3aed33":C.brd}`,marginBottom:2}}>
     <span style={{width:20,height:20,borderRadius:5,background:isIn?C.gD:isDiv?"#7c3aed22":C.rD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:isIn?C.g:isDiv?"#7c3aed":C.r,flexShrink:0}}>{cat.icon||"↑"}</span>
-    <div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontWeight:600,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{leg.description||tx.reference||"—"}</span><span style={{fontSize:9,padding:"1px 5px",borderRadius:8,background:(catColors[cat.id]||C.td)+"22",color:catColors[cat.id]||C.td,fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>{cat.label}</span></div><div style={{fontSize:9,color:C.td}}>{new Date(tx.created_at).toLocaleDateString("fr-FR")}</div></div>
+    <div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontWeight:600,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{leg.description||tx.reference||"—"}</span><span onClick={(e)=>{e.stopPropagation();setCatDropdown(catDropdown===tx.id?null:tx.id);}} style={{fontSize:9,padding:"1px 5px",borderRadius:8,background:(catColors[cat.id]||C.td)+"22",color:catColors[cat.id]||C.td,fontWeight:600,whiteSpace:"nowrap",flexShrink:0,cursor:"pointer",position:"relative"}}>{cat.label}{catDropdown===tx.id&&<div onClick={e=>e.stopPropagation()} style={{position:"absolute",top:"100%",left:0,zIndex:50,background:C.card,border:`1px solid ${C.brd}`,borderRadius:8,padding:6,boxShadow:"0 4px 12px #0003",minWidth:140,marginTop:2}}>{TX_CATEGORIES.filter(c=>c.id!=="all").map(c=><div key={c.id} onClick={()=>saveCatOverride(tx.id,c.id)} style={{padding:"4px 8px",fontSize:10,borderRadius:5,cursor:"pointer",fontWeight:cat.id===c.id?700:500,background:cat.id===c.id?C.acc+"22":"transparent",color:cat.id===c.id?C.acc:C.tm,display:"flex",alignItems:"center",gap:4}}><span>{c.icon}</span><span>{c.label.replace(c.icon+" ","")}</span></div>)}</div>}</span></div><div style={{fontSize:9,color:C.td}}>{new Date(tx.created_at).toLocaleDateString("fr-FR")}</div></div>
     <span style={{fontWeight:700,fontSize:11,color:isIn?C.g:isDiv?"#7c3aed":C.r}}>{isIn?"+":""}{fmt(leg.amount)}€</span>
-    </div>;});})()}
+    </div>;})}
   </Sect>
  </>;
 }
