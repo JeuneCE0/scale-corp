@@ -5836,6 +5836,7 @@ const SB_ADMIN=[
  ]},
  {id:"copilot",icon:"✦",label:"AI Copilot",tab:5,accent:"#a78bfa"},
  {id:"kb",icon:"📚",label:"Ressources",tab:11,accent:C.v},
+ {id:"access",icon:"🔐",label:"Accès",tab:14,accent:"#f59e0b"},
 ];
 
 const SB_PORTEUR=[
@@ -5911,6 +5912,7 @@ export default function App(){
  const[okrs,setOkrs]=useState([]);const[synergies,setSynergies]=useState([]);const[kb,setKb]=useState([]);const[challenges,setChallenges]=useState([]);
  const[subs,setSubs]=useState([]);const[team,setTeam]=useState([]);const[clients,setClients]=useState([]);const[invoices,setInvoices]=useState([]);
  const[pin,setPin]=useState("");const[lErr,setLErr]=useState("");const[shake,setShake]=useState(false);
+ const[loginMode,setLoginMode]=useState("email");const[loginEmail,setLoginEmail]=useState("");const[loginPass,setLoginPass]=useState("");const[authUser,setAuthUser]=useState(null);const[authLoading,setAuthLoading]=useState(false);
  const[tab,setTab]=useState(0);const[eSoc,setESoc]=useState(null);const[eHold,setEHold]=useState(false);
  const[saving,setSaving]=useState(false);const[meeting,setMeeting]=useState(false);
  const[newActSoc,setNewActSoc]=useState("");const[newActText,setNewActText]=useState("");
@@ -5923,7 +5925,10 @@ export default function App(){
    if(sbSocs&&sbSocs.length>0){const sbMap=Object.fromEntries(sbSocs.map(x=>[x.id,x]));finalSocs=(s||DS).map(sc=>sbMap[sc.id]?{...sc,...sbMap[sc.id]}:sc);const newIds=sbSocs.filter(x=>!(s||DS).find(d=>d.id===x.id));if(newIds.length)finalSocs=[...finalSocs,...newIds];localStorage.setItem("scAs",JSON.stringify(finalSocs));}}catch{}
    setSocs(finalSocs);setReps(r||mkPrefill());setHold(finalHold);setActions(a||DEMO_ACTIONS);setJournal(j||DEMO_JOURNAL);setPulses(p||DEMO_PULSES);setDeals(d||DEMO_DEALS);setGhlData(g||{});setRevData(rv||null);setSocBank(sb||{});setOkrs(ok||DEMO_OKRS);setSynergies(sy||DEMO_SYNERGIES);setKb(kk||DEMO_KB);setChallenges(ch||[]);setSubs(su||DEMO_SUBS);setTeam(tm||DEMO_TEAM);setClients(cl||DEMO_CLIENTS);setInvoices(iv||mkDemoInvoices(cl||DEMO_CLIENTS,finalSocs));}catch{setSocs(DS);setReps(mkPrefill());setHold(DH);setActions(DEMO_ACTIONS);setJournal(DEMO_JOURNAL);setPulses(DEMO_PULSES);setDeals(DEMO_DEALS);setOkrs(DEMO_OKRS);setSynergies(DEMO_SYNERGIES);setKb(DEMO_KB);setSubs(DEMO_SUBS);setTeam(DEMO_TEAM);setClients(DEMO_CLIENTS);setInvoices(mkDemoInvoices(DEMO_CLIENTS,DS));}
    try{const obStatus=await sGet("scOnboarded");const obD=await sGet("scObData");setOnboarded(!!obStatus);setObData(obD||null);}catch{setOnboarded(false);}
-   setLoaded(true);})();},[]);
+   setLoaded(true);
+   // Session persistence: check stored auth token
+   try{const tk=localStorage.getItem("sc_auth_token");if(tk){fetch("/api/auth?action=me",{headers:{Authorization:"Bearer "+tk}}).then(r2=>r2.ok?r2.json():null).then(u=>{if(u&&u.id){setAuthUser(u);const meta=u.user_metadata||{};if(meta.role==="admin"){setRole("admin");_storeToken="auth";_currentSocId="admin";syncFromSupabase("admin").catch(()=>{});}else if(meta.society_id){setRole(meta.society_id);_storeToken="auth";_currentSocId=meta.society_id;syncFromSupabase(meta.society_id).catch(()=>{});}}}).catch(()=>{});}}catch{}
+   })();},[]);
  const save=useCallback(async(ns,nr,nh)=>{setSaving(true);try{if(ns!=null){setSocs(ns);await sSet("scAs",ns);(ns||[]).forEach(s=>sbUpsert('societies',{id:s.id,...s}));}if(nr!=null){setReps(nr);await sSet("scAr",nr);}if(nh!=null){setHold(nh);await sSet("scAh",nh);sbUpsert('holding',{id:'main',config:nh});}}catch{}setSaving(false);},[]);
  const saveAJ=useCallback(async(na,nj)=>{try{if(na!=null){setActions(na);await sSet("scAa",na);}if(nj!=null){setJournal(nj);await sSet("scAj",nj);}}catch{}},[]);
  const savePulse=useCallback(async(k,v)=>{const np={...pulses,[k]:v};setPulses(np);await sSet("scAp",np);},[pulses]);
@@ -6025,6 +6030,7 @@ export default function App(){
  const leaderboard=useMemo(()=>calcLeaderboard(socs,reps,actions,pulses,allM),[socs,reps,actions,pulses,allM]);
  const cM2=curM(),actS=socs.filter(s=>s.stat==="active");
  const smartAlerts=useMemo(()=>calcSmartAlerts(socs,reps,actions,pulses,allM,socBank),[socs,reps,actions,pulses,allM,socBank]);
+ const loginEmail2=useCallback(async()=>{if(!loginEmail.trim()||!loginPass.trim()){setLErr("Email et mot de passe requis");return;}setAuthLoading(true);setLErr("");try{const r=await fetch("/api/auth?action=login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:loginEmail.trim(),password:loginPass})});const d=await r.json();if(!r.ok){setLErr(d.error_description||d.msg||d.error||"Identifiants incorrects");setShake(true);setTimeout(()=>setShake(false),500);return;}localStorage.setItem("sc_auth_token",d.access_token);if(d.refresh_token)localStorage.setItem("sc_auth_refresh",d.refresh_token);setAuthUser(d.user);const meta=d.user?.user_metadata||{};const rid=meta.role==="admin"?"admin":(meta.society_id||"admin");setRole(rid);setLErr("");_storeToken="auth";_currentSocId=rid;localStorage.setItem("sc_store_token","auth");if(!onboarded)setShowTour(true);syncFromSupabase(rid).then(()=>{}).catch(()=>{});}catch(e){setLErr("Erreur de connexion");setShake(true);setTimeout(()=>setShake(false),500);}finally{setAuthLoading(false);}},[loginEmail,loginPass,onboarded]);
  const login=useCallback(async()=>{async function hashPin(p){const e=new TextEncoder().encode(p);const h=await crypto.subtle.digest('SHA-256',e);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 const doLogin=(rid)=>{setRole(rid);setLErr("");_storeToken=pin;_currentSocId=rid;localStorage.setItem("sc_store_token",pin);if(!onboarded)setShowTour(true);syncFromSupabase(rid).then(()=>{}).catch(()=>{});};
 // Admin check
@@ -6067,16 +6073,20 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     <h1 style={{margin:0,fontSize:18,fontWeight:900,letterSpacing:.5,fontFamily:FONT_TITLE,color:"#fff"}}>{hold.brand?.name||"L'INCUBATEUR ECS"}</h1>
     <p style={{color:C.td,fontSize:11,margin:"4px 0 0"}}>{hold.brand?.sub||"Plateforme de pilotage"}</p>
    </div>
-   <div style={{animation:shake?"sh .4s ease":"none"}}><Inp label="Code d'accès" value={pin} onChange={v=>{setPin(v);setLErr("");}} type="password" placeholder="Entrez votre PIN" onKeyDown={e=>{if(e.key==="Enter")login();}}/></div>
+   {loginMode==="email"?<div style={{animation:shake?"sh .4s ease":"none"}}>
+    <Inp label="Email" value={loginEmail} onChange={v=>{setLoginEmail(v);setLErr("");}} type="email" placeholder="votre@email.com" onKeyDown={e=>{if(e.key==="Enter"&&loginEmail&&loginPass)loginEmail2();}}/>
+    <Inp label="Mot de passe" value={loginPass} onChange={v=>{setLoginPass(v);setLErr("");}} type="password" placeholder="••••••••" onKeyDown={e=>{if(e.key==="Enter")loginEmail2();}}/>
+   </div>:<div style={{animation:shake?"sh .4s ease":"none"}}><Inp label="Code d'accès" value={pin} onChange={v=>{setPin(v);setLErr("");}} type="password" placeholder="Entrez votre PIN" onKeyDown={e=>{if(e.key==="Enter")login();}}/></div>}
    {lErr&&<div style={{color:C.r,fontSize:11,marginBottom:8,textAlign:"center"}}>⚠ {lErr}</div>}
-   <Btn onClick={login} full>Connexion</Btn>
-   <div className="fu d2" style={{marginTop:18,padding:"10px 12px",background:C.bg,borderRadius:9,border:`1px solid ${C.brd}`}}>
+   <Btn onClick={loginMode==="email"?loginEmail2:login} full disabled={authLoading}>{authLoading?"Connexion...":"Connexion"}</Btn>
+   <div style={{textAlign:"center",marginTop:10}}><button onClick={()=>{setLoginMode(loginMode==="email"?"pin":"email");setLErr("");}} style={{background:"none",border:"none",color:C.td,fontSize:10,cursor:"pointer",fontFamily:FONT,textDecoration:"underline",opacity:.7}}>{loginMode==="email"?"Connexion par PIN":"Connexion par email"}</button></div>
+   {loginMode==="pin"&&<div className="fu d2" style={{marginTop:10,padding:"10px 12px",background:C.bg,borderRadius:9,border:`1px solid ${C.brd}`}}>
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:4}}>ACCÈS RAPIDE</div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"2px 14px",fontSize:10}}>
     <div><span style={{color:C.acc,fontWeight:700}}>0000</span> <span style={{color:C.td}}>Admin</span></div>
     {socs.filter(s=>s.pin!=="admin").slice(0,5).map(s=><div key={s.id} style={{display:"flex",alignItems:"center",gap:6}}>{s.logoUrl?<img src={s.logoUrl} alt="" style={{width:16,height:16,borderRadius:8,objectFit:"cover"}}/>:<span style={{width:16,height:16,borderRadius:8,background:(s.brandColor||s.color)+"22",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:900,color:s.brandColor||s.color}}>{s.nom[0]}</span>}<span style={{color:s.brandColor||s.color,fontWeight:600}}>{s.pin}</span> <span style={{color:C.td}}>{s.nom}</span></div>)}
     </div>
-   </div>
+   </div>}
    {obData&&<div style={{marginTop:10,padding:"8px 12px",background:C.gD,borderRadius:8,border:`1px solid ${C.g}33`,fontSize:10,color:C.g,textAlign:"center"}}>✅ Onboarding complété{obData.companyName?` — ${obData.companyName}`:""}</div>}
    {onboarded===false&&<button onClick={()=>setShowOnboarding(true)} style={{marginTop:10,width:"100%",padding:"9px",borderRadius:8,border:`1.5px solid ${C.acc}44`,background:C.accD,color:C.acc,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,transition:"all .15s"}}>👋 Compléter l'onboarding</button>}
    {onboarded&&<button onClick={()=>setShowOnboarding(true)} style={{marginTop:8,width:"100%",padding:"6px",borderRadius:6,border:`1px solid ${C.brd}`,background:"transparent",color:C.td,fontSize:9,cursor:"pointer",fontFamily:FONT,opacity:.5}}>↻ Relancer l'onboarding</button>}
@@ -6084,14 +6094,14 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  </div>;
  if(role!=="admin"){const soc=socs.find(s=>s.id===role);if(!soc)return null;
   const porteurSetTab=(t)=>{const btn=document.querySelector(`[data-tour="porteur-tab-${t}"]`);if(btn)btn.click();};
-  return <>{false&&<TutorialOverlay steps={TOUR_PORTEUR} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={porteurSetTab}/>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData}/></>;}
+  return <>{false&&<TutorialOverlay steps={TOUR_PORTEUR} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={porteurSetTab}/>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData}/></>;}
  if(meeting)return <MeetingMode socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} onExit={()=>setMeeting(false)}/>;
  const hc=calcH(socs,reps,hold,cM2);const pending=socs.filter(s=>{const r=gr(reps,s.id,cM2);return r&&!r.ok;});
  const missing=actS.filter(s=>!gr(reps,s.id,cM2));const lateActions=actions.filter(a=>!a.done&&a.deadline<cM2);
  return <div className="glass-bg" style={{display:"flex",minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}</style>
   {false&&role==="admin"&&<TutorialOverlay steps={TOUR_ADMIN} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={setTab}/>}
-  <Sidebar items={SB_ADMIN} activeTab={tab} setTab={setTab} brandTitle={hold.brand?.name||"L'INCUBATEUR ECS"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>setRole(null)} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand} extra={<div style={{display:"flex",flexDirection:"column",gap:2}}>
+  <Sidebar items={SB_ADMIN} activeTab={tab} setTab={setTab} brandTitle={hold.brand?.name||"L'INCUBATEUR ECS"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>{setRole(null);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");}} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand} extra={<div style={{display:"flex",flexDirection:"column",gap:2}}>
    {hold.slack?.enabled&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 4px"}}><span style={{width:5,height:5,borderRadius:3,background:C.g}}/>
     <span style={{fontSize:8,color:C.td}}>{SLACK_MODES[hold.slack?.mode]?.icon} Slack connecté</span>
     {missing.length>0&&<button onClick={async()=>{const results=[];for(const s of missing){const r=await slackSend(hold.slack,buildReminderSlackMsg(s,"report",deadline(cM2)));results.push({nom:s.nom,ok:r.ok});}const ok=results.filter(r=>r.ok).length;alert(`📤 ${ok}/${results.length} rappels envoyés`);}} style={{marginLeft:"auto",fontSize:8,color:C.o,background:C.oD,border:"none",borderRadius:4,padding:"2px 5px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>🔔 {missing.length}</button>}
@@ -6456,9 +6466,56 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   {tab===11&&<KnowledgeBase socs={socs} kb={kb} saveKb={saveKb}/>}
   {tab===12&&<ChallengesPanel socs={socs} reps={reps} allM={allM} pulses={pulses} challenges={challenges} saveChallenges={saveChallenges}/>}
   {tab===13&&<SubsTeamPanel socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId="all" reps={reps} revData={revData}/>}
+  {tab===14&&<UserAccessPanel socs={socs}/>}
   </div>
   </div>
  </div>;
+}
+/* USER ACCESS PANEL */
+function UserAccessPanel({socs}){
+ const[users,setUsers]=useState([]);const[loading,setLoading]=useState(true);const[showAdd,setShowAdd]=useState(false);
+ const[addEmail,setAddEmail]=useState("");const[addName,setAddName]=useState("");const[addPass,setAddPass]=useState("");const[addRole,setAddRole]=useState("porteur");const[addSoc,setAddSoc]=useState("");const[addErr,setAddErr]=useState("");const[addLoading,setAddLoading]=useState(false);
+ const[pwModal,setPwModal]=useState(null);const[newPw,setNewPw]=useState("");const[delConfirm,setDelConfirm]=useState(null);
+ const loadUsers=useCallback(async()=>{setLoading(true);try{const r=await fetch("/api/auth?action=list_users");const d=await r.json();setUsers(d.users||[]);}catch{}setLoading(false);},[]);
+ useEffect(()=>{loadUsers();},[loadUsers]);
+ const doAdd=async()=>{if(!addEmail||!addPass){setAddErr("Email et mot de passe requis");return;}setAddLoading(true);setAddErr("");try{const r=await fetch("/api/auth?action=signup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:addEmail,password:addPass,name:addName,role:addRole,society_id:addSoc})});const d=await r.json();if(!r.ok){setAddErr(d.msg||d.error||"Erreur");return;}setShowAdd(false);setAddEmail("");setAddName("");setAddPass("");setAddRole("porteur");setAddSoc("");loadUsers();}catch{setAddErr("Erreur réseau");}finally{setAddLoading(false);}};
+ const doUpdatePw=async()=>{if(!newPw||!pwModal)return;try{const r=await fetch("/api/auth?action=update_password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:pwModal,password:newPw})});if(r.ok){setPwModal(null);setNewPw("");}}catch{}};
+ const doDelete=async(uid2)=>{try{await fetch("/api/auth?action=delete_user",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:uid2})});setDelConfirm(null);loadUsers();}catch{}};
+ const socName=(sid)=>{const s=socs.find(x=>x.id===sid);return s?s.nom:sid||"—";};
+ return <><Sect title="👥 Gestion des accès" sub="Utilisateurs Supabase Auth" right={<div style={{display:"flex",gap:6}}><Btn small v="secondary" onClick={loadUsers}>↻</Btn><Btn small onClick={()=>setShowAdd(true)}>+ Ajouter un porteur</Btn></div>}>
+  {loading&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Chargement...</div>}
+  {!loading&&users.length===0&&<Card><div style={{textAlign:"center",padding:20,color:C.td,fontSize:12}}>Aucun utilisateur</div></Card>}
+  {!loading&&users.map(u=>{const meta=u.user_metadata||{};const isAdmin=meta.role==="admin";return <Card key={u.id} style={{marginBottom:4,padding:"10px 14px"}}>
+   <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+    <span style={{padding:"2px 8px",borderRadius:6,fontSize:9,fontWeight:700,background:isAdmin?"#FFBF0022":"#3b82f622",color:isAdmin?"#FFBF00":"#3b82f6",border:`1px solid ${isAdmin?"#FFBF0033":"#3b82f633"}`}}>{isAdmin?"Admin":"Porteur"}</span>
+    <div style={{flex:1,minWidth:100}}>
+     <div style={{fontWeight:700,fontSize:12}}>{meta.name||u.email}</div>
+     <div style={{fontSize:10,color:C.td}}>{u.email}{meta.society_id?` · ${socName(meta.society_id)}`:""}</div>
+    </div>
+    <div style={{fontSize:9,color:C.td}}>{u.last_sign_in_at?`Vu ${new Date(u.last_sign_in_at).toLocaleDateString("fr-FR")}`:""}</div>
+    <button onClick={()=>{setPwModal(u.id);setNewPw("");}} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:9,cursor:"pointer",fontFamily:FONT}}>🔑 MDP</button>
+    <button onClick={()=>setDelConfirm(u.id)} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${C.r}33`,background:C.rD,color:C.r,fontSize:9,cursor:"pointer",fontFamily:FONT}}>✕</button>
+   </div>
+  </Card>;})}
+ </Sect>
+ <Modal open={showAdd} onClose={()=>setShowAdd(false)} title="Ajouter un utilisateur">
+  <Inp label="Email" value={addEmail} onChange={setAddEmail} placeholder="porteur@email.com"/>
+  <Inp label="Nom" value={addName} onChange={setAddName} placeholder="Prénom Nom"/>
+  <Inp label="Mot de passe" value={addPass} onChange={setAddPass} type="password" placeholder="Min. 6 caractères"/>
+  <Sel label="Rôle" value={addRole} onChange={setAddRole} options={[{v:"porteur",l:"Porteur"},{v:"admin",l:"Admin"}]}/>
+  {addRole==="porteur"&&<Sel label="Société" value={addSoc} onChange={setAddSoc} options={[{v:"",l:"— Sélectionner —"},...socs.map(s=>({v:s.id,l:s.nom}))]}/>}
+  {addErr&&<div style={{color:C.r,fontSize:11,marginTop:4}}>⚠ {addErr}</div>}
+  <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={doAdd} disabled={addLoading}>{addLoading?"Création...":"Créer"}</Btn><Btn v="secondary" onClick={()=>setShowAdd(false)}>Annuler</Btn></div>
+ </Modal>
+ <Modal open={!!pwModal} onClose={()=>setPwModal(null)} title="Modifier le mot de passe">
+  <Inp label="Nouveau mot de passe" value={newPw} onChange={setNewPw} type="password" placeholder="Min. 6 caractères"/>
+  <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={doUpdatePw}>Sauver</Btn><Btn v="secondary" onClick={()=>setPwModal(null)}>Annuler</Btn></div>
+ </Modal>
+ <Modal open={!!delConfirm} onClose={()=>setDelConfirm(null)} title="Confirmer la suppression">
+  <p style={{color:C.td,fontSize:12}}>Supprimer définitivement cet utilisateur ?</p>
+  <div style={{display:"flex",gap:8,marginTop:12}}><Btn v="danger" onClick={()=>doDelete(delConfirm)}>Supprimer</Btn><Btn v="secondary" onClick={()=>setDelConfirm(null)}>Annuler</Btn></div>
+ </Modal>
+ </>;
 }
 /* ANALYTIQUE TAB */
 function AnalytiqueTab({socs,reps,allM}){

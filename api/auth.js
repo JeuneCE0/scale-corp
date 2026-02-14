@@ -1,0 +1,153 @@
+// Vercel Serverless — Supabase Auth Proxy
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
+function cors(res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+}
+
+export default async function handler(req, res) {
+  cors(res);
+  if (req.method === "OPTIONS") return res.status(200).end();
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    return res.status(500).json({ error: "Supabase not configured" });
+  }
+
+  const { action } = req.query || {};
+  if (!action) return res.status(400).json({ error: "Missing action param" });
+
+  try {
+    // === SIGNUP (admin creates user) ===
+    if (action === "signup") {
+      if (req.method !== "POST") return res.status(405).json({ error: "POST required" });
+      const { email, password, name, role, society_id } = req.body || {};
+      if (!email || !password) return res.status(400).json({ error: "Missing email or password" });
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_SERVICE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: { name: name || "", role: role || "porteur", society_id: society_id || "" },
+        }),
+      });
+      const data = await r.json();
+      return res.status(r.status).json(data);
+    }
+
+    // === LOGIN ===
+    if (action === "login") {
+      if (req.method !== "POST") return res.status(405).json({ error: "POST required" });
+      const { email, password } = req.body || {};
+      if (!email || !password) return res.status(400).json({ error: "Missing email or password" });
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await r.json();
+      if (r.ok) {
+        return res.status(200).json({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+          user: data.user,
+        });
+      }
+      return res.status(r.status).json(data);
+    }
+
+    // === LOGOUT ===
+    if (action === "logout") {
+      const token = (req.headers.authorization || "").replace("Bearer ", "");
+      if (token) {
+        await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+          method: "POST",
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+      }
+      return res.status(200).json({ ok: true });
+    }
+
+    // === ME (get current user from token) ===
+    if (action === "me") {
+      const token = (req.headers.authorization || "").replace("Bearer ", "");
+      if (!token) return res.status(401).json({ error: "No token" });
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await r.json();
+      return res.status(r.status).json(data);
+    }
+
+    // === UPDATE PASSWORD (admin) ===
+    if (action === "update_password") {
+      if (req.method !== "PUT" && req.method !== "POST") return res.status(405).json({ error: "PUT/POST required" });
+      const { user_id, password } = req.body || {};
+      if (!user_id || !password) return res.status(400).json({ error: "Missing user_id or password" });
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${user_id}`, {
+        method: "PUT",
+        headers: {
+          apikey: SUPABASE_SERVICE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password }),
+      });
+      const data = await r.json();
+      return res.status(r.status).json(data);
+    }
+
+    // === LIST USERS (admin) ===
+    if (action === "list_users") {
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users?per_page=100`, {
+        headers: {
+          apikey: SUPABASE_SERVICE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        },
+      });
+      const data = await r.json();
+      return res.status(r.status).json(data);
+    }
+
+    // === DELETE USER (admin) ===
+    if (action === "delete_user") {
+      if (req.method !== "DELETE" && req.method !== "POST") return res.status(405).json({ error: "DELETE/POST required" });
+      const user_id = req.query.user_id || req.body?.user_id;
+      if (!user_id) return res.status(400).json({ error: "Missing user_id" });
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${user_id}`, {
+        method: "DELETE",
+        headers: {
+          apikey: SUPABASE_SERVICE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        },
+      });
+      if (r.status === 200 || r.status === 204) return res.status(200).json({ ok: true });
+      const data = await r.json();
+      return res.status(r.status).json(data);
+    }
+
+    return res.status(400).json({ error: `Unknown action: ${action}` });
+  } catch (e) {
+    console.error("Auth proxy error:", e.message);
+    return res.status(500).json({ error: "Auth proxy error" });
+  }
+}
