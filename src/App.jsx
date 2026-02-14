@@ -1955,7 +1955,7 @@ function AIWeeklyCoach({soc,reps,allM,actions,pulses,milestones}){
 function ClientsPanelSafe(props){return <ErrorBoundary label="Erreur dans la page Clients"><ClientsPanelInner {...props}/></ErrorBoundary>;}
 function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices}){
  const[editCl,setEditCl]=useState(null);const[filter,setFilter]=useState("all");const[stageFilter,setStageFilter]=useState("all");const[invView,setInvView]=useState(null);
- const[sending,setSending]=useState(null);
+ const[sending,setSending]=useState(null);const[search,setSearch]=useState("");
  const rawGhl=ghlData?.[soc.id]?.ghlClients||[];
  const manualClients=clients.filter(c=>c.socId===soc.id);
  const manualGhlIds=new Set(manualClients.map(c=>c.ghlId).filter(Boolean));
@@ -1985,7 +1985,8 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
  const uniqueStages=[...new Set(allOpps.map(o=>o.stage).filter(Boolean))];
  const ghlIdsInStage=stageFilter==="all"?null:new Set(allOpps.filter(o=>o.stage===stageFilter).map(o=>o.id));
  const afterType=filter==="all"?myClients:myClients.filter(c=>filter==="type_fixed"?c.billing?.type==="fixed":filter==="type_percent"?c.billing?.type==="percent":filter==="type_oneoff"?c.billing?.type==="oneoff":c.status===filter);
- const filtered=stageFilter==="all"?afterType:afterType.filter(c=>{if(!c.ghlId)return false;const opps2=allOpps.filter(o=>o.stage===stageFilter);return opps2.some(o=>o.name===c.name||o.email===c.email||o.id===c.ghlId);});
+ const afterStage=stageFilter==="all"?afterType:afterType.filter(c=>{if(!c.ghlId)return false;const opps2=allOpps.filter(o=>o.stage===stageFilter);return opps2.some(o=>o.name===c.name||o.email===c.email||o.id===c.ghlId);});
+ const filtered=search.trim()===""?afterStage:afterStage.filter(c=>{const q=search.toLowerCase();return(c.name||"").toLowerCase().includes(q)||(c.email||"").toLowerCase().includes(q)||(c.phone||"").includes(q)||(c.contact||"").toLowerCase().includes(q)||(c.notes||"").toLowerCase().includes(q);});
  const addClient=(type)=>{
   const base={id:uid(),socId:soc.id,name:"",contact:"",email:"",phone:"",status:"active",notes:"",ghlId:"",stripeId:"",at:new Date().toISOString()};
   if(type==="fixed")base.billing={type:"fixed",amount:0,freq:"monthly",commitment:0,startDate:new Date().toISOString().slice(0,10)};
@@ -2216,7 +2217,13 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     </div>;
    })}
   </Card>}
-  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+  <div style={{marginBottom:10}}>
+   <div style={{position:"relative",marginBottom:8}}>
+    <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:14,color:C.td}}>🔍</span>
+    <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un client ou prospect..." style={{width:"100%",padding:"10px 12px 10px 36px",borderRadius:10,border:`1px solid ${search?C.acc+"66":C.brd}`,background:"rgba(14,14,22,0.4)",color:C.t,fontSize:12,fontFamily:FONT,outline:"none",boxSizing:"border-box",transition:"border-color .2s"}}/>
+    {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:14}}>✕</button>}
+   </div>
+   <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
    {[{v:"all",l:`Tous (${myClients.length})`},{v:"type_fixed",l:`💰 Fixes (${byType("fixed").length})`},{v:"type_percent",l:`📊 % (${byType("percent").length})`},{v:"type_oneoff",l:`🎯 One-off (${byType("oneoff").length})`}].map(f2=>
     <button key={f2.v} onClick={()=>setFilter(f2.v)} style={{padding:"4px 10px",borderRadius:6,fontSize:9,fontWeight:filter===f2.v?700:500,border:`1px solid ${filter===f2.v?C.acc:C.brd}`,background:filter===f2.v?C.accD:"transparent",color:filter===f2.v?C.acc:C.td,cursor:"pointer",fontFamily:FONT}}>{f2.l}</button>
    )}
@@ -2227,7 +2234,8 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     <Btn small v="secondary" onClick={()=>addClient("oneoff")}>+ One-off</Btn>
    </div>
   </div>
-  {filtered.length===0&&<div style={{textAlign:"center",padding:30,color:C.td}}><div style={{fontSize:24,marginBottom:6}}>👥</div>Aucun client pour le moment</div>}
+  </div>
+  {filtered.length===0&&<div style={{textAlign:"center",padding:30,color:C.td}}><div style={{fontSize:24,marginBottom:6}}>👥</div>{search?"Aucun résultat pour \""+search+"\"":"Aucun client pour le moment"}</div>}
   {filtered.map((cl,i)=>{
    const b=cl.billing||{};const bt=BILL_TYPES[b.type]||BILL_TYPES.fixed;const cs=CLIENT_STATUS[cl.status]||CLIENT_STATUS.active;
    const monthly=clientMonthlyRevenue(cl);const cr=commitmentRemaining(cl);
