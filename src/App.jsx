@@ -42,6 +42,22 @@ const CSS=`@import url('https://fonts.googleapis.com/css2?family=Teachers:wght@4
 @keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 @keyframes typing{0%{opacity:.2}20%{opacity:1}100%{opacity:.2}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes weatherPulse{0%,100%{transform:scale(1);filter:brightness(1)}50%{transform:scale(1.08);filter:brightness(1.2)}}
+@keyframes shimmerKPI{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes countUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-12px);max-height:0}to{opacity:1;transform:translateY(0);max-height:200px}}
+@keyframes barExpand{from{width:0%}to{width:var(--target-w,100%)}}
+@keyframes fadeTab{from{opacity:0}to{opacity:1}}
+@keyframes toastIn{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes toastOut{from{transform:translateX(0);opacity:1}to{transform:translateX(120%);opacity:0}}
+@keyframes churnPulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(248,113,113,.4)}50%{opacity:.85;box-shadow:0 0 8px 2px rgba(248,113,113,.3)}}
+@keyframes typingDots{0%{opacity:.2}20%{opacity:1}100%{opacity:.2}}
+.typing-dots span{display:inline-block;width:6px;height:6px;border-radius:50%;background:${C.td};margin:0 2px;animation:typingDots 1.4s infinite both}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+.tab-fade{animation:fadeTab .2s ease both}
+.slide-down{animation:slideDown .3s ease both}
+.kpi-shimmer:hover::after{content:'';position:absolute;inset:0;border-radius:inherit;background:linear-gradient(90deg,transparent,rgba(255,170,0,.06),transparent);background-size:200% 100%;animation:shimmerKPI 1.5s ease infinite;pointer-events:none}
 @keyframes celebIn{0%{opacity:0;transform:scale(.3) translateY(50px)}40%{transform:scale(1.1) translateY(-10px)}100%{opacity:1;transform:scale(1) translateY(0)}}
 @keyframes confetti{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(120vh) rotate(720deg);opacity:0}}
 @keyframes celebGlow{0%,100%{box-shadow:0 0 20px rgba(255,170,0,.15)}50%{box-shadow:0 0 40px rgba(255,170,0,.4),0 0 80px rgba(255,170,0,.15)}}
@@ -1515,6 +1531,24 @@ function RapportsPanel({soc,socBankData,ghlData,clients}){
       <span style={{fontSize:14}}>{atteint?"✅":"❌"}</span>
       <div style={{flex:1}}><div style={{fontSize:10,fontWeight:700,color:atteint?C.g:C.r}}>{atteint?"Objectif atteint":"Non atteint"}</div><div style={{fontSize:9,color:C.td}}>Objectif: {fmt(obj)}€ · Réalisé: {fmt(d.ca)}€ ({obj>0?Math.round(d.ca/obj*100):0}%)</div></div>
      </div>;})()}
+     {/* Publicité Meta */}
+     {(()=>{let metaD=null;try{metaD=JSON.parse(localStorage.getItem(`metaAds_${soc.id}_${month}`));}catch{}
+      if(!metaD||!metaD.spend)return null;
+      const sp3=metaD.spend||0,lds3=metaD.leads||0,rev3=metaD.revenue||0;
+      const cpl3=lds3>0?sp3/lds3:0,roas3=sp3>0?rev3/sp3:0;
+      let metaPD=null;try{metaPD=JSON.parse(localStorage.getItem(`metaAds_${soc.id}_${prevM(month)}`));}catch{}
+      const pCpl3=metaPD&&metaPD.leads>0?metaPD.spend/metaPD.leads:0;
+      const pRoas3=metaPD&&metaPD.spend>0?metaPD.revenue/metaPD.spend:0;
+      return <div style={{padding:10,background:C.accD,borderRadius:8,marginBottom:12,border:`1px solid ${C.acc}22`}}>
+       <div style={{fontSize:9,fontWeight:700,color:C.acc,marginBottom:6}}>📣 PUBLICITÉ META</div>
+       <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+        <span style={{fontSize:10,fontWeight:600}}>Budget: {fmt(sp3)}€</span>
+        <span style={{fontSize:10,fontWeight:600}}>Leads: {lds3}</span>
+        <span style={{fontSize:10,fontWeight:600,color:cpl3>0&&pCpl3>0?(cpl3<=pCpl3?C.g:C.r):C.t}}>CPL: {cpl3.toFixed(2)}€{pCpl3>0?` (${cpl3<=pCpl3?"↓":"↑"})`:""}</span>
+        <span style={{fontSize:10,fontWeight:600,color:roas3>=2?C.g:roas3>=1?C.o:C.r}}>ROAS: {roas3.toFixed(2)}x{pRoas3>0?` (${roas3>=pRoas3?"↑":"↓"})`:""}</span>
+       </div>
+      </div>;
+     })()}
      {/* Export PDF */}
      <button onClick={(e)=>{e.stopPropagation();const logo=hold?.brand?.logoUrl||"";const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rapport ${ml(month)} — ${soc.nom}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#1a1a1a}h1{color:#FFAA00;font-size:24px}h2{color:#333;font-size:16px;margin-top:20px}.kpi{display:inline-block;padding:12px 20px;margin:6px;background:#f5f5f5;border-radius:8px;text-align:center}.kpi .val{font-size:22px;font-weight:900}.kpi .lbl{font-size:11px;color:#666}table{width:100%;border-collapse:collapse;margin-top:10px}td,th{padding:6px 10px;border-bottom:1px solid #eee;text-align:left;font-size:12px}@media print{body{padding:20px}}</style></head><body>${logo?`<img src="${logo}" style="height:40px;margin-bottom:12px"/>`:""}
 <h1>Rapport ${ml(month)}</h1><p>${soc.nom} — ${soc.porteur}</p>
@@ -3300,6 +3334,34 @@ function SocSettingsPanel({soc,save,socs}){
    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}><span style={{fontSize:16}}>🎯</span><div><div style={{fontWeight:800,fontSize:13,color:C.t}}>Objectif mensuel</div><div style={{fontSize:10,color:C.td}}>Utilisé dans le Dashboard pour le ring de progression</div></div></div>
    <Inp label="Objectif CA mensuel (€)" value={soc.obj||""} onChange={v=>{const updated=socs.map(s=>s.id===soc.id?{...s,obj:pf(v)}:s);save(updated,null,null);}} type="number" suffix="€" placeholder="Ex: 10000"/>
   </Card>
+  {/* 📣 Meta Ads Data */}
+  <Card style={{padding:16,marginBottom:12}}>
+   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}><span style={{fontSize:16}}>📣</span><div><div style={{fontWeight:800,fontSize:13,color:C.t}}>Publicité Meta</div><div style={{fontSize:10,color:C.td}}>Renseignez vos données publicitaires mensuelles</div></div></div>
+   {(()=>{
+    const now=new Date();const monthOpts=[];for(let i=0;i<7;i++){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;monthOpts.push({v:k,l:ml(k)});}
+    const[metaMonth,setMetaMonth]=useState(curM());
+    const metaKey=`metaAds_${soc.id}_${metaMonth}`;
+    const[metaForm,setMetaForm]=useState(()=>{try{return JSON.parse(localStorage.getItem(metaKey))||{spend:0,impressions:0,clicks:0,leads:0,revenue:0};}catch{return{spend:0,impressions:0,clicks:0,leads:0,revenue:0};}});
+    const[metaSaved,setMetaSaved]=useState(false);
+    const loadMeta=(mo)=>{setMetaMonth(mo);try{const raw=JSON.parse(localStorage.getItem(`metaAds_${soc.id}_${mo}`));setMetaForm(raw||{spend:0,impressions:0,clicks:0,leads:0,revenue:0});}catch{setMetaForm({spend:0,impressions:0,clicks:0,leads:0,revenue:0});}};
+    const saveMeta=()=>{try{localStorage.setItem(metaKey,JSON.stringify(metaForm));sSet(metaKey,metaForm);}catch{}setMetaSaved(true);setTimeout(()=>setMetaSaved(false),2000);};
+    return <>
+     <Sel label="Mois" value={metaMonth} onChange={loadMeta} options={monthOpts}/>
+     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+      <Inp label="Dépenses pub (€)" type="number" value={metaForm.spend||""} onChange={v=>setMetaForm({...metaForm,spend:pf(v)})} suffix="€"/>
+      <Inp label="Impressions" type="number" value={metaForm.impressions||""} onChange={v=>setMetaForm({...metaForm,impressions:parseInt(v)||0})}/>
+      <Inp label="Clics" type="number" value={metaForm.clicks||""} onChange={v=>setMetaForm({...metaForm,clicks:parseInt(v)||0})}/>
+      <Inp label="Leads" type="number" value={metaForm.leads||""} onChange={v=>setMetaForm({...metaForm,leads:parseInt(v)||0})}/>
+      <Inp label="Revenue généré (€)" type="number" value={metaForm.revenue||""} onChange={v=>setMetaForm({...metaForm,revenue:pf(v)})} suffix="€"/>
+     </div>
+     {metaSaved&&<div style={{background:C.gD,border:`1px solid ${C.g}22`,borderRadius:8,padding:"6px 10px",marginBottom:8,color:C.g,fontSize:10,fontWeight:700}}>✅ Données Meta sauvegardées</div>}
+     <div style={{display:"flex",gap:8,alignItems:"center"}}>
+      <Btn small onClick={saveMeta}>💾 Sauvegarder Meta</Btn>
+      <span style={{fontSize:9,color:C.td}}>💡 Bientôt automatisé via l'API Meta Ads</span>
+     </div>
+    </>;
+   })()}
+  </Card>
   <Btn onClick={doSave}>💾 Sauvegarder</Btn>
  </Sect>;
 }
@@ -3717,10 +3779,13 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
  const meteo=useMemo(()=>{
   const critAlerts=smartAlerts.filter(a=>a.priority===1).length;
   const allAlertCount=smartAlerts.length;
-  if(perfScore>75&&critAlerts===0)return{emoji:"☀️",text:"Tout roule !",glow:"rgba(52,211,153,.15)",color:C.g};
-  if((perfScore>=50&&perfScore<=75)||allAlertCount<=2)return{emoji:"⛅",text:"Quelques points d'attention",glow:"rgba(251,146,60,.15)",color:C.o};
-  if((perfScore>=30&&perfScore<50)||allAlertCount>=3)return{emoji:"🌧️",text:"Vigilance requise",glow:"rgba(248,113,113,.15)",color:C.r};
-  return{emoji:"⛈️",text:"Actions urgentes nécessaires",glow:"rgba(248,113,113,.25)",color:C.r};
+  const unpaidCount=myClients.filter(c=>{const cn=(c.name||"").toLowerCase().trim();const now45x=Date.now()-45*864e5;return c.billing&&!(bankData?.transactions||[]).some(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;return new Date(tx.created_at).getTime()>now45x&&(leg.description||tx.reference||"").toLowerCase().includes(cn);});}).length;
+  const convRateM=(()=>{const gd=ghlData?.[soc.id];const cbt=gd?.stats?.callsByType||{};const s2=Object.entries(cbt).filter(([n])=>!/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);const i2=Object.entries(cbt).filter(([n])=>/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);return s2>0?Math.round(i2/s2*100):0;})();
+  const caTrendM=prevCa>0?Math.round((ca-prevCa)/prevCa*100):0;
+  if(perfScore>75&&critAlerts===0)return{emoji:"☀️",text:"Tout roule !",sub:`CA ${caTrendM>=0?"+":""}${caTrendM}%, ${unpaidCount} impayé${unpaidCount>1?"s":""}`,glow:"rgba(52,211,153,.15)",color:C.g,border:"linear-gradient(135deg,#34d399,#22c55e)"};
+  if((perfScore>=50&&perfScore<=75)||allAlertCount<=2)return{emoji:"⛅",text:"Quelques points d'attention",sub:`${unpaidCount>0?unpaidCount+" impayé"+(unpaidCount>1?"s":""):"Conversion "+convRateM+"%"}`,glow:"rgba(251,146,60,.15)",color:C.o,border:"linear-gradient(135deg,#FFAA00,#fb923c)"};
+  if((perfScore>=30&&perfScore<50)||allAlertCount>=3)return{emoji:"🌧️",text:"Vigilance requise",sub:`${unpaidCount} impayé${unpaidCount>1?"s":""}, conversion ${convRateM>0?convRateM+"%":"en baisse"}`,glow:"rgba(248,113,113,.15)",color:C.r,border:"linear-gradient(135deg,#fb923c,#f87171)"};
+  return{emoji:"⛈️",text:"Actions urgentes nécessaires",sub:`${critAlerts} alerte${critAlerts>1?"s":""} critique${critAlerts>1?"s":""}`,glow:"rgba(248,113,113,.25)",color:C.r,border:"linear-gradient(135deg,#f87171,#dc2626)"};
  },[perfScore,smartAlerts]);
  // Conseil du jour IA
  const conseilDuJour=useMemo(()=>{
@@ -3729,33 +3794,41 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
   const calEvts=ghlData?.[soc.id]?.calendarEvents||[];
   const now20=Date.now()-20*864e5;
   const noCallClients=myClients.filter(cl=>{const cn=(cl.name||"").toLowerCase();return !calEvts.some(e=>new Date(e.startTime||0).getTime()>now20&&(e.contactName||e.title||"").toLowerCase().includes(cn));});
-  if(noCallClients.length>0)tips.push(`💡 ${noCallClients.length} client${noCallClients.length>1?"s":""} ${noCallClients.length>1?"n'ont":"n'a"} pas eu d'appel depuis 20j — planifie un check-in`);
+  if(noCallClients.length>0){const top3=noCallClients.slice(0,3);top3.forEach(cl=>{const days=Math.round((Date.now()-now20)/864e5);tips.push({text:`💡 Appelle ${cl.name||"ce client"} — pas de contact depuis ${days}j`,action:"clients"});});}
   // Conversion rate
   const gd=ghlData?.[soc.id];const cbt=gd?.stats?.callsByType||{};
   const stratC=Object.entries(cbt).filter(([n])=>!/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);
   const integC=Object.entries(cbt).filter(([n])=>/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);
   const convR=stratC>0?Math.round(integC/stratC*100):0;
-  if(convR>0)tips.push(`💡 Ton taux de conversion est à ${convR}% — ${convR>30?"continue comme ça !":"essaie d'améliorer ton pitch"}`);
+  if(convR>0)tips.push({text:`💡 Ton taux de conversion est à ${convR}% — ${convR>30?"continue comme ça !":"essaie d'améliorer ton pitch"}`,action:null});
   // New untouched leads
   const h48=Date.now()-48*36e5;
   const newLeads=(gd?.ghlClients||[]).filter(c2=>new Date(c2.at||c2.dateAdded||0).getTime()>h48).length;
-  if(newLeads>0)tips.push(`💡 ${newLeads} lead${newLeads>1?"s":""} ${newLeads>1?"attendent":"attend"} une réponse depuis 48h`);
+  if(newLeads>0)tips.push({text:`💡 ${newLeads} lead${newLeads>1?"s":""} ${newLeads>1?"attendent":"attend"} une réponse depuis 48h`,action:"clients"});
   // Payment gaps
   const excl5=EXCLUDED_ACCOUNTS[soc.id]||[];const now45b=Date.now()-45*864e5;
   const unpaid=myClients.filter(cl=>{const cn=(cl.name||"").toLowerCase().trim();return !(bankData?.transactions||[]).some(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;if(excl5.includes(leg.account_id))return false;return new Date(tx.created_at).getTime()>now45b&&(leg.description||tx.reference||"").toLowerCase().includes(cn);});}).length;
-  if(unpaid>0)tips.push(`💡 ${unpaid} client${unpaid>1?"s":""} sans paiement détecté depuis 45j+ — relance nécessaire`);
+  const unpaidClients2=myClients.filter(cl=>{const cn=(cl.name||"").toLowerCase().trim();return !(bankData?.transactions||[]).some(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;if(excl5.includes(leg.account_id))return false;return new Date(tx.created_at).getTime()>now45b&&(leg.description||tx.reference||"").toLowerCase().includes(cn);});});
+  if(unpaid>0){unpaidClients2.slice(0,2).forEach(cl=>{tips.push({text:`💡 Relance ${cl.name||"client"} — aucun paiement détecté depuis 45j+`,action:"clients"});});}
   // Contract expirations
   const expiring=myClients.filter(cl=>{const end=commitmentEnd(cl);return end&&(end.getTime()-Date.now())<30*864e5&&(end.getTime()-Date.now())>0;}).length;
-  if(expiring>0)tips.push(`💡 ${expiring} contrat${expiring>1?"s":""} ${expiring>1?"expirent":"expire"} dans les 30 prochains jours`);
-  if(tips.length===0)tips.push("💡 Tout semble en ordre — continue sur ta lancée !");
-  return tips[dayOfMonth%tips.length];
+  const expiringClients=myClients.filter(cl=>{const end=commitmentEnd(cl);return end&&(end.getTime()-Date.now())<30*864e5&&(end.getTime()-Date.now())>0;});
+  if(expiring>0){expiringClients.slice(0,2).forEach(cl=>{tips.push({text:`💡 Contrat ${cl.name||"client"} expire dans ${commitmentRemaining(cl)}j — renouvellement ?`,action:"clients"});});}
+  if(tips.length===0)tips.push({text:"💡 Tout semble en ordre — continue sur ta lancée !",action:null});
+  return tips;
  },[soc.id,ghlData,myClients,bankData]);
  return <div className="fu">
   {/* Météo Business + Streak */}
   <div style={{display:"flex",gap:12,marginBottom:16,alignItems:"stretch"}}>
-   <div className="glass-card-static" style={{flex:1,padding:"16px 20px",display:"flex",alignItems:"center",gap:14,boxShadow:`0 0 24px ${meteo.glow}`}}>
-    <span style={{fontSize:48,lineHeight:1}}>{meteo.emoji}</span>
-    <div><div style={{fontWeight:800,fontSize:14,color:meteo.color}}>{meteo.text}</div><div style={{fontSize:9,color:C.td,marginTop:2}}>Score: {perfScore} · Alertes: {smartAlerts.length}</div></div>
+   <div style={{flex:1,padding:3,borderRadius:18,background:meteo.border||"linear-gradient(135deg,#34d399,#22c55e)"}}>
+    <div className="glass-card-static" style={{padding:"20px 24px",display:"flex",alignItems:"center",gap:16,borderRadius:15,boxShadow:`0 0 30px ${meteo.glow}`}}>
+     <span style={{fontSize:64,lineHeight:1,animation:"weatherPulse 3s ease-in-out infinite",display:"inline-block"}}>{meteo.emoji}</span>
+     <div>
+      <div style={{fontWeight:900,fontSize:16,color:meteo.color,marginBottom:2}}>{meteo.text}</div>
+      <div style={{fontSize:11,color:C.t,fontWeight:500,opacity:.8}}>{meteo.sub}</div>
+      <div style={{fontSize:9,color:C.td,marginTop:4}}>Score: {perfScore}/100 · {smartAlerts.length} alerte{smartAlerts.length>1?"s":""}</div>
+     </div>
+    </div>
    </div>
    <div className="glass-card-static" style={{padding:"16px 20px",display:"flex",alignItems:"center",gap:8,minWidth:80}}>
     <span style={{fontSize:28}}>🔥</span>
@@ -3763,9 +3836,23 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
    </div>
   </div>
   {/* Conseil du jour IA */}
-  <div className="glass-card-static" style={{padding:"12px 16px",marginBottom:16,borderLeft:`3px solid ${C.acc}`,background:"rgba(255,170,0,.04)"}}>
-   <div style={{fontSize:12,fontWeight:600,color:C.t}}>{conseilDuJour}</div>
-  </div>
+  {(()=>{
+   const[tipIdx,setTipIdx]=useState(0);
+   const tips=conseilDuJour;const tip=tips[tipIdx%tips.length]||{text:"",action:null};
+   return <div className="glass-card-static" style={{padding:"14px 18px",marginBottom:16,borderLeft:`3px solid ${C.acc}`,background:"rgba(255,170,0,.04)"}}>
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+     <div style={{flex:1,fontSize:12,fontWeight:600,color:C.t}}>{tip.text}</div>
+     <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+      {tips.length>1&&<>
+       <button onClick={()=>setTipIdx(Math.max(0,tipIdx-1))} style={{background:"none",border:"none",color:tipIdx>0?C.acc:C.tm,cursor:tipIdx>0?"pointer":"default",fontSize:14,padding:2}}>‹</button>
+       <span style={{fontSize:9,color:C.td,fontWeight:600,minWidth:28,textAlign:"center"}}>{tipIdx%tips.length+1}/{tips.length}</span>
+       <button onClick={()=>setTipIdx(Math.min(tips.length-1,tipIdx+1))} style={{background:"none",border:"none",color:tipIdx<tips.length-1?C.acc:C.tm,cursor:tipIdx<tips.length-1?"pointer":"default",fontSize:14,padding:2}}>›</button>
+      </>}
+      {tip.action&&<button onClick={()=>setPTab(tip.action==="clients"?3:0)} style={{background:C.accD,border:`1px solid ${C.acc}44`,borderRadius:6,color:C.acc,fontSize:9,fontWeight:700,padding:"3px 8px",cursor:"pointer",fontFamily:FONT}}>→</button>}
+     </div>
+    </div>
+   </div>;
+  })()}
   {/* Smart Alerts */}
   {smartAlerts.length>0&&<div style={{marginBottom:16}}>
    {smartAlerts.slice(0,3).map((a,i)=><div key={a.id} className={`glass-card-static fu d${i+1}`} style={{padding:"10px 14px",marginBottom:4,display:"flex",alignItems:"center",gap:8}}>
@@ -3795,16 +3882,32 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
    </div>}
   </div>
   {/* Hero KPIs */}
-  <div className="kpi-grid-responsive" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:20}}>
-   {kpis.map((k,i)=><div key={i} className="fade-up glass-card-static" style={{padding:22,animationDelay:`${i*0.1}s`,transition:"all .3s cubic-bezier(.4,0,.2,1)"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${k.accent||C.acc}22`;e.currentTarget.style.boxShadow=`0 0 24px ${(k.accent||C.acc)}12`;e.currentTarget.style.transform="translateY(-3px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,.06)";e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,.3)";e.currentTarget.style.transform="translateY(0)";}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:8,fontFamily:FONT_TITLE}}>{k.label}</div>
-    <div style={{fontSize:30,fontWeight:900,color:k.accent||C.t,lineHeight:1}}>{k.value}</div>
-    {k.trend!==undefined&&k.trend!==0&&<div style={{marginTop:6,fontSize:10,fontWeight:600,color:k.trend>0?C.g:C.r}}>{k.trend>0?"↑":"↓"} {Math.abs(k.trend)}% vs N-1</div>}
-    {k.trend2!==undefined&&k.trend2!==0&&<div style={{marginTop:4,fontSize:10,fontWeight:600,color:k.trend2>0?(k.label==="Charges"?C.r:C.g):(k.label==="Charges"?C.g:C.r)}}>{k.trend2>0?"↑":"↓"} {Math.abs(k.trend2)}% vs N-1</div>}
-    {k.sub&&!k.trend&&!k.trend2&&<div style={{marginTop:6,fontSize:11,fontWeight:700,color:k.accent}}>{k.sub}</div>}
-    {k.sub&&(k.trend||k.trend2)&&<div style={{marginTop:2,fontSize:10,fontWeight:600,color:k.accent,opacity:.7}}>{k.sub}</div>}
-   </div>)}
-  </div>
+  {(()=>{
+   const sparkData=useMemo(()=>{
+    const months=[];let m=cm;for(let i=0;i<6;i++){months.unshift(m);m=prevM(m);}
+    return{
+     ca:months.map(mo=>pf(gr(reps,soc.id,mo)?.ca)),
+     charges:months.map(mo=>pf(gr(reps,soc.id,mo)?.charges)),
+     marge:months.map(mo=>pf(gr(reps,soc.id,mo)?.ca)-pf(gr(reps,soc.id,mo)?.charges)),
+     treso:months.map(mo=>{const bd=socBank?.[soc.id];return bd?.monthly?.[mo]?bd.monthly[mo].income-bd.monthly[mo].expense:0;}),
+    };
+   },[reps,soc.id,cm,socBank]);
+   const Sparkline=({data,color})=>{if(!data||data.every(v=>v===0))return null;const max=Math.max(...data,1);const min=Math.min(...data,0);const range=max-min||1;const w=48,h=18;const pts=data.map((v,i)=>`${(i/(data.length-1))*w},${h-((v-min)/range)*h}`).join(" ");return <svg width={w} height={h} style={{marginLeft:6,flexShrink:0}}><polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".6"/></svg>;};
+   const sparkKeys=["ca","charges","marge","treso"];
+   return <div className="kpi-grid-responsive" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:20}}>
+    {kpis.map((k,i)=><div key={i} className="fade-up glass-card-static kpi-shimmer" style={{padding:22,animationDelay:`${i*0.1}s`,position:"relative",overflow:"hidden",transition:"all .3s cubic-bezier(.4,0,.2,1)"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${k.accent||C.acc}33`;e.currentTarget.style.boxShadow=`0 0 28px ${(k.accent||C.acc)}18`;e.currentTarget.style.transform="translateY(-3px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,.06)";e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,.3)";e.currentTarget.style.transform="translateY(0)";}}>
+     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:8,fontFamily:FONT_TITLE}}>{k.label}</div>
+      {i<4&&<Sparkline data={sparkData[sparkKeys[i]]} color={k.accent||C.acc}/>}
+     </div>
+     <div style={{fontSize:30,fontWeight:900,color:k.accent||C.t,lineHeight:1}}>{k.value}</div>
+     {k.trend!==undefined&&k.trend!==0&&<div style={{marginTop:6,fontSize:11,fontWeight:700,color:k.trend>0?C.g:C.r}}>{k.trend>0?"▲":"▼"} {Math.abs(k.trend)}% vs N-1</div>}
+     {k.trend2!==undefined&&k.trend2!==0&&<div style={{marginTop:4,fontSize:11,fontWeight:700,color:k.trend2>0?(k.label==="Charges"?C.r:C.g):(k.label==="Charges"?C.g:C.r)}}>{k.trend2>0?"▲":"▼"} {Math.abs(k.trend2)}% vs N-1</div>}
+     {k.sub&&!k.trend&&!k.trend2&&<div style={{marginTop:6,fontSize:11,fontWeight:700,color:k.accent}}>{k.sub}</div>}
+     {k.sub&&(k.trend||k.trend2)&&<div style={{marginTop:2,fontSize:10,fontWeight:600,color:k.accent,opacity:.7}}>{k.sub}</div>}
+    </div>)}
+   </div>;
+  })()}
   {/* Trésorerie évolutive chart */}
   {tresoChartData.some(d=>d.entrees>0||d.sorties>0)&&<div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,animationDelay:"0.25s"}}>
    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>📈 TRÉSORERIE ÉVOLUTIVE — 6 MOIS</div>
@@ -3831,16 +3934,100 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
   {funnelData.length>0&&funnelData[0].count>0&&<div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.3s"}}>
    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>🔄 FUNNEL DE CONVERSION</div>
    <div style={{display:"flex",flexDirection:"column",gap:0}}>
-    {funnelData.map((f,i)=>{const maxW=funnelData[0].count||1;const w=Math.max(20,Math.round(f.count/maxW*100));const conv=i>0&&funnelData[i-1].count>0?Math.round(f.count/funnelData[i-1].count*100):null;
+    {funnelData.map((f,i)=>{const maxW=funnelData[0].count||1;const w=Math.max(25,Math.round(f.count/maxW*100));const conv=i>0&&funnelData[i-1].count>0?Math.round(f.count/funnelData[i-1].count*100):null;
+     const val=(ghlData?.[soc.id]?.opportunities||[]).filter(o=>o.status==="open").reduce((a,o)=>a+o.value,0);
      return <Fragment key={i}>
-      {i>0&&<div style={{fontSize:9,color:C.td,fontWeight:700,textAlign:"center",padding:"2px 0"}}>↓ {conv}%</div>}
-      <div style={{width:`${w}%`,margin:"0 auto",background:f.color+"22",border:`1px solid ${f.color}44`,borderRadius:8,padding:"10px 12px",textAlign:"center",transition:"all .3s"}}>
-       <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><span style={{fontWeight:900,fontSize:18,color:f.color}}>{f.count}</span><span style={{fontSize:10,color:C.td,fontWeight:600}}>{f.stage}</span></div>
+      {i>0&&<div style={{fontSize:9,color:C.td,fontWeight:700,textAlign:"center",padding:"3px 0"}}>↓ <span style={{color:conv>=50?C.g:conv>=25?C.o:C.r,fontWeight:800}}>{conv}%</span></div>}
+      <div style={{width:`${w}%`,margin:"0 auto",background:`linear-gradient(135deg,${f.color}18,${f.color}30)`,border:`1px solid ${f.color}55`,borderRadius:10,padding:"12px 14px",textAlign:"center",animation:`barExpand .6s ease ${i*0.12}s both`,["--target-w"]:`${w}%`}}>
+       <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+        <span style={{fontWeight:900,fontSize:20,color:f.color}}>{f.count}</span>
+        <span style={{fontSize:11,color:C.td,fontWeight:600}}>{f.stage}</span>
+        {i===1&&val>0&&<span style={{fontSize:9,color:C.acc,fontWeight:700,background:C.accD,padding:"2px 6px",borderRadius:6}}>{fmt(val)}€</span>}
+       </div>
       </div>
      </Fragment>;
     })}
    </div>
   </div>}
+  {/* 📣 META ADS */}
+  {(()=>{
+   const metaKey=`metaAds_${soc.id}_${cm}`;const metaPrevKey=`metaAds_${soc.id}_${pm}`;
+   let metaRaw=null;try{metaRaw=JSON.parse(localStorage.getItem(metaKey));}catch{}
+   let metaPrev=null;try{metaPrev=JSON.parse(localStorage.getItem(metaPrevKey));}catch{}
+   if(!metaRaw||!metaRaw.spend)return <div className="fade-up glass-card-static" style={{padding:20,marginBottom:20,animationDelay:"0.32s",borderLeft:`3px solid ${C.acc}`}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+     <div><div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,fontFamily:FONT_TITLE}}>📣 PUBLICITÉ META</div><div style={{fontSize:11,color:C.td,marginTop:4}}>Aucune donnée pub — Renseignez dans Paramètres</div></div>
+     <button onClick={()=>setPTab(12)} style={{padding:"5px 12px",borderRadius:8,border:`1px solid ${C.acc}44`,background:C.accD,color:C.acc,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>⚙️ Paramètres</button>
+    </div>
+   </div>;
+   const sp=metaRaw.spend||0,imp=metaRaw.impressions||0,clk=metaRaw.clicks||0,lds=metaRaw.leads||0,rev=metaRaw.revenue||0;
+   const cpl=lds>0?sp/lds:0,cpc=clk>0?sp/clk:0,cpm=imp>0?(sp/imp)*1000:0,roas=sp>0?rev/sp:0;
+   const ctr=imp>0?(clk/imp)*100:0;
+   const clientsWon=(ghlData?.[soc.id]?.opportunities||[]).filter(o=>o.status==="won"&&(o.updatedAt||"").startsWith(cm)).length;
+   const cpa=clientsWon>0?sp/clientsWon:0;
+   // Prev month comparisons
+   const pSp=metaPrev?.spend||0,pImp=metaPrev?.impressions||0,pClk=metaPrev?.clicks||0,pLds=metaPrev?.leads||0,pRev=metaPrev?.revenue||0;
+   const pCpl=pLds>0?pSp/pLds:0,pCpc=pClk>0?pSp/pClk:0,pCpm=pImp>0?(pSp/pImp)*1000:0,pRoas=pSp>0?pRev/pSp:0;
+   const trend2=(cur,prev)=>prev>0?Math.round((cur-prev)/prev*100):0;
+   const roasColor=roas>=2?C.g:roas>=1?C.o:C.r;
+   const costColor=(cur,prev)=>prev>0?(cur<=prev?C.g:C.r):C.td;
+   const metaKpis=[
+    {label:"CPL",value:`${cpl.toFixed(2)}€`,sub:"Coût par Lead",color:costColor(cpl,pCpl),trend:trend2(cpl,pCpl),invert:true},
+    {label:"CPC",value:`${cpc.toFixed(2)}€`,sub:"Coût par Clic",color:costColor(cpc,pCpc),trend:trend2(cpc,pCpc),invert:true},
+    {label:"CPM",value:`${cpm.toFixed(2)}€`,sub:"Coût / 1000 imp.",color:costColor(cpm,pCpm),trend:trend2(cpm,pCpm),invert:true},
+    {label:"ROAS",value:`${roas.toFixed(2)}x`,sub:"Return on Ad Spend",color:roasColor,trend:trend2(roas,pRoas),invert:false},
+   ];
+   return <div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,animationDelay:"0.32s"}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>📣 PUBLICITÉ META — {ml(cm)}</div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+     {metaKpis.map((k,i)=><div key={i} style={{padding:14,background:k.color+"10",border:`1px solid ${k.color}22`,borderRadius:12,textAlign:"center"}}>
+      <div style={{fontWeight:900,fontSize:22,color:k.color,lineHeight:1}}>{k.value}</div>
+      <div style={{fontSize:9,fontWeight:700,color:C.td,marginTop:4}}>{k.label}</div>
+      {k.trend!==0&&<div style={{fontSize:9,fontWeight:600,color:k.invert?(k.trend>0?C.r:C.g):(k.trend>0?C.g:C.r),marginTop:2}}>{k.trend>0?"↑":"↓"} {Math.abs(k.trend)}%</div>}
+     </div>)}
+    </div>
+    <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+     {[{l:"Budget dépensé",v:`${fmt(sp)}€`},{l:"Impressions",v:fK(imp)},{l:"Clics",v:String(clk)},{l:"Leads",v:String(lds)},{l:"CTR",v:`${ctr.toFixed(1)}%`},{l:"CPA",v:cpa>0?`${cpa.toFixed(2)}€`:"—"}].map((m,i)=>
+      <span key={i} style={{padding:"5px 12px",borderRadius:20,fontSize:10,fontWeight:600,background:C.card2,border:`1px solid ${C.brd}`,color:C.t}}><span style={{color:C.td}}>{m.l}:</span> {m.v}</span>
+     )}
+    </div>
+   </div>;
+  })()}
+  {/* 🌐 FUNNEL SITE WEB */}
+  {(()=>{
+   let metaRaw2=null;try{metaRaw2=JSON.parse(localStorage.getItem(`metaAds_${soc.id}_${cm}`));}catch{}
+   const imp2=metaRaw2?.impressions||0,clk2=metaRaw2?.clicks||0,lds2=metaRaw2?.leads||0;
+   let landingVisitors=clk2;try{const lv=localStorage.getItem(`metaLanding_${soc.id}_${cm}`);if(lv)landingVisitors=parseInt(lv)||clk2;}catch{}
+   const calEvts2=(ghlData?.[soc.id]?.calendarEvents||[]).filter(e=>(e.startTime||"").startsWith(cm));
+   const stratCalls3=calEvts2.filter(e=>!/int[eé]g/i.test(e.title||"")&&!/int[eé]g/i.test(e.calendarName||"")).length;
+   const clientsWon2=(ghlData?.[soc.id]?.opportunities||[]).filter(o=>o.status==="won"&&(o.updatedAt||"").startsWith(cm)).length;
+   const funnelSteps=[
+    {label:"Impressions",count:imp2,color:"#60a5fa"},
+    {label:"Clics",count:clk2,color:"#818cf8"},
+    {label:"Visiteurs landing",count:landingVisitors,color:"#a78bfa"},
+    {label:"Leads",count:lds2,color:"#FFAA00"},
+    {label:"Appels bookés",count:stratCalls3,color:"#fb923c"},
+    {label:"Clients signés",count:clientsWon2,color:"#34d399"},
+   ];
+   if(!imp2&&!lds2&&!stratCalls3)return null;
+   const maxCount=Math.max(1,...funnelSteps.map(s=>s.count));
+   return <div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,animationDelay:"0.34s"}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>🌐 FUNNEL SITE WEB — {ml(cm)}</div>
+    <div style={{display:"flex",flexDirection:"column",gap:0}}>
+     {funnelSteps.map((f,i)=>{const w=Math.max(15,Math.round(f.count/maxCount*100));const conv=i>0&&funnelSteps[i-1].count>0?((f.count/funnelSteps[i-1].count)*100).toFixed(1):null;
+      return <Fragment key={i}>
+       {i>0&&conv&&<div style={{fontSize:9,color:C.td,fontWeight:700,textAlign:"center",padding:"3px 0"}}>↓ {conv}%</div>}
+       <div style={{width:`${w}%`,margin:"0 auto",background:`linear-gradient(135deg,${f.color}22,${f.color}11)`,border:`1px solid ${f.color}44`,borderRadius:10,padding:"12px 14px",textAlign:"center",transition:"all .3s"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+         <span style={{fontWeight:900,fontSize:20,color:f.color}}>{f.count>1000?fK(f.count):f.count}</span>
+         <span style={{fontSize:10,color:C.td,fontWeight:600}}>{f.label}</span>
+        </div>
+       </div>
+      </Fragment>;
+     })}
+    </div>
+   </div>;
+  })()}
   {/* Pulse widget */}
   {(()=>{const w=curW();const existing=pulses?.[`${soc.id}_${w}`];return <PulseDashWidget soc={soc} existing={existing} savePulse={savePulse} hold={hold}/>;})()}
   {/* Today's Agenda Summary + Alerts */}
