@@ -72,7 +72,8 @@ function autoGenerateReport(socId, month, socBank, ghlData, subs){
  const txns=(sb?.transactions||[]).filter(t=>{const d=t.created_at||t.date||"";return d.startsWith(month);});
  const sumTxns=(keywords)=>Math.abs(txns.filter(t=>{const desc=((t.description||"")+(t.reference||"")).toLowerCase();return keywords.some(k=>desc.includes(k))&&(t.legs?.[0]?.amount||0)<0;}).reduce((a,t)=>a+Math.abs(t.legs?.[0]?.amount||0),0));
  const ca=monthly?.income||0;
- const charges=monthly?.expense||0;
+ const dividendesHolding=Math.round(Math.abs(txns.filter(t=>{const desc=((t.description||"")+(t.reference||"")).toLowerCase();return/scale\s*corp|dividende.*holding|holding.*dividende/.test(desc)&&(t.legs?.[0]?.amount||0)<0;}).reduce((a,t)=>a+Math.abs(t.legs?.[0]?.amount||0),0)));
+ const charges=Math.max(0,(monthly?.expense||0)-dividendesHolding);
  const chargesOps=Math.round(sumTxns(["abonnement","subscription","saas","hosting","heroku","vercel","aws","stripe fee"]));
  const salaire=Math.round(sumTxns(["salaire","salary","freelance","prestation"]));
  const pub=Math.round(sumTxns(["facebook","google ads","meta ads","tiktok","pub ","advertising","adwords"]));
@@ -83,7 +84,7 @@ function autoGenerateReport(socId, month, socBank, ghlData, subs){
  const tresoSoc=sb?.balance||0;
  const activeClients=gd?.ghlClients?.filter(c=>c.status==="active")||[];
  const mrr=activeClients.reduce((a,c)=>{const b=c.billing;if(!b)return a;if(b.freq==="monthly")return a+pf(b.amount);if(b.freq==="annual")return a+pf(b.amount)/12;return a;},0);
- return{ca:String(Math.round(ca)),charges:String(Math.round(charges)),chargesOps:String(chargesOps),salaire:String(salaire),formation:String(formation),clients:String(clients),churn:"",pub:String(pub),leads:String(leads),leadsContact:"",leadsClos:String(gd?.stats?.wonDeals||0),notes:"Auto-généré depuis Revolut + GHL",mrr:String(Math.round(mrr)),pipeline:String(Math.round(pipeline)),tresoSoc:String(Math.round(tresoSoc)),ok:false,at:new Date().toISOString(),comment:"",_auto:true};
+ return{ca:String(Math.round(ca)),charges:String(Math.round(charges)),chargesOps:String(chargesOps),salaire:String(salaire),formation:String(formation),clients:String(clients),churn:"",pub:String(pub),leads:String(leads),leadsContact:"",leadsClos:String(gd?.stats?.wonDeals||0),notes:"Auto-généré depuis Revolut + GHL",mrr:String(Math.round(mrr)),pipeline:String(Math.round(pipeline)),tresoSoc:String(Math.round(tresoSoc)),dividendesHolding:String(dividendesHolding),ok:false,at:new Date().toISOString(),comment:"",_auto:true};
 }
 const DEMO_JOURNAL={};
 const DEMO_ACTIONS=[];
@@ -452,7 +453,7 @@ function buildReportSlackMsg(soc,report,mo){
    {type:"section",text:{type:"mrkdwn",text:`${slackMention(soc)} a soumis son rapport pour *${ml(mo)}*`}},
    {type:"section",fields:[
     {type:"mrkdwn",text:`*💰 CA:* ${fmt(ca)}€`},
-    {type:"mrkdwn",text:`*📉 Charges:* ${fmt(ch)}€`},
+    {type:"mrkdwn",text:`*📉 Charges:* ${fmt(ch)}€${pf(report.dividendesHolding)>0?` (+ 🏛️ ${fmt(report.dividendesHolding)}€ dividendes)`:""}`},
     {type:"mrkdwn",text:`*📊 Marge:* ${fmt(marge)}€ (${margePct}%)`},
     ...(pf(report.pipeline)>0?[{type:"mrkdwn",text:`*🔮 Pipeline:* ${fmt(report.pipeline)}€`}]:[]),
     ...(pf(report.tresoSoc)>0?[{type:"mrkdwn",text:`*🏦 Tréso:* ${fmt(report.tresoSoc)}€`}]:[]),
@@ -936,10 +937,12 @@ const TX_CATEGORIES=[
  {id:"equipe",label:"👥 Équipe",icon:"👥"},
  {id:"transfert",label:"🏦 Transfert interne",icon:"🏦"},
  {id:"autres",label:"📦 Autres dépenses",icon:"📦"},
+ {id:"dividendes",label:"🏛️ Dividendes Holding",icon:"🏛️"},
 ];
 function categorizeTransaction(tx){
  const leg=tx.legs?.[0];if(!leg)return{id:"autres",label:"📦 Autres dépenses",icon:"📦"};
  const amt=leg.amount;const ref=((leg.description||"")+" "+(tx.reference||"")).toLowerCase();
+ if(/scale\s*corp|dividende.*holding|holding.*dividende/.test(ref))return TX_CATEGORIES[8];
  if(amt>0)return TX_CATEGORIES[1];
  if(/loyer|rent/.test(ref))return TX_CATEGORIES[2];
  if(/facebook|google ads|meta|tiktok|pub/.test(ref))return TX_CATEGORIES[3];
@@ -1019,8 +1022,8 @@ function BankingTransactions({transactions,cs}){
   return txs;
  },[transactions,catFilter,typeFilter,periodFilter,sortBy,search]);
  const totals=useMemo(()=>{
-  let inp=0,out=0;filtered.forEach(t=>{const a=t.legs?.[0]?.amount||0;if(a>0)inp+=a;else out+=Math.abs(a);});
-  return{inp:Math.round(inp),out:Math.round(out),net:Math.round(inp-out),count:filtered.length};
+  let inp=0,out=0,div=0;filtered.forEach(t=>{const a=t.legs?.[0]?.amount||0;if(a>0)inp+=a;else{out+=Math.abs(a);if(categorizeTransaction(t).id==="dividendes")div+=Math.abs(a);}});
+  return{inp:Math.round(inp),out:Math.round(out),net:Math.round(inp-out),count:filtered.length,div:Math.round(div)};
  },[filtered]);
  const selS={background:C.bg,border:`1px solid ${C.brd}`,borderRadius:6,color:C.t,padding:"4px 6px",fontSize:10,fontFamily:FONT,outline:"none"};
  return <>
@@ -1037,15 +1040,16 @@ function BankingTransactions({transactions,cs}){
    <div style={{flex:1,background:C.card,border:`1px solid ${C.brd}`,borderRadius:8,padding:"6px 8px"}}><div style={{fontSize:8,color:C.td,fontWeight:700}}>NET</div><div style={{fontWeight:800,fontSize:12,color:totals.net>=0?C.g:C.r}}>{fmt(totals.net)}€</div></div>
    <div style={{flex:1,background:C.card,border:`1px solid ${C.brd}`,borderRadius:8,padding:"6px 8px"}}><div style={{fontSize:8,color:C.td,fontWeight:700}}>TX</div><div style={{fontWeight:800,fontSize:12,color:C.t}}>{totals.count}</div></div>
   </div>
+  {totals.div>0&&<div style={{background:"#7c3aed11",border:"1px solid #7c3aed33",borderRadius:8,padding:"6px 10px",marginBottom:8,display:"flex",alignItems:"center",gap:6,fontSize:11}}><span style={{fontSize:13}}>🏛️</span><span style={{color:"#7c3aed",fontWeight:700}}>Total dividendes holding : {fmt(totals.div)}€</span><span style={{color:C.td,fontSize:10}}>(non comptés dans les charges opérationnelles)</span></div>}
   <Sect title="Transactions" sub={`${totals.count} résultats`}>
    {filtered.slice(0,30).map((tx,i)=>{
     const leg=tx.legs?.[0];if(!leg)return null;
     const isIn=leg.amount>0;const desc=leg.description||tx.reference||tx.merchant?.name||"Transaction";
-    const cat=categorizeTransaction(tx);
-    return <div key={tx.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:C.card,borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:2}}>
-    <div style={{width:26,height:26,borderRadius:7,background:isIn?C.gD:C.rD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:isIn?C.g:C.r,flexShrink:0}}>{cat.icon||"↑"}</div>
-    <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{desc}</div><div style={{fontSize:10,color:C.td}}>{new Date(tx.created_at).toLocaleDateString("fr-FR")} · {tx.type==="card_payment"?"Carte":"Virement"} · <span style={{color:C.tm}}>{cat.label}</span></div></div>
-    <span style={{fontWeight:800,fontSize:13,color:isIn?C.g:C.r,whiteSpace:"nowrap"}}>{isIn?"+":""}{fmt(leg.amount)} {cs(leg.currency)}</span>
+    const cat=categorizeTransaction(tx);const isDiv=cat.id==="dividendes";
+    return <div key={tx.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:isDiv?"#7c3aed11":C.card,borderRadius:8,border:`1px solid ${isDiv?"#7c3aed33":C.brd}`,marginBottom:2}}>
+    <div style={{width:26,height:26,borderRadius:7,background:isIn?C.gD:isDiv?"#7c3aed22":C.rD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:isIn?C.g:isDiv?"#7c3aed":C.r,flexShrink:0}}>{cat.icon||"↑"}</div>
+    <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{desc}</div><div style={{fontSize:10,color:C.td}}>{new Date(tx.created_at).toLocaleDateString("fr-FR")} · {tx.type==="card_payment"?"Carte":"Virement"} · <span style={{color:isDiv?"#7c3aed":C.tm}}>{cat.label}</span></div></div>
+    <span style={{fontWeight:800,fontSize:13,color:isIn?C.g:isDiv?"#7c3aed":C.r,whiteSpace:"nowrap"}}>{isIn?"+":""}{fmt(leg.amount)} {cs(leg.currency)}</span>
     </div>;
    })}
    {filtered.length===0&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Aucune transaction trouvée</div>}
@@ -2944,6 +2948,7 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
     {pf(f.ca)>0&&<div style={{marginTop:4,marginBottom:8,padding:"6px 8px",background:C.card2,borderRadius:6,display:"flex",flexWrap:"wrap",gap:8}}>
      <span style={{fontSize:10,color:C.g,fontWeight:700}}>Marge : {fmt(pf(f.ca)-pf(f.charges))}€ ({pct(pf(f.ca)-pf(f.charges),pf(f.ca))}%)</span>
      <span style={{fontSize:10,color:C.acc,fontWeight:700}}>→ Scale : {fmt(remontee)}€</span>
+     {pf(f.dividendesHolding)>0&&<span style={{fontSize:10,color:"#7c3aed",fontWeight:700}}>🏛️ Dividendes holding : {fmt(pf(f.dividendesHolding))}€</span>}
     </div>}
     {/* Collapsible: détail charges */}
     <CollapsibleSection title="Détail des charges" icon="🧾">
