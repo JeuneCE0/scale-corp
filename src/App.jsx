@@ -290,7 +290,8 @@ function fuzzyMatch(a,b){
 }
 function matchSubsToRevolut(subs,socBankData,socId){
  if(!socBankData?.transactions)return subs.map(s=>({...s,revMatch:null}));
- const txns=socBankData.transactions.filter(t=>{const amt=t.legs?.[0]?.amount;return amt&&amt<0;});
+ const excluded=EXCLUDED_ACCOUNTS[socId]||[];
+ const txns=socBankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded.includes(leg.account_id))return false;return leg.amount<0;});
  return subs.map(sub=>{
   if(sub.socId!==socId&&sub.socId!=="holding")return{...sub,revMatch:null};
   const subName=sub.name;const subAmt=sub.amount;
@@ -464,7 +465,7 @@ function buildReportSlackMsg(soc,report,mo){
    ]},
    ...(pf(report.leads)>0?[{type:"section",text:{type:"mrkdwn",text:`*Funnel:* ${report.leads} leads → ${report.leadsContact} contactés → ${report.leadsClos} closés`}}]:[]),
    ...(report.notes?[{type:"section",text:{type:"mrkdwn",text:`*📝 Notes:* ${report.notes}`}}]:[]),
-   {type:"context",elements:[{type:"mrkdwn",text:`Remontée Scale: *${fmt((soc.pT==="ca"?ca:Math.max(0,marge))*soc.pP/100)}€* (${soc.pP}% ${soc.pT==="ca"?"du CA":"des bénéfices"})`}]},
+   {type:"context",elements:[{type:"mrkdwn",text:`Remontée théorique: *${fmt((soc.pT==="ca"?ca:Math.max(0,marge))*soc.pP/100)}€* (${soc.pP}% ${soc.pT==="ca"?"du CA":"des bénéfices"})${pf(report.dividendesHolding)>0?` · Déjà viré: ${fmt(pf(report.dividendesHolding))}€ · Reste: ${fmt(Math.max(0,(soc.pT==="ca"?ca:Math.max(0,marge))*soc.pP/100-pf(report.dividendesHolding)))}€`:""}`}]},
   ],
  };
 }
@@ -545,7 +546,7 @@ async function syncSocRevolut(soc){
  if(!accounts)return null;
  const now=new Date();const cm=curM();const pm=prevM(cm);
  const from1=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString();
- const txnsRaw=await fetchRevolut(soc.revolutCompany,`/transactions?from=${from1}&count=100`);
+ const txnsRaw=await fetchRevolut(soc.revolutCompany,`/transactions?from=${from1}&count=500`);
  const txns=(Array.isArray(txnsRaw)?txnsRaw:[]).map(t=>{
   const dt=new Date(t.created_at);
   return{...t,month:`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`};
@@ -958,9 +959,10 @@ function categorizeTransaction(tx){
  if(isRealDividend)return TX_CATEGORIES[8];
  if(amt>0)return TX_CATEGORIES[1];
  if(/loyer|rent/.test(ref))return TX_CATEGORIES[2];
- if(/facebook|google ads|meta|tiktok|pub/.test(ref))return TX_CATEGORIES[3];
- if(/stripe|notion|slack|ghl|zapier|skool|adobe|figma|revolut/.test(ref))return TX_CATEGORIES[4];
- if(/salaire|salary|freelance|prestataire/.test(ref))return TX_CATEGORIES[5];
+ if(/facebook|google ads|meta ads|meta|tiktok|pub/.test(ref))return TX_CATEGORIES[3];
+ if(/lecosysteme|l.{0,2}ecosyst[eè]me/i.test(ref))return TX_CATEGORIES[4];
+ if(/stripe|notion|slack|ghl|zapier|skool|adobe|figma|revolut|gohighlevel|highlevel|canva|chatgpt|openai|anthropic|vercel|github|zoom|brevo|make\.com|clickup|airtable/.test(ref))return TX_CATEGORIES[4];
+ if(/lucien|salaire|salary|freelance|prestataire|prestation/.test(ref))return TX_CATEGORIES[5];
  if(tx.type==="transfer")return TX_CATEGORIES[6];
  return TX_CATEGORIES[7];
 }
@@ -1055,13 +1057,14 @@ function BankingTransactions({transactions,cs}){
   </div>
   {totals.div>0&&<div style={{background:"#7c3aed11",border:"1px solid #7c3aed33",borderRadius:8,padding:"6px 10px",marginBottom:8,display:"flex",alignItems:"center",gap:6,fontSize:11}}><span style={{fontSize:13}}>🏛️</span><span style={{color:"#7c3aed",fontWeight:700}}>Total dividendes holding : {fmt(totals.div)}€</span><span style={{color:C.td,fontSize:10}}>(non comptés dans les charges opérationnelles)</span></div>}
   <Sect title="Transactions" sub={`${totals.count} résultats`}>
-   {filtered.slice(0,30).map((tx,i)=>{
+   {filtered.map((tx,i)=>{
     const leg=tx.legs?.[0];if(!leg)return null;
     const isIn=leg.amount>0;const desc=leg.description||tx.reference||tx.merchant?.name||"Transaction";
     const cat=categorizeTransaction(tx);const isDiv=cat.id==="dividendes";
+    const catColors={"revenus":C.g,"loyer":"#f59e0b","pub":"#ec4899","abonnements":C.b,"equipe":C.o,"transfert":"#6366f1","dividendes":"#7c3aed","autres":C.td};
     return <div key={tx.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:isDiv?"#7c3aed11":C.card,borderRadius:8,border:`1px solid ${isDiv?"#7c3aed33":C.brd}`,marginBottom:2}}>
     <div style={{width:26,height:26,borderRadius:7,background:isIn?C.gD:isDiv?"#7c3aed22":C.rD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:isIn?C.g:isDiv?"#7c3aed":C.r,flexShrink:0}}>{cat.icon||"↑"}</div>
-    <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{desc}</div><div style={{fontSize:10,color:C.td}}>{new Date(tx.created_at).toLocaleDateString("fr-FR")} · {tx.type==="card_payment"?"Carte":"Virement"} · <span style={{color:isDiv?"#7c3aed":C.tm}}>{cat.label}</span></div></div>
+    <div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{desc}</span><span style={{fontSize:9,padding:"1px 6px",borderRadius:8,background:(catColors[cat.id]||C.td)+"22",color:catColors[cat.id]||C.td,fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>{cat.label}</span></div><div style={{fontSize:10,color:C.td}}>{new Date(tx.created_at).toLocaleDateString("fr-FR")} · {tx.type==="card_payment"?"Carte":"Virement"}</div></div>
     <span style={{fontWeight:800,fontSize:13,color:isIn?C.g:isDiv?"#7c3aed":C.r,whiteSpace:"nowrap"}}>{isIn?"+":""}{fmt(leg.amount)} {cs(leg.currency)}</span>
     </div>;
    })}
@@ -1237,7 +1240,10 @@ function SocBankWidget({bankData,onSync,soc}){
   <div style={{color:C.td,fontSize:11,marginBottom:10}}>Connecte ton compte Revolut</div>
   <Btn small onClick={onSync}>Charger données demo</Btn>
  </Card>;
- const{accounts,transactions,balance,monthly,lastSync,isDemo}=bankData;
+ const{accounts:allAccounts,transactions:allTransactions,balance,monthly,lastSync,isDemo}=bankData;
+ const excl=EXCLUDED_ACCOUNTS[soc?.id]||[];
+ const accounts=allAccounts.filter(a=>!excl.includes(a.id));
+ const transactions=allTransactions.filter(t=>{const leg=t.legs?.[0];return!leg||!excl.includes(leg.account_id);});
  const cm=curM(),pm=prevM(cm);
  const cmData=monthly?.[cm],pmData=monthly?.[pm];
  const inflow=transactions.filter(t=>t.legs?.[0]?.amount>0).reduce((s,t)=>s+t.legs[0].amount,0);
@@ -1262,14 +1268,13 @@ function SocBankWidget({bankData,onSync,soc}){
    </div>
   </Card>}
   {accounts.length>0&&<Sect title="Comptes">{accounts.map((a,i)=><div key={a.id} className={`fu d${Math.min(i+1,4)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",background:C.card,borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:2}}><span style={{fontSize:12}}>🏦</span><span style={{flex:1,fontWeight:600,fontSize:12}}>{a.name}</span><span style={{fontWeight:800,fontSize:13,color:C.g}}>{fmt(a.balance)} {CURR_SYMBOLS[a.currency]||a.currency}</span></div>)}</Sect>}
-  <Sect title="Transactions récentes">
-   {transactions.slice(0,10).map((tx,i)=>{const leg=tx.legs?.[0];if(!leg)return null;const isIn=leg.amount>0;
-    return <div key={tx.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",background:C.card,borderRadius:7,border:`1px solid ${C.brd}`,marginBottom:2}}>
-    <span style={{width:20,height:20,borderRadius:5,background:isIn?C.gD:C.rD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:isIn?C.g:C.r,flexShrink:0}}>{isIn?"↓":"↑"}</span>
-    <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{leg.description||tx.reference||"—"}</div><div style={{fontSize:9,color:C.td}}>{new Date(tx.created_at).toLocaleDateString("fr-FR")}</div></div>
-    <span style={{fontWeight:700,fontSize:11,color:isIn?C.g:C.r}}>{isIn?"+":""}{fmt(leg.amount)}€</span>
-    </div>;
-   })}
+  <Sect title={`Transactions du mois`} sub={`${(()=>{const excl=EXCLUDED_ACCOUNTS[soc?.id]||[];const now2=new Date();const mStart=new Date(now2.getFullYear(),now2.getMonth(),1);return transactions.filter(tx=>{const leg=tx.legs?.[0];if(!leg)return false;if(excl.includes(leg.account_id))return false;return new Date(tx.created_at)>=mStart;}).length;})()} transactions`}>
+   {(()=>{const excl=EXCLUDED_ACCOUNTS[soc?.id]||[];const now2=new Date();const mStart=new Date(now2.getFullYear(),now2.getMonth(),1);const monthTx=transactions.filter(tx=>{const leg=tx.legs?.[0];if(!leg)return false;if(excl.includes(leg.account_id))return false;return new Date(tx.created_at)>=mStart;});return monthTx.length===0?<div style={{color:C.td,fontSize:11,padding:12,textAlign:"center"}}>Aucune transaction ce mois</div>:monthTx.map((tx,i)=>{const leg=tx.legs?.[0];if(!leg)return null;const isIn=leg.amount>0;const cat=categorizeTransaction(tx);const isDiv=cat.id==="dividendes";const catColors={"revenus":C.g,"loyer":"#f59e0b","pub":"#ec4899","abonnements":C.b,"equipe":C.o,"transfert":"#6366f1","dividendes":"#7c3aed","autres":C.td};
+    return <div key={tx.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",background:isDiv?"#7c3aed11":C.card,borderRadius:7,border:`1px solid ${isDiv?"#7c3aed33":C.brd}`,marginBottom:2}}>
+    <span style={{width:20,height:20,borderRadius:5,background:isIn?C.gD:isDiv?"#7c3aed22":C.rD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:isIn?C.g:isDiv?"#7c3aed":C.r,flexShrink:0}}>{cat.icon||"↑"}</span>
+    <div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontWeight:600,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{leg.description||tx.reference||"—"}</span><span style={{fontSize:9,padding:"1px 5px",borderRadius:8,background:(catColors[cat.id]||C.td)+"22",color:catColors[cat.id]||C.td,fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>{cat.label}</span></div><div style={{fontSize:9,color:C.td}}>{new Date(tx.created_at).toLocaleDateString("fr-FR")}</div></div>
+    <span style={{fontWeight:700,fontSize:11,color:isIn?C.g:isDiv?"#7c3aed":C.r}}>{isIn?"+":""}{fmt(leg.amount)}€</span>
+    </div>;});})()}
   </Sect>
  </>;
 }
@@ -2960,8 +2965,9 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
     <Inp label="Pipeline M+1" value={f.pipeline} onChange={v=>setF({...f,pipeline:v})} type="number" suffix="€"/>
     {pf(f.ca)>0&&<div style={{marginTop:4,marginBottom:8,padding:"6px 8px",background:C.card2,borderRadius:6,display:"flex",flexWrap:"wrap",gap:8}}>
      <span style={{fontSize:10,color:C.g,fontWeight:700}}>Marge : {fmt(pf(f.ca)-pf(f.charges))}€ ({pct(pf(f.ca)-pf(f.charges),pf(f.ca))}%)</span>
-     <span style={{fontSize:10,color:C.acc,fontWeight:700}}>→ Scale : {fmt(remontee)}€</span>
-     {pf(f.dividendesHolding)>0&&<span style={{fontSize:10,color:"#7c3aed",fontWeight:700}}>🏛️ Dividendes holding : {fmt(pf(f.dividendesHolding))}€</span>}
+     <span style={{fontSize:10,color:C.acc,fontWeight:700}}>→ Remontée théorique : {fmt(remontee)}€</span>
+     {pf(f.dividendesHolding)>0&&<><span style={{fontSize:10,color:"#7c3aed",fontWeight:700}}>🏛️ Déjà viré : {fmt(pf(f.dividendesHolding))}€</span>
+     <span style={{fontSize:10,color:remontee-pf(f.dividendesHolding)>0?C.o:C.g,fontWeight:700}}>{remontee-pf(f.dividendesHolding)>0?`⚠ Reste à verser : ${fmt(remontee-pf(f.dividendesHolding))}€`:`✅ Trop-perçu : ${fmt(pf(f.dividendesHolding)-remontee)}€`}</span></>}
     </div>}
     {/* Collapsible: détail charges */}
     <CollapsibleSection title="Détail des charges" icon="🧾">
@@ -4139,6 +4145,7 @@ export default function App(){
     const base=s.pT==="ca"?ca2:Math.max(0,ca2-ch2);const remontee=base*s.pP/100;
     const margeNet=ca2-ch2;const margePct2=ca2>0?Math.round(margeNet/ca2*100):0;
     const salaire=r?pf(r.salaire):0;
+    const divHold=r?pf(r.dividendesHolding):0;const resteVerser=remontee-divHold;
     return <Card key={s.id} accent={s.color} style={{marginBottom:4,padding:"10px 14px"}} delay={Math.min(i+1,8)}>
     <div style={{display:"flex",alignItems:"center",gap:8}}>
     <div style={{width:28,height:28,borderRadius:7,background:s.color+"22",border:`1.5px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:11,color:s.color}}>{s.nom[0]}</div>
@@ -4147,15 +4154,17 @@ export default function App(){
     <span style={{fontWeight:700,fontSize:12}}>{s.nom}</span>
     <span style={{fontSize:9,color:C.td}}>({s.pP}% {s.pT==="ca"?"du CA":"des bénéfices"})</span>
     </div>
-    <div style={{display:"flex",gap:8,marginTop:3}}>
+    <div style={{display:"flex",gap:8,marginTop:3,flexWrap:"wrap"}}>
     <span style={{fontSize:9,color:C.td}}>CA: <strong style={{color:C.t}}>{fmt(ca2)}€</strong></span>
     <span style={{fontSize:9,color:C.td}}>Marge: <strong style={{color:margeNet>=0?C.g:C.r}}>{fmt(margeNet)}€ ({margePct2}%)</strong></span>
     {salaire>0&&<span style={{fontSize:9,color:C.td}}>Rém fondateur: <strong style={{color:C.o}}>{fmt(salaire)}€</strong></span>}
+    {divHold>0&&<span style={{fontSize:9,color:"#7c3aed"}}>🏛️ Viré: <strong>{fmt(divHold)}€</strong></span>}
     </div>
     </div>
     <div style={{textAlign:"right"}}>
     <div style={{fontWeight:900,fontSize:16,color:C.acc}}>{fmt(remontee)}€</div>
-    <div style={{fontSize:8,color:C.td}}>remontée</div>
+    <div style={{fontSize:8,color:C.td}}>théorique</div>
+    {divHold>0&&<div style={{fontSize:9,fontWeight:700,color:resteVerser>0?C.o:C.g,marginTop:2}}>{resteVerser>0?`⚠ Reste ${fmt(resteVerser)}€`:`✅ +${fmt(Math.abs(resteVerser))}€`}</div>}
     </div>
     </div>
     </Card>;
