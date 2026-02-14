@@ -140,7 +140,7 @@ function autoDetectSubscriptions(bankData,socId){
  const excluded=EXCLUDED_ACCOUNTS[socId]||[];
  const txns=bankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded.includes(leg.account_id))return false;return leg.amount<0;});
  const byDesc={};
- txns.forEach(t=>{const desc=(t.reference||t.description||t.legs?.[0]?.description||"").trim();const amt=Math.abs(t.legs[0].amount);if(!desc||amt<1)return;const key=desc.toLowerCase().replace(/[^a-z0-9]/g,"");if(!byDesc[key])byDesc[key]={desc,amounts:[],dates:[],key};byDesc[key].amounts.push(Math.round(amt));byDesc[key].dates.push(new Date(t.created_at));});
+ txns.forEach(t=>{const desc=(t.reference||t.description||t.legs?.[0]?.description||"").trim();const amt=Math.abs(t.legs?.[0]?.amount||0);if(!desc||amt<1)return;const key=desc.toLowerCase().replace(/[^a-z0-9]/g,"");if(!byDesc[key])byDesc[key]={desc,amounts:[],dates:[],key};byDesc[key].amounts.push(Math.round(amt));byDesc[key].dates.push(new Date(t.created_at));});
  const subs=[];
  const KNOWN=[/gohighlevel|highlevel/i,/zapier/i,/slack/i,/notion/i,/stripe/i,/revolut/i,/adobe|creative cloud/i,/figma/i,/skool/i,/convertkit/i,/canva/i,/chatgpt|openai/i,/anthropic|claude/i,/google workspace|google storage/i,/microsoft/i,/aws|amazon web/i,/vercel/i,/github/i,/zoom/i,/hubspot/i,/mailchimp/i,/brevo/i,/heroku/i,/airtable/i,/make\.com/i,/clickup/i];
  Object.values(byDesc).forEach(g=>{
@@ -331,7 +331,7 @@ function matchSubsToRevolut(subs,socBankData,socId){
   const subName=sub.name;const subAmt=sub.amount;
   const matches=txns.filter(tx=>{
    const desc=tx.legs?.[0]?.description||tx.reference||tx.merchant?.name||"";
-   const txAmt=Math.abs(tx.legs[0].amount);
+   const txAmt=Math.abs(tx.legs?.[0]?.amount||0);
    const nameSim=fuzzyMatch(subName,desc);
    const amtDiff=subAmt>0?Math.abs(txAmt-subAmt)/subAmt:1;
    return nameSim>=.5&&amtDiff<.3;
@@ -345,7 +345,7 @@ function matchSubsToRevolut(subs,socBankData,socId){
   return{...sub,revMatch:{
    txId:last.id,
    txDesc:last.legs?.[0]?.description||last.reference||"",
-   txAmount:Math.abs(last.legs[0].amount),
+   txAmount:Math.abs(last.legs?.[0]?.amount||0),
    lastPayment:lastDate.toISOString(),
    nextPayment:nextDate.toISOString(),
    matchCount:matches.length,
@@ -423,7 +423,7 @@ async function syncGHLForSoc(soc){
   billing:contactOppStatus[c.id]==="active"?{type:"fixed",amount:0,freq:"monthly",commitment:0,startDate:c.dateAdded?.slice(0,10)||""}:null,
   status:contactOppStatus[c.id]||"prospect",
   domain:((c.tags||[]).find(t=>t.startsWith("domaine:"))||"").replace("domaine:",""),
-  notes:(c.tags||[]).filter(t=>!t.startsWith("domaine:")).join(", "),ghlId:c.id,stripeId:"",at:c.dateAdded||new Date().toISOString()
+  source:c.source||"",notes:(c.tags||[]).filter(t=>!t.startsWith("domaine:")).join(", "),ghlId:c.id,stripeId:"",at:c.dateAdded||new Date().toISOString()
  }));
  // Fetch calendar events (calls)
  const evData=await fetchGHL("calendar_events",loc,{startTime:Date.now()-365*24*60*60*1000,endTime:Date.now()});
@@ -727,7 +727,7 @@ function buildAIContext(socs,reps,hold,actions,pulses,allM,revData,socBank,okrs,
   if(msU.length>0){const top3=msU.sort((a2,b2)=>b2.tier-a2.tier).slice(0,3);ctx+=`  Milestones: ${msU.length}/${ms.length} — ${top3.map(m2=>m2.label).join(", ")}\n`;}
   const sCl=(clients2||[]).filter(c=>c.socId===s.id);
   if(sCl.length>0){const actCl=sCl.filter(c=>c.status==="active");const mrr=actCl.reduce((a2,c)=>a2+clientMonthlyRevenue(c),0);ctx+=`  Clients: ${actCl.length} actifs/${sCl.length} total, MRR clients=${fmt(mrr)}€\n`;
-   const byT={fixed:sCl.filter(c=>c.billing?.type==="fixed"),percent:sCl.filter(c=>c.billing?.type==="percent"),oneoff:sCl.filter(c=>c.billing?.type==="oneoff")};
+   const byT={fixed:sCl.filter(c=>c.billing?.type==="fixed"),percent:sCl.filter(c=>c.billing?.type==="percent"),hybrid:sCl.filter(c=>c.billing?.type==="hybrid"),oneoff:sCl.filter(c=>c.billing?.type==="oneoff")};
    if(byT.fixed.length>0)ctx+=`    Forfaits: ${byT.fixed.length} (${byT.fixed.filter(c=>c.status==="active").map(c=>`${c.name}:${fmt(c.billing?.amount||0)}€/m`).join(", ")})\n`;
    if(byT.percent.length>0)ctx+=`    % deals: ${byT.percent.length} (${byT.percent.filter(c=>c.status==="active").map(c=>`${c.name}:${c.billing?.percent}% ${c.billing?.basis}`).join(", ")})\n`;
    if(byT.oneoff.length>0)ctx+=`    One-off: ${byT.oneoff.length} · Total ${fmt(byT.oneoff.reduce((a2,c)=>a2+(c.billing?.amount||0),0))}€\n`;
@@ -1041,8 +1041,8 @@ function BankingPanel({revData,onSync,compact}){
   </Card>;
  }
  const{accounts,transactions,totalEUR,lastSync,isDemo}=revData;
- const inflow=transactions.filter(t=>t.legs?.[0]?.amount>0).reduce((s,t)=>s+t.legs[0].amount,0);
- const outflow=Math.abs(transactions.filter(t=>t.legs?.[0]?.amount<0).reduce((s,t)=>s+t.legs[0].amount,0));
+ const inflow=transactions.filter(t=>t.legs?.[0]?.amount>0).reduce((s,t)=>s+t.legs?.[0]?.amount||0,0);
+ const outflow=Math.abs(transactions.filter(t=>t.legs?.[0]?.amount<0).reduce((s,t)=>s+t.legs?.[0]?.amount||0,0));
  const cs=v=>CURR_SYMBOLS[v]||v;
  if(compact)return <Card style={{padding:12}} accent={C.g}>
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
@@ -1319,8 +1319,8 @@ function SocBankWidget({bankData,onSync,soc}){
  const transactions=allTransactions.filter(t=>{const leg=t.legs?.[0];return!leg||!excl.includes(leg.account_id);});
  const cm=curM(),pm=prevM(cm);
  const cmData=monthly?.[cm],pmData=monthly?.[pm];
- const inflow=transactions.filter(t=>t.legs?.[0]?.amount>0).reduce((s,t)=>s+t.legs[0].amount,0);
- const outflow=Math.abs(transactions.filter(t=>t.legs?.[0]?.amount<0).reduce((s,t)=>s+t.legs[0].amount,0));
+ const inflow=transactions.filter(t=>t.legs?.[0]?.amount>0).reduce((s,t)=>s+t.legs?.[0]?.amount||0,0);
+ const outflow=Math.abs(transactions.filter(t=>t.legs?.[0]?.amount<0).reduce((s,t)=>s+t.legs?.[0]?.amount||0,0));
  const now2=new Date();const mStart=new Date(now2.getFullYear(),now2.getMonth(),1);
  const monthTx=transactions.filter(tx=>{const leg=tx.legs?.[0];if(!leg)return false;if(excl.includes(leg.account_id))return false;return new Date(tx.created_at)>=mStart;});
  const filteredTx=txFilter==="all"?monthTx:monthTx.filter(tx=>getCat(tx).id===txFilter);
@@ -2132,12 +2132,12 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
   <div style={{fontWeight:700,fontSize:15,marginBottom:6,color:C.t}}>Aucun client</div>
   <div style={{color:C.td,fontSize:12,marginBottom:16}}>Connectez GHL ou ajoutez des clients manuellement</div>
   <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-   <Btn small onClick={()=>addClient("fixed")}>+ Client fixe</Btn>
-   <Btn small onClick={()=>addClient("percent")}>+ Client %</Btn>
-   <Btn small onClick={()=>addClient("oneoff")}>+ Client one-off</Btn>
+   <Btn small onClick={()=>addClient("fixed")}>+ Forfait</Btn>
+   <Btn small v="secondary" onClick={()=>addClient("percent")}>+ %</Btn>
+   <Btn small v="secondary" onClick={()=>addClient("hybrid")}>+ Fixe+%</Btn>
+   <Btn small v="secondary" onClick={()=>addClient("oneoff")}>+ One-off</Btn>
   </div>
-  {editCl&&<ClientEditModal cl={editCl} onSave={saveCl} onClose={()=>setEditCl(null)} onDelete={deleteCl} soc={soc} invoices={clientInvoices(editCl.id)} regenInvoices={regenInvoices} sendInvoice={sendInvoice} markPaid={markPaid} cancelInvoice={cancelInvoice} sending={sending}/>}
- </div>;
+  </div>;
  return <div>
   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:6,marginBottom:12}}>
    <Card accent={C.acc} style={{padding:"10px 12px",textAlign:"center"}} delay={1}>
@@ -2632,7 +2632,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
        <span style={{fontWeight:800,fontSize:12,color:C.g}}>{fmt(total)}€ total</span>
       </div>
       <div style={{maxHeight:180,overflowY:"auto"}}>
-      {matched.map((tx,i)=>{const leg=tx.legs[0];return <div key={tx.id||i} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:i<matched.length-1?`1px solid ${C.brd}`:"none"}}>
+      {matched.map((tx,i)=>{const leg=tx.legs?.[0];return <div key={tx.id||i} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:i<matched.length-1?`1px solid ${C.brd}`:"none"}}>
        <span style={{width:18,height:18,borderRadius:5,background:C.gD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:C.g,flexShrink:0}}>💰</span>
        <div style={{flex:1,minWidth:0}}>
         <div style={{fontSize:10,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{leg.description||tx.reference||"—"}</div>
@@ -2998,7 +2998,7 @@ function genPorteurNotifications(soc,reps,socBank,ghlData,clients,allM){
  // Recent positive transactions > 100€
  if(bankData?.transactions){
   bankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded.includes(leg.account_id))return false;return leg.amount>100;}).slice(0,3).forEach(t=>{
-   const leg=t.legs[0];
+   const leg=t.legs?.[0];
    notifs.push({id:"tx_"+t.id,icon:"💰",msg:`Paiement reçu: +${fmt(leg.amount)}€`,time:t.created_at,type:"success"});
   });
  }
@@ -3077,7 +3077,7 @@ function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
    const catTotals={};
    if(bankData?.transactions){
     bankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded.includes(leg.account_id))return false;const d=t.created_at||"";return d.startsWith(cm)&&leg.amount<0;}).forEach(t=>{
-     const cat=categorizeTransaction(t);const amt=Math.abs(t.legs[0].amount);
+     const cat=categorizeTransaction(t);const amt=Math.abs(t.legs?.[0]?.amount||0);
      catTotals[cat.label]=(catTotals[cat.label]||0)+amt;
     });
    }
@@ -3281,7 +3281,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
    if(bankData?.transactions){
     const now2=new Date();const mStart2=new Date(now2.getFullYear(),now2.getMonth(),1);
     bankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded2.includes(leg.account_id))return false;return new Date(t.created_at)>=mStart2&&leg.amount<0;}).forEach(t=>{
-     const cat=categorizeTransaction(t);const amt=Math.abs(t.legs[0].amount);
+     const cat=categorizeTransaction(t);const amt=Math.abs(t.legs?.[0]?.amount||0);
      if(cat.id!=="revenus"&&cat.id!=="transfert")catTotals[cat.label]=(catTotals[cat.label]||0)+amt;
     });
    }
