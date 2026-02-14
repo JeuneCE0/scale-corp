@@ -53,6 +53,11 @@ const CSS=`@import url('https://fonts.googleapis.com/css2?family=Teachers:wght@4
 .mi{animation:mi .25s cubic-bezier(.16,1,.3,1)}.gl{animation:gl 2.5s ease infinite}.fl{animation:fl 3s ease-in-out infinite}
 .pg{animation:bg .5s cubic-bezier(.4,0,.2,1) both}
 .dots span{animation:typing 1.4s infinite both}.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+@keyframes slideInRight{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes slideInUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes typeReveal{from{max-height:0;opacity:0}to{max-height:600px;opacity:1}}
+@media(max-width:768px){.sidebar-desktop{display:none !important}.main-content{margin-left:0 !important}.mobile-header{display:flex !important}.kpi-grid-responsive{grid-template-columns:1fr 1fr !important}.chart-responsive{min-height:180px}.tx-list-mobile .tx-detail{display:none}}
+@media(min-width:769px){.mobile-header{display:none !important}}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:${C.brd};border-radius:3px}
 input[type=range]{-webkit-appearance:none;background:${C.brd};height:3px;border-radius:4px;outline:none}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:${C.acc};cursor:pointer;box-shadow:0 2px 6px rgba(255,170,0,.3)}
@@ -895,22 +900,7 @@ function MeetingMode({socs,reps,hold,actions,pulses,allM,onExit}){
     {rw&&<KPI label="Runway" value={`${rw.months} mois`} accent={rw.months<3?C.r:rw.months<6?C.o:C.g} small/>}
     </div>
     {pw&&<Card style={{marginTop:12,padding:12}} accent={s.color}><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:22}}>{MOODS[pw[1].mood]}</span><div><div style={{fontSize:12,fontWeight:600}}>Pulse: {pw[1].win}</div>{pw[1].blocker&&<div style={{fontSize:11,color:C.r}}>Blocage: {pw[1].blocker}</div>}</div></div></Card>}
-    {(()=>{const ms=calcMilestones(s,reps,actions,pulses,allM);const un=ms.filter(m=>m.unlocked);const next=ms.filter(m=>!m.unlocked).sort((a2,b2)=>a2.tier-b2.tier)[0];
-    return un.length>0?<Card style={{marginTop:10,padding:12}}>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-    <span style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8}}>🏆 MILESTONES</span>
-    <span style={{fontSize:9,color:C.acc,fontWeight:700}}>{un.length}/{ms.length}</span>
-    </div>
-    <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:next?6:0}}>
-    {un.sort((a2,b2)=>b2.tier-a2.tier).slice(0,8).map(m2=><span key={m2.id} title={`${m2.label}: ${m2.desc}`} style={{fontSize:13,padding:"2px 4px",background:TIER_BG[m2.tier],borderRadius:6,border:`1px solid ${TIER_COLORS[m2.tier]}22`}}>{m2.icon}</span>)}
-    {un.length>8&&<span style={{fontSize:9,color:C.td,alignSelf:"center"}}>+{un.length-8}</span>}
-    </div>
-    {next&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"4px 6px",background:C.bg,borderRadius:6,opacity:.6}}>
-    <span style={{fontSize:10,filter:"grayscale(1)"}}>{next.icon}</span>
-    <span style={{fontSize:9,color:C.td}}>Prochain : <strong style={{color:C.t}}>{next.label}</strong> — {next.desc}</span>
-    </div>}
-    </Card>:null;
-    })()}
+    {/* Milestones disabled */}
     {proj&&<Card style={{marginTop:10,padding:12}}><div style={{color:C.td,fontSize:10,fontWeight:700,marginBottom:4}}>PROJECTION T+3</div><div style={{display:"flex",gap:12}}>{proj.map((v,i)=><span key={i} style={{fontSize:12}}>{ml(nextM(i===0?cM2:nextM(i===1?cM2:nextM(cM2))))}: <strong style={{color:C.acc}}>{fmt(v)}€</strong></span>)}</div></Card>}
     {sActs.length>0&&<Sect title="Actions ouvertes">{sActs.map(a=><ActionItem key={a.id} a={a} socs={socs} onToggle={()=>{}} onDelete={()=>{}}/>)}</Sect>}
     </div>;
@@ -1094,17 +1084,17 @@ function TabCRM({socs,ghlData,onSync}){
  },[ghlData,selSoc,actS]);
  const opps=useMemo(()=>{
   const ids=selSoc==="all"?actS.map(s=>s.id):[selSoc];
-  const all=[];ids.forEach(id=>{const d=ghlData[id];if(!d)return;d.opportunities.forEach(o=>{all.push({...o,socId:id});});});
+  const all=[];ids.forEach(id=>{const d=ghlData[id];if(!d)return;((d.opportunities||[])).forEach(o=>{all.push({...o,socId:id});});});
   return all.sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt));
  },[ghlData,selSoc,actS]);
  const stages=useMemo(()=>{
   const ids=selSoc==="all"?actS.map(s=>s.id):[selSoc];
-  const st=new Set();ids.forEach(id=>{const d=ghlData[id];if(!d)return;d.opportunities.forEach(o=>st.add(o.stage));});
+  const st=new Set();ids.forEach(id=>{const d=ghlData[id];if(!d)return;((d.opportunities||[])).forEach(o=>st.add(o.stage));});
   return[...st];
  },[ghlData,selSoc,actS]);
  const sources=useMemo(()=>{
   const ids=selSoc==="all"?actS.map(s=>s.id):[selSoc];
-  const m={};ids.forEach(id=>{const d=ghlData[id];if(!d)return;d.opportunities.forEach(o=>{m[o.source]=(m[o.source]||0)+1;});});
+  const m={};ids.forEach(id=>{const d=ghlData[id];if(!d)return;((d.opportunities||[])).forEach(o=>{m[o.source]=(m[o.source]||0)+1;});});
   return Object.entries(m).map(([s,c])=>({source:s,count:c})).sort((a,b)=>b.count-a.count);
  },[ghlData,selSoc,actS]);
  const isDemo=Object.values(ghlData).some(d=>d.isDemo);
@@ -2666,14 +2656,7 @@ function MeetingPrepView({soc,evo,myActions,myJournal,pulses,hs,rw,milestones,cM
    </div>)}
    </div>
   </Sect>}
-  {/* Milestones récents */}
-  {newMilestones.length>0&&<Sect title="Derniers trophées">
-   <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-   {newMilestones.map(m=><div key={m.id} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",background:TIER_BG[m.tier],borderRadius:6,border:`1px solid ${TIER_COLORS[m.tier]}22`}}>
-    <span style={{fontSize:14}}>{m.icon}</span><span style={{fontSize:9,fontWeight:600,color:C.t}}>{m.label}</span>
-   </div>)}
-   </div>
-  </Sect>}
+  {/* Milestones disabled */}
   {/* Questions à préparer */}
   <Sect title="Questions à poser">
    <div style={{padding:"10px 12px",background:C.card2,borderRadius:8,color:C.td,fontSize:10,lineHeight:1.7}}>
@@ -3552,7 +3535,7 @@ export default function App(){
  const[tab,setTab]=useState(0);const[eSoc,setESoc]=useState(null);const[eHold,setEHold]=useState(false);
  const[saving,setSaving]=useState(false);const[meeting,setMeeting]=useState(false);
  const[newActSoc,setNewActSoc]=useState("");const[newActText,setNewActText]=useState("");
- const[onboarded,setOnboarded]=useState(null);const[showTour,setShowTour]=useState(false);const[obData,setObData]=useState(null);const[showOnboarding,setShowOnboarding]=useState(false);
+ const[onboarded,setOnboarded]=useState(true);const[showTour,setShowTour]=useState(false);const[obData,setObData]=useState(null);const[showOnboarding,setShowOnboarding]=useState(false);
  useEffect(()=>{(async()=>{try{const[s,r,h,a,j,p,d,g,rv,sb,ok,sy,kk,ch,su,tm,cl,iv]=await Promise.all([sGet("scAs"),sGet("scAr"),sGet("scAh"),sGet("scAa"),sGet("scAj"),sGet("scAp"),sGet("scAd"),sGet("scAg"),sGet("scAv"),sGet("scAb"),sGet("scAo"),sGet("scAy"),sGet("scAk"),sGet("scAc"),sGet("scAu"),sGet("scAt"),sGet("scAcl"),sGet("scAiv")]);setSocs(s||DS);setReps(r||mkPrefill());setHold(h||DH);setActions(a||DEMO_ACTIONS);setJournal(j||DEMO_JOURNAL);setPulses(p||DEMO_PULSES);setDeals(d||DEMO_DEALS);setGhlData(g||{});setRevData(rv||null);setSocBank(sb||{});setOkrs(ok||DEMO_OKRS);setSynergies(sy||DEMO_SYNERGIES);setKb(kk||DEMO_KB);setChallenges(ch||[]);setSubs(su||DEMO_SUBS);setTeam(tm||DEMO_TEAM);setClients(cl||DEMO_CLIENTS);setInvoices(iv||mkDemoInvoices(cl||DEMO_CLIENTS,s||DS));}catch{setSocs(DS);setReps(mkPrefill());setHold(DH);setActions(DEMO_ACTIONS);setJournal(DEMO_JOURNAL);setPulses(DEMO_PULSES);setDeals(DEMO_DEALS);setOkrs(DEMO_OKRS);setSynergies(DEMO_SYNERGIES);setKb(DEMO_KB);setSubs(DEMO_SUBS);setTeam(DEMO_TEAM);setClients(DEMO_CLIENTS);setInvoices(mkDemoInvoices(DEMO_CLIENTS,DS));}
    try{const obStatus=await sGet("scOnboarded");const obD=await sGet("scObData");setOnboarded(!!obStatus);setObData(obD||null);}catch{setOnboarded(false);}
    setLoaded(true);})();},[]);
