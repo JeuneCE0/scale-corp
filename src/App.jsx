@@ -50,11 +50,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 select{cursor:pointer}select:focus{border-color:${C.acc}44}
 button:focus-visible{outline:2px solid ${C.acc}44;outline-offset:2px}`;
 const DS=[
- {id:"leadx",nom:"LEADX",porteur:"Dayyaan",act:"Media Buying",pT:"benefices",pP:30,stat:"active",color:"#c8a44e",pin:"1001",rec:true,obj:10000,objQ:28000,ghlKey:"",ghlLocationId:"BjQ4DxmWrLl3nCNcjmhE",revToken:"",revEnv:"sandbox",incub:"2025-06-01",slackId:""},
- {id:"copy",nom:"Copywriting",porteur:"Sol",act:"Copywriting",pT:"benefices",pP:20,stat:"active",color:"#60a5fa",pin:"1002",rec:false,obj:15000,objQ:42000,ghlKey:"",ghlLocationId:"2lB0paK192CFU1cLz5eT",revToken:"",revEnv:"sandbox",incub:"2025-03-15",slackId:""},
+ {id:"leadx",nom:"LEADX",porteur:"Dayyaan",act:"Media Buying",pT:"benefices",pP:30,stat:"active",color:"#c8a44e",pin:"1001",rec:true,obj:10000,objQ:28000,ghlKey:"",ghlLocationId:"BjQ4DxmWrLl3nCNcjmhE",revToken:"",revEnv:"sandbox",revolutCompany:"leadx",incub:"2025-06-01",slackId:""},
+ {id:"copy",nom:"Copywriting",porteur:"Sol",act:"Copywriting",pT:"benefices",pP:20,stat:"active",color:"#60a5fa",pin:"1002",rec:false,obj:15000,objQ:42000,ghlKey:"",ghlLocationId:"2lB0paK192CFU1cLz5eT",revToken:"",revEnv:"sandbox",revolutCompany:"bcs",incub:"2025-03-15",slackId:""},
  {id:"bbp",nom:"BourbonBonsPlans",porteur:"Siméon",act:"Vidéo",pT:"benefices",pP:20,stat:"active",color:"#34d399",pin:"1003",rec:true,obj:8000,objQ:22000,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2025-08-01",slackId:""},
  {id:"studio",nom:"Studio Branding",porteur:"Pablo",act:"Design",pT:"benefices",pP:20,stat:"active",color:"#fb923c",pin:"1004",rec:false,obj:5000,objQ:14000,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2025-09-01",slackId:""},
- {id:"eco",nom:"L'Écosystème",porteur:"Scale Corp",act:"Consulting",pT:"ca",pP:100,stat:"active",color:"#a78bfa",pin:"admin",rec:false,obj:7000,objQ:20000,ghlKey:"",ghlLocationId:"NsV7HI2MbE6qHtRp410y",revToken:"",revEnv:"sandbox",incub:"2024-01-01",slackId:""},
+ {id:"eco",nom:"L'Écosystème",porteur:"Scale Corp",act:"Consulting",pT:"ca",pP:100,stat:"active",color:"#a78bfa",pin:"admin",rec:false,obj:7000,objQ:20000,ghlKey:"",ghlLocationId:"NsV7HI2MbE6qHtRp410y",revToken:"",revEnv:"sandbox",revolutCompany:"eco",incub:"2024-01-01",slackId:""},
  {id:"padel",nom:"Padel Académie",porteur:"Louis",act:"Formation",pT:"benefices",pP:20,stat:"lancement",color:"#14b8a6",pin:"1005",rec:false,obj:3000,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2026-01-15",slackId:""},
  {id:"iphone",nom:"Formation iPhone",porteur:"À définir",act:"Contenu",pT:"benefices",pP:20,stat:"lancement",color:"#8b5cf6",pin:"1006",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2026-02-01",slackId:""},
  {id:"import",nom:"Import Auto",porteur:"À définir",act:"Import",pT:"benefices",pP:20,stat:"lancement",color:"#ec4899",pin:"1007",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
@@ -611,18 +611,18 @@ function mkRevolutDemo(){
   isDemo:true
  };
 }
-async function fetchRevolut(token,env,endpoint){
+async function fetchRevolut(company,endpoint){
  try{
-  const base=REV_ENVS[env]||REV_ENVS.sandbox;
-  const r=await fetch(`${base}${endpoint}`,{headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"}});
-  if(!r.ok)throw new Error(`Revolut ${r.status}`);return await r.json();
+  const action=endpoint.includes("/transactions")?"transactions":"accounts";
+  const r=await fetch("/api/revolut",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,company})});
+  if(!r.ok)throw new Error(`Revolut proxy ${r.status}`);return await r.json();
  }catch(e){console.warn("Revolut fetch failed:",e.message);return null;}
 }
-async function syncRevolut(token,env){
- if(!token)return null;
- const accounts=await fetchRevolut(token,env,"/accounts");
+async function syncRevolut(company){
+ if(!company)return null;
+ const accounts=await fetchRevolut(company,"/accounts");
  if(!accounts)return null;
- const txns=await fetchRevolut(token,env,"/transactions?count=25");
+ const txns=await fetchRevolut(company,"/transactions?count=25");
  const accs=(Array.isArray(accounts)?accounts:[]).map(a=>({
   id:a.id,name:a.name||"Compte",balance:a.balance,currency:a.currency,state:a.state,updated_at:a.updated_at
  }));
@@ -666,12 +666,12 @@ function mkSocRevDemo(soc){
  };
 }
 async function syncSocRevolut(soc){
- if(!soc.revToken)return null;
- const accounts=await fetchRevolut(soc.revToken,soc.revEnv||"sandbox","/accounts");
+ if(!soc.revolutCompany)return null;
+ const accounts=await fetchRevolut(soc.revolutCompany,"/accounts");
  if(!accounts)return null;
  const now=new Date();const cm=curM();const pm=prevM(cm);
  const from1=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString();
- const txnsRaw=await fetchRevolut(soc.revToken,soc.revEnv||"sandbox",`/transactions?from=${from1}&count=100`);
+ const txnsRaw=await fetchRevolut(soc.revolutCompany,`/transactions?from=${from1}&count=100`);
  const txns=(Array.isArray(txnsRaw)?txnsRaw:[]).map(t=>{
   const dt=new Date(t.created_at);
   return{...t,month:`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`};
@@ -3761,14 +3761,14 @@ export default function App(){
  },[loaded,syncGHL]);
  const syncRev=useCallback(async()=>{
   let data=null;
-  if(hold.revolutToken){data=await syncRevolut(hold.revolutToken,hold.revolutEnv||"sandbox");}
+  data=await syncRevolut("eco");
   if(!data)data=mkRevolutDemo();
   setRevData(data);await sSet("scAv",data);
- },[hold.revolutToken,hold.revolutEnv]);
+ },[]);
  const syncSocBank=useCallback(async(socId)=>{
   const s=socs.find(x=>x.id===socId);if(!s)return;
   let data=null;
-  if(s.revToken){data=await syncSocRevolut(s);}
+  if(s.revolutCompany){data=await syncSocRevolut(s);}
   if(!data)data=mkSocRevDemo(s);
   const nb={...socBank,[socId]:data};setSocBank(nb);await sSet("scAb",nb);
  },[socs,socBank]);
@@ -3776,12 +3776,19 @@ export default function App(){
   const nb={};
   for(const s of socs.filter(x=>["active","lancement"].includes(x.stat)&&x.id!=="eco")){
    let data=null;
-   if(s.revToken){data=await syncSocRevolut(s);}
+   if(s.revolutCompany){data=await syncSocRevolut(s);}
    if(!data)data=mkSocRevDemo(s);
    nb[s.id]=data;
   }
   setSocBank(nb);await sSet("scAb",nb);
  },[socs]);
+ useEffect(()=>{
+  if(!loaded)return;
+  const doSync=async()=>{try{await syncRev();await syncAllSocBanks();}catch(e){console.warn("Auto-sync Revolut failed:",e);}};
+  doSync();
+  const id=setInterval(doSync,60000);
+  return()=>clearInterval(id);
+ },[loaded,syncRev,syncAllSocBanks]);
  const allM=useMemo(()=>{const ks=[...new Set(Object.keys(reps).map(k=>k.split("_").slice(1).join("_")))].sort();const c=curM();if(!ks.includes(c))ks.push(c);return ks.slice(-12);},[reps]);
  const alerts=useMemo(()=>socs.length?getAlerts(socs,reps,hold):[]  ,[socs,reps,hold]);
  const feed=useMemo(()=>buildFeed(socs,reps,actions,pulses),[socs,reps,actions,pulses]);
