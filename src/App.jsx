@@ -839,7 +839,7 @@ function buildAIContext(socs,reps,hold,actions,pulses,allM,revData,socBank,okrs,
  const openActs=actions.filter(a=>!a.done);
  if(openActs.length>0){ctx+=`Actions ouvertes:\n`;openActs.forEach(a=>{const s=socs.find(x=>x.id===a.socId);ctx+=`  - ${s?.nom||""}: ${a.text} (deadline: ${ml(a.deadline)}${a.deadline<cM2?" ⚠ EN RETARD":""})\n`;});}
  if(synergies&&synergies.length>0){ctx+=`\nSynergies inter-sociétés (${synergies.length}):\n`;const wonVal=synergies.filter(s=>s.status==="won").reduce((a,s)=>a+pf(s.value),0);ctx+=`  Valeur gagnée: ${fmt(wonVal)}€, En cours: ${synergies.filter(s=>s.status==="active").length}\n`;synergies.slice(-5).forEach(sy=>{const sf=socs.find(s=>s.id===sy.from);const st=socs.find(s=>s.id===sy.to);ctx+=`  ${sf?.nom||"?"} → ${st?.nom||"?"}: ${sy.desc} (${sy.status}${pf(sy.value)>0?`, ${fmt(sy.value)}€`:""})\n`;});}
- const sAlerts=calcSmartAlerts(socs,reps,actions,pulses,allM,{});
+ const sAlerts=calcSmartAlerts(socs,reps,actions,pulses,allM,{},{});
  if(sAlerts.length>0){ctx+=`\n⚠ Alertes (${sAlerts.length}):\n`;sAlerts.slice(0,8).forEach(a=>{ctx+=`  ${a.icon} ${a.title}: ${a.desc}\n`;});}
  return ctx;
 }
@@ -1496,7 +1496,7 @@ function SocBankWidget({bankData,onSync,soc}){
  </>;
 }
 /* RAPPORTS PANEL */
-function RapportsPanel({soc,socBankData,ghlData,clients}){
+function RapportsPanel({soc,socBankData,ghlData,clients,reps,allM}){
  const[expandedMonth,setExpandedMonth]=useState(null);
  const[notesMap,setNotesMap]=useState(()=>{try{return JSON.parse(localStorage.getItem(`scRapportNotes_${soc?.id}`)||"{}");}catch{return{};}});
  const saveNote=(month,text)=>{const next={...notesMap,[month]:text};setNotesMap(next);try{localStorage.setItem(`scRapportNotes_${soc?.id}`,JSON.stringify(next));}catch{}};
@@ -1540,6 +1540,7 @@ function RapportsPanel({soc,socBankData,ghlData,clients}){
  return <div className="fu">
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
    <div><h2 style={{color:C.t,fontSize:13,fontWeight:800,margin:0,fontFamily:FONT_TITLE}}>📋 RAPPORTS MENSUELS</h2><p style={{color:C.td,fontSize:10,margin:"2px 0 0"}}>Bilans financiers auto-générés</p></div>
+   <ReplayMensuel soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}} clients={clients} ghlData={ghlData}/>
   </div>
   {months.map((month,mi)=>{
    const d=getMonthData(month);const isExpanded=expandedMonth===month||mi===0;const isCurrent=mi===0;
@@ -2004,7 +2005,7 @@ function BenchmarkRadar({socs,reps,ghlData,allM,cM,clients}){
   </div>
  </Card>;
 }
-function calcSmartAlerts(socs,reps,actions,pulses,allM,socBank){
+function calcSmartAlerts(socs,reps,actions,pulses,allM,socBank,ghlData){
  const cM2=curM();const pm=prevM(cM2);const alerts=[];
  socs.filter(s=>s.stat==="active"&&s.id!=="eco").forEach(s=>{
   const r=gr(reps,s.id,cM2),rp=gr(reps,s.id,pm),rpp=gr(reps,s.id,prevM(pm));
@@ -5991,13 +5992,14 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
    <button onClick={()=>setShowWarRoom(true)} style={{padding:"6px 14px",borderRadius:8,border:"1px solid rgba(255,170,0,.25)",background:"rgba(255,170,0,.08)",color:"#FFAA00",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,boxShadow:"0 0 12px rgba(255,170,0,.1)"}}>🎮 War Room</button>
    <button onClick={()=>{const v=!autoPilotOn;setAutoPilotOn(v);try{localStorage.setItem(`autopilot_on_${soc.id}`,JSON.stringify(v));sSet(`autopilot_on_${soc.id}`,v);}catch{}}} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${autoPilotOn?"rgba(52,211,153,.3)":"rgba(255,255,255,.1)"}`,background:autoPilotOn?"rgba(52,211,153,.1)":"transparent",color:autoPilotOn?"#34d399":"#71717a",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>🔄 Auto-Pilot {autoPilotOn?"ON":"OFF"}</button>
   </div>
+  <PredictionsCard soc={soc} reps={reps} allM={allM} clients={clients} ghlData={ghlData} socBank={socBankData?{[soc.id]:socBankData}:{}}/>
   <PorteurDashboard soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}} ghlData={ghlData} setPTab={setPTab} soc2={soc} clients={clients} pulses={pulses} savePulse={savePulse} hold={hold} stripeData={stripeData}/>
   {autoPilotOn&&<AutoPilotSection soc={soc} clients={clients} ghlData={ghlData} socBank={socBankData?{[soc.id]:socBankData}:{}} reps={reps}/>}</>}
   {pTab===5&&<><SocBankWidget bankData={socBankData} onSync={()=>syncSocBank(soc.id)} soc={soc}/>
    <SubsTeamPanel socs={[soc]} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId={soc.id} reps={reps} socBankData={socBankData}/>
   </>}
   {pTab===9&&<ErrorBoundary label="Clients"><ClientsUnifiedPanel soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices} stripeData={stripeData}/></ErrorBoundary>}
-  {pTab===13&&<ErrorBoundary label="Rapports"><RapportsPanel soc={soc} socBankData={socBankData} ghlData={ghlData} clients={clients}/></ErrorBoundary>}
+  {pTab===13&&<ErrorBoundary label="Rapports"><RapportsPanel soc={soc} socBankData={socBankData} ghlData={ghlData} clients={clients} reps={reps} allM={allM}/></ErrorBoundary>}
   {pTab===12&&<SocSettingsPanel soc={soc} save={save} socs={socs}/>}
   {pTab===1&&<ErrorBoundary label="Activité"><ActivitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
   {pTab===2&&<ErrorBoundary label="Sales"><SalesPanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
@@ -7391,7 +7393,7 @@ export default function App(){
  const feed=useMemo(()=>buildFeed(socs,reps,actions,pulses),[socs,reps,actions,pulses]);
  const leaderboard=useMemo(()=>calcLeaderboard(socs,reps,actions,pulses,allM),[socs,reps,actions,pulses,allM]);
  const cM2=curM(),actS=socs.filter(s=>s.stat==="active");
- const smartAlerts=useMemo(()=>calcSmartAlerts(socs,reps,actions,pulses,allM,socBank),[socs,reps,actions,pulses,allM,socBank]);
+ const smartAlerts=useMemo(()=>calcSmartAlerts(socs,reps,actions,pulses,allM,socBank,ghlData),[socs,reps,actions,pulses,allM,socBank,ghlData]);
  const loginEmail2=useCallback(async()=>{if(!loginEmail.trim()||!loginPass.trim()){setLErr("Email et mot de passe requis");return;}setAuthLoading(true);setLErr("");try{const r=await fetch("/api/auth?action=login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:loginEmail.trim(),password:loginPass})});const d=await r.json();if(!r.ok){setLErr(d.error_description||d.msg||d.error||"Identifiants incorrects");setShake(true);setTimeout(()=>setShake(false),500);return;}localStorage.setItem("sc_auth_token",d.access_token);if(d.refresh_token)localStorage.setItem("sc_auth_refresh",d.refresh_token);setAuthUser(d.user);const meta=d.user?.user_metadata||{};const rid=meta.role==="admin"?"admin":(meta.society_id||"admin");setRole(rid);setLErr("");_storeToken="auth";_currentSocId=rid;localStorage.setItem("sc_store_token","auth");if(!onboarded)setShowTour(true);syncFromSupabase(rid).then(()=>{}).catch(()=>{});}catch(e){setLErr("Erreur de connexion");setShake(true);setTimeout(()=>setShake(false),500);}finally{setAuthLoading(false);}},[loginEmail,loginPass,onboarded]);
  const login=useCallback(async()=>{async function hashPin(p){const e=new TextEncoder().encode(p);const h=await crypto.subtle.digest('SHA-256',e);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 const doLogin=(rid)=>{setRole(rid);setLErr("");_storeToken=pin;_currentSocId=rid;localStorage.setItem("sc_store_token",pin);if(!onboarded)setShowTour(true);syncFromSupabase(rid).then(()=>{}).catch(()=>{});};
@@ -7411,6 +7413,9 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  if(hash.startsWith("#widget/")){const wSocId=hash.replace("#widget/","");return <><style>{CSS}</style><WidgetRenderer socId={wSocId} socs={socs} clients={clients}/></>;}
  if(hash.startsWith("#warroom/")){const wrSocId=hash.replace("#warroom/","");return <><style>{CSS}</style><WarRoomReadOnly socId={wrSocId} socs={socs} reps={reps} allM={allM} ghlData={ghlData} clients={clients} socBank={socBank}/></>;}
  if(hash==="#pulse")return <><style>{CSS}</style><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>{window.location.hash="";window.location.reload();}}/></>;
+ if(hash.startsWith("#portal/")){const parts=hash.replace("#portal/","").split("/");return <><style>{CSS}</style><ClientPortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients} ghlData={ghlData}/></>;}
+ if(hash.startsWith("#board/")){const bPin=hash.replace("#board/","");return <><style>{CSS}</style><InvestorBoard socs={socs} reps={reps} allM={allM} hold={hold} pin={bPin}/></>;}
+
  /* ONBOARDING (optional, non-blocking) */
  if(showOnboarding)return <OnboardingWizard hold={hold} onSkip={()=>setShowOnboarding(false)} onComplete={async(formData)=>{try{await sSet("scOnboarded",true);await sSet("scObData",formData);}catch{}setObData(formData);setOnboarded(true);setShowOnboarding(false);setShowTour(true);}}/>;
  if(!role)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT,padding:16}}>
