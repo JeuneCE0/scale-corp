@@ -3090,7 +3090,7 @@ function PulseDashWidget({soc,existing,savePulse,hold}){
   </div>
  </div>;
 }
-function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePulse,hold}){
+function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePulse,hold,clients}){
  const cm=curM();const report=gr(reps,soc.id,cm);
  const bankData=socBank?.[soc.id];const acc2=soc.brandColor||soc.color||C.acc;
  const ca=report?pf(report.ca):0;const charges=report?pf(report.charges):0;
@@ -3235,6 +3235,32 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
    </div>}
   </div>}
  </div>;
+  {/* Top Clients */}
+  {(()=>{
+   const ghlCl=ghlData?.[soc.id]?.ghlClients||[];
+   const allCl=[...(clients||[]).filter(c=>c.socId===soc.id),...ghlCl.filter(gc=>!(clients||[]).some(c=>c.ghlId===(gc.ghlId||gc.id)))];
+   const withRevenue=allCl.map(c=>({...c,revenue:clientMonthlyRevenue(c)})).filter(c=>c.revenue>0).sort((a,b)=>b.revenue-a.revenue).slice(0,5);
+   const wonOpps=(ghlData?.[soc.id]?.opportunities||[]).filter(o=>o.status==="won").sort((a,b)=>(b.value||0)-(a.value||0)).slice(0,5);
+   const topList=withRevenue.length>0?withRevenue:wonOpps.map(o=>({name:o.name||o.contact?.name||"—",revenue:o.value||0,status:"active"}));
+   if(topList.length===0)return null;
+   return <div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"1s"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+     <span style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8}}>🏅 TOP CLIENTS</span>
+     <span onClick={()=>setPTab(9)} style={{color:acc2,fontSize:10,fontWeight:600,cursor:"pointer"}}>Voir tous →</span>
+    </div>
+    {topList.map((c,i)=><div key={c.id||i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<topList.length-1?`1px solid ${C.brd}`:"none"}}>
+     <span style={{width:24,height:24,borderRadius:8,background:i===0?"linear-gradient(135deg,#FFBF00,#FF9D00)":i===1?"linear-gradient(135deg,#c0c0c0,#a0a0a0)":i===2?"linear-gradient(135deg,#cd7f32,#a0622e)":C.card2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:i<3?"#0a0a0f":C.td,flexShrink:0}}>{i+1}</span>
+     <div style={{flex:1,minWidth:0}}>
+      <div style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name||"—"}</div>
+      <div style={{fontSize:9,color:C.td}}>{c.status==="active"?"Client actif":"Prospect"}</div>
+     </div>
+     <div style={{textAlign:"right"}}>
+      <div style={{fontWeight:800,fontSize:13,color:acc2}}>{fmt(c.revenue)}€</div>
+      <div style={{fontSize:8,color:C.td}}>/mois</div>
+     </div>
+    </div>)}
+   </div>;
+  })()}
 }
 function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,savePulse,socBankData,syncSocBank,okrs,saveOkrs,kb,saveKb,socs,subs,saveSubs,team,saveTeam,clients,saveClients,ghlData,invoices,saveInvoices,hold,onTour,onThemeToggle}){
  const cM2=curM();const[pTab,setPTab]=useState(0);const[mo,setMo]=useState(cM2);
