@@ -4389,7 +4389,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     <Sect title="⚡ Pulse" sub={curW()}><PulseOverview socs={socs} pulses={pulses}/></Sect>
     </div>
     <div data-tour="admin-leaderboard">
-    <BankingPanel revData={revData} onSync={syncRev} compact/>
+    <BankingPanel revData={revData} onSync={syncRev} compact clients={clients}/>
     <Card style={{padding:12,marginTop:10}}>
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:6}}>🏆 CLASSEMENT</div>
     {leaderboard.slice(0,5).map((lb,i)=>{const ms=calcMilestones(lb.soc,reps,actions,pulses,allM);const msN=ms.filter(m=>m.unlocked).length;return <div key={lb.soc.id} className={`fu d${Math.min(i+1,5)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:i<Math.min(leaderboard.length,5)-1?`1px solid ${C.brd}08`:"none"}}>
@@ -4709,7 +4709,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   {tab===5&&<AICoPilot socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} revData={revData} socBank={socBank} okrs={okrs} synergies={synergies} clients={clients}/>}
   {tab===6&&<DealFlow deals={deals} saveDeals={saveDeals}/>}
   {tab===7&&<TabCRM socs={socs} ghlData={ghlData} onSync={syncGHL}/>}
-  {tab===8&&<BankingPanel revData={revData} onSync={syncRev}/>}
+  {tab===8&&<BankingPanel revData={revData} onSync={syncRev} clients={clients}/>}
   {tab===10&&<SynergiesPanel socs={socs} synergies={synergies} saveSynergies={saveSynergies}/>}
   {tab===11&&<KnowledgeBase socs={socs} kb={kb} saveKb={saveKb}/>}
   {tab===12&&<ChallengesPanel socs={socs} reps={reps} allM={allM} pulses={pulses} challenges={challenges} saveChallenges={saveChallenges}/>}
