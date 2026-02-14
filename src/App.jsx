@@ -2337,20 +2337,21 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     </>}
     </div>
     </div>
-    {b.type&&<div style={{textAlign:"right",flexShrink:0}}>
-    {(b.type==="fixed"||b.type==="hybrid")&&<>
+    <div style={{textAlign:"right",flexShrink:0}}>
+    {b.type&&(b.type==="fixed"||b.type==="hybrid")&&<>
     <div style={{fontWeight:900,fontSize:16,color:bt?.c||C.td}}>{fmt(monthly)}€</div>
     <div style={{fontSize:8,color:C.td}}>/ mois</div>
     </>}
-    {b.type==="percent"&&<>
+    {b.type&&b.type==="percent"&&<>
     <div style={{fontWeight:900,fontSize:16,color:bt?.c||C.td}}>{b.percent}%</div>
     <div style={{fontSize:8,color:C.td}}>{b.basis==="benefice"?"du bénéfice":"du CA"}</div>
     </>}
-    {b.type==="oneoff"&&<>
+    {b.type&&b.type==="oneoff"&&<>
     <div style={{fontWeight:900,fontSize:16,color:bt?.c||C.td}}>{fmt(b.amount)}€</div>
     <div style={{fontSize:8,color:C.td}}>one-off</div>
     </>}
-    </div>}
+    {(()=>{const cn=(cl.name||"").toLowerCase().trim();const txs=(socBankData?.transactions||[]);const tot=txs.filter(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;const desc=(leg.description||tx.reference||"").toLowerCase();if(cn.length>2&&desc.includes(cn))return true;const pts=cn.split(/\s+/).filter(p=>p.length>2);return pts.length>=2&&pts.every(p=>desc.includes(p));}).reduce((a,tx)=>a+(tx.legs?.[0]?.amount||0),0);if(tot<=0)return null;return <div style={{marginTop:3,padding:"2px 6px",background:C.gD,borderRadius:4,fontSize:8,fontWeight:700,color:C.g}}>💰 {fmt(tot)}€ collecté</div>;})()}
+    </div>
     </div>
    </Card>;
   })}
