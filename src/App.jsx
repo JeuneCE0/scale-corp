@@ -1956,8 +1956,11 @@ function ClientsPanelSafe(props){return <ErrorBoundary label="Erreur dans la pag
 function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices}){
  const[editCl,setEditCl]=useState(null);const[filter,setFilter]=useState("all");const[stageFilter,setStageFilter]=useState("all");const[invView,setInvView]=useState(null);
  const[sending,setSending]=useState(null);
- const ghlClients=(ghlData?.[soc.id]?.ghlClients||[]).map(gc=>({id:gc.id||gc.contactId||uid(),socId:soc.id,name:gc.name||gc.contactName||"—",email:gc.email||"",phone:gc.phone||"",status:gc.status||"prospect",ghlId:gc.id||gc.contactId||"",notes:"",at:gc.dateAdded||new Date().toISOString(),billing:null,_fromGHL:true}));
- const myClients=[...clients.filter(c=>c.socId===soc.id),...ghlClients.filter(gc=>!clients.some(c=>c.ghlId===gc.ghlId))];
+ const rawGhl=ghlData?.[soc.id]?.ghlClients||[];
+ const manualClients=clients.filter(c=>c.socId===soc.id);
+ const manualGhlIds=new Set(manualClients.map(c=>c.ghlId).filter(Boolean));
+ const ghlClients=rawGhl.filter(gc=>!manualGhlIds.has(gc.ghlId||gc.id)).map(gc=>({...gc,socId:soc.id,_fromGHL:true}));
+ const myClients=[...manualClients,...ghlClients];
  const myInvoices=(invoices||[]).filter(inv=>inv.socId===soc.id);
  const active=myClients.filter(c=>c.status==="active");
  const byType=t=>myClients.filter(c=>c.billing?.type===t);
