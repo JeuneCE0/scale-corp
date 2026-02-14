@@ -616,14 +616,37 @@ function revFinancials(socBankData,month){
  if(!m)return null;
  return{ca:m.income,charges:m.expense,tresoSoc:socBankData.balance,net:m.income-m.expense};
 }
+const STORE_URL="/api/store";
+let _storeToken=null;
+async function storeCall(action,key,value){
+ try{
+  if(!_storeToken){const m=localStorage.getItem("sc_store_token");if(m)_storeToken=m;}
+  if(!_storeToken)return null;
+  const r=await fetch(STORE_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${_storeToken}`},body:JSON.stringify({action,key,value})});
+  if(!r.ok)return null;return await r.json();
+ }catch{return null;}
+}
 async function sGet(k){
  try{
-  if(window.storage?.get){const r=await window.storage.get(k);if(r)return JSON.parse(r.value);}
-  const ls=localStorage.getItem(k);return ls?JSON.parse(ls):null;
+  // Try localStorage first (fast)
+  const ls=localStorage.getItem(k);const local=ls?JSON.parse(ls):null;
+  // Then try backend (authoritative if available)
+  const remote=await storeCall("get",k);
+  if(remote?.value!==undefined&&remote.value!==null){
+   // Sync remote to local
+   localStorage.setItem(k,JSON.stringify(remote.value));
+   return remote.value;
+  }
+  return local;
  }catch{try{const ls=localStorage.getItem(k);return ls?JSON.parse(ls):null;}catch{return null;}}
 }
 async function sSet(k,v){
- try{const s=JSON.stringify(v);localStorage.setItem(k,s);if(window.storage?.set)await window.storage.set(k,s);}catch(e){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+ try{
+  const s=JSON.stringify(v);
+  localStorage.setItem(k,s);
+  // Async push to backend (fire-and-forget)
+  storeCall("set",k,v);
+ }catch(e){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 }
 function calcH(socs,reps,hold,month){
  let rem=0,cn=0;socs.forEach(s=>{if(s.id==="eco")return;if(["active","lancement"].includes(s.stat))cn++;const r=gr(reps,s.id,month);if(!r)return;const ca=pf(r.ca),presta=pf(r.prestataireAmount||0);rem+=(s.pT==="ca"?ca:Math.max(0,ca-presta))*s.pP/100;});
@@ -2291,6 +2314,15 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un client ou prospect..." style={{width:"100%",padding:"10px 12px 10px 36px",borderRadius:10,border:`1px solid ${search?C.acc+"66":C.brd}`,background:"rgba(14,14,22,0.4)",color:C.t,fontSize:12,fontFamily:FONT,outline:"none",boxSizing:"border-box",transition:"border-color .2s"}}/>
     {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:14}}>✕</button>}
    </div>
+   <div style={{display:"flex",gap:6,marginBottom:8}}>
+    <select value={sort} onChange={e=>setSort(e.target.value)} style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.card,color:C.t,fontSize:11,fontFamily:FONT}}>
+     <option value="recent">Récent</option>
+     <option value="alpha">Alphabétique</option>
+     <option value="collected">💰 Plus collecté</option>
+     <option value="oldest">Ancien</option>
+    </select>
+    <button onClick={exportCSV} style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.card,color:C.t,fontSize:11,fontFamily:FONT,cursor:"pointer",fontWeight:600}}>📥 Exporter</button>
+   </div>
    {allPipelines.length>1&&<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
     <span style={{fontSize:9,color:C.td,fontWeight:700}}>PIPELINE :</span>
     {[{id:"all",name:"Toutes"},...allPipelines].map(p=><button key={p.id} onClick={()=>{setSelPipeline(p.id);setFilter("all");}} style={{padding:"4px 12px",borderRadius:6,fontSize:9,fontWeight:selPipeline===p.id?700:500,border:`1px solid ${selPipeline===p.id?C.acc:C.brd}`,background:selPipeline===p.id?C.accD:"transparent",color:selPipeline===p.id?C.acc:C.td,cursor:"pointer",fontFamily:FONT}}>{p.name}</button>)}
@@ -2331,6 +2363,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     {clDraft>0&&<span style={{fontSize:7,color:C.acc,background:C.accD,padding:"1px 4px",borderRadius:4,fontWeight:700}}>{clDraft} à envoyer</span>}
     {clOverdue>0&&<span style={{fontSize:7,color:C.r,background:C.rD,padding:"1px 4px",borderRadius:4,fontWeight:700}}>⚠ {clOverdue} en retard</span>}
     {clInvs.length>0&&<span style={{fontSize:7,color:C.b,background:C.bD,padding:"1px 5px",borderRadius:8}}>🧾 {clPaid}/{clInvs.length}</span>}
+    {(()=>{if(cl.status!=="active"||(b.type!=="fixed"&&b.type!=="hybrid"))return null;const cn=(cl.name||"").toLowerCase().trim();const txs=(socBankData?.transactions||[]);const now45=Date.now()-45*864e5;const hasRecent=txs.some(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;const txDate=new Date(tx.created_at||tx.date||0).getTime();if(txDate<now45)return false;const desc=(leg.description||tx.reference||"").toLowerCase();if(cn.length>2&&desc.includes(cn))return true;const pts=cn.split(/\s+/).filter(p=>p.length>2);return pts.length>=2&&pts.every(p=>desc.includes(p));});if(!hasRecent)return <span style={{fontSize:7,color:C.r,background:C.rD,padding:"1px 5px",borderRadius:8,fontWeight:700}}>⚠️ Pas de paiement depuis 45j+</span>;return null;})()}
     {clOverdue>0&&<span style={{fontSize:7,color:C.r,background:C.rD,padding:"1px 5px",borderRadius:8,fontWeight:700}}>⚠ {clOverdue} retard</span>}
     {clDraft>0&&<span style={{fontSize:7,color:C.td,background:C.card2,padding:"1px 5px",borderRadius:8}}>{clDraft} brouillon{clDraft>1?"s":""}</span>}
     </div>
@@ -4126,7 +4159,7 @@ export default function App(){
  const leaderboard=useMemo(()=>calcLeaderboard(socs,reps,actions,pulses,allM),[socs,reps,actions,pulses,allM]);
  const cM2=curM(),actS=socs.filter(s=>s.stat==="active");
  const smartAlerts=useMemo(()=>calcSmartAlerts(socs,reps,actions,pulses,allM,socBank),[socs,reps,actions,pulses,allM,socBank]);
- const login=useCallback(()=>{if(pin==="0000"||pin==="admin"){setRole("admin");setLErr("");if(!onboarded)setShowTour(true);return;}const s=socs.find(x=>x.pin===pin);if(s){setRole(s.id);setLErr("");if(!onboarded)setShowTour(true);return;}setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[pin,socs,onboarded]);
+ const login=useCallback(()=>{if(pin==="0000"||pin==="admin"){setRole("admin");setLErr("");_storeToken=pin;localStorage.setItem("sc_store_token",pin);if(!onboarded)setShowTour(true);return;}const s=socs.find(x=>x.pin===pin);if(s){setRole(s.id);setLErr("");_storeToken=pin;localStorage.setItem("sc_store_token",pin);if(!onboarded)setShowTour(true);return;}setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[pin,socs,onboarded]);
  const addAction=(socId,text,dl)=>{saveAJ([...actions,{id:uid(),socId,text,deadline:dl||nextM(cM2),done:false,by:"admin",at:new Date().toISOString()}],null);};
  const toggleAction=(id)=>{saveAJ(actions.map(a=>a.id===id?{...a,done:!a.done}:a),null);};
  const deleteAction=(id)=>{saveAJ(actions.filter(a=>a.id!==id),null);};
