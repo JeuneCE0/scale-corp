@@ -3459,7 +3459,7 @@ function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,ext
     <span style={{fontSize:12}}>🎓</span><span>Tutoriel</span>
    </button>
    {onThemeToggle&&<button onClick={onThemeToggle} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:"none",background:"transparent",color:C.td,fontSize:10,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=C.card2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-    <span style={{fontSize:12}}>{C===C_LIGHT?"🌙":"☀️"}</span><span>{C===C_LIGHT?"Mode sombre":"Mode clair"}</span>
+    <span style={{fontSize:12}}>{getTheme()==="light"?"🌙":"☀️"}</span><span>{getTheme()==="light"?"Mode sombre":"Mode clair"}</span>
    </button>}
    <button onClick={onLogout} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:"none",background:"transparent",color:C.td,fontSize:10,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"background .12s"}} onMouseEnter={e=>{e.currentTarget.style.background=C.rD;e.currentTarget.style.color=C.r;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.td;}}>
     <span style={{fontSize:12}}>↩</span><span>Déconnexion</span>
@@ -3472,7 +3472,7 @@ function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,ext
 export default function App(){
  const[loaded,setLoaded]=useState(false);const[role,setRole]=useState(null);const[theme,setThemeState]=useState(getTheme);
  const toggleTheme=useCallback(()=>{const t=getTheme()==="dark"?"light":"dark";applyTheme(t);setThemeState(t);},[]);
- const[theme,setTheme]=useState(()=>{try{return localStorage.getItem("scTheme")||"dark";}catch{return"dark";}});
+ 
  const[socs,setSocs]=useState([]);const[reps,setReps]=useState({});const[hold,setHold]=useState(DH);
  const[actions,setActions]=useState([]);const[journal,setJournal]=useState({});
  const[pulses,setPulses]=useState({});const[deals,setDeals]=useState([]);const[ghlData,setGhlData]=useState({});const[revData,setRevData]=useState(null);const[socBank,setSocBank]=useState({});
@@ -3526,9 +3526,7 @@ export default function App(){
  },[socs]);
  // Auto-sync GHL every 30s + on mount
  useEffect(()=>{
-  const toggleTheme=()=>{const next=theme==="dark"?"light":"dark";setTheme(next);try{localStorage.setItem("scTheme",next);}catch{}};
- C=theme==="light"?C_LIGHT:C_DARK;
- if(!loaded)return;
+  if(!loaded)return;
   const doSync=()=>{syncGHL().catch(e=>console.warn("Auto-sync GHL failed:",e));};
   doSync();
   const id=setInterval(doSync,30000);
@@ -3616,7 +3614,7 @@ export default function App(){
     </div>
    </div>
   </div>}
-  <button onClick={toggleTheme} style={{position:"fixed",top:16,right:16,width:36,height:36,borderRadius:18,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}}>{C===C_LIGHT?"🌙":"☀️"}</button>
+  <button onClick={toggleTheme} style={{position:"fixed",top:16,right:16,width:36,height:36,borderRadius:18,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}}>{getTheme()==="light"?"🌙":"☀️"}</button>
   <div className="si" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:16,padding:28,width:340,maxWidth:"100%",boxShadow:"0 24px 60px rgba(0,0,0,.5)"}}>
    <div style={{textAlign:"center",marginBottom:24}}>
     <div className="fl" style={{width:44,height:44,background:hold.brand?.logoUrl?"transparent":`linear-gradient(135deg,${hold.brand?.accentColor||C.acc},#FF9D00)`,borderRadius:10,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:10,boxShadow:`0 4px 16px ${(hold.brand?.accentColor||C.acc)}44`,overflow:"hidden"}}>{hold.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(hold.brand?.logoLetter||"S")}</div>
@@ -3647,7 +3645,7 @@ export default function App(){
  return <div style={{display:"flex",background:C.bg,minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}</style>
   {showTour&&role==="admin"&&<TutorialOverlay steps={TOUR_ADMIN} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={setTab}/>}
-  <Sidebar items={SB_ADMIN} activeTab={tab} setTab={setTab} brandTitle={hold.brand?.name||"SCALE CORP"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>setRole(null)} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand} onThemeToggle={toggleTheme} extra={<div style={{display:"flex",flexDirection:"column",gap:2}}>
+  <Sidebar items={SB_ADMIN} activeTab={tab} setTab={setTab} brandTitle={hold.brand?.name||"SCALE CORP"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>setRole(null)} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand} extra={<div style={{display:"flex",flexDirection:"column",gap:2}}>
    {hold.slack?.enabled&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 4px"}}><span style={{width:5,height:5,borderRadius:3,background:C.g}}/>
     <span style={{fontSize:8,color:C.td}}>{SLACK_MODES[hold.slack?.mode]?.icon} Slack connecté</span>
     {missing.length>0&&<button onClick={async()=>{const results=[];for(const s of missing){const r=await slackSend(hold.slack,buildReminderSlackMsg(s,"report",deadline(cM2)));results.push({nom:s.nom,ok:r.ok});}const ok=results.filter(r=>r.ok).length;alert(`📤 ${ok}/${results.length} rappels envoyés`);}} style={{marginLeft:"auto",fontSize:8,color:C.o,background:C.oD,border:"none",borderRadius:4,padding:"2px 5px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>🔔 {missing.length}</button>}
