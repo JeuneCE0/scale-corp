@@ -533,6 +533,7 @@ function mkSocRevDemo(){ return null; }
 // Accounts to exclude from treasury per company (personal pockets, dividend transit, etc.)
 const EXCLUDED_ACCOUNTS={
  leadx:["5c008ba9-b9a7-4141-97dc-6a53ef3d6646","5fce1497-811e-4266-9889-2da74aa27733"], // Dayyaan (rémunération) + SCALE CORP (transit dividendes)
+ bcs:["a1edf694-6f10-4b88-bfc1-7f2447f0fd8d","a86df684-33a0-413b-b56b-1e4fc2b13886"], // Sol (rémunération perso) + Anthony & Rudy (dividendes)
 };
 async function syncSocRevolut(soc){
  if(!soc.revolutCompany)return null;
