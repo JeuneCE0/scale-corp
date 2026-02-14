@@ -50,11 +50,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 select{cursor:pointer}select:focus{border-color:${C.acc}44}
 button:focus-visible{outline:2px solid ${C.acc}44;outline-offset:2px}`;
 const DS=[
- {id:"leadx",nom:"LEADX",porteur:"Dayyaan",act:"Media Buying",pT:"benefices",pP:30,stat:"active",color:"#c8a44e",pin:"1001",rec:true,obj:10000,objQ:28000,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2025-06-01",slackId:""},
- {id:"copy",nom:"Copywriting",porteur:"Sol",act:"Copywriting",pT:"benefices",pP:20,stat:"active",color:"#60a5fa",pin:"1002",rec:false,obj:15000,objQ:42000,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2025-03-15",slackId:""},
+ {id:"leadx",nom:"LEADX",porteur:"Dayyaan",act:"Media Buying",pT:"benefices",pP:30,stat:"active",color:"#c8a44e",pin:"1001",rec:true,obj:10000,objQ:28000,ghlKey:"",ghlLocationId:"BjQ4DxmWrLl3nCNcjmhE",revToken:"",revEnv:"sandbox",incub:"2025-06-01",slackId:""},
+ {id:"copy",nom:"Copywriting",porteur:"Sol",act:"Copywriting",pT:"benefices",pP:20,stat:"active",color:"#60a5fa",pin:"1002",rec:false,obj:15000,objQ:42000,ghlKey:"",ghlLocationId:"2lB0paK192CFU1cLz5eT",revToken:"",revEnv:"sandbox",incub:"2025-03-15",slackId:""},
  {id:"bbp",nom:"BourbonBonsPlans",porteur:"Siméon",act:"Vidéo",pT:"benefices",pP:20,stat:"active",color:"#34d399",pin:"1003",rec:true,obj:8000,objQ:22000,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2025-08-01",slackId:""},
  {id:"studio",nom:"Studio Branding",porteur:"Pablo",act:"Design",pT:"benefices",pP:20,stat:"active",color:"#fb923c",pin:"1004",rec:false,obj:5000,objQ:14000,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2025-09-01",slackId:""},
- {id:"eco",nom:"L'Écosystème",porteur:"Scale Corp",act:"Consulting",pT:"ca",pP:100,stat:"active",color:"#a78bfa",pin:"admin",rec:false,obj:7000,objQ:20000,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2024-01-01",slackId:""},
+ {id:"eco",nom:"L'Écosystème",porteur:"Scale Corp",act:"Consulting",pT:"ca",pP:100,stat:"active",color:"#a78bfa",pin:"admin",rec:false,obj:7000,objQ:20000,ghlKey:"",ghlLocationId:"NsV7HI2MbE6qHtRp410y",revToken:"",revEnv:"sandbox",incub:"2024-01-01",slackId:""},
  {id:"padel",nom:"Padel Académie",porteur:"Louis",act:"Formation",pT:"benefices",pP:20,stat:"lancement",color:"#14b8a6",pin:"1005",rec:false,obj:3000,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2026-01-15",slackId:""},
  {id:"iphone",nom:"Formation iPhone",porteur:"À définir",act:"Contenu",pT:"benefices",pP:20,stat:"lancement",color:"#8b5cf6",pin:"1006",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2026-02-01",slackId:""},
  {id:"import",nom:"Import Auto",porteur:"À définir",act:"Import",pT:"benefices",pP:20,stat:"lancement",color:"#ec4899",pin:"1007",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
@@ -360,7 +360,7 @@ const DEMO_KB=[
  {id:"kb6",title:"Script Appel Découverte",cat:"playbook",author:"leadx",content:"Intro (2min) : Contexte, pourquoi cet appel\nDouleur (5min) : Quel est le plus gros frein à ta croissance ?\nImpact (3min) : Combien ça te coûte de ne rien faire ?\nSolution (5min) : Voici comment on résout ça\nClose (2min) : On démarre quand ?",tags:["vente","appel","closing"],date:"2026-02-08",likes:6},
 ];
 const GHL_STAGES_COLORS=["#60a5fa","#c8a44e","#fb923c","#34d399","#a78bfa","#f43f5e","#14b8a6","#eab308"];
-const GHL_BASE="https://rest.gohighlevel.com/v1";
+const GHL_BASE="/api/ghl";
 function mkGHLDemo(socs){
  const out={};
  socs.filter(s=>s.stat==="active"&&s.id!=="eco").forEach(s=>{
@@ -396,18 +396,23 @@ function mkGHLDemo(socs){
  });
  return out;
 }
-async function fetchGHL(apiKey,endpoint){
+async function fetchGHL(action,locationId,params={}){
  try{
-  const r=await fetch(`${GHL_BASE}${endpoint}`,{headers:{"Authorization":`Bearer ${apiKey}`}});
-  if(!r.ok)throw new Error(`GHL ${r.status}`);return await r.json();
+  const r=await fetch(GHL_BASE,{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({action,locationId,...params})
+  });
+  if(!r.ok)throw new Error(`GHL proxy ${r.status}`);return await r.json();
  }catch(e){console.warn("GHL fetch failed:",e.message);return null;}
 }
 async function syncGHLForSoc(soc){
- if(!soc.ghlKey)return null;
- const pipData=await fetchGHL(soc.ghlKey,"/pipelines/");
+ if(!soc.ghlLocationId)return null;
+ const loc=soc.ghlLocationId;
+ const pipData=await fetchGHL("pipelines",loc);
  if(!pipData||!pipData.pipelines)return null;
  const pip=pipData.pipelines[0];if(!pip)return null;
- const oppData=await fetchGHL(soc.ghlKey,`/pipelines/${pip.id}/opportunities`);
+ const oppData=await fetchGHL("opportunities",loc,{pipeline_id:pip.id});
  const opps=(oppData?.opportunities||[]).map(o=>({
   id:o.id,name:o.contact?.name||o.name||"Sans nom",stage:o.pipelineStageId,
   value:o.monetaryValue||0,email:o.contact?.email||"",phone:o.contact?.phone||"",
@@ -2159,8 +2164,8 @@ function ClientsPanel({soc,clients,saveClients,ghlData,socBankData,invoices,save
     <div style={{display:"flex",alignItems:"center",gap:6}}>
     <span style={{fontSize:14}}>🧾</span>
     <span style={{fontWeight:800,fontSize:12}}>Facturation</span>
-    {!soc.ghlKey&&<span style={{fontSize:7,color:C.o,background:C.oD,padding:"1px 5px",borderRadius:4}}>Mode local</span>}
-    {soc.ghlKey&&<span style={{fontSize:7,color:C.g,background:C.gD,padding:"1px 5px",borderRadius:4}}>GHL connecté</span>}
+    {!soc.ghlLocationId&&!soc.ghlKey&&<span style={{fontSize:7,color:C.o,background:C.oD,padding:"1px 5px",borderRadius:4}}>Mode local</span>}
+    {(soc.ghlLocationId||soc.ghlKey)&&<span style={{fontSize:7,color:C.g,background:C.gD,padding:"1px 5px",borderRadius:4}}>GHL connecté</span>}
     </div>
     <button onClick={()=>setInvView(invView?"":"all")} style={{background:"none",border:"none",color:C.acc,fontSize:9,cursor:"pointer",fontFamily:FONT,fontWeight:600}}>{invView?"Masquer":"Voir toutes"}</button>
    </div>
@@ -3702,10 +3707,10 @@ export default function App(){
  const saveClients=useCallback(async(nc)=>{setClients(nc);await sSet("scAcl",nc);},[]);
  const saveInvoices=useCallback(async(ni)=>{setInvoices(ni);await sSet("scAiv",ni);},[]);
  const syncGHL=useCallback(async()=>{
-  const hasKeys=socs.some(s=>s.ghlKey);
+  const hasKeys=socs.some(s=>s.ghlLocationId||s.ghlKey);
   let newData={};
   if(hasKeys){
-   for(const s of socs.filter(x=>x.ghlKey)){
+   for(const s of socs.filter(x=>x.ghlLocationId||x.ghlKey)){
     const d=await syncGHLForSoc(s);
     if(d)newData[s.id]=d;
    }
