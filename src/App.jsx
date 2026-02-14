@@ -3529,8 +3529,8 @@ function CollapsibleSection({title,icon,children,defaultOpen=false}){
  </div>;
 }
 
-function SocSettingsPanel({soc,save,socs}){
- const[form,setForm]=useState({nom:soc.nom,porteur:soc.porteur,act:soc.act,color:soc.color,logo:soc.logo||"",email:soc.email||"",phone:soc.phone||"",desc:soc.desc||"",logoUrl:soc.logoUrl||"",brandColor:soc.brandColor||"",brandColorSecondary:soc.brandColorSecondary||""});
+function SocSettingsPanel({soc,save,socs,clients}){
+ const[form,setForm]=useState({nom:soc.nom,porteur:soc.porteur,act:soc.act,color:soc.color,logo:soc.logo||"",email:soc.email||"",phone:soc.phone||"",desc:soc.desc||"",logoUrl:soc.logoUrl||"",brandColor:soc.brandColor||"",brandColorSecondary:soc.brandColorSecondary||"",portalEnabled:soc.portalEnabled||false});
  const[saved,setSaved]=useState(false);
  const fileRef=useRef(null);
  const doSave=()=>{const updated=socs.map(s=>s.id===soc.id?{...s,...form}:s);save(updated,null,null);setSaved(true);setTimeout(()=>setSaved(false),2500);};
@@ -3661,6 +3661,21 @@ function SocSettingsPanel({soc,save,socs}){
      <Btn small onClick={saveSales}>💾 Sauvegarder Sales</Btn>
     </>;
    })()}
+  </Card>
+  {/* Client Portal */}
+  <Card style={{padding:16,marginTop:12}}>
+   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}><span style={{fontSize:16}}>🌐</span><div><div style={{fontWeight:800,fontSize:13,color:C.t}}>Portail Client</div><div style={{fontSize:10,color:C.td}}>Partagez un accès lecture seule à vos clients</div></div></div>
+   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+    <span style={{fontSize:11,color:C.t}}>Activer le portail client</span>
+    <button onClick={()=>setForm(f=>({...f,portalEnabled:!f.portalEnabled}))} style={{width:40,height:22,borderRadius:11,border:"none",background:form.portalEnabled?C.g:C.brd,cursor:"pointer",position:"relative",transition:"background .2s"}}><div style={{width:18,height:18,borderRadius:9,background:"white",position:"absolute",top:2,left:form.portalEnabled?20:2,transition:"left .2s"}}/></button>
+   </div>
+   {form.portalEnabled&&<div style={{background:C.bg,borderRadius:8,padding:10,border:`1px solid ${C.brd}`}}>
+    <div style={{fontSize:10,color:C.td,marginBottom:6}}>Liens partageables par client :</div>
+    {(clients||[]).filter(c2=>c2.socId===soc.id&&c2.status==="active").slice(0,5).map(c2=><div key={c2.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"4px 0",borderBottom:`1px solid ${C.brd}08`}}>
+     <span style={{fontSize:10,color:C.t}}>{c2.name}</span>
+     <button onClick={()=>{navigator.clipboard?.writeText(`${window.location.origin}${window.location.pathname}#portal/${soc.id}/${c2.id}`);}} style={{padding:"2px 8px",borderRadius:6,border:`1px solid ${C.brd}`,background:"transparent",color:C.acc,fontSize:9,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>📋 Copier</button>
+    </div>)}
+   </div>}
   </Card>
   <Btn onClick={doSave}>💾 Sauvegarder</Btn>
  </Sect>;
@@ -6000,7 +6015,7 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
   </>}
   {pTab===9&&<ErrorBoundary label="Clients"><ClientsUnifiedPanel soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices} stripeData={stripeData}/></ErrorBoundary>}
   {pTab===13&&<ErrorBoundary label="Rapports"><RapportsPanel soc={soc} socBankData={socBankData} ghlData={ghlData} clients={clients} reps={reps} allM={allM}/></ErrorBoundary>}
-  {pTab===12&&<SocSettingsPanel soc={soc} save={save} socs={socs}/>}
+  {pTab===12&&<SocSettingsPanel soc={soc} save={save} socs={socs} clients={clients}/>}
   {pTab===1&&<ErrorBoundary label="Activité"><ActivitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
   {pTab===2&&<ErrorBoundary label="Sales"><SalesPanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
   {pTab===3&&<ErrorBoundary label="Publicité"><PublicitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
@@ -6480,7 +6495,7 @@ const SB_PORTEUR=[
  {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
 ];
 
-function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,extra,dataTourPrefix,brand,onThemeToggle}){
+function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,extra,dataTourPrefix,brand,onThemeToggle,installPrompt}){
  const[exp,setExp]=useState(()=>{
   const init={};items.forEach(g=>{if(g.children&&g.children.some(c=>c.tab===activeTab))init[g.id]=true;});return init;
  });
@@ -6523,6 +6538,9 @@ function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,ext
   <div style={{padding:"6px 6px 10px",borderTop:extra?"none":`1px solid ${C.brd}`,display:"flex",flexDirection:"column",gap:1}}>
    {onThemeToggle&&<button onClick={onThemeToggle} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:"none",background:"transparent",color:C.td,fontSize:10,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=C.card2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
     <span style={{fontSize:12}}>{getTheme()==="light"?"🌙":"☀️"}</span><span>{getTheme()==="light"?"Mode sombre":"Mode clair"}</span>
+   </button>}
+   {(installPrompt||window.__pwaPrompt)&&<button onClick={()=>{(installPrompt||window.__pwaPrompt)?.prompt();}} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:"none",background:"transparent",color:C.acc,fontSize:10,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=C.card2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+    <span style={{fontSize:12}}>📱</span><span>Installer l'app</span>
    </button>}
    {adminBack&&<button onClick={adminBack} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:"none",background:C.accD,color:C.acc,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"background .12s",marginBottom:2}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,170,0,.2)"} onMouseLeave={e=>e.currentTarget.style.background=C.accD}>
     <span style={{fontSize:12}}>←</span><span>Retour Admin</span>
@@ -7277,6 +7295,8 @@ export default function App(){
  const[pin,setPin]=useState("");const[lErr,setLErr]=useState("");const[shake,setShake]=useState(false);
  const[loginMode,setLoginMode]=useState("email");const[loginEmail,setLoginEmail]=useState("");const[loginPass,setLoginPass]=useState("");const[authUser,setAuthUser]=useState(null);const[authLoading,setAuthLoading]=useState(false);
  const[tab,setTab]=useState(0);const[eSoc,setESoc]=useState(null);const[eHold,setEHold]=useState(false);
+ const[deferredPrompt,setDeferredPrompt]=useState(null);
+ useEffect(()=>{const h=e=>{e.preventDefault();setDeferredPrompt(e);window.__pwaPrompt=e;};window.addEventListener("beforeinstallprompt",h);return()=>window.removeEventListener("beforeinstallprompt",h);},[]);
  const[saving,setSaving]=useState(false);const[meeting,setMeeting]=useState(false);const[adminSocView,setAdminSocView]=useState(null);
  const[newActSoc,setNewActSoc]=useState("");const[newActText,setNewActText]=useState("");const[showPulse,setShowPulse]=useState(false);
  useEffect(()=>{if(tab===99){setShowPulse(true);setTab(0);}},[tab]);
