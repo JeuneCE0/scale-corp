@@ -3274,13 +3274,15 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
     const lostAll=ghlOpps.filter(o=>o.status==="lost");
     const wonVal=wonAll.reduce((a,o)=>a+o.value,0);
     const pipeVal=ghlOpps.filter(o=>o.status==="open").reduce((a,o)=>a+o.value,0);
-    const convRate=ghlOpps.length>0?Math.round(wonAll.length/(wonAll.length+lostAll.length)*100||0):0;
+    const cbt=ghlStats.callsByType||{};const stratCalls=Object.entries(cbt).filter(([n])=>!n.toLowerCase().includes("intégration")&&!n.toLowerCase().includes("integration")).reduce((a,[,v])=>a+v,0);
+    const integCalls=Object.entries(cbt).filter(([n])=>n.toLowerCase().includes("intégration")||n.toLowerCase().includes("integration")).reduce((a,[,v])=>a+v,0);
+    const convRate=stratCalls>0?Math.round(integCalls/stratCalls*100):0;
     const kpis=[
      {icon:"👥",label:"Contacts total",value:totalContacts,color:"#60a5fa"},
      {icon:"🎯",label:"Dans la pipeline",value:inPipeline,sub:fmt(pipeVal)+"€",color:C.acc},
      {icon:"✅",label:"Clients gagnés",value:wonAll.length,sub:fmt(wonVal)+"€",color:C.g},
      {icon:"❌",label:"Clients perdus",value:lostAll.length,color:C.r},
-     {icon:"📈",label:"Taux de conversion",value:convRate+"%",color:"#a78bfa"},
+     {icon:"📈",label:"Taux de conversion",value:convRate+"%",sub:stratCalls>0?`${integCalls}/${stratCalls} appels`:null,color:"#a78bfa"},
      ...Object.entries(ghlStats.callsByType||{}).map(([name,count])=>{const isInteg=name.toLowerCase().includes("intégration")||name.toLowerCase().includes("integration");return{icon:isInteg?"🤝":"📞",label:name.replace(/ - LEADX| - .*$/gi,"").trim(),value:count,color:isInteg?"#a78bfa":"#14b8a6"};}),
      {icon:"💰",label:"Valeur moyenne",value:fmt(ghlStats.avgDealSize)+"€",color:C.acc},
     ];
