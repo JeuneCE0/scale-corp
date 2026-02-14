@@ -1,6 +1,8 @@
 // Vercel Serverless Function - GHL API v2 Proxy
 // API keys are stored server-side only (Vercel env vars)
 
+import { readFileSync, existsSync } from 'fs';
+
 const LOCATION_KEY_MAP = {
   "NsV7HI2MbE6qHtRp410y": "GHL_ECO_KEY",
   "BjQ4DxmWrLl3nCNcjmhE": "GHL_LEADX_KEY",
@@ -39,6 +41,15 @@ export default async function handler(req, res) {
   if (!checkRateLimit(ip)) return res.status(429).json({ error: "Too many requests" });
 
   const { action, locationId, ...params } = req.body || {};
+
+  // webhook_events doesn't need locationId
+  if (action === "webhook_events") {
+    try {
+      const evFile = '/tmp/ghl-events.json';
+      const events = existsSync(evFile) ? JSON.parse(readFileSync(evFile, 'utf8')) : [];
+      return res.status(200).json({ events });
+    } catch { return res.status(200).json({ events: [] }); }
+  }
 
   if (!action || !locationId) {
     return res.status(400).json({ error: "Missing action or locationId" });

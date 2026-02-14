@@ -563,6 +563,45 @@ async function checkAndSendReminders(socs2,reps2,pulses2,slackConfig){
  }
  return results;
 }
+/* STRIPE API */
+const STRIPE_PROXY="/api/stripe";
+async function fetchStripe(action,params={}){
+ try{
+  const r=await fetch(STRIPE_PROXY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,...params})});
+  if(!r.ok)return null;return await r.json();
+ }catch(e){console.warn("Stripe fetch failed:",e.message);return null;}
+}
+async function syncStripeData(){
+ try{
+  const[custRes,chargesRes,subsRes]=await Promise.all([
+   fetchStripe("customers_list"),
+   fetchStripe("charges_list"),
+   fetchStripe("subscriptions_list"),
+  ]);
+  return{
+   customers:custRes?.data||[],
+   charges:chargesRes?.data||[],
+   subscriptions:subsRes?.data||[],
+   lastSync:new Date().toISOString(),
+  };
+ }catch(e){console.warn("Stripe sync failed:",e.message);return null;}
+}
+function getStripeChargesForClient(stripeData,client){
+ if(!stripeData?.charges)return[];
+ const email=(client?.email||"").toLowerCase().trim();
+ if(!email)return[];
+ // Build email map from customers
+ const custEmails={};
+ (stripeData.customers||[]).forEach(c=>{if(c.email)custEmails[c.id]=c.email.toLowerCase().trim();});
+ return stripeData.charges.filter(ch=>{
+  const billingEmail=(ch.billing_details?.email||"").toLowerCase().trim();
+  const custEmail=ch.customer?custEmails[ch.customer]||"":"";
+  return(billingEmail&&billingEmail===email)||(custEmail&&custEmail===email);
+ });
+}
+function getStripeTotal(charges){
+ return charges.filter(c=>c.status==="succeeded").reduce((a,c)=>a+Math.round((c.amount||0)/100),0);
+}
 const REV_ENVS={sandbox:"https://sandbox-b2b.revolut.com/api/1.0",production:"https://b2b.revolut.com/api/1.0"};
 const CURR_SYMBOLS={EUR:"€",USD:"$",GBP:"£",CHF:"CHF",SEK:"kr",NOK:"kr",DKK:"kr",PLN:"zł",CZK:"Kč",HUF:"Ft",RON:"lei",BGN:"лв",HRK:"kn",AED:"AED",CAD:"CA$",AUD:"A$",JPY:"¥"};
 function mkRevolutDemo(){ return null; }
@@ -2007,7 +2046,7 @@ function AIWeeklyCoach({soc,reps,allM,actions,pulses,milestones}){
 }
 /* CLIENTS PANEL (per-société CRM) */
 function ClientsPanelSafe(props){return <ErrorBoundary label="Erreur dans la page Clients"><ClientsPanelInner {...props}/></ErrorBoundary>;}
-function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices}){
+function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices,stripeData}){
  const[editCl,setEditCl]=useState(null);const[filter,setFilter]=useState("all");const[stageFilter,setStageFilter]=useState("all");const[invView,setInvView]=useState(null);
  const[sending,setSending]=useState(null);const[search,setSearch]=useState("");const[selPipeline,setSelPipeline]=useState("all");const[sort,setSort]=useState("recent");
  const allPipelines=ghlData?.[soc.id]?.pipelines||[];
@@ -2640,6 +2679,40 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
        </div>
        <span style={{fontWeight:700,fontSize:11,color:C.g}}>+{fmt(leg.amount)}€</span>
       </div>;})}
+      </div>
+     </div>;
+    })()}
+    {/* Activity Timeline */}
+    {(()=>{
+     const cn=(editCl.name||"").toLowerCase().trim();const ce=(editCl.email||"").toLowerCase().trim();
+     const events=[];
+     // Bank transactions
+     const txs=(socBankData?.transactions||[]);
+     txs.forEach(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return;const desc=(leg.description||tx.reference||"").toLowerCase();const pts=cn.split(/\s+/).filter(p=>p.length>2);const match=cn.length>2&&desc.includes(cn)||(pts.length>=2&&pts.every(p=>desc.includes(p)));if(match)events.push({date:tx.created_at,icon:"💰",type:"payment",label:`Paiement reçu: ${fmt(leg.amount)}€`,desc:leg.description||tx.reference||"",color:C.g});});
+     // GHL opportunities
+     const opps=(ghlData?.[soc.id]?.opportunities||[]).filter(o=>o.contact?.id===editCl.ghlId);
+     opps.forEach(o=>{events.push({date:o.createdAt||o.updatedAt,icon:o.status==="won"?"✅":o.status==="lost"?"❌":"🎯",type:"deal",label:o.status==="won"?"Deal gagné"+(o.value?` (${fmt(o.value)}€)`:""):o.status==="lost"?"Deal perdu":`Deal: ${o.stage||"En cours"}`,desc:o.name||"",color:o.status==="won"?C.g:o.status==="lost"?C.r:C.acc});});
+     // Calendar events
+     const calEvts=(ghlData?.[soc.id]?.calendarEvents||[]).filter(e=>{const n=(e.title||e.contactName||"").toLowerCase();return cn.length>2&&n.includes(cn)||ce.length>3&&(e.email||"").toLowerCase().includes(ce);});
+     calEvts.forEach(e=>{events.push({date:e.startTime||e.createdAt,icon:"📞",type:"call",label:e.calendarName||"Appel",desc:e.title||e.contactName||"",color:"#14b8a6"});});
+     // Contact created
+     if(editCl.at)events.push({date:editCl.at,icon:"👤",type:"created",label:"Contact créé",desc:"Ajouté dans le CRM",color:"#60a5fa"});
+     events.sort((a,b)=>new Date(b.date)-new Date(a.date));
+     if(events.length===0)return null;
+     return <div style={{padding:"10px 12px",background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`,margin:"8px 0"}}>
+      <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📋 HISTORIQUE D'ACTIVITÉ ({events.length})</div>
+      <div style={{maxHeight:200,overflowY:"auto"}}>
+      {events.slice(0,20).map((ev,i)=><div key={i} style={{display:"flex",gap:8,padding:"5px 0",borderBottom:i<Math.min(events.length,20)-1?`1px solid ${C.brd}`:"none"}}>
+       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,flexShrink:0}}>
+        <span style={{fontSize:12}}>{ev.icon}</span>
+        {i<Math.min(events.length,20)-1&&<div style={{width:1,flex:1,background:C.brd}}/>}
+       </div>
+       <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:10,fontWeight:600,color:ev.color}}>{ev.label}</div>
+        {ev.desc&&<div style={{fontSize:9,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ev.desc}</div>}
+        <div style={{fontSize:8,color:C.td}}>{ev.date?new Date(ev.date).toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric"}):""}</div>
+       </div>
+      </div>)}
       </div>
      </div>;
     })()}
@@ -3373,6 +3446,30 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
     </div>
    </div>;
   })()}
+  {/* OKR / Objectifs */}
+  {(()=>{
+   const okrKey=`okr_${soc.id}`;const stored=JSON.parse(localStorage.getItem(okrKey)||"[]");
+   const defaults=[
+    {id:"ca",label:"Objectif CA mensuel",target:soc.obj||5000,current:ca,unit:"€",icon:"💰"},
+    {id:"clients",label:"Nouveaux clients ce mois",target:5,current:(ghlData?.[soc.id]?.opportunities||[]).filter(o=>o.status==="won"&&o.updatedAt&&new Date(o.updatedAt).toISOString().startsWith(curM())).length,unit:"",icon:"🤝"},
+    {id:"calls",label:"Appels réalisés ce mois",target:30,current:(ghlData?.[soc.id]?.calendarEvents||[]).filter(e=>e.startTime&&new Date(e.startTime).toISOString().startsWith(curM())).length,unit:"",icon:"📞"},
+   ];
+   const okrs=defaults.map(d=>{const s=stored.find(x=>x.id===d.id);return{...d,target:s?.target||d.target};});
+   return <div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.55s"}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>🎯 OBJECTIFS DU MOIS</div>
+    {okrs.map((o,i)=>{const pctV=o.target>0?Math.min(100,Math.round(o.current/o.target*100)):0;const done=pctV>=100;
+     return <div key={o.id} style={{marginBottom:i<okrs.length-1?10:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+       <span style={{fontSize:10,fontWeight:600}}>{o.icon} {o.label}</span>
+       <span style={{fontSize:10,fontWeight:800,color:done?C.g:pctV>60?C.acc:C.td}}>{o.current}{o.unit} / {o.target}{o.unit} ({pctV}%)</span>
+      </div>
+      <div style={{height:6,background:C.brd,borderRadius:3,overflow:"hidden"}}>
+       <div style={{height:"100%",width:`${pctV}%`,background:done?`linear-gradient(90deg,${C.g},#34d399)`:`linear-gradient(90deg,${acc2},#FF9D00)`,borderRadius:3,transition:"width .5s"}}/>
+      </div>
+     </div>;
+    })}
+   </div>;
+  })()}
   {/* Quick Actions */}
   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
    {[{icon:"👥",title:"Mes clients",sub:"Voir le portefeuille",tab:9},{icon:"🏦",title:"Transactions",sub:"Historique bancaire",tab:5},{icon:"⚙️",title:"Paramètres",sub:"Configurer ma société",tab:12}].map((a,i)=>
@@ -3443,7 +3540,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
    </div>;
   })()}
 }
-function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,savePulse,socBankData,syncSocBank,okrs,saveOkrs,kb,saveKb,socs,subs,saveSubs,team,saveTeam,clients,saveClients,ghlData,invoices,saveInvoices,hold,onTour,onThemeToggle}){
+function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,savePulse,socBankData,syncSocBank,okrs,saveOkrs,kb,saveKb,socs,subs,saveSubs,team,saveTeam,clients,saveClients,ghlData,invoices,saveInvoices,hold,onTour,onThemeToggle,stripeData}){
  const cM2=curM();const[pTab,setPTab]=useState(0);const[mo,setMo]=useState(cM2);
  const[f,setF]=useState(()=>gr(reps,soc.id,cM2)||{...BF});const[done,setDone]=useState(false);const[showPub,setShowPub]=useState(false);const[jText,setJText]=useState("");
  useEffect(()=>{const ex=gr(reps,soc.id,mo)||{...BF};setF(ex);setShowPub(!!pf(ex.pub));setDone(false);},[mo,soc.id]);
@@ -3502,11 +3599,11 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
   {celebMs&&<CelebrationOverlay milestone={celebMs} onClose={()=>setCelebMs(null)}/>}
   <div style={{padding:"16px 16px 16px",maxWidth:680,margin:"0 auto"}}>
   {/* === PORTEUR DASHBOARD (pTab 0) === */}
-  {pTab===0&&<PorteurDashboard soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}} ghlData={ghlData} setPTab={setPTab} soc2={soc} clients={clients} pulses={pulses} savePulse={savePulse} hold={hold}/>}
+  {pTab===0&&<PorteurDashboard soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}} ghlData={ghlData} setPTab={setPTab} soc2={soc} clients={clients} pulses={pulses} savePulse={savePulse} hold={hold} stripeData={stripeData}/>}
   {pTab===5&&<><SocBankWidget bankData={socBankData} onSync={()=>syncSocBank(soc.id)} soc={soc}/>
    <SubsTeamPanel socs={[soc]} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId={soc.id} reps={reps} socBankData={socBankData}/>
   </>}
-  {pTab===9&&<ClientsPanelSafe soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices}/>}
+  {pTab===9&&<ClientsPanelSafe soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices} stripeData={stripeData}/>}
   {pTab===12&&<SocSettingsPanel soc={soc} save={save} socs={socs}/>}
   </div>
   </div>
@@ -4047,7 +4144,7 @@ export default function App(){
  
  const[socs,setSocs]=useState([]);const[reps,setReps]=useState({});const[hold,setHold]=useState(DH);
  const[actions,setActions]=useState([]);const[journal,setJournal]=useState({});
- const[pulses,setPulses]=useState({});const[deals,setDeals]=useState([]);const[ghlData,setGhlData]=useState({});const[revData,setRevData]=useState(null);const[socBank,setSocBank]=useState({});
+ const[pulses,setPulses]=useState({});const[deals,setDeals]=useState([]);const[ghlData,setGhlData]=useState({});const[revData,setRevData]=useState(null);const[socBank,setSocBank]=useState({});const[stripeData,setStripeData]=useState(null);
  const[okrs,setOkrs]=useState([]);const[synergies,setSynergies]=useState([]);const[kb,setKb]=useState([]);const[challenges,setChallenges]=useState([]);
  const[subs,setSubs]=useState([]);const[team,setTeam]=useState([]);const[clients,setClients]=useState([]);const[invoices,setInvoices]=useState([]);
  const[pin,setPin]=useState("");const[lErr,setLErr]=useState("");const[shake,setShake]=useState(false);
@@ -4129,7 +4226,7 @@ export default function App(){
  },[socs]);
  useEffect(()=>{
   if(!loaded)return;
-  const doSync=async()=>{try{await syncRev();await syncAllSocBanks();}catch(e){console.warn("Auto-sync Revolut failed:",e);}};
+  const doSync=async()=>{try{await syncRev();await syncAllSocBanks();const sd=await syncStripeData();if(sd)setStripeData(sd);}catch(e){console.warn("Auto-sync failed:",e);}};
   doSync();
   const id=setInterval(doSync,60000);
   return()=>clearInterval(id);
@@ -4159,7 +4256,15 @@ export default function App(){
  const leaderboard=useMemo(()=>calcLeaderboard(socs,reps,actions,pulses,allM),[socs,reps,actions,pulses,allM]);
  const cM2=curM(),actS=socs.filter(s=>s.stat==="active");
  const smartAlerts=useMemo(()=>calcSmartAlerts(socs,reps,actions,pulses,allM,socBank),[socs,reps,actions,pulses,allM,socBank]);
- const login=useCallback(()=>{if(pin==="0000"||pin==="admin"){setRole("admin");setLErr("");_storeToken=pin;localStorage.setItem("sc_store_token",pin);if(!onboarded)setShowTour(true);return;}const s=socs.find(x=>x.pin===pin);if(s){setRole(s.id);setLErr("");_storeToken=pin;localStorage.setItem("sc_store_token",pin);if(!onboarded)setShowTour(true);return;}setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[pin,socs,onboarded]);
+ const login=useCallback(async()=>{async function hashPin(p){const e=new TextEncoder().encode(p);const h=await crypto.subtle.digest('SHA-256',e);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+const doLogin=(rid)=>{setRole(rid);setLErr("");_storeToken=pin;localStorage.setItem("sc_store_token",pin);if(!onboarded)setShowTour(true);};
+// Admin check
+if(pin==="0000"||pin==="admin"){const hk="sc_pin_hash_admin";const stored=localStorage.getItem(hk);if(!stored){localStorage.setItem(hk,await hashPin(pin));}doLogin("admin");return;}
+// Check stored hashes first
+const inputHash=await hashPin(pin);for(const s of socs){const hk=`sc_pin_hash_${s.id}`;const stored=localStorage.getItem(hk);if(stored&&stored===inputHash){doLogin(s.id);return;}}
+// Backward compat: raw PIN match, then store hash
+const s=socs.find(x=>x.pin===pin);if(s){localStorage.setItem(`sc_pin_hash_${s.id}`,await hashPin(pin));doLogin(s.id);return;}
+setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[pin,socs,onboarded]);
  const addAction=(socId,text,dl)=>{saveAJ([...actions,{id:uid(),socId,text,deadline:dl||nextM(cM2),done:false,by:"admin",at:new Date().toISOString()}],null);};
  const toggleAction=(id)=>{saveAJ(actions.map(a=>a.id===id?{...a,done:!a.done}:a),null);};
  const deleteAction=(id)=>{saveAJ(actions.filter(a=>a.id!==id),null);};
@@ -4210,7 +4315,7 @@ export default function App(){
  </div>;
  if(role!=="admin"){const soc=socs.find(s=>s.id===role);if(!soc)return null;
   const porteurSetTab=(t)=>{const btn=document.querySelector(`[data-tour="porteur-tab-${t}"]`);if(btn)btn.click();};
-  return <>{false&&<TutorialOverlay steps={TOUR_PORTEUR} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={porteurSetTab}/>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme}/></>;}
+  return <>{false&&<TutorialOverlay steps={TOUR_PORTEUR} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={porteurSetTab}/>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData}/></>;}
  if(meeting)return <MeetingMode socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} onExit={()=>setMeeting(false)}/>;
  const hc=calcH(socs,reps,hold,cM2);const pending=socs.filter(s=>{const r=gr(reps,s.id,cM2);return r&&!r.ok;});
  const missing=actS.filter(s=>!gr(reps,s.id,cM2));const lateActions=actions.filter(a=>!a.done&&a.deadline<cM2);
