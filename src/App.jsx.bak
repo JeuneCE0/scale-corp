@@ -2836,7 +2836,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab}){
   {recentTx.length>0&&<div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:16,marginBottom:20,animationDelay:"0.8s"}}>
    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
     <span style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8}}>DERNIÈRES TRANSACTIONS</span>
-    <span onClick={()=>setPTab(5)} style={{color:acc2,fontSize:10,fontWeight:600,cursor:"pointer"}}>Voir tout →</span>
+    <span onClick={()=>setPTab(5)} style={{color:C.acc,fontSize:10,fontWeight:600,cursor:"pointer"}}>Voir tout →</span>
    </div>
    {recentTx.map((tx,i)=>{const leg=tx.legs?.[0];if(!leg)return null;const isIn=leg.amount>0;const cat=categorizeTransaction(tx);
     const catColors={"revenus":C.g,"loyer":"#f59e0b","pub":"#ec4899","abonnements":C.b,"equipe":C.o,"transfert":"#6366f1","dividendes":"#7c3aed","autres":C.td};
@@ -3615,7 +3615,7 @@ export default function App(){
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:4}}>ACCÈS RAPIDE</div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"2px 14px",fontSize:10}}>
     <div><span style={{color:C.acc,fontWeight:700}}>0000</span> <span style={{color:C.td}}>Admin</span></div>
-    {socs.filter(s=>s.pin!=="admin").slice(0,5).map(s=><div key={s.id} style={{display:"flex",alignItems:"center",gap:6}}>{s.logoUrl?<img src={s.logoUrl} alt="" style={{width:16,height:16,borderRadius:8,objectFit:"cover"}}/>:<span style={{width:16,height:16,borderRadius:8,background:(s.brandColor||s.color)+"22",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:900,color:s.brandColor||s.color}}>{s.nom[0]}</span>}<span style={{color:s.brandColor||s.color,fontWeight:600}}>{s.pin}</span> <span style={{color:C.td}}>{s.nom}</span></div>)}
+    {socs.filter(s=>s.pin!=="admin").slice(0,5).map(s=><div key={s.id}><span style={{color:s.color,fontWeight:600}}>{s.pin}</span> <span style={{color:C.td}}>{s.nom}</span></div>)}
     </div>
    </div>
    {obData&&<div style={{marginTop:10,padding:"8px 12px",background:C.gD,borderRadius:8,border:`1px solid ${C.g}33`,fontSize:10,color:C.g,textAlign:"center"}}>✅ Onboarding complété{obData.companyName?` — ${obData.companyName}`:""}</div>}
