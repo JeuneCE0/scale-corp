@@ -65,6 +65,26 @@ const DS=[
 const DH={logiciels:1200,equipe:300,service:500,cabinet:280,remun:3000,reservePct:30,crm:150,treso:2000,revolutToken:"",revolutEnv:"sandbox",slack:{enabled:false,mode:"bob",webhookUrl:"",botToken:"",channel:"",bobWebhook:"",notifyPulse:true,notifyReport:true,notifyValidation:true,notifyReminders:true}};
 const DEAL_STAGES=["Idée","Contact","Négociation","Due Diligence","Signature"];
 function mkPrefill(){ return {}; }
+
+function autoGenerateReport(socId, month, socBank, ghlData, subs){
+ const sb=socBank?.[socId], gd=ghlData?.[socId];
+ const monthly=sb?.monthly?.[month];
+ const txns=(sb?.transactions||[]).filter(t=>{const d=t.created_at||t.date||"";return d.startsWith(month);});
+ const sumTxns=(keywords)=>Math.abs(txns.filter(t=>{const desc=((t.description||"")+(t.reference||"")).toLowerCase();return keywords.some(k=>desc.includes(k))&&(t.legs?.[0]?.amount||0)<0;}).reduce((a,t)=>a+Math.abs(t.legs?.[0]?.amount||0),0));
+ const ca=monthly?.income||0;
+ const charges=monthly?.expense||0;
+ const chargesOps=Math.round(sumTxns(["abonnement","subscription","saas","hosting","heroku","vercel","aws","stripe fee"]));
+ const salaire=Math.round(sumTxns(["salaire","salary","freelance","prestation"]));
+ const pub=Math.round(sumTxns(["facebook","google ads","meta ads","tiktok","pub ","advertising","adwords"]));
+ const formation=Math.round(sumTxns(["formation","training","skool","udemy","coursera"]));
+ const clients=gd?.stats?.wonDeals||gd?.ghlClients?.filter(c=>c.status==="active")?.length||0;
+ const leads=gd?.stats?.totalLeads||0;
+ const pipeline=gd?.stats?.pipelineValue||0;
+ const tresoSoc=sb?.balance||0;
+ const activeClients=gd?.ghlClients?.filter(c=>c.status==="active")||[];
+ const mrr=activeClients.reduce((a,c)=>{const b=c.billing;if(!b)return a;if(b.freq==="monthly")return a+pf(b.amount);if(b.freq==="annual")return a+pf(b.amount)/12;return a;},0);
+ return{ca:String(Math.round(ca)),charges:String(Math.round(charges)),chargesOps:String(chargesOps),salaire:String(salaire),formation:String(formation),clients:String(clients),churn:"",pub:String(pub),leads:String(leads),leadsContact:"",leadsClos:String(gd?.stats?.wonDeals||0),notes:"Auto-généré depuis Revolut + GHL",mrr:String(Math.round(mrr)),pipeline:String(Math.round(pipeline)),tresoSoc:String(Math.round(tresoSoc)),ok:false,at:new Date().toISOString(),comment:"",_auto:true};
+}
 const DEMO_JOURNAL={};
 const DEMO_ACTIONS=[];
 const DEMO_PULSES={};
@@ -2914,7 +2934,7 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
   {pTab===0&&<>
    <div data-tour="porteur-status" className="fu" style={{background:status==="validated"?C.gD:status==="pending"?C.oD:C.rD,border:`1px solid ${statusColor}22`,borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}><div><div style={{color:statusColor,fontWeight:700,fontSize:12}}>{statusText}</div><div style={{color:C.td,fontSize:11}}>Rapport {ml(cM2)} · avant le {deadline(cM2)}</div></div></div>
    {ex?.comment&&<Card accent={C.acc} style={{marginBottom:14,padding:"10px 12px"}}><div style={{color:C.acc,fontSize:10,fontWeight:700,marginBottom:3}}>💬 RETOUR SCALE</div><div style={{color:C.t,fontSize:13,lineHeight:1.6}}>{ex.comment}</div></Card>}
-   <div data-tour="porteur-report"><Sect title={`Rapport — ${ml(mo)}`} right={<div style={{display:"flex",gap:6,alignItems:"center"}}>{bankFin&&<Btn small v="ai" onClick={autoFill}>🏦 Pré-remplir</Btn>}<Inp type="month" value={mo} onChange={setMo} small/></div>}>
+   <div data-tour="porteur-report"><Sect title={`Rapport — ${ml(mo)}`} right={<div style={{display:"flex",gap:6,alignItems:"center"}}>{f._auto&&<span style={{fontSize:9,background:"#a78bfa22",color:"#a78bfa",padding:"2px 8px",borderRadius:8,fontWeight:700}}>🤖 Auto-généré</span>}<Btn small v="ai" onClick={()=>{const auto=autoGenerateReport(soc.id,mo,socBankData?{[soc.id]:socBankData}:{},ghlData||{},subs||[]);setF(prev=>({...auto,...(prev.ok?prev:{})}));}} title="Recalculer depuis Revolut + GHL">🔄</Btn>{bankFin&&<Btn small v="ai" onClick={autoFill}>🏦 Pré-remplir</Btn>}<Inp type="month" value={mo} onChange={setMo} small/></div>}>
     {bankFin&&<div className="fu" style={{background:C.gD,border:`1px solid ${C.g}22`,borderRadius:8,padding:"6px 10px",marginBottom:10,display:"flex",alignItems:"center",gap:8,fontSize:11}}><span style={{fontSize:14}}>🏦</span><span style={{color:C.g,fontWeight:600}}>Revolut : Encaissé {fmt(bankFin.ca)}€ · Décaissé {fmt(bankFin.charges)}€ · Solde {fmt(bankFin.tresoSoc)}€</span></div>}
     {/* Essential fields */}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}><Inp label="CA" value={f.ca} onChange={v=>setF({...f,ca:v})} type="number" suffix="€"/><Inp label="Charges totales" value={f.charges} onChange={v=>setF({...f,charges:v})} type="number" suffix="€"/></div>
@@ -3724,6 +3744,25 @@ export default function App(){
   const id=setInterval(doSync,60000);
   return()=>clearInterval(id);
  },[loaded,syncRev,syncAllSocBanks]);
+ // Auto-generate reports for current month when socBank/ghlData change
+ useEffect(()=>{
+  if(!loaded||!socs.length)return;
+  const cM=curM();
+  let updated=false;const nr={...reps};
+  socs.filter(s=>["active","lancement"].includes(s.stat)&&s.id!=="eco"&&(s.ghlLocationId||s.revolutCompany)).forEach(s=>{
+   const key=`${s.id}_${cM}`;const existing=nr[key];
+   if(existing?.ok===true)return;// never overwrite validated
+   const hasBankData=socBank?.[s.id]?.monthly?.[cM];
+   const hasGhlData=ghlData?.[s.id];
+   if(!hasBankData&&!hasGhlData)return;
+   const auto=autoGenerateReport(s.id,cM,socBank,ghlData,subs);
+   if(existing){// preserve manual edits on non-empty fields, but update auto fields
+    nr[key]={...auto,...Object.fromEntries(Object.entries(existing).filter(([k,v])=>v!==""&&v!==0&&v!=="0"&&k!=="notes"&&k!=="_auto"&&k!=="at")),_auto:true,at:new Date().toISOString()};
+   }else{nr[key]=auto;}
+   updated=true;
+  });
+  if(updated){setReps(nr);sSet("scAr",nr);}
+ },[loaded,socs,socBank,ghlData,subs]);
  const allM=useMemo(()=>{const ks=[...new Set(Object.keys(reps).map(k=>k.split("_").slice(1).join("_")))].sort();const c=curM();if(!ks.includes(c))ks.push(c);return ks.slice(-12);},[reps]);
  const alerts=useMemo(()=>socs.length?getAlerts(socs,reps,hold):[]  ,[socs,reps,hold]);
  const feed=useMemo(()=>buildFeed(socs,reps,actions,pulses),[socs,reps,actions,pulses]);
