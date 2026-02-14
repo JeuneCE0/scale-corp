@@ -62,7 +62,19 @@ const CSS=`@import url('https://fonts.googleapis.com/css2?family=Teachers:wght@4
 input[type=range]{-webkit-appearance:none;background:${C.brd};height:3px;border-radius:4px;outline:none}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:${C.acc};cursor:pointer;box-shadow:0 2px 6px rgba(255,170,0,.3)}
 select{cursor:pointer}select:focus{border-color:${C.acc}44}
-button:focus-visible{outline:2px solid ${C.acc}44;outline-offset:2px}`;
+button:focus-visible{outline:2px solid ${C.acc}44;outline-offset:2px}
+.glass-bg{background:#06060b;background-image:radial-gradient(at 20% 30%,rgba(255,170,0,.03) 0%,transparent 50%),radial-gradient(at 80% 70%,rgba(255,157,0,.02) 0%,transparent 50%),radial-gradient(at 50% 50%,rgba(96,165,250,.015) 0%,transparent 60%)}
+.glass-card{background:rgba(14,14,22,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.06);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.3);transition:all .3s cubic-bezier(.4,0,.2,1)}
+.glass-card:hover{border-color:rgba(255,170,0,.15);transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,.4)}
+.glass-card-static{background:rgba(14,14,22,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.06);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.glass-sidebar{background:rgba(14,14,22,.75);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-right:1px solid rgba(255,255,255,.04)}
+.glass-input{background:rgba(6,6,11,.6);border:1px solid rgba(255,255,255,.06);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:all .2s ease}
+.glass-input:focus-within{border-color:rgba(255,170,0,.3);box-shadow:0 0 16px rgba(255,170,0,.08)}
+.glass-modal{background:rgba(14,14,22,.85);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,.08);box-shadow:0 24px 64px rgba(0,0,0,.6)}
+.glow-accent{box-shadow:0 0 20px rgba(255,170,0,.15)}
+.glow-accent-strong{box-shadow:0 0 30px rgba(255,170,0,.25),0 4px 16px rgba(0,0,0,.3)}
+.glass-btn-ghost{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.glass-btn-ghost:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12)}`;
 const DS=[
  {id:"leadx",nom:"LEADX",porteur:"Dayyaan",act:"Media Buying",pT:"benefices",pP:30,stat:"active",color:"#FFAA00",pin:"1001",rec:true,obj:10000,objQ:28000,ghlKey:"",ghlLocationId:"BjQ4DxmWrLl3nCNcjmhE",revToken:"",revEnv:"sandbox",revolutCompany:"leadx",incub:"2025-06-01",slackId:""},
  {id:"copy",nom:"Copywriting",porteur:"Sol",act:"Copywriting",pT:"benefices",pP:20,stat:"active",color:"#60a5fa",pin:"1002",rec:false,obj:15000,objQ:42000,ghlKey:"",ghlLocationId:"2lB0paK192CFU1cLz5eT",revToken:"",revEnv:"sandbox",revolutCompany:"bcs",incub:"2025-03-15",slackId:""},
@@ -754,31 +766,31 @@ function Badge({s}){const m={active:[C.gD,C.g,"Active"],lancement:[C.oD,C.o,"Lan
 function IncubBadge({incub}){if(!incub)return null;const lbl=sinceLbl(incub);return <span style={{background:C.vD,color:C.v,padding:"2px 7px",borderRadius:20,fontSize:9,fontWeight:600}}>📅 {lbl}</span>;}
 function GradeBadge({grade,color,size="sm"}){const s=size==="lg"?{w:32,h:32,fs:16,r:9,bw:2}:{w:22,h:22,fs:11,r:6,bw:1.5};return <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:s.w,height:s.h,borderRadius:s.r,background:color+"15",color,fontWeight:900,fontSize:s.fs,border:`${s.bw}px solid ${color}33`,flexShrink:0}}>{grade}</span>;}
 function KPI({label,value,sub,accent,small,delay=0,icon}){
- return <div className={`fu d${delay}`} style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:12,padding:small?"10px 12px":"14px 16px",flex:"1 1 130px",minWidth:small?90:120,transition:"border-color .2s"}} onMouseEnter={e=>e.currentTarget.style.borderColor=accent||C.brdL} onMouseLeave={e=>e.currentTarget.style.borderColor=C.brd}>
-  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3}}>{icon&&<span style={{fontSize:10}}>{icon}</span>}<span style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,textTransform:"uppercase",fontFamily:FONT_TITLE}}>{label}</span></div>
-  <div style={{fontSize:small?14:20,fontWeight:800,color:accent||C.t,lineHeight:1.1}}>{value}</div>
-  {sub&&<div style={{color:C.td,fontSize:9,marginTop:2}}>{sub}</div>}
+ return <div className={`fu d${delay} glass-card-static`} style={{padding:small?"10px 12px":"16px 18px",flex:"1 1 130px",minWidth:small?90:120,transition:"all .3s cubic-bezier(.4,0,.2,1)"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${accent||C.acc}33`;e.currentTarget.style.boxShadow=`0 0 20px ${(accent||C.acc)}15`;e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,.06)";e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,.3)";e.currentTarget.style.transform="translateY(0)";}}>
+  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}>{icon&&<span style={{fontSize:11}}>{icon}</span>}<span style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,textTransform:"uppercase",fontFamily:FONT_TITLE}}>{label}</span></div>
+  <div style={{fontSize:small?16:28,fontWeight:900,color:accent||C.t,lineHeight:1.1}}>{value}</div>
+  {sub&&<div style={{color:C.td,fontSize:9,marginTop:3}}>{sub}</div>}
  </div>;
 }
 function PBar({value,max,color,h=5}){const w=clamp(pct(value,max),0,100);return <div style={{background:C.brd,borderRadius:h,height:h,overflow:"hidden"}}><div className="pg" style={{background:color||C.acc,height:"100%",width:`${w}%`,"--w":`${w}%`,borderRadius:h}}/></div>;}
 function Btn({children,onClick,v="primary",small,style:sx,disabled,full}){
- const t={primary:{background:`linear-gradient(135deg,#FFBF00,#FF9D00)`,color:"#0a0a0f"},secondary:{background:C.card2,color:C.t,border:`1px solid ${C.brd}`},ghost:{background:"transparent",color:C.td},danger:{background:C.rD,color:C.r},success:{background:C.gD,color:C.g},ai:{background:`linear-gradient(135deg,${C.v},${C.acc})`,color:"#0a0a0f"}};
- return <button className="ba" disabled={disabled} onClick={onClick} style={{border:"none",borderRadius:8,fontWeight:600,cursor:disabled?"not-allowed":"pointer",fontFamily:FONT,opacity:disabled?0.35:1,padding:small?"5px 10px":"9px 18px",fontSize:small?10:12,width:full?"100%":"auto",letterSpacing:.3,...t[v],...sx}}>{children}</button>;
+ const t={primary:{background:`linear-gradient(135deg,#FFBF00,#FF9D00)`,color:"#0a0a0f",boxShadow:"0 0 20px rgba(255,170,0,.2)"},secondary:{background:"rgba(255,255,255,.03)",color:C.t,border:"1px solid rgba(255,255,255,.08)",backdropFilter:"blur(10px)"},ghost:{background:"transparent",color:C.td,border:"1px solid rgba(255,255,255,.04)"},danger:{background:"rgba(248,113,113,.1)",color:C.r,border:"1px solid rgba(248,113,113,.15)"},success:{background:"rgba(52,211,153,.1)",color:C.g,border:"1px solid rgba(52,211,153,.15)"},ai:{background:`linear-gradient(135deg,${C.v},${C.acc})`,color:"#0a0a0f",boxShadow:`0 0 20px rgba(167,139,250,.2)`}};
+ return <button className="ba" disabled={disabled} onClick={onClick} style={{border:"none",borderRadius:10,fontWeight:600,cursor:disabled?"not-allowed":"pointer",fontFamily:FONT,opacity:disabled?0.35:1,padding:small?"5px 10px":"9px 18px",fontSize:small?10:12,width:full?"100%":"auto",letterSpacing:.3,...t[v],...sx}}>{children}</button>;
 }
 function Inp({label,value,onChange,type="text",placeholder,suffix,textarea,small,note,onKeyDown}){
  return <div style={{marginBottom:small?6:10}}>
   {label&&<label style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:3,letterSpacing:.3}}>{label}</label>}
-  <div style={{display:"flex",alignItems:"center",background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,overflow:"hidden",transition:"border-color .15s"}} onFocus={e=>e.currentTarget.style.borderColor=C.acc+"55"} onBlur={e=>e.currentTarget.style.borderColor=C.brd}>
+  <div className="glass-input" style={{display:"flex",alignItems:"center",borderRadius:10,overflow:"hidden"}} onFocus={e=>{e.currentTarget.style.borderColor="rgba(255,170,0,.3)";e.currentTarget.style.boxShadow="0 0 16px rgba(255,170,0,.08)";}} onBlur={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,.06)";e.currentTarget.style.boxShadow="none";}}>
    {textarea?<textarea value={value||""} onChange={e=>onChange(e.target.value)} placeholder={placeholder} rows={2} style={{flex:1,background:"transparent",border:"none",color:C.t,padding:"7px 10px",fontSize:12,fontFamily:FONT,outline:"none",resize:"vertical"}}/>
     :<input type={type} value={value==null?"":value} onChange={e=>onChange(e.target.value)} onKeyDown={onKeyDown} placeholder={placeholder} style={{flex:1,background:"transparent",border:"none",color:C.t,padding:small?"6px 10px":"8px 10px",fontSize:12,fontFamily:FONT,outline:"none",width:"100%"}}/>}
    {suffix&&<span style={{padding:"0 8px 0 2px",color:C.td,fontSize:11,flexShrink:0}}>{suffix}</span>}
   </div>{note&&<div style={{color:C.tm,fontSize:9,marginTop:2}}>{note}</div>}</div>;
 }
 function Sel({label,value,onChange,options}){return <div style={{marginBottom:10}}>{label&&<label style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:3,letterSpacing:.3}}>{label}</label>}<select value={value} onChange={e=>onChange(e.target.value)} style={{width:"100%",background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,color:C.t,padding:"8px 10px",fontSize:12,fontFamily:FONT,outline:"none"}}>{options.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}</select></div>;}
-function Sect({children,title,sub,right}){return <div className="fu" style={{marginTop:16}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:8,flexWrap:"wrap",gap:4}}><div>{title&&<h2 style={{color:C.t,fontSize:13,fontWeight:800,margin:0,letterSpacing:.2,fontFamily:FONT_TITLE}}>{title}</h2>}{sub&&<p style={{color:C.td,fontSize:10,margin:"1px 0 0"}}>{sub}</p>}</div>{right}</div>{children}</div>;}
-function Card({children,style:sx,onClick,accent,delay=0}){return <div className={`fu d${Math.min(delay,8)}`} onClick={onClick} style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:11,padding:14,cursor:onClick?"pointer":"default",transition:"border-color .15s, box-shadow .15s",...(accent?{borderLeft:`3px solid ${accent}`}:{}),...sx}} onMouseEnter={onClick?e=>{e.currentTarget.style.borderColor=C.brdL;e.currentTarget.style.boxShadow="0 2px 12px rgba(0,0,0,.2)";}:undefined} onMouseLeave={onClick?e=>{e.currentTarget.style.borderColor=accent||C.brd;e.currentTarget.style.boxShadow="none";}:undefined}>{children}</div>;}
-function Modal({open,onClose,title,children,wide}){if(!open)return null;return <div className="fi" onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"28px 14px",overflowY:"auto",backdropFilter:"blur(6px)"}}><div className="mi" onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:20,width:wide?700:440,maxWidth:"100%",boxShadow:"0 16px 50px rgba(0,0,0,.5)"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t}}>{title}</h3><Btn v="ghost" small onClick={onClose}>✕</Btn></div>{children}</div></div>;}
-function CTip({active,payload,label}){if(!active||!payload)return null;return <div style={{background:C.card2,border:`1px solid ${C.brd}`,borderRadius:8,padding:"6px 10px",boxShadow:"0 4px 16px rgba(0,0,0,.4)"}}><div style={{color:C.t,fontWeight:700,fontSize:9,marginBottom:2}}>{label}</div>{payload.map((p,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:4,marginBottom:1}}><span style={{width:4,height:4,borderRadius:2,background:p.color}}/><span style={{color:C.td,fontSize:9}}>{p.name}:</span><span style={{color:C.t,fontSize:9,fontWeight:600}}>{fmt(p.value)}€</span></div>)}</div>;}
+function Sect({children,title,sub,right}){return <div className="fu" style={{marginTop:16}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:8,flexWrap:"wrap",gap:4}}><div>{title&&<h2 style={{color:C.t,fontSize:13,fontWeight:800,margin:0,letterSpacing:1,textTransform:"uppercase",fontFamily:FONT_TITLE}}>{title}</h2>}{sub&&<p style={{color:C.td,fontSize:10,margin:"1px 0 0"}}>{sub}</p>}</div>{right}</div>{children}</div>;}
+function Card({children,style:sx,onClick,accent,delay=0}){return <div className={`fu d${Math.min(delay,8)} ${onClick?"glass-card":"glass-card-static"}`} onClick={onClick} style={{padding:14,cursor:onClick?"pointer":"default",...(accent?{borderLeft:`3px solid ${accent}`}:{}),...sx}} >{children}</div>;}
+function Modal({open,onClose,title,children,wide}){if(!open)return null;return <div className="fi" onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:1000,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"28px 14px",overflowY:"auto",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)"}}><div className="mi glass-modal" onClick={e=>e.stopPropagation()} style={{borderRadius:18,padding:22,width:wide?700:440,maxWidth:"100%"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t}}>{title}</h3><Btn v="ghost" small onClick={onClose}>✕</Btn></div>{children}</div></div>;}
+function CTip({active,payload,label}){if(!active||!payload)return null;return <div style={{background:"rgba(14,14,22,.85)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,.08)",borderRadius:12,padding:"8px 12px",boxShadow:"0 8px 32px rgba(0,0,0,.5)"}}><div style={{color:C.t,fontWeight:700,fontSize:9,marginBottom:3}}>{label}</div>{payload.map((p,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:4,marginBottom:1}}><span style={{width:4,height:4,borderRadius:2,background:p.color}}/><span style={{color:C.td,fontSize:9}}>{p.name}:</span><span style={{color:C.t,fontSize:9,fontWeight:600}}>{fmt(p.value)}€</span></div>)}</div>;}
 function Toggle({on,onToggle,label}){return <div onClick={onToggle} style={{display:"inline-flex",alignItems:"center",gap:7,cursor:"pointer",padding:"5px 10px",borderRadius:8,background:on?C.accD:C.card2,border:`1px solid ${on?C.acc+"66":C.brd}`,transition:"all .15s"}}><div style={{width:26,height:14,borderRadius:7,background:on?C.acc:C.brd,position:"relative",transition:"background .2s"}}><div style={{width:10,height:10,borderRadius:5,background:on?"#0a0a0f":C.td,position:"absolute",top:2,left:on?14:2,transition:"left .2s"}}/></div><span style={{fontSize:10,fontWeight:600,color:on?C.acc:C.td}}>{label}</span></div>;}
 function ActionItem({a,socs,onToggle,onDelete}){const s=socs.find(x=>x.id===a.socId);const late=!a.done&&a.deadline<curM();return <div className="fu" style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:C.card,borderRadius:8,border:`1px solid ${late?C.r+"44":C.brd}`,marginBottom:3}}><div onClick={()=>onToggle(a.id)} style={{width:18,height:18,borderRadius:5,border:`2px solid ${a.done?C.g:C.brd}`,background:a.done?C.gD:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{a.done&&<span style={{color:C.g,fontSize:11}}>✓</span>}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:a.done?C.td:C.t,textDecoration:a.done?"line-through":"none"}}>{a.text}</div><div style={{fontSize:10,color:late?C.r:C.td}}>{s&&<><span style={{width:5,height:5,borderRadius:3,background:s.color,display:"inline-block",marginRight:4}}/>{s.nom} · </>}{ml(a.deadline)}{late&&" ⚠ En retard"}</div></div>{onDelete&&<Btn v="ghost" small onClick={()=>onDelete(a.id)} style={{fontSize:9,padding:"2px 6px"}}>✕</Btn>}</div>;}
 /* AI CO-PILOT */
@@ -2947,7 +2959,7 @@ function PulseDashWidget({soc,existing,savePulse,hold}){
   savePulse(`${soc.id}_${w}`,pulse);setSent(true);
   if(hold?.slack?.enabled&&hold.slack.notifyPulse){slackSend(hold.slack,buildPulseSlackMsg(soc,pulse));}
  };
- if(existing&&!sent)return <div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:16,marginBottom:20,animationDelay:"0.35s"}}>
+ if(existing&&!sent)return <div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.35s"}}>
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
    <span style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,fontFamily:FONT_TITLE}}>⚡ PULSE DE LA SEMAINE</span>
    <span style={{fontSize:9,color:C.g,fontWeight:600}}>✓ Envoyé</span>
@@ -2961,11 +2973,11 @@ function PulseDashWidget({soc,existing,savePulse,hold}){
    <div style={{textAlign:"center"}}><div style={{fontWeight:800,fontSize:18,color:[C.r,C.o,C.td,C.b,C.g][existing.conf-1]}}>{existing.conf}/5</div><div style={{fontSize:8,color:C.td}}>Confiance</div></div>
   </div>
  </div>;
- if(sent)return <div className="fade-up" style={{background:C.gD,border:`1px solid ${C.g}33`,borderRadius:14,padding:16,marginBottom:20,textAlign:"center"}}>
+ if(sent)return <div className="fade-up" style={{background:"rgba(52,211,153,.08)",backdropFilter:"blur(20px)",border:"1px solid rgba(52,211,153,.15)",borderRadius:16,padding:16,marginBottom:20,textAlign:"center"}}>
   <span style={{fontSize:28}}>✅</span><div style={{fontWeight:700,fontSize:13,color:C.g,marginTop:4}}>Pulse envoyé !</div>
  </div>;
- return <div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:16,marginBottom:20,animationDelay:"0.35s"}}>
-  <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:10,fontFamily:FONT_TITLE}}>⚡ COMMENT ÇA VA CETTE SEMAINE ?</div>
+ return <div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.35s"}}>
+  <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>⚡ COMMENT ÇA VA CETTE SEMAINE ?</div>
   <div style={{display:"flex",gap:6,marginBottom:10}}>{MOODS.map((e,i)=><button key={i} onClick={()=>setMood(i)} style={{fontSize:20,padding:"4px 7px",borderRadius:8,border:`2px solid ${mood===i?C.acc:C.brd}`,background:mood===i?C.accD:"transparent",cursor:"pointer",transition:"all .15s"}}>{e}</button>)}</div>
   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
    <div><label style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:3}}>🏆 Victoire</label><input value={win} onChange={e=>setWin(e.target.value)} placeholder="Ta win de la semaine" style={{width:"100%",padding:"7px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/></div>
@@ -3013,18 +3025,18 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
  return <div className="fu">
   {/* Hero KPIs */}
   <div className="kpi-grid-responsive" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:20}}>
-   {kpis.map((k,i)=><div key={i} className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:20,animationDelay:`${i*0.1}s`}}>
-    <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,textTransform:"uppercase",marginBottom:6,fontFamily:FONT_TITLE}}>{k.label}</div>
-    <div style={{fontSize:24,fontWeight:900,color:k.accent||C.t,lineHeight:1}}>{k.value}</div>
-    {k.trend!==undefined&&k.trend!==0&&<div style={{marginTop:4,fontSize:11,fontWeight:700,color:k.trend>0?C.g:C.r}}>{k.trend>0?"↑":"↓"} {Math.abs(k.trend)}% vs mois dernier</div>}
-    {k.sub&&!k.trend&&<div style={{marginTop:4,fontSize:11,fontWeight:700,color:k.accent}}>{k.sub}</div>}
+   {kpis.map((k,i)=><div key={i} className="fade-up glass-card-static" style={{padding:22,animationDelay:`${i*0.1}s`,transition:"all .3s cubic-bezier(.4,0,.2,1)"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${k.accent||C.acc}22`;e.currentTarget.style.boxShadow=`0 0 24px ${(k.accent||C.acc)}12`;e.currentTarget.style.transform="translateY(-3px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,.06)";e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,.3)";e.currentTarget.style.transform="translateY(0)";}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:8,fontFamily:FONT_TITLE}}>{k.label}</div>
+    <div style={{fontSize:30,fontWeight:900,color:k.accent||C.t,lineHeight:1}}>{k.value}</div>
+    {k.trend!==undefined&&k.trend!==0&&<div style={{marginTop:6,fontSize:11,fontWeight:700,color:k.trend>0?C.g:C.r}}>{k.trend>0?"↑":"↓"} {Math.abs(k.trend)}% vs mois dernier</div>}
+    {k.sub&&!k.trend&&<div style={{marginTop:6,fontSize:11,fontWeight:700,color:k.accent}}>{k.sub}</div>}
    </div>)}
   </div>
   {/* Pulse widget */}
   {(()=>{const w=curW();const existing=pulses?.[`${soc.id}_${w}`];return <PulseDashWidget soc={soc} existing={existing} savePulse={savePulse} hold={hold}/>;})()}
   {/* Revenue AreaChart (Recharts) */}
-  <div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:20,marginBottom:20,animationDelay:"0.4s"}}>
-   <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:12,fontFamily:FONT_TITLE}}>📈 ÉVOLUTION CA VS CHARGES — 6 MOIS</div>
+  <div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,animationDelay:"0.4s"}}>
+   <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>📈 ÉVOLUTION CA VS CHARGES — 6 MOIS</div>
    <div style={{height:220}}>
     <ResponsiveContainer>
      <AreaChart data={chartData} margin={{top:5,right:10,left:0,bottom:5}}>
@@ -3057,8 +3069,8 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
    const pieData=Object.entries(catTotals).map(([name,value])=>({name,value:Math.round(value)})).sort((a,b)=>b.value-a.value);
    const PIE_COLORS=[C.r,C.o,C.b,C.v,"#ec4899","#14b8a6",C.acc,"#8b5cf6"];
    if(pieData.length===0)return null;
-   return <div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:20,marginBottom:20,animationDelay:"0.5s"}}>
-    <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:12,fontFamily:FONT_TITLE}}>📊 RÉPARTITION DES DÉPENSES — {ml(cm)}</div>
+   return <div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,animationDelay:"0.5s"}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>📊 RÉPARTITION DES DÉPENSES — {ml(cm)}</div>
     <div style={{display:"flex",alignItems:"center",height:200}}>
      <div style={{width:"50%"}}><ResponsiveContainer><PieChart><Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={3} strokeWidth={0} animationDuration={1000}>{pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip content={<CTip/>}/></PieChart></ResponsiveContainer></div>
      <div style={{flex:1,paddingLeft:8}}>{pieData.slice(0,6).map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/><span style={{flex:1,fontSize:10,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span><span style={{fontWeight:700,fontSize:10,color:C.t}}>{fmt(d.value)}€</span></div>)}</div>
@@ -3066,8 +3078,8 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
    </div>;
   })()}
   {/* Pipeline Funnel */}
-  {ghlStats&&ghlStages.length>0&&<div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:20,marginBottom:20,animationDelay:"0.6s"}}>
-   <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:12,fontFamily:FONT_TITLE}}>🔮 PIPELINE PAR ÉTAPE</div>
+  {ghlStats&&ghlStages.length>0&&<div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,animationDelay:"0.6s"}}>
+   <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>🔮 PIPELINE PAR ÉTAPE</div>
    {ghlStages.map((stage,i)=>{const stageOpps=ghlOpps.filter(o=>o.stage===stage);const count=stageOpps.length;const val=stageOpps.reduce((a,o)=>a+o.value,0);const w=ghlOpps.length>0?Math.max(8,Math.round(count/ghlOpps.length*100)):0;
     return <div key={i} className={`fu d${Math.min(i+1,6)}`} style={{marginBottom:6}}>
      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
@@ -3081,7 +3093,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
   {/* Quick Actions */}
   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
    {[{icon:"👥",title:"Mes clients",sub:"Voir le portefeuille",tab:9},{icon:"🏦",title:"Transactions",sub:"Historique bancaire",tab:5},{icon:"⚙️",title:"Paramètres",sub:"Configurer ma société",tab:12}].map((a,i)=>
-    <div key={i} className="fade-up hv" onClick={()=>setPTab(a.tab)} style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:16,cursor:"pointer",textAlign:"center",animationDelay:`${0.5+i*0.1}s`}}>
+    <div key={i} className="fade-up glass-card" onClick={()=>setPTab(a.tab)} style={{padding:18,cursor:"pointer",textAlign:"center",animationDelay:`${0.5+i*0.1}s`}}>
      <div style={{fontSize:24,marginBottom:6}}>{a.icon}</div>
      <div style={{fontWeight:700,fontSize:12,color:C.t}}>{a.title}</div>
      <div style={{fontSize:10,color:C.td,marginTop:2}}>{a.sub}</div>
@@ -3089,7 +3101,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
    )}
   </div>
   {/* Recent transactions */}
-  {recentTx.length>0&&<div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:16,marginBottom:20,animationDelay:"0.8s"}}>
+  {recentTx.length>0&&<div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.8s"}}>
    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
     <span style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8}}>DERNIÈRES TRANSACTIONS</span>
     <span onClick={()=>setPTab(5)} style={{color:acc2,fontSize:10,fontWeight:600,cursor:"pointer"}}>Voir tout →</span>
@@ -3107,7 +3119,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
    })}
   </div>}
   {/* Pipeline snapshot */}
-  {ghlStats&&<div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:16,animationDelay:"0.9s"}}>
+  {ghlStats&&<div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.9s"}}>
    <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:10}}>PIPELINE</div>
    <div style={{display:"flex",gap:12,marginBottom:12}}>
     <div><div style={{fontSize:20,fontWeight:900,color:acc2}}>{fmt(ghlStats.pipelineValue)}€</div><div style={{fontSize:9,color:C.td}}>Valeur pipeline</div></div>
@@ -3167,7 +3179,7 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
  const[notifOpen,setNotifOpen]=useState(false);
  const[mobileMenuOpen,setMobileMenuOpen]=useState(false);
  const porteurNotifs=useMemo(()=>genPorteurNotifications(soc,reps,socBankData?{[soc.id]:socBankData}:{},ghlData,clients,allM),[soc,reps,socBankData,ghlData,clients,allM]);
- return <div style={{display:"flex",background:C.bg,minHeight:"100vh",fontFamily:FONT,color:C.t}}>
+ return <div className="glass-bg" style={{display:"flex",minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}</style>
   <NotificationCenter notifications={porteurNotifs} open={notifOpen} onClose={()=>setNotifOpen(false)}/>
   {/* Mobile Header */}
@@ -3469,7 +3481,7 @@ function OnboardingWizard({onComplete,onSkip,hold}){
   }
  };
 
- return <div style={{minHeight:"100vh",display:"flex",background:C.bg,fontFamily:FONT,color:C.t}}>
+ return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",fontFamily:FONT,color:C.t}}>
   <style>{CSS}{`@keyframes obSlide{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}@keyframes obPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,170,0,.4)}70%{box-shadow:0 0 0 8px rgba(255,170,0,0)}}`}</style>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   {/* Sidebar stepper */}
@@ -3688,7 +3700,7 @@ function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,ext
  const isAct=t=>t===activeTab;
  const grpAct=g=>g.children?g.children.some(c=>c.tab===activeTab):false;
 
- return <aside data-tour={`${dataTourPrefix}-nav`} style={{width:210,minWidth:210,height:"100vh",position:"sticky",top:0,background:`linear-gradient(180deg,${C.card} 0%,${C.bg} 100%)`,borderRight:`1px solid ${C.brd}`,display:"flex",flexDirection:"column",fontFamily:FONT,overflow:"hidden",zIndex:50}}>
+ return <aside data-tour={`${dataTourPrefix}-nav`} className="glass-sidebar" style={{width:210,minWidth:210,height:"100vh",position:"sticky",top:0,display:"flex",flexDirection:"column",fontFamily:FONT,overflow:"hidden",zIndex:50}}>
   <div style={{padding:"16px 14px 14px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",gap:9}}>
    <div style={{width:30,height:30,background:brand?.logoUrl?"transparent":`linear-gradient(135deg,${brand?.accentColor||C.acc},#FF9D00)`,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:13,color:"#0a0a0f",boxShadow:`0 2px 8px ${(brand?.accentColor||C.acc)}44`,flexShrink:0,overflow:"hidden"}}>{brand?.logoUrl?<img src={brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(brand?.logoLetter||brandTitle?.[0]||"S")}</div>
    <div style={{minWidth:0}}><div style={{fontWeight:800,fontSize:12,letterSpacing:.5,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontFamily:FONT_TITLE}}>{brandTitle}</div><div style={{fontSize:8,color:C.td}}>{brandSub}</div></div>
@@ -3698,7 +3710,7 @@ function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,ext
     const hasK=!!g.children;const open=exp[g.id];const gA=hasK?grpAct(g):isAct(g.tab);
     return <div key={g.id} style={{marginBottom:1}}>
      <button data-tour={!hasK?`${dataTourPrefix}-tab-${g.tab}`:undefined} onClick={()=>{if(hasK){setExp(p=>({...p,[g.id]:!p[g.id]}));if(!open&&g.children[0])setTab(g.children[0].tab);}else setTab(g.tab);}}
-      style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:8,border:"none",background:gA?(g.accent||C.acc)+"12":"transparent",color:gA?C.t:C.td,fontSize:11,fontWeight:gA?700:500,cursor:"pointer",fontFamily:FONT,transition:"all .15s",borderLeft:gA?`2.5px solid ${g.accent||C.acc}`:"2.5px solid transparent",textAlign:"left"}}
+      style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:10,border:"none",background:gA?"rgba(255,170,0,.08)":"transparent",color:gA?C.t:C.td,fontSize:11,fontWeight:gA?700:500,cursor:"pointer",fontFamily:FONT,transition:"all .25s cubic-bezier(.4,0,.2,1)",borderLeft:gA?`2.5px solid ${g.accent||C.acc}`:"2.5px solid transparent",textAlign:"left",boxShadow:gA?`0 0 16px ${(g.accent||C.acc)}12`:"none"}}
       onMouseEnter={e=>{if(!gA)e.currentTarget.style.background=C.card2;}} onMouseLeave={e=>{if(!gA)e.currentTarget.style.background="transparent";}}>
       <span style={{fontSize:14,width:20,textAlign:"center",flexShrink:0}}>{g.icon}</span>
       <span style={{flex:1}}>{g.label}</span>
@@ -3863,7 +3875,7 @@ export default function App(){
  if(!loaded)return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}><style>{CSS}</style><div style={{width:36,height:36,border:`3px solid ${C.brd}`,borderTopColor:C.acc,borderRadius:"50%",animation:"sp 1s linear infinite"}}/></div>;
  /* ONBOARDING (optional, non-blocking) */
  if(showOnboarding)return <OnboardingWizard hold={hold} onSkip={()=>setShowOnboarding(false)} onComplete={async(formData)=>{try{await sSet("scOnboarded",true);await sSet("scObData",formData);}catch{}setObData(formData);setOnboarded(true);setShowOnboarding(false);setShowTour(true);}}/>;
- if(!role)return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT,padding:16}}>
+ if(!role)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT,padding:16}}>
   <style>{CSS}</style>
   {/* TUTORIAL OVERLAY ON LOGIN */}
   {showTour&&<div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(0,0,0,.6)",backdropFilter:"blur(3px)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}>
@@ -3884,9 +3896,9 @@ export default function App(){
    </div>
   </div>}
   <button onClick={toggleTheme} style={{position:"fixed",top:16,right:16,width:36,height:36,borderRadius:18,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}}>{getTheme()==="light"?"🌙":"☀️"}</button>
-  <div className="si" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:16,padding:28,width:340,maxWidth:"100%",boxShadow:"0 24px 60px rgba(0,0,0,.5)"}}>
+  <div className="si glass-modal" style={{borderRadius:20,padding:28,width:340,maxWidth:"100%"}}>
    <div style={{textAlign:"center",marginBottom:24}}>
-    <div className="fl" style={{width:44,height:44,background:hold.brand?.logoUrl?"transparent":`linear-gradient(135deg,${hold.brand?.accentColor||C.acc},#FF9D00)`,borderRadius:10,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:10,boxShadow:`0 4px 16px ${(hold.brand?.accentColor||C.acc)}44`,overflow:"hidden"}}>{hold.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(hold.brand?.logoLetter||"S")}</div>
+    <div className="fl glow-accent-strong" style={{width:48,height:48,background:hold.brand?.logoUrl?"transparent":`linear-gradient(135deg,${hold.brand?.accentColor||C.acc},#FF9D00)`,borderRadius:12,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:10,overflow:"hidden"}}>{hold.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(hold.brand?.logoLetter||"S")}</div>
     <h1 style={{margin:0,fontSize:18,fontWeight:900,letterSpacing:.5,fontFamily:FONT_TITLE}}>{hold.brand?.name||"SCALE CORP"}</h1>
     <p style={{color:C.td,fontSize:11,margin:"4px 0 0"}}>{hold.brand?.sub||"Plateforme de pilotage"}</p>
    </div>
@@ -3911,7 +3923,7 @@ export default function App(){
  if(meeting)return <MeetingMode socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} onExit={()=>setMeeting(false)}/>;
  const hc=calcH(socs,reps,hold,cM2);const pending=socs.filter(s=>{const r=gr(reps,s.id,cM2);return r&&!r.ok;});
  const missing=actS.filter(s=>!gr(reps,s.id,cM2));const lateActions=actions.filter(a=>!a.done&&a.deadline<cM2);
- return <div style={{display:"flex",background:C.bg,minHeight:"100vh",fontFamily:FONT,color:C.t}}>
+ return <div className="glass-bg" style={{display:"flex",minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}</style>
   {showTour&&role==="admin"&&<TutorialOverlay steps={TOUR_ADMIN} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={setTab}/>}
   <Sidebar items={SB_ADMIN} activeTab={tab} setTab={setTab} brandTitle={hold.brand?.name||"SCALE CORP"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>setRole(null)} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand} extra={<div style={{display:"flex",flexDirection:"column",gap:2}}>
