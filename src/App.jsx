@@ -3770,9 +3770,42 @@ function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
   const excluded=EXCLUDED_ACCOUNTS[soc.id]||[];
   const monthTxns=(bankData?.transactions||[]).filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded.includes(leg.account_id))return false;return(t.created_at||"").startsWith(cm);});
 
+  // analyse — full breakdown
+  if(ql.match(/^analyse/)){
+   const convRate2=pf(r?.leads)>0?Math.round(pf(r?.leadsClos)/pf(r?.leads)*100):0;
+   const openO2=opps.filter(o=>o.status==="open");const wonO2=opps.filter(o=>o.status==="won");
+   const pVal2=openO2.reduce((a,o)=>a+(o.value||0),0);
+   return `🔍 **Analyse complète — ${soc.nom}**\n\n💰 **Chiffre d'affaires**\n• CA mois : ${fmt(ca)}€ ${trend>0?"📈 +":"📉 "}${trend}%\n• Charges : ${fmt(ch)}€\n• Marge : ${fmt(marge)}€ (${margePct}%)\n• Trésorerie : ${fmt(balance)}€\n\n📈 **Conversion**\n• Leads : ${pf(r?.leads)||ghlCl.length}\n• Taux conversion : ${convRate2}%\n• CPL : ${pf(r?.pub)>0&&pf(r?.leads)>0?fmt(Math.round(pf(r?.pub)/pf(r?.leads)))+"€":"—"}\n\n🔄 **Pipeline**\n• ${openO2.length} deals ouverts (${fmt(pVal2)}€)\n• ${wonO2.length} gagnés\n• Valeur moy. : ${fmt(stats?.avgDealSize||0)}€\n\n👥 **Clients**\n• ${activeCl.length} actifs · MRR ${fmt(mrr)}€\n• ${churnedCl.length} perdus\n• Rétention : ${myCl.length>0?Math.round((1-churnedCl.length/myCl.length)*100):100}%`;
+  }
+  // risques — at-risk clients
+  if(ql.match(/^risques?$|clients?.*risque/)){
+   const now30=Date.now()-30*864e5;const now14d=Date.now()-14*864e5;
+   const txsR=bankData?.transactions||[];
+   const risks=activeCl.map(c=>{
+    const cn=(c.name||"").toLowerCase().trim();const flags=[];
+    const hasPaid=txsR.some(tx=>{const leg=tx.legs?.[0];return leg&&leg.amount>0&&new Date(tx.created_at||0).getTime()>now30&&(leg.description||tx.reference||"").toLowerCase().includes(cn);});
+    if(!hasPaid)flags.push("💸 Impayé >30j");
+    const lastEvt=(calEvts||[]).filter(e=>(e.title||e.contactName||"").toLowerCase().includes(cn)).sort((a,b)=>new Date(b.startTime||0)-new Date(a.startTime||0))[0];
+    if(!lastEvt||new Date(lastEvt.startTime||0).getTime()<now14d)flags.push("📞 Pas d'interaction >14j");
+    const rem=commitmentRemaining(c);if(rem!==null&&rem<=2)flags.push(`⏰ ${rem} mois restant`);
+    return{name:c.name,flags,rev:clientMonthlyRevenue(c)};
+   }).filter(c=>c.flags.length>0).sort((a,b)=>b.flags.length-a.flags.length);
+   if(risks.length===0)return `✅ **Aucun client à risque !**\n\nTous les clients sont en bonne santé.`;
+   return `⚠️ **Clients à risque — ${soc.nom}**\n\n${risks.slice(0,8).map(c=>`• **${c.name}** (${fmt(c.rev)}€/mois)\n  ${c.flags.join(" · ")}`).join("\n\n")}\n\n🔴 ${risks.length} client${risks.length>1?"s":""} nécessitent une action`;
+  }
+  // opportunités — upsell & cross-sell
+  if(ql.match(/^opportunites?$|upsell|cross.?sell/)){
+   const lowTier=activeCl.filter(c=>clientMonthlyRevenue(c)<500&&clientMonthlyRevenue(c)>0);
+   const singleService=activeCl.filter(c=>!c.services||c.services?.length<=1);
+   const openO3=opps.filter(o=>o.status==="open");
+   const pVal3=openO3.reduce((a,o)=>a+(o.value||0),0);
+   const upsellPot=lowTier.reduce((a,c)=>a+(500-clientMonthlyRevenue(c)),0);
+   return `🎯 **Opportunités — ${soc.nom}**\n\n📈 **Upsell** (clients <500€/mois)\n${lowTier.length>0?lowTier.slice(0,5).map(c=>`• ${c.name} — ${fmt(clientMonthlyRevenue(c))}€ → potentiel +${fmt(500-clientMonthlyRevenue(c))}€`).join("\n"):"Aucun client à upseller"}\n💰 Potentiel upsell : ~${fmt(upsellPot)}€/mois\n\n🔄 **Cross-sell** (clients mono-service)\n${singleService.length>0?`• ${singleService.length} clients sur 1 seul service`:"Tous les clients sont multi-services"}\n\n🔥 **Pipeline actif**\n• ${openO3.length} prospects en cours (${fmt(pVal3)}€)\n\n💡 Focus: relance les ${lowTier.length} clients sous 500€ et propose un upgrade.`;
+  }
+
   // aide/help
   if(ql.match(/^aide$|^help$|comment.*fonctionne|que.*peux/)){
-   return `🤖 **Commandes disponibles**\n\n📋 **résumé** — Vue d'ensemble complète\n📊 **CA ce mois** — Chiffre d'affaires\n👥 **combien de clients actifs** — Comptage\n💸 **qui n'a pas payé** — Impayés\n📅 **prochains RDV** — Agenda\n🏅 **top clients** — Meilleurs clients\n🔄 **pipeline** — État du pipeline\n⚖️ **compare** — Mois vs précédent\n🔮 **prévision** — Forecast T+3\n💸 **dépenses** — Charges par catégorie\n📈 **conversion** — Taux de conversion\n⚠️ **alertes** — Clients à risque\n🌡️ **météo** — Santé business\n💰 **rentabilité** — ROAS & marges\n🎯 **objectif** — Progression objectifs\n📈 **évolution CA** — Tendance mensuelle\n\n💡 Tu peux aussi poser des questions libres !`;
+   return `🤖 **Commandes disponibles**\n\n📋 **résumé** — Vue d'ensemble complète\n📊 **CA ce mois** — Chiffre d'affaires\n🔍 **analyse** — Analyse complète (CA, conversion, pipeline, clients)\n⚠️ **risques** — Clients à risque (impayés, inactifs)\n🎯 **opportunités** — Upsell & cross-sell\n🔮 **prévision** — Forecast T+3\n🌡️ **météo / santé** — Score santé business\n👥 **combien de clients actifs** — Comptage\n💸 **qui n'a pas payé** — Impayés\n📅 **prochains RDV** — Agenda\n🏅 **top clients** — Meilleurs clients\n🔄 **pipeline** — État du pipeline\n⚖️ **compare** — Mois vs précédent\n💸 **dépenses** — Charges par catégorie\n📈 **conversion** — Taux de conversion\n💰 **rentabilité** — ROAS & marges\n🎯 **objectif** — Progression objectifs\n📈 **évolution CA** — Tendance mensuelle\n\n💡 Tu peux aussi poser des questions libres !`;
   }
   // météo business
   if(ql.match(/meteo|sante.*business|weather|comment.*va/)){
