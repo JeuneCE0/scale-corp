@@ -656,8 +656,8 @@ function buildAIContext(socs,reps,hold,actions,pulses,allM,revData,socBank,okrs,
   const sCl=(clients2||[]).filter(c=>c.socId===s.id);
   if(sCl.length>0){const actCl=sCl.filter(c=>c.status==="active");const mrr=actCl.reduce((a2,c)=>a2+clientMonthlyRevenue(c),0);ctx+=`  Clients: ${actCl.length} actifs/${sCl.length} total, MRR clients=${fmt(mrr)}€\n`;
    const byT={fixed:sCl.filter(c=>c.billing?.type==="fixed"),percent:sCl.filter(c=>c.billing?.type==="percent"),oneoff:sCl.filter(c=>c.billing?.type==="oneoff")};
-   if(byT.fixed.length>0)ctx+=`    Forfaits: ${byT.fixed.length} (${byT.fixed.filter(c=>c.status==="active").map(c=>`${c.name}:${fmt(c.billing.amount)}€/m`).join(", ")})\n`;
-   if(byT.percent.length>0)ctx+=`    % deals: ${byT.percent.length} (${byT.percent.filter(c=>c.status==="active").map(c=>`${c.name}:${c.billing.percent}% ${c.billing.basis}`).join(", ")})\n`;
+   if(byT.fixed.length>0)ctx+=`    Forfaits: ${byT.fixed.length} (${byT.fixed.filter(c=>c.status==="active").map(c=>`${c.name}:${fmt(c.billing?.amount||0)}€/m`).join(", ")})\n`;
+   if(byT.percent.length>0)ctx+=`    % deals: ${byT.percent.length} (${byT.percent.filter(c=>c.status==="active").map(c=>`${c.name}:${c.billing?.percent}% ${c.billing?.basis}`).join(", ")})\n`;
    if(byT.oneoff.length>0)ctx+=`    One-off: ${byT.oneoff.length} · Total ${fmt(byT.oneoff.reduce((a2,c)=>a2+(c.billing?.amount||0),0))}€\n`;
   }
   ctx+="\n";
@@ -1936,10 +1936,10 @@ function ClientsPanel({soc,clients,saveClients,ghlData,socBankData,invoices,save
  const myInvoices=(invoices||[]).filter(inv=>inv.socId===soc.id);
  const active=myClients.filter(c=>c.status==="active");
  const byType=t=>myClients.filter(c=>c.billing?.type===t);
- const mrrFixed=byType("fixed").filter(c=>c.status==="active").reduce((a,c)=>a+c.billing.amount,0);
+ const mrrFixed=byType("fixed").filter(c=>c.status==="active").reduce((a,c)=>a+c.billing?.amount||0,0);
  const mrrPercent=byType("percent").filter(c=>c.status==="active").reduce((a,c)=>a+clientMonthlyRevenue(c),0);
- const oneoffThisMonth=byType("oneoff").filter(c=>{const d=c.billing?.paidDate;if(!d)return false;return d.startsWith(curM());}).reduce((a,c)=>a+c.billing.amount,0);
- const oneoffTotal=byType("oneoff").reduce((a,c)=>a+c.billing.amount,0);
+ const oneoffThisMonth=byType("oneoff").filter(c=>{const d=c.billing?.paidDate;if(!d)return false;return d.startsWith(curM());}).reduce((a,c)=>a+c.billing?.amount||0,0);
+ const oneoffTotal=byType("oneoff").reduce((a,c)=>a+c.billing?.amount||0,0);
  const totalMRR=mrrFixed+mrrPercent;
  const totalPortfolio=myClients.reduce((a,c)=>a+clientTotalValue(c),0);
  const avgDealValue=myClients.length?Math.round(totalPortfolio/myClients.length):0;
