@@ -425,13 +425,16 @@ async function syncGHLForSoc(soc){
   domain:((c.tags||[]).find(t=>t.startsWith("domaine:"))||"").replace("domaine:",""),
   notes:(c.tags||[]).filter(t=>!t.startsWith("domaine:")).join(", "),ghlId:c.id,stripeId:"",at:c.dateAdded||new Date().toISOString()
  }));
+ // Fetch calendar events (calls)
+ const evData=await fetchGHL("calendar_events",loc,{startTime:Date.now()-365*24*60*60*1000,endTime:Date.now()});
+ const calEvents=evData?.events||[];
  return{
-  pipelines:allPipelinesMeta,opportunities:mappedOpps,ghlClients,
+  pipelines:allPipelinesMeta,opportunities:mappedOpps,ghlClients,calendarEvents:calEvents,
   stats:{totalLeads:mappedOpps.length,openDeals:open2.length,wonDeals:won.length,
    lostDeals:mappedOpps.filter(o=>o.status==="lost").length,pipelineValue:open2.reduce((a,o)=>a+o.value,0),
    wonValue:won.reduce((a,o)=>a+o.value,0),conversionRate:mappedOpps.length>0?Math.round(won.length/mappedOpps.length*100):0,
    avgDealSize:mappedOpps.length>0?Math.round(mappedOpps.reduce((a,o)=>a+o.value,0)/mappedOpps.length):0,
-   sourceBreakdown:[]},lastSync:new Date().toISOString(),isDemo:false
+   totalCalls:calEvents.length,sourceBreakdown:[]},lastSync:new Date().toISOString(),isDemo:false
  };
 }
 const SLACK_MODES={
@@ -3276,6 +3279,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
      {icon:"✅",label:"Clients gagnés",value:wonAll.length,sub:fmt(wonVal)+"€",color:C.g},
      {icon:"❌",label:"Clients perdus",value:lostAll.length,color:C.r},
      {icon:"📈",label:"Taux de conversion",value:convRate+"%",color:"#a78bfa"},
+     {icon:"📞",label:"Appels réalisés",value:ghlStats.totalCalls||0,color:"#14b8a6"},
      {icon:"💰",label:"Valeur moyenne",value:fmt(ghlStats.avgDealSize)+"€",color:C.acc},
     ];
     return <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>

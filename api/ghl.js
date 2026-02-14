@@ -128,47 +128,24 @@ export default async function handler(req, res) {
         if (!delRes.ok) { const t = await delRes.text(); return res.status(delRes.status).json({ error: t }); }
         return res.status(200).json({ success: true });
       }
-      case "contact_update": {
-        const { contactId, data } = params;
-        const ghlRes2 = await fetch(`${GHL_BASE}/contacts/${contactId}`, {
-          method: "PUT",
-          headers,
-          body: JSON.stringify(data)
-        });
-        if (!ghlRes2.ok) {
-          const text = await ghlRes2.text();
-          console.error(`GHL API error ${ghlRes2.status}:`, text);
-          return res.status(ghlRes2.status).json({ error: `GHL API error: ${ghlRes2.status}` });
+      case "calendar_events": {
+        const st = params.startTime || (Date.now() - 365*24*60*60*1000);
+        const et = params.endTime || Date.now();
+        // Fetch all calendars if no calendarId
+        if (!params.calendarId) {
+          const calRes = await fetch(`${GHL_BASE}/calendars/?locationId=${locationId}`, { headers });
+          if (!calRes.ok) return res.status(calRes.status).json({ error: "Failed to fetch calendars" });
+          const calData = await calRes.json();
+          let allEvents = [];
+          for (const cal of (calData.calendars || [])) {
+            const evRes = await fetch(`${GHL_BASE}/calendars/events?locationId=${locationId}&calendarId=${cal.id}&startTime=${st}&endTime=${et}`, { headers });
+            if (evRes.ok) { const evData = await evRes.json(); allEvents = allEvents.concat((evData.events || []).map(e => ({ ...e, calendarName: cal.name }))); }
+          }
+          return res.status(200).json({ events: allEvents, total: allEvents.length });
         }
-        return res.status(200).json(await ghlRes2.json());
-      }
-      case "contact_create": {
-        const { data } = params;
-        data.locationId = locationId;
-        const ghlRes2 = await fetch(`${GHL_BASE}/contacts/`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(data)
-        });
-        if (!ghlRes2.ok) {
-          const text = await ghlRes2.text();
-          console.error(`GHL API error ${ghlRes2.status}:`, text);
-          return res.status(ghlRes2.status).json({ error: `GHL API error: ${ghlRes2.status}` });
-        }
-        return res.status(200).json(await ghlRes2.json());
-      }
-      case "contact_delete": {
-        const { contactId } = params;
-        const ghlRes2 = await fetch(`${GHL_BASE}/contacts/${contactId}`, {
-          method: "DELETE",
-          headers
-        });
-        if (!ghlRes2.ok) {
-          const text = await ghlRes2.text();
-          console.error(`GHL API error ${ghlRes2.status}:`, text);
-          return res.status(ghlRes2.status).json({ error: `GHL API error: ${ghlRes2.status}` });
-        }
-        return res.status(200).json({ success: true });
+        const evRes = await fetch(`${GHL_BASE}/calendars/events?locationId=${locationId}&calendarId=${params.calendarId}&startTime=${st}&endTime=${et}`, { headers });
+        if (!evRes.ok) { const t = await evRes.text(); return res.status(evRes.status).json({ error: t }); }
+        return res.status(200).json(await evRes.json());
       }
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });
