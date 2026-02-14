@@ -1070,7 +1070,7 @@ function categorizeTransaction(tx){
  if(tx.type==="transfer")return TX_CATEGORIES[6];
  return TX_CATEGORIES[7];
 }
-function BankingPanel({revData,onSync,compact}){
+function BankingPanel({revData,onSync,compact,clients:allClients2=[]}){
  if(!revData||!revData.accounts){
   return <Card style={{textAlign:"center",padding:compact?16:30}}>
    <div style={{fontSize:compact?24:36,marginBottom:6}}>🏦</div>
@@ -1111,10 +1111,10 @@ function BankingPanel({revData,onSync,compact}){
    <KPI label="Sorties (30j)" value={`-${fmt(outflow)}€`} accent={C.r} delay={2}/>
    <KPI label="Net" value={`${fmt(inflow-outflow)}€`} accent={inflow-outflow>=0?C.g:C.r} delay={3}/>
   </div>
-  <BankingTransactions transactions={transactions} cs={cs}/>
+  <BankingTransactions transactions={transactions} cs={cs} allClients2={allClients2}/>
  </>;
 }
-function BankingTransactions({transactions,cs}){
+function BankingTransactions({transactions,cs,allClients2=[]}){
  const[catFilter,setCatFilter]=useState("all");
  const[typeFilter,setTypeFilter]=useState("all");
  const[periodFilter,setPeriodFilter]=useState("all");
@@ -1170,6 +1170,7 @@ function BankingTransactions({transactions,cs}){
     <div style={{width:26,height:26,borderRadius:7,background:isIn?C.gD:isDiv?"#7c3aed22":C.rD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:isIn?C.g:isDiv?"#7c3aed":C.r,flexShrink:0}}>{cat.icon||"↑"}</div>
     <div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{desc}</span><span style={{fontSize:9,padding:"1px 6px",borderRadius:8,background:(catColors[cat.id]||C.td)+"22",color:catColors[cat.id]||C.td,fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>{cat.label}</span></div><div style={{fontSize:10,color:C.td}}>{new Date(tx.created_at).toLocaleDateString("fr-FR")} · {tx.type==="card_payment"?"Carte":"Virement"}</div></div>
     <span style={{fontWeight:800,fontSize:13,color:isIn?C.g:isDiv?"#7c3aed":C.r,whiteSpace:"nowrap"}}>{isIn?"+":""}{fmt(leg.amount)} {cs(leg.currency)}</span>
+    {(()=>{const d2=(desc||"").toLowerCase();const match=allClients2.find(c=>{const n=(c.name||"").toLowerCase().trim();if(n.length<3)return false;if(d2.includes(n))return true;const pts=n.split(/\s+/).filter(p=>p.length>2);return pts.length>=2&&pts.every(p=>d2.includes(p));});return match?<span style={{fontSize:7,padding:"1px 5px",borderRadius:6,background:"#60a5fa22",color:"#60a5fa",fontWeight:700,marginLeft:4,flexShrink:0,whiteSpace:"nowrap"}}>👤 {match.name}</span>:null;})()}
     </div>;
    })}
    {filtered.length===0&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Aucune transaction trouvée</div>}
@@ -2441,7 +2442,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     <div style={{fontWeight:900,fontSize:16,color:bt?.c||C.td}}>{fmt(b.amount)}€</div>
     <div style={{fontSize:8,color:C.td}}>one-off</div>
     </>}
-    {(()=>{const cn=(cl.name||"").toLowerCase().trim();const txs=(socBankData?.transactions||[]);const tot=txs.filter(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;const desc=(leg.description||tx.reference||"").toLowerCase();if(cn.length>2&&desc.includes(cn))return true;const pts=cn.split(/\s+/).filter(p=>p.length>2);return pts.length>=2&&pts.every(p=>desc.includes(p));}).reduce((a,tx)=>a+(tx.legs?.[0]?.amount||0),0);if(tot<=0)return null;return <div style={{marginTop:3,padding:"2px 6px",background:C.gD,borderRadius:4,fontSize:8,fontWeight:700,color:C.g}}>💰 {fmt(tot)}€ collecté</div>;})()}
+    {(()=>{const cn=(cl.name||"").toLowerCase().trim();const txs=(socBankData?.transactions||[]);const revTot=txs.filter(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;const desc=(leg.description||tx.reference||"").toLowerCase();if(cn.length>2&&desc.includes(cn))return true;const pts=cn.split(/\s+/).filter(p=>p.length>2);return pts.length>=2&&pts.every(p=>desc.includes(p));}).reduce((a,tx)=>a+(tx.legs?.[0]?.amount||0),0);const stripeTot=getStripeTotal(getStripeChargesForClient(stripeData,cl));const tot=revTot+stripeTot;if(tot<=0)return null;return <div style={{marginTop:3,padding:"2px 6px",background:C.gD,borderRadius:4,fontSize:8,fontWeight:700,color:C.g}}>💰 {fmt(tot)}€ collecté{stripeTot>0?" (dont "+fmt(stripeTot)+"€ Stripe)":""}</div>;})()}
     </div>
     </div>
    </Card>;
@@ -2713,6 +2714,31 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
         <div style={{fontSize:8,color:C.td}}>{ev.date?new Date(ev.date).toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric"}):""}</div>
        </div>
       </div>)}
+      </div>
+     </div>;
+    })()}
+    {/* Stripe payments */}
+    {(()=>{
+     const stripeCharges=getStripeChargesForClient(stripeData,editCl);
+     const stripeTotal=getStripeTotal(stripeCharges);
+     if(stripeCharges.length===0)return <div style={{padding:"10px 12px",background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`,margin:"8px 0"}}>
+      <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:4}}>💳 PAIEMENTS STRIPE</div>
+      <div style={{fontSize:10,color:C.td}}>Aucun paiement Stripe détecté</div>
+     </div>;
+     return <div style={{padding:"10px 12px",background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`,margin:"8px 0"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+       <span style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8}}>💳 PAIEMENTS STRIPE ({stripeCharges.length})</span>
+       <span style={{fontWeight:800,fontSize:12,color:C.v}}>{fmt(stripeTotal)}€ total</span>
+      </div>
+      <div style={{maxHeight:180,overflowY:"auto"}}>
+      {stripeCharges.map((ch,i)=>{const amt=Math.round((ch.amount||0)/100);const d=new Date((ch.created||0)*1000);const ok=ch.status==="succeeded";return <div key={ch.id||i} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:i<stripeCharges.length-1?`1px solid ${C.brd}`:"none"}}>
+       <span style={{width:18,height:18,borderRadius:5,background:ok?C.vD:C.rD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:ok?C.v:C.r,flexShrink:0}}>💳</span>
+       <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:10,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ch.description||ch.billing_details?.email||"Paiement Stripe"}</div>
+        <div style={{fontSize:8,color:C.td}}>{d.toLocaleDateString("fr-FR")} · {ch.status}</div>
+       </div>
+       <span style={{fontWeight:700,fontSize:11,color:ok?C.v:C.r}}>{ok?"+":""}{fmt(amt)}€</span>
+      </div>;})}
       </div>
      </div>;
     })()}
@@ -3283,7 +3309,7 @@ function PulseDashWidget({soc,existing,savePulse,hold}){
   </div>
  </div>;
 }
-function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePulse,hold,clients}){
+function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePulse,hold,clients,stripeData}){
  const cm=curM();const report=gr(reps,soc.id,cm);
  const bankData=socBank?.[soc.id];const acc2=soc.brandColor||soc.color||C.acc;
  const ca=report?pf(report.ca):0;const charges=report?pf(report.charges):0;
@@ -3313,6 +3339,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
   {label:"Charges",value:`${fmt(charges)}€`,accent:C.r},
   {label:"Marge",value:`${fmt(marge)}€`,sub:`${margePct}%`,accent:marge>=0?C.g:C.r},
   {label:"Trésorerie",value:`${fmt(treso)}€`,accent:soc.brandColorSecondary||C.b},
+  ...(()=>{const now=new Date();const mKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;const monthCharges=(stripeData?.charges||[]).filter(ch=>{if(ch.status!=="succeeded")return false;const d=new Date((ch.created||0)*1000);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`===mKey;});const tot=monthCharges.reduce((a,c)=>a+Math.round((c.amount||0)/100),0);return tot>0?[{label:"💳 Revenus Stripe",value:`${fmt(tot)}€`,accent:C.v}]:[];})(),
  ];
  return <div className="fu">
   {/* Hero KPIs */}
