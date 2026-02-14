@@ -373,30 +373,6 @@ async function fetchGHL(action,locationId,params={}){
   if(!r.ok)throw new Error(`GHL proxy ${r.status}`);return await r.json();
  }catch(e){console.warn("GHL fetch failed:",e.message);return null;}
 }
-async function ghlUpdateContact(locationId, contactId, data) {
-  try {
-    const r = await fetch(GHL_BASE, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "contact_update", locationId, contactId, data })
-    });
-    if (!r.ok) throw new Error(`GHL update ${r.status}`);
-    return await r.json();
-  } catch (e) { console.warn("GHL update failed:", e); return null; }
-}
-
-async function ghlCreateContact(locationId, data) {
-  try {
-    const r = await fetch(GHL_BASE, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "contact_create", locationId, data })
-    });
-    if (!r.ok) throw new Error(`GHL create ${r.status}`);
-    return await r.json();
-  } catch (e) { console.warn("GHL create failed:", e); return null; }
-}
-
 async function syncGHLForSoc(soc){
  if(!soc.ghlLocationId)return null;
  const loc=soc.ghlLocationId;
@@ -2444,6 +2420,11 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
    {editCl&&(()=>{
     const b=editCl.billing||{type:"fixed"};const bt=BILL_TYPES[b.type];
     return <>
+    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,padding:"6px 10px",background:editCl.ghlId?C.gD:C.oD,borderRadius:8,border:`1px solid ${editCl.ghlId?C.g+"33":C.o+"33"}`}}>
+    <span style={{fontSize:12}}>{editCl.ghlId?"✅":"⚠️"}</span>
+    <span style={{fontSize:10,fontWeight:600,color:editCl.ghlId?C.g:C.o}}>{editCl.ghlId?"Synced avec GHL":"Local uniquement"}</span>
+    {editCl.ghlId&&<span style={{fontSize:8,color:C.td,marginLeft:"auto",fontFamily:"monospace"}}>{editCl.ghlId.slice(0,12)}…</span>}
+    </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="Nom / Entreprise" value={editCl.name} onChange={v=>setEditCl({...editCl,name:v})} placeholder="Ex: Studio Fitness Paris"/>
     <Inp label="Contact" value={editCl.contact} onChange={v=>setEditCl({...editCl,contact:v})} placeholder="Nom du contact"/>
