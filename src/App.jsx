@@ -434,7 +434,9 @@ async function syncGHLForSoc(soc){
    lostDeals:mappedOpps.filter(o=>o.status==="lost").length,pipelineValue:open2.reduce((a,o)=>a+o.value,0),
    wonValue:won.reduce((a,o)=>a+o.value,0),conversionRate:mappedOpps.length>0?Math.round(won.length/mappedOpps.length*100):0,
    avgDealSize:mappedOpps.length>0?Math.round(mappedOpps.reduce((a,o)=>a+o.value,0)/mappedOpps.length):0,
-   totalCalls:calEvents.length,sourceBreakdown:[]},lastSync:new Date().toISOString(),isDemo:false
+   totalCalls:calEvents.length,
+   callsByType:calEvents.reduce((acc,e)=>{const n=e.calendarName||"Autre";acc[n]=(acc[n]||0)+1;return acc;},{}),
+   sourceBreakdown:[]},lastSync:new Date().toISOString(),isDemo:false
  };
 }
 const SLACK_MODES={
@@ -3279,7 +3281,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
      {icon:"✅",label:"Clients gagnés",value:wonAll.length,sub:fmt(wonVal)+"€",color:C.g},
      {icon:"❌",label:"Clients perdus",value:lostAll.length,color:C.r},
      {icon:"📈",label:"Taux de conversion",value:convRate+"%",color:"#a78bfa"},
-     {icon:"📞",label:"Appels réalisés",value:ghlStats.totalCalls||0,color:"#14b8a6"},
+     ...Object.entries(ghlStats.callsByType||{}).map(([name,count])=>{const isInteg=name.toLowerCase().includes("intégration")||name.toLowerCase().includes("integration");return{icon:isInteg?"🤝":"📞",label:name.replace(/ - LEADX| - .*$/gi,"").trim(),value:count,color:isInteg?"#a78bfa":"#14b8a6"};}),
      {icon:"💰",label:"Valeur moyenne",value:fmt(ghlStats.avgDealSize)+"€",color:C.acc},
     ];
     return <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
