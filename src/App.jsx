@@ -601,8 +601,15 @@ function revFinancials(socBankData,month){
  if(!m)return null;
  return{ca:m.income,charges:m.expense,tresoSoc:socBankData.balance,net:m.income-m.expense};
 }
-async function sGet(k){try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch{return null;}}
-async function sSet(k,v){try{await window.storage.set(k,JSON.stringify(v));}catch{}}
+async function sGet(k){
+ try{
+  if(window.storage?.get){const r=await window.storage.get(k);if(r)return JSON.parse(r.value);}
+  const ls=localStorage.getItem(k);return ls?JSON.parse(ls):null;
+ }catch{try{const ls=localStorage.getItem(k);return ls?JSON.parse(ls):null;}catch{return null;}}
+}
+async function sSet(k,v){
+ try{const s=JSON.stringify(v);localStorage.setItem(k,s);if(window.storage?.set)await window.storage.set(k,s);}catch(e){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+}
 function calcH(socs,reps,hold,month){
  let rem=0,cn=0;socs.forEach(s=>{if(s.id==="eco")return;if(["active","lancement"].includes(s.stat))cn++;const r=gr(reps,s.id,month);if(!r)return;const ca=pf(r.ca),presta=pf(r.prestataireAmount||0);rem+=(s.pT==="ca"?ca:Math.max(0,ca-presta))*s.pP/100;});
  const crm=cn*hold.crm,eR=gr(reps,"eco",month),eCa=eR?pf(eR.ca):0,tCh=hold.logiciels+hold.equipe+hold.service+hold.cabinet,eNet=eCa-tCh;
