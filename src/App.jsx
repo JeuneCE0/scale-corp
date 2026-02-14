@@ -875,6 +875,27 @@ function DealFlow({deals,saveDeals}){
  </>;
 }
 /* BANKING - REVOLUT */
+const TX_CATEGORIES=[
+ {id:"all",label:"Toutes",icon:""},
+ {id:"revenus",label:"💰 Revenus",icon:"💰"},
+ {id:"loyer",label:"🏠 Loyer",icon:"🏠"},
+ {id:"pub",label:"📢 Publicité",icon:"📢"},
+ {id:"abonnements",label:"💻 Abonnements",icon:"💻"},
+ {id:"equipe",label:"👥 Équipe",icon:"👥"},
+ {id:"transfert",label:"🏦 Transfert interne",icon:"🏦"},
+ {id:"autres",label:"📦 Autres dépenses",icon:"📦"},
+];
+function categorizeTransaction(tx){
+ const leg=tx.legs?.[0];if(!leg)return{id:"autres",label:"📦 Autres dépenses",icon:"📦"};
+ const amt=leg.amount;const ref=((leg.description||"")+" "+(tx.reference||"")).toLowerCase();
+ if(amt>0)return TX_CATEGORIES[1];
+ if(/loyer|rent/.test(ref))return TX_CATEGORIES[2];
+ if(/facebook|google ads|meta|tiktok|pub/.test(ref))return TX_CATEGORIES[3];
+ if(/stripe|notion|slack|ghl|zapier|skool|adobe|figma|revolut/.test(ref))return TX_CATEGORIES[4];
+ if(/salaire|salary|freelance|prestataire/.test(ref))return TX_CATEGORIES[5];
+ if(tx.type==="transfer")return TX_CATEGORIES[6];
+ return TX_CATEGORIES[7];
+}
 function BankingPanel({revData,onSync,compact}){
  if(!revData||!revData.accounts){
   return <Card style={{textAlign:"center",padding:compact?16:30}}>
@@ -916,16 +937,66 @@ function BankingPanel({revData,onSync,compact}){
    <KPI label="Sorties (30j)" value={`-${fmt(outflow)}€`} accent={C.r} delay={2}/>
    <KPI label="Net" value={`${fmt(inflow-outflow)}€`} accent={inflow-outflow>=0?C.g:C.r} delay={3}/>
   </div>
-  <Sect title="Dernières transactions">
-   {transactions.slice(0,12).map((tx,i)=>{
+  <BankingTransactions transactions={transactions} cs={cs}/>
+ </>;
+}
+function BankingTransactions({transactions,cs}){
+ const[catFilter,setCatFilter]=useState("all");
+ const[typeFilter,setTypeFilter]=useState("all");
+ const[periodFilter,setPeriodFilter]=useState("all");
+ const[sortBy,setSortBy]=useState("recent");
+ const[search,setSearch]=useState("");
+ const filtered=useMemo(()=>{
+  const now=new Date();let txs=[...transactions];
+  // period
+  if(periodFilter==="month"){const s=new Date(now.getFullYear(),now.getMonth(),1);txs=txs.filter(t=>new Date(t.created_at)>=s);}
+  else if(periodFilter==="lastmonth"){const s=new Date(now.getFullYear(),now.getMonth()-1,1);const e=new Date(now.getFullYear(),now.getMonth(),1);txs=txs.filter(t=>{const d=new Date(t.created_at);return d>=s&&d<e;});}
+  else if(periodFilter==="3months"){const s=new Date(now.getFullYear(),now.getMonth()-2,1);txs=txs.filter(t=>new Date(t.created_at)>=s);}
+  // type
+  if(typeFilter==="in")txs=txs.filter(t=>t.legs?.[0]?.amount>0);
+  else if(typeFilter==="out")txs=txs.filter(t=>t.legs?.[0]?.amount<0);
+  // category
+  if(catFilter!=="all")txs=txs.filter(t=>categorizeTransaction(t).id===catFilter);
+  // search
+  if(search.trim()){const q=search.toLowerCase();txs=txs.filter(t=>{const ref=((t.legs?.[0]?.description||"")+" "+(t.reference||"")+" "+(t.merchant?.name||"")).toLowerCase();return ref.includes(q);});}
+  // sort
+  if(sortBy==="oldest")txs.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+  else if(sortBy==="recent")txs.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  else if(sortBy==="amountUp")txs.sort((a,b)=>(a.legs?.[0]?.amount||0)-(b.legs?.[0]?.amount||0));
+  else if(sortBy==="amountDown")txs.sort((a,b)=>(b.legs?.[0]?.amount||0)-(a.legs?.[0]?.amount||0));
+  return txs;
+ },[transactions,catFilter,typeFilter,periodFilter,sortBy,search]);
+ const totals=useMemo(()=>{
+  let inp=0,out=0;filtered.forEach(t=>{const a=t.legs?.[0]?.amount||0;if(a>0)inp+=a;else out+=Math.abs(a);});
+  return{inp:Math.round(inp),out:Math.round(out),net:Math.round(inp-out),count:filtered.length};
+ },[filtered]);
+ const selS={background:C.bg,border:`1px solid ${C.brd}`,borderRadius:6,color:C.t,padding:"4px 6px",fontSize:10,fontFamily:FONT,outline:"none"};
+ return <>
+  <div style={{display:"flex",flexWrap:"wrap",gap:4,alignItems:"center",marginTop:10,marginBottom:6}}>
+   <select value={catFilter} onChange={e=>setCatFilter(e.target.value)} style={selS}>{TX_CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select>
+   <select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)} style={selS}><option value="all">Toutes</option><option value="in">Entrées</option><option value="out">Sorties</option></select>
+   <select value={periodFilter} onChange={e=>setPeriodFilter(e.target.value)} style={selS}><option value="all">Tout</option><option value="month">Ce mois</option><option value="lastmonth">Mois dernier</option><option value="3months">3 derniers mois</option></select>
+   <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={selS}><option value="recent">Plus récent</option><option value="oldest">Plus ancien</option><option value="amountDown">Montant ↓</option><option value="amountUp">Montant ↑</option></select>
+   <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Rechercher…" style={{...selS,flex:"1 1 100px",minWidth:80}}/>
+  </div>
+  <div style={{display:"flex",gap:6,marginBottom:8}}>
+   <div style={{flex:1,background:C.card,border:`1px solid ${C.brd}`,borderRadius:8,padding:"6px 8px"}}><div style={{fontSize:8,color:C.td,fontWeight:700}}>ENTRÉES</div><div style={{fontWeight:800,fontSize:12,color:C.g}}>+{fmt(totals.inp)}€</div></div>
+   <div style={{flex:1,background:C.card,border:`1px solid ${C.brd}`,borderRadius:8,padding:"6px 8px"}}><div style={{fontSize:8,color:C.td,fontWeight:700}}>SORTIES</div><div style={{fontWeight:800,fontSize:12,color:C.r}}>-{fmt(totals.out)}€</div></div>
+   <div style={{flex:1,background:C.card,border:`1px solid ${C.brd}`,borderRadius:8,padding:"6px 8px"}}><div style={{fontSize:8,color:C.td,fontWeight:700}}>NET</div><div style={{fontWeight:800,fontSize:12,color:totals.net>=0?C.g:C.r}}>{fmt(totals.net)}€</div></div>
+   <div style={{flex:1,background:C.card,border:`1px solid ${C.brd}`,borderRadius:8,padding:"6px 8px"}}><div style={{fontSize:8,color:C.td,fontWeight:700}}>TX</div><div style={{fontWeight:800,fontSize:12,color:C.t}}>{totals.count}</div></div>
+  </div>
+  <Sect title="Transactions" sub={`${totals.count} résultats`}>
+   {filtered.slice(0,30).map((tx,i)=>{
     const leg=tx.legs?.[0];if(!leg)return null;
     const isIn=leg.amount>0;const desc=leg.description||tx.reference||tx.merchant?.name||"Transaction";
+    const cat=categorizeTransaction(tx);
     return <div key={tx.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:C.card,borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:2}}>
-    <div style={{width:26,height:26,borderRadius:7,background:isIn?C.gD:C.rD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:isIn?C.g:C.r,flexShrink:0}}>{isIn?"↓":"↑"}</div>
-    <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{desc}</div><div style={{fontSize:10,color:C.td}}>{new Date(tx.created_at).toLocaleDateString("fr-FR")} · {tx.type==="card_payment"?"Carte":"Virement"}</div></div>
+    <div style={{width:26,height:26,borderRadius:7,background:isIn?C.gD:C.rD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:isIn?C.g:C.r,flexShrink:0}}>{cat.icon||"↑"}</div>
+    <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{desc}</div><div style={{fontSize:10,color:C.td}}>{new Date(tx.created_at).toLocaleDateString("fr-FR")} · {tx.type==="card_payment"?"Carte":"Virement"} · <span style={{color:C.tm}}>{cat.label}</span></div></div>
     <span style={{fontWeight:800,fontSize:13,color:isIn?C.g:C.r,whiteSpace:"nowrap"}}>{isIn?"+":""}{fmt(leg.amount)} {cs(leg.currency)}</span>
     </div>;
    })}
+   {filtered.length===0&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Aucune transaction trouvée</div>}
   </Sect>
  </>;
 }
