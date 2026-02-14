@@ -1981,7 +1981,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
  const totalEncaisse=invPaid.reduce((a,i)=>a+i.amount,0);
  const totalAttente=invSent.concat(invDraft).reduce((a,i)=>a+i.amount,0);
  const endingSoon=myClients.filter(c=>{const r=commitmentRemaining(c);return r!==null&&r<=2&&r>0&&c.status==="active";});
- const allOpps=Object.values(ghlData||{}).flatMap(d=>(d.opportunities||[]));
+ const allOpps=Object.values(ghlData||{}).flatMap(d=>(d?.opportunities||[]));
  const uniqueStages=[...new Set(allOpps.map(o=>o.stage).filter(Boolean))];
  const ghlIdsInStage=stageFilter==="all"?null:new Set(allOpps.filter(o=>o.stage===stageFilter).map(o=>o.id));
  const afterType=filter==="all"?myClients:myClients.filter(c=>filter==="type_fixed"?c.billing?.type==="fixed":filter==="type_percent"?c.billing?.type==="percent":filter==="type_oneoff"?c.billing?.type==="oneoff":c.status===filter);
