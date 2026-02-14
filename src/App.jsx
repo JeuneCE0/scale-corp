@@ -3769,7 +3769,7 @@ export default function App(){
  const leaderboard=useMemo(()=>calcLeaderboard(socs,reps,actions,pulses,allM),[socs,reps,actions,pulses,allM]);
  const cM2=curM(),actS=socs.filter(s=>s.stat==="active");
  const smartAlerts=useMemo(()=>calcSmartAlerts(socs,reps,actions,pulses,allM,socBank),[socs,reps,actions,pulses,allM,socBank]);
- const login=useCallback(()=>{if(pin==="0000"||pin==="admin"){setRole("admin");setLErr("");setShowTour(true);return;}const s=socs.find(x=>x.pin===pin);if(s){setRole(s.id);setLErr("");setShowTour(true);return;}setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[pin,socs]);
+ const login=useCallback(()=>{if(pin==="0000"||pin==="admin"){setRole("admin");setLErr("");if(!onboarded)setShowTour(true);return;}const s=socs.find(x=>x.pin===pin);if(s){setRole(s.id);setLErr("");if(!onboarded)setShowTour(true);return;}setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[pin,socs,onboarded]);
  const addAction=(socId,text,dl)=>{saveAJ([...actions,{id:uid(),socId,text,deadline:dl||nextM(cM2),done:false,by:"admin",at:new Date().toISOString()}],null);};
  const toggleAction=(id)=>{saveAJ(actions.map(a=>a.id===id?{...a,done:!a.done}:a),null);};
  const deleteAction=(id)=>{saveAJ(actions.filter(a=>a.id!==id),null);};
