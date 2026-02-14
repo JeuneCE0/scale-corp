@@ -74,6 +74,13 @@ export default async function handler(req, res) {
         if (!params.pipeline_id) return res.status(400).json({ error: "Missing pipeline_id" });
         url = `${GHL_BASE}/opportunities/search?location_id=${locationId}&pipeline_id=${params.pipeline_id}&limit=100`;
         break;
+      case "contacts_list":
+        url = `${GHL_BASE}/contacts/?locationId=${locationId}&limit=100`;
+        break;
+      case "opportunities_all":
+        if (!params.pipeline_id) return res.status(400).json({ error: "Missing pipeline_id" });
+        url = `${GHL_BASE}/opportunities/search?location_id=${locationId}&pipeline_id=${params.pipeline_id}&limit=100&status=all`;
+        break;
       case "calendars":
         url = `${GHL_BASE}/calendars/?locationId=${locationId}`;
         break;

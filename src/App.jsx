@@ -422,8 +422,27 @@ async function syncGHLForSoc(soc){
  const stageMap={};pip.stages?.forEach(s2=>{stageMap[s2.id]=s2.name;});
  const mappedOpps=opps.map(o=>({...o,stage:stageMap[o.stage]||o.stage}));
  const won=mappedOpps.filter(o=>o.status==="won");const open2=mappedOpps.filter(o=>o.status==="open");
+ // Fetch contacts list
+ const ctData=await fetchGHL("contacts_list",loc);
+ const rawContacts=(ctData?.contacts||[]);
+ // Build a map of contactId→opp status from opportunities
+ const contactOppStatus={};
+ (oppData?.opportunities||[]).forEach(o=>{
+  const cid=o.contact?.id;if(!cid)return;
+  if(o.status==="won")contactOppStatus[cid]="active";
+  else if(o.status==="lost"&&!contactOppStatus[cid])contactOppStatus[cid]="churned";
+  else if(!contactOppStatus[cid])contactOppStatus[cid]="prospect";
+ });
+ const ghlClients=rawContacts.map(c=>({
+  id:`ghl_${c.id}`,socId:soc.id,name:c.contactName||[c.firstName,c.lastName].filter(Boolean).join(" ")||"Sans nom",
+  contact:c.contactName||[c.firstName,c.lastName].filter(Boolean).join(" ")||"",
+  email:c.email||"",phone:c.phone||"",
+  billing:{type:"fixed",amount:0,freq:"monthly",commitment:0,startDate:c.dateAdded?.slice(0,10)||""},
+  status:contactOppStatus[c.id]||"prospect",
+  notes:(c.tags||[]).join(", "),ghlId:c.id,stripeId:"",at:c.dateAdded||new Date().toISOString()
+ }));
  return{
-  pipelines:[{id:pip.id,name:pip.name,stages}],opportunities:mappedOpps,
+  pipelines:[{id:pip.id,name:pip.name,stages}],opportunities:mappedOpps,ghlClients,
   stats:{totalLeads:mappedOpps.length,openDeals:open2.length,wonDeals:won.length,
    lostDeals:mappedOpps.filter(o=>o.status==="lost").length,pipelineValue:open2.reduce((a,o)=>a+o.value,0),
    wonValue:won.reduce((a,o)=>a+o.value,0),conversionRate:mappedOpps.length>0?Math.round(won.length/mappedOpps.length*100):0,
@@ -3720,6 +3739,17 @@ export default function App(){
    if(!newData[s.id])newData[s.id]=demo[s.id];
   });
   setGhlData(newData);await sSet("scAg",newData);
+  // Merge GHL contacts into clients state
+  const ghlSocIds=Object.keys(newData).filter(sid=>newData[sid].ghlClients?.length>0);
+  if(ghlSocIds.length>0){
+   setClients(prev=>{
+    // Remove old ghl_ clients for these socs, keep manual ones
+    const kept=prev.filter(c=>!(ghlSocIds.includes(c.socId)&&c.id.startsWith("ghl_")));
+    const newCl=ghlSocIds.flatMap(sid=>newData[sid].ghlClients);
+    const merged=[...kept,...newCl];
+    sSet("scAcl",merged);return merged;
+   });
+  }
  },[socs]);
  const syncRev=useCallback(async()=>{
   let data=null;
