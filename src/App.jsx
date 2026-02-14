@@ -422,7 +422,8 @@ async function syncGHLForSoc(soc){
   email:c.email||"",phone:c.phone||"",
   billing:contactOppStatus[c.id]==="active"?{type:"fixed",amount:0,freq:"monthly",commitment:0,startDate:c.dateAdded?.slice(0,10)||""}:null,
   status:contactOppStatus[c.id]||"prospect",
-  notes:(c.tags||[]).join(", "),ghlId:c.id,stripeId:"",at:c.dateAdded||new Date().toISOString()
+  domain:((c.tags||[]).find(t=>t.startsWith("domaine:"))||"").replace("domaine:",""),
+  notes:(c.tags||[]).filter(t=>!t.startsWith("domaine:")).join(", "),ghlId:c.id,stripeId:"",at:c.dateAdded||new Date().toISOString()
  }));
  return{
   pipelines:allPipelinesMeta,opportunities:mappedOpps,ghlClients,
@@ -2034,7 +2035,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     firstName:(cl.name||"").split(" ")[0],
     lastName:(cl.name||"").split(" ").slice(1).join(" "),
     email:cl.email,phone:cl.phone,
-    tags:cl.notes?cl.notes.split(",").map(t=>t.trim()):[]
+    tags:[...(cl.notes?cl.notes.split(",").map(t=>t.trim()):[]),...(cl.domain?[`domaine:${cl.domain}`]:[])].filter(Boolean)
    });
   }else if(loc&&!cl.ghlId&&!cl._fromGHL){
    ghlCreateContact(loc,{
@@ -2146,6 +2147,15 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     </div>)}
    </div>
   </Card>}
+  {(()=>{const domains={};myClients.forEach(c=>{const d=(c.domain||"").trim();if(d)domains[d]=(domains[d]||0)+1;});const sorted=Object.entries(domains).sort((a,b)=>b[1]-a[1]);if(sorted.length===0)return null;const DCOLS=["#60a5fa","#FFAA00","#34d399","#f43f5e","#a78bfa","#fb923c","#14b8a6","#eab308","#ec4899","#6366f1"];return <Card style={{padding:14,marginBottom:12}}>
+   <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>🏢 DOMAINES D'ACTIVITÉ</div>
+   <div style={{display:"flex",gap:2,height:8,borderRadius:4,overflow:"hidden",marginBottom:8}}>
+    {sorted.map(([d,n],i)=><div key={d} style={{width:`${Math.round(n/myClients.length*100)}%`,background:DCOLS[i%DCOLS.length],borderRadius:3,transition:"width .3s"}}/>)}
+   </div>
+   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+    {sorted.map(([d,n],i)=><span key={d} style={{fontSize:9,padding:"2px 8px",borderRadius:6,background:DCOLS[i%DCOLS.length]+"18",color:DCOLS[i%DCOLS.length],fontWeight:600,border:`1px solid ${DCOLS[i%DCOLS.length]}33`}}>{d}: {n}</span>)}
+   </div>
+  </Card>;})()}
   {endingSoon.length>0&&<Card accent={C.o} style={{padding:12,marginBottom:12}}>
    <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:6}}>
     <span style={{fontSize:12}}>⚠️</span>
@@ -2477,6 +2487,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     <Inp label="Email" value={editCl.email} onChange={v=>setEditCl({...editCl,email:v})} placeholder="email@client.com"/>
     <Inp label="Téléphone" value={editCl.phone} onChange={v=>setEditCl({...editCl,phone:v})} placeholder="06..."/>
     </div>
+    <Inp label="Domaine d'activité" value={editCl.domain||""} onChange={v=>setEditCl({...editCl,domain:v})} placeholder="Ex: Fitness, Immobilier, E-commerce, Restaurant..."/>
     <div style={{padding:"10px 12px",background:C.card2,borderRadius:10,border:`1px solid ${C.brd}`,margin:"8px 0"}}>
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>TYPE DE FACTURATION</div>
     <div style={{display:"flex",gap:4,marginBottom:10}}>
