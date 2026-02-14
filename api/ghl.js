@@ -158,6 +158,43 @@ export default async function handler(req, res) {
         if (!evRes.ok) { const t = await evRes.text(); return res.status(evRes.status).json({ error: t }); }
         return res.status(200).json(await evRes.json());
       }
+      case "conversations_list":
+        url = `${GHL_BASE}/conversations/search?locationId=${locationId}&limit=20&sortBy=last_message_date&sortOrder=desc`;
+        break;
+      case "conversations_messages": {
+        if (!params.conversationId) return res.status(400).json({ error: "Missing conversationId" });
+        url = `${GHL_BASE}/conversations/${params.conversationId}/messages`;
+        break;
+      }
+      case "conversation_send": {
+        if (!params.contactId || !params.message) return res.status(400).json({ error: "Missing contactId or message" });
+        const sendRes = await fetch(`${GHL_BASE}/conversations/messages`, {
+          method: "POST", headers, body: JSON.stringify({ type: params.type || "SMS", contactId: params.contactId, message: params.message })
+        });
+        if (!sendRes.ok) { const t = await sendRes.text(); return res.status(sendRes.status).json({ error: t }); }
+        return res.status(200).json(await sendRes.json());
+      }
+      case "calendar_slots": {
+        if (!params.calendarId) return res.status(400).json({ error: "Missing calendarId" });
+        let slotsUrl = `${GHL_BASE}/calendars/${params.calendarId}/free-slots?`;
+        if (params.startDate) slotsUrl += `startDate=${params.startDate}&`;
+        if (params.endDate) slotsUrl += `endDate=${params.endDate}&`;
+        url = slotsUrl.replace(/[&?]$/, '');
+        break;
+      }
+      case "notes_list": {
+        if (!params.contactId) return res.status(400).json({ error: "Missing contactId" });
+        url = `${GHL_BASE}/contacts/${params.contactId}/notes`;
+        break;
+      }
+      case "notes_create": {
+        if (!params.contactId) return res.status(400).json({ error: "Missing contactId" });
+        const noteRes = await fetch(`${GHL_BASE}/contacts/${params.contactId}/notes`, {
+          method: "POST", headers, body: JSON.stringify(params.data || {})
+        });
+        if (!noteRes.ok) { const t = await noteRes.text(); return res.status(noteRes.status).json({ error: t }); }
+        return res.status(200).json(await noteRes.json());
+      }
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }

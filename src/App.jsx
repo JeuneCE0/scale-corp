@@ -88,7 +88,7 @@ const DS=[
  {id:"virale",nom:"Vidéo Virale",porteur:"À définir",act:"Vidéo",pT:"benefices",pP:20,stat:"signature",color:"#f43f5e",pin:"1009",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
  {id:"mindset",nom:"Coaching Mindset",porteur:"À définir",act:"Mindset",pT:"benefices",pP:20,stat:"signature",color:"#eab308",pin:"1010",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
 ];
-const DH={logiciels:1200,equipe:300,service:500,cabinet:280,remun:3000,reservePct:30,crm:150,treso:2000,revolutToken:"",revolutEnv:"sandbox",slack:{enabled:false,mode:"bob",webhookUrl:"",botToken:"",channel:"",bobWebhook:"",notifyPulse:true,notifyReport:true,notifyValidation:true,notifyReminders:true},brand:{name:"SCALE CORP",sub:"Plateforme de pilotage",logoUrl:"",logoLetter:"S",accentColor:"#FFAA00",gradientFrom:"#FFBF00",gradientTo:"#FF9D00"}};
+const DH={logiciels:1200,equipe:300,service:500,cabinet:280,remun:3000,reservePct:30,crm:150,treso:2000,revolutToken:"",revolutEnv:"sandbox",slack:{enabled:false,mode:"bob",webhookUrl:"",botToken:"",channel:"",bobWebhook:"",notifyPulse:true,notifyReport:true,notifyValidation:true,notifyReminders:true},brand:{name:"L'INCUBATEUR ECS",sub:"Plateforme de pilotage",logoUrl:"/logo-ecs.png",logoLetter:"E",accentColor:"#FFAA00",gradientFrom:"#FFBF00",gradientTo:"#FF9D00"}};
 const DEAL_STAGES=["Idée","Contact","Négociation","Due Diligence","Signature"];
 function mkPrefill(){ return {}; }
 
@@ -3909,7 +3909,7 @@ function OnboardingWizard({onComplete,onSkip,hold}){
   <div style={{width:220,minHeight:"100vh",background:C.card,borderRight:`1px solid ${C.brd}`,padding:"28px 16px",display:"flex",flexDirection:"column"}}>
    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:28}}>
     <div style={{width:32,height:32,background:hold?.brand?.logoUrl?"transparent":`linear-gradient(135deg,${hold?.brand?.accentColor||C.acc},#FF9D00)`,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:"#0a0a0f",overflow:"hidden"}}>{hold?.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(hold?.brand?.logoLetter||"S")}</div>
-    <div><div style={{fontWeight:800,fontSize:13,letterSpacing:.5}}>{hold?.brand?.name||"SCALE CORP"}</div><div style={{color:C.td,fontSize:9}}>Onboarding</div></div>
+    <div><div style={{fontWeight:800,fontSize:13,letterSpacing:.5}}>{hold?.brand?.name||"L'INCUBATEUR ECS"}</div><div style={{color:C.td,fontSize:9}}>Onboarding</div></div>
    </div>
    <div style={{flex:1}}>
     {OB_STEPS.map((s,i)=>{const done=i<step,curr=i===step;return <button key={s.id} onClick={()=>{if(i<step)go(i);}}
@@ -4108,8 +4108,14 @@ const SB_ADMIN=[
 
 const SB_PORTEUR=[
  {id:"dashboard",icon:"📊",label:"Dashboard",tab:0,accent:C.acc},
+ {id:"inbox",icon:"📥",label:"Inbox",tab:1,accent:C.b},
+ {id:"agenda",icon:"📅",label:"Agenda",tab:2,accent:C.v},
+ {id:"conversations",icon:"💬",label:"Conversations",tab:3,accent:"#ec4899"},
+ {id:"todo",icon:"✅",label:"To-Do",tab:4,accent:C.o},
  {id:"bank",icon:"🏦",label:"Banque",tab:5,accent:C.g},
+ {id:"pipeline",icon:"🔄",label:"Pipeline",tab:6,accent:"#14b8a6"},
  {id:"clients",icon:"👥",label:"Clients",tab:9,accent:C.o},
+ {id:"ressources",icon:"📹",label:"Ressources",tab:11,accent:C.v},
  {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
 ];
 
@@ -4321,8 +4327,8 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   <button onClick={toggleTheme} style={{position:"fixed",top:16,right:16,width:36,height:36,borderRadius:18,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}}>{getTheme()==="light"?"🌙":"☀️"}</button>
   <div className="si glass-modal" style={{borderRadius:20,padding:28,width:340,maxWidth:"100%"}}>
    <div style={{textAlign:"center",marginBottom:24}}>
-    <div className="fl glow-accent-strong" style={{width:48,height:48,background:hold.brand?.logoUrl?"transparent":`linear-gradient(135deg,${hold.brand?.accentColor||C.acc},#FF9D00)`,borderRadius:12,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:10,overflow:"hidden"}}>{hold.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(hold.brand?.logoLetter||"S")}</div>
-    <h1 style={{margin:0,fontSize:18,fontWeight:900,letterSpacing:.5,fontFamily:FONT_TITLE}}>{hold.brand?.name||"SCALE CORP"}</h1>
+    <div className="fl glow-accent-strong" style={{width:64,height:64,background:"transparent",borderRadius:12,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:10,overflow:"hidden"}}>{hold.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}}/>:(hold.brand?.logoLetter||"E")}</div>
+    <h1 style={{margin:0,fontSize:18,fontWeight:900,letterSpacing:.5,fontFamily:FONT_TITLE,color:"#fff"}}>{hold.brand?.name||"L'INCUBATEUR ECS"}</h1>
     <p style={{color:C.td,fontSize:11,margin:"4px 0 0"}}>{hold.brand?.sub||"Plateforme de pilotage"}</p>
    </div>
    <div style={{animation:shake?"sh .4s ease":"none"}}><Inp label="Code d'accès" value={pin} onChange={v=>{setPin(v);setLErr("");}} type="password" placeholder="Entrez votre PIN" onKeyDown={e=>{if(e.key==="Enter")login();}}/></div>
@@ -4349,7 +4355,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  return <div className="glass-bg" style={{display:"flex",minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}</style>
   {false&&role==="admin"&&<TutorialOverlay steps={TOUR_ADMIN} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={setTab}/>}
-  <Sidebar items={SB_ADMIN} activeTab={tab} setTab={setTab} brandTitle={hold.brand?.name||"SCALE CORP"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>setRole(null)} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand} extra={<div style={{display:"flex",flexDirection:"column",gap:2}}>
+  <Sidebar items={SB_ADMIN} activeTab={tab} setTab={setTab} brandTitle={hold.brand?.name||"L'INCUBATEUR ECS"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>setRole(null)} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand} extra={<div style={{display:"flex",flexDirection:"column",gap:2}}>
    {hold.slack?.enabled&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 4px"}}><span style={{width:5,height:5,borderRadius:3,background:C.g}}/>
     <span style={{fontSize:8,color:C.td}}>{SLACK_MODES[hold.slack?.mode]?.icon} Slack connecté</span>
     {missing.length>0&&<button onClick={async()=>{const results=[];for(const s of missing){const r=await slackSend(hold.slack,buildReminderSlackMsg(s,"report",deadline(cM2)));results.push({nom:s.nom,ok:r.ok});}const ok=results.filter(r=>r.ok).length;alert(`📤 ${ok}/${results.length} rappels envoyés`);}} style={{marginLeft:"auto",fontSize:8,color:C.o,background:C.oD,border:"none",borderRadius:4,padding:"2px 5px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>🔔 {missing.length}</button>}
@@ -4666,7 +4672,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    <div style={{marginTop:12,padding:"12px 14px",background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`}}>
     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><span style={{fontSize:16}}>🎨</span><span style={{fontWeight:700,fontSize:12,color:C.td}}>BRANDING</span></div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
-    <Inp label="Nom de la plateforme" value={hold.brand?.name||"SCALE CORP"} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),name:v}})}/>
+    <Inp label="Nom de la plateforme" value={hold.brand?.name||"L'INCUBATEUR ECS"} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),name:v}})}/>
     <Inp label="Sous-titre" value={hold.brand?.sub||"Plateforme de pilotage"} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),sub:v}})}/>
     <Inp label="Logo URL (optionnel)" value={hold.brand?.logoUrl||""} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),logoUrl:v}})} placeholder="https://..."/>
     <Inp label="Lettre logo (fallback)" value={hold.brand?.logoLetter||"S"} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),logoLetter:v.slice(0,2)}})}/>
