@@ -361,6 +361,8 @@ const DEMO_KB=[
 const GHL_STAGES_COLORS=["#60a5fa","#FFAA00","#fb923c","#34d399","#a78bfa","#f43f5e","#14b8a6","#eab308"];
 const GHL_BASE="/api/ghl";
 function mkGHLDemo(){ return {}; }
+async function ghlUpdateContact(locationId,contactId,data){return fetchGHL("contact_update",locationId,{contactId,data});}
+async function ghlCreateContact(locationId,data){return fetchGHL("contact_create",locationId,{data});}
 async function fetchGHL(action,locationId,params={}){
  try{
   const r=await fetch(GHL_BASE,{
@@ -371,6 +373,30 @@ async function fetchGHL(action,locationId,params={}){
   if(!r.ok)throw new Error(`GHL proxy ${r.status}`);return await r.json();
  }catch(e){console.warn("GHL fetch failed:",e.message);return null;}
 }
+async function ghlUpdateContact(locationId, contactId, data) {
+  try {
+    const r = await fetch(GHL_BASE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "contact_update", locationId, contactId, data })
+    });
+    if (!r.ok) throw new Error(`GHL update ${r.status}`);
+    return await r.json();
+  } catch (e) { console.warn("GHL update failed:", e); return null; }
+}
+
+async function ghlCreateContact(locationId, data) {
+  try {
+    const r = await fetch(GHL_BASE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "contact_create", locationId, data })
+    });
+    if (!r.ok) throw new Error(`GHL create ${r.status}`);
+    return await r.json();
+  } catch (e) { console.warn("GHL create failed:", e); return null; }
+}
+
 async function syncGHLForSoc(soc){
  if(!soc.ghlLocationId)return null;
  const loc=soc.ghlLocationId;
@@ -1998,6 +2024,27 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
   const isNew=!clients.some(c=>c.id===cl.id);
   const idx=clients.findIndex(x=>x.id===cl.id);
   if(idx>=0){const nc=[...clients];nc[idx]=cl;saveClients(nc);}else saveClients([...clients,cl]);
+  // GHL bidirectional sync
+  const loc=soc.ghlLocationId;
+  if(loc&&cl.ghlId){
+   ghlUpdateContact(loc,cl.ghlId,{
+    firstName:(cl.name||"").split(" ")[0],
+    lastName:(cl.name||"").split(" ").slice(1).join(" "),
+    email:cl.email,phone:cl.phone,
+    tags:cl.notes?cl.notes.split(",").map(t=>t.trim()):[]
+   });
+  }else if(loc&&!cl.ghlId&&!cl._fromGHL){
+   ghlCreateContact(loc,{
+    firstName:(cl.name||"").split(" ")[0],
+    lastName:(cl.name||"").split(" ").slice(1).join(" "),
+    email:cl.email,phone:cl.phone,name:cl.name
+   }).then(res2=>{
+    if(res2?.contact?.id){
+     const updated=clients.map(c=>c.id===cl.id?{...c,ghlId:res2.contact.id}:c);
+     saveClients(updated);
+    }
+   });
+  }
   const b=cl.billing;
   const needsInvoices=(b?.type==="fixed"&&b.commitment>0)||(b?.type==="oneoff"&&b.amount>0);
   if(needsInvoices){
@@ -2246,6 +2293,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     <div style={{flex:1,minWidth:0}}>
     <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
     <span style={{fontWeight:700,fontSize:12}}>{cl.name||"Sans nom"}</span>
+    <span title={cl.ghlId?"Synced avec GHL":"Local uniquement"} style={{fontSize:8,cursor:"default"}}>{cl.ghlId?"✅":"⚠️"}</span>
     <span style={{fontSize:7,color:cs.c,background:cs.c+"18",padding:"1px 5px",borderRadius:8,fontWeight:700}}>{cs.icon} {cs.l}</span>
     <span style={{fontSize:7,color:bt.c,background:bt.c+"18",padding:"1px 5px",borderRadius:8}}>{bt.l}</span>
     {clInvs.length>0&&<span style={{fontSize:7,color:C.td,background:C.card2,padding:"1px 5px",borderRadius:8}}>📄{clInvs.length}</span>}

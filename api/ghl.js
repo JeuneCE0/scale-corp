@@ -87,6 +87,72 @@ export default async function handler(req, res) {
       case "conversations":
         url = `${GHL_BASE}/conversations/search?locationId=${locationId}&limit=20`;
         break;
+      case "contact_update": {
+        if (!params.contactId) return res.status(400).json({ error: "Missing contactId" });
+        const updRes = await fetch(`${GHL_BASE}/contacts/${params.contactId}`, {
+          method: "PUT", headers, body: JSON.stringify(params.data || {})
+        });
+        if (!updRes.ok) { const t = await updRes.text(); return res.status(updRes.status).json({ error: t }); }
+        return res.status(200).json(await updRes.json());
+      }
+      case "contact_create": {
+        const createData = { ...(params.data || {}), locationId };
+        const crRes = await fetch(`${GHL_BASE}/contacts/`, {
+          method: "POST", headers, body: JSON.stringify(createData)
+        });
+        if (!crRes.ok) { const t = await crRes.text(); return res.status(crRes.status).json({ error: t }); }
+        return res.status(200).json(await crRes.json());
+      }
+      case "contact_delete": {
+        if (!params.contactId) return res.status(400).json({ error: "Missing contactId" });
+        const delRes = await fetch(`${GHL_BASE}/contacts/${params.contactId}`, {
+          method: "DELETE", headers
+        });
+        if (!delRes.ok) { const t = await delRes.text(); return res.status(delRes.status).json({ error: t }); }
+        return res.status(200).json({ success: true });
+      }
+      case "contact_update": {
+        const { contactId, data } = params;
+        const ghlRes2 = await fetch(`${GHL_BASE}/contacts/${contactId}`, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify(data)
+        });
+        if (!ghlRes2.ok) {
+          const text = await ghlRes2.text();
+          console.error(`GHL API error ${ghlRes2.status}:`, text);
+          return res.status(ghlRes2.status).json({ error: `GHL API error: ${ghlRes2.status}` });
+        }
+        return res.status(200).json(await ghlRes2.json());
+      }
+      case "contact_create": {
+        const { data } = params;
+        data.locationId = locationId;
+        const ghlRes2 = await fetch(`${GHL_BASE}/contacts/`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(data)
+        });
+        if (!ghlRes2.ok) {
+          const text = await ghlRes2.text();
+          console.error(`GHL API error ${ghlRes2.status}:`, text);
+          return res.status(ghlRes2.status).json({ error: `GHL API error: ${ghlRes2.status}` });
+        }
+        return res.status(200).json(await ghlRes2.json());
+      }
+      case "contact_delete": {
+        const { contactId } = params;
+        const ghlRes2 = await fetch(`${GHL_BASE}/contacts/${contactId}`, {
+          method: "DELETE",
+          headers
+        });
+        if (!ghlRes2.ok) {
+          const text = await ghlRes2.text();
+          console.error(`GHL API error ${ghlRes2.status}:`, text);
+          return res.status(ghlRes2.status).json({ error: `GHL API error: ${ghlRes2.status}` });
+        }
+        return res.status(200).json({ success: true });
+      }
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }
