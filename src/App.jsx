@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef, Fragment, createContext, useContext } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, Fragment, createContext, useContext } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Area, AreaChart, Legend } from "recharts";
 const C_DARK={bg:"#06060b",card:"#0e0e16",card2:"#131320",brd:"#1a1a2c",brdL:"#24243a",acc:"#FFAA00",accD:"rgba(255,170,0,.12)",g:"#34d399",gD:"rgba(52,211,153,.1)",r:"#f87171",rD:"rgba(248,113,113,.1)",o:"#fb923c",oD:"rgba(251,146,60,.1)",b:"#60a5fa",bD:"rgba(96,165,250,.1)",t:"#e4e4e7",td:"#71717a",tm:"#3f3f50",v:"#a78bfa",vD:"rgba(167,139,250,.1)"};
 const C_LIGHT={bg:"#f5f5f5",card:"#ffffff",card2:"#f0f0f0",brd:"#e0e0e0",brdL:"#d0d0d0",acc:"#FFAA00",accD:"#FFF3D6",g:"#22c55e",gD:"#dcfce7",r:"#ef4444",rD:"#fee2e2",b:"#3b82f6",bD:"#dbeafe",o:"#f97316",oD:"#fff7ed",v:"#8b5cf6",vD:"#ede9fe",t:"#1a1a1a",td:"#666666",tm:"#999999"};
@@ -25,6 +25,7 @@ const qMonths=m=>{const[y]=m.split("-").map(Number);const s=(qOf(m)-1)*3;return[
 const qLabel=m=>`T${qOf(m)} ${m.split("-")[0]}`;
 const ago=d=>{const s=Math.floor((Date.now()-new Date(d).getTime())/1e3);if(s<60)return"à l'instant";if(s<3600)return`il y a ${Math.floor(s/60)}min`;if(s<86400)return`il y a ${Math.floor(s/3600)}h`;return`il y a ${Math.floor(s/86400)}j`;};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+class ErrorBoundary extends React.Component{constructor(p){super(p);this.state={err:null};}static getDerivedStateFromError(e){return{err:e};}render(){if(this.state.err)return <div style={{padding:20,textAlign:"center",background:C.card,borderRadius:12,border:`1px solid ${C.brd}`}}><div style={{fontSize:28,marginBottom:8}}>⚠️</div><div style={{fontWeight:700,fontSize:13,marginBottom:4,color:C.t}}>{this.props.label||"Erreur"}</div><div style={{color:C.td,fontSize:11}}>{this.state.err.message}</div><button onClick={()=>this.setState({err:null})} style={{marginTop:10,padding:"6px 14px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,cursor:"pointer",fontSize:11}}>Réessayer</button></div>;return this.props.children;}}
 const curW=()=>{const d=new Date();const jan1=new Date(d.getFullYear(),0,1);return`${d.getFullYear()}-W${String(Math.ceil(((d-jan1)/864e5+jan1.getDay()+1)/7)).padStart(2,"0")}`;};
 const MOODS=["😫","😟","😐","🙂","🔥"];
 const sinceLbl=d=>{if(!d)return"";const s=new Date(d),n=new Date();const m=(n.getFullYear()-s.getFullYear())*12+n.getMonth()-s.getMonth();if(m<1)return"Ce mois";if(m===1)return"1 mois";if(m<12)return`${m} mois`;const y=Math.floor(m/12),rm=m%12;return rm>0?`${y}a ${rm}m`:`${y} an${y>1?"s":""}`;};
@@ -1949,7 +1950,8 @@ function AIWeeklyCoach({soc,reps,allM,actions,pulses,milestones}){
  </Card>;
 }
 /* CLIENTS PANEL (per-société CRM) */
-function ClientsPanel({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices}){
+function ClientsPanelSafe(props){return <ErrorBoundary label="Erreur dans la page Clients"><ClientsPanelInner {...props}/></ErrorBoundary>;}
+function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices}){
  const[editCl,setEditCl]=useState(null);const[filter,setFilter]=useState("all");const[stageFilter,setStageFilter]=useState("all");const[invView,setInvView]=useState(null);
  const[sending,setSending]=useState(null);
  const myClients=clients.filter(c=>c.socId===soc.id);
@@ -2086,7 +2088,7 @@ function ClientsPanel({soc,clients,saveClients,ghlData,socBankData,invoices,save
     <span style={{fontWeight:600,color:C.t}}>{cl.name}</span>
     <span style={{color:C.o,fontWeight:700}}>{r} mois restant{r>1?"s":""}</span>
     <span style={{color:C.td,fontSize:8}}>fin {end?.toLocaleDateString("fr-FR",{month:"short",year:"numeric"})}</span>
-    <span style={{color:C.td,fontSize:9,marginLeft:"auto"}}>{fmt(cl.billing.amount)}€/m</span>
+    <span style={{color:C.td,fontSize:9,marginLeft:"auto"}}>{fmt(cl.billing?.amount)}€/m</span>
     </div>;
    })}
   </Card>}
@@ -2496,8 +2498,7 @@ function ClientsPanel({soc,clients,saveClients,ghlData,socBankData,invoices,save
    })()}
   </Modal>
  </div>;
-}
-/* PROACTIVE INSIGHTS ENGINE */
+}/* PROACTIVE INSIGHTS ENGINE */
 function genInsights(evo,hs,rw,myActions,soc,reps,allM){
  const ins=[];const last=evo.length>0?evo[evo.length-1]:null;const prev=evo.length>1?evo[evo.length-2]:null;
  if(!last)return ins;
@@ -2997,7 +2998,7 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
   {pTab===5&&<><SocBankWidget bankData={socBankData} onSync={()=>syncSocBank(soc.id)} soc={soc}/>
    <SubsTeamPanel socs={[soc]} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId={soc.id} reps={reps} socBankData={socBankData}/>
   </>}
-  {pTab===9&&<ClientsPanel soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices}/>}
+  {pTab===9&&<ClientsPanelSafe soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices}/>}
   {pTab===12&&<SocSettingsPanel soc={soc} save={save} socs={socs}/>}
   </div>
   </div>
