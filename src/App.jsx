@@ -411,7 +411,7 @@ async function syncGHLForSoc(soc){
   id:`ghl_${c.id}`,socId:soc.id,name:c.contactName||[c.firstName,c.lastName].filter(Boolean).join(" ")||"Sans nom",
   contact:c.contactName||[c.firstName,c.lastName].filter(Boolean).join(" ")||"",
   email:c.email||"",phone:c.phone||"",
-  billing:{type:"fixed",amount:0,freq:"monthly",commitment:0,startDate:c.dateAdded?.slice(0,10)||""},
+  billing:contactOppStatus[c.id]==="active"?{type:"fixed",amount:0,freq:"monthly",commitment:0,startDate:c.dateAdded?.slice(0,10)||""}:null,
   status:contactOppStatus[c.id]||"prospect",
   notes:(c.tags||[]).join(", "),ghlId:c.id,stripeId:"",at:c.dateAdded||new Date().toISOString()
  }));
@@ -2276,18 +2276,18 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
   </div>
   {filtered.length===0&&<div style={{textAlign:"center",padding:30,color:C.td}}><div style={{fontSize:24,marginBottom:6}}>👥</div>{search?"Aucun résultat pour \""+search+"\"":"Aucun client pour le moment"}</div>}
   {filtered.map((cl,i)=>{
-   const b=cl.billing||{};const bt=BILL_TYPES[b.type]||BILL_TYPES.fixed;const cs=CLIENT_STATUS[cl.status]||CLIENT_STATUS.active;
+   const b=cl.billing||{};const bt=b.type?BILL_TYPES[b.type]:null;const cs=CLIENT_STATUS[cl.status]||CLIENT_STATUS.active;
    const monthly=clientMonthlyRevenue(cl);const cr=commitmentRemaining(cl);
    const clInvs=clientInvoices(cl.id);const clDraft=clInvs.filter(x=>x.status==="draft").length;const clPaid=clInvs.filter(x=>x.status==="paid").length;const clOverdue=clInvs.filter(x=>x.status==="overdue").length;
-   return <Card key={cl.id} accent={bt.c} style={{marginBottom:4,padding:"12px 14px",cursor:"pointer"}} delay={Math.min(i+1,8)} onClick={()=>setEditCl({...cl})}>
+   return <Card key={cl.id} accent={bt?.c||C.td} style={{marginBottom:4,padding:"12px 14px",cursor:"pointer"}} delay={Math.min(i+1,8)} onClick={()=>setEditCl({...cl})}>
     <div style={{display:"flex",alignItems:"center",gap:8}}>
-    <div style={{width:36,height:36,borderRadius:9,background:bt.c+"18",border:`1.5px solid ${bt.c}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>{bt.icon}</div>
+    <div style={{width:36,height:36,borderRadius:9,background:(bt?.c||C.td)+"18",border:`1.5px solid ${(bt?.c||C.td)}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>{bt?.icon||"👤"}</div>
     <div style={{flex:1,minWidth:0}}>
     <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
     <span style={{fontWeight:700,fontSize:12}}>{cl.name||"Sans nom"}</span>
     <span title={cl.ghlId?"Synced avec GHL":"Local uniquement"} style={{fontSize:8,cursor:"default"}}>{cl.ghlId?"✅":"⚠️"}</span>
     <span style={{fontSize:7,color:cs.c,background:cs.c+"18",padding:"1px 5px",borderRadius:8,fontWeight:700}}>{cs.icon} {cs.l}</span>
-    <span style={{fontSize:7,color:bt.c,background:bt.c+"18",padding:"1px 5px",borderRadius:8}}>{bt.l}</span>
+    {bt&&<span style={{fontSize:7,color:bt.c,background:bt.c+"18",padding:"1px 5px",borderRadius:8}}>{bt.l}</span>}
     {clInvs.length>0&&<span style={{fontSize:7,color:C.td,background:C.card2,padding:"1px 5px",borderRadius:8}}>📄{clInvs.length}</span>}
     {clDraft>0&&<span style={{fontSize:7,color:C.acc,background:C.accD,padding:"1px 4px",borderRadius:4,fontWeight:700}}>{clDraft} à envoyer</span>}
     {clOverdue>0&&<span style={{fontSize:7,color:C.r,background:C.rD,padding:"1px 4px",borderRadius:4,fontWeight:700}}>⚠ {clOverdue} en retard</span>}
