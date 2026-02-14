@@ -6783,23 +6783,17 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     <h1 style={{margin:0,fontSize:18,fontWeight:900,letterSpacing:.5,fontFamily:FONT_TITLE,color:"#fff"}}>{hold.brand?.name||"L'INCUBATEUR ECS"}</h1>
     <p style={{color:C.td,fontSize:11,margin:"4px 0 0"}}>{hold.brand?.sub||"Plateforme de pilotage"}</p>
    </div>
-   {loginMode==="email"?<div style={{animation:shake?"sh .4s ease":"none"}}>
+   <div style={{animation:shake?"sh .4s ease":"none"}}>
     <Inp label="Email" value={loginEmail} onChange={v=>{setLoginEmail(v);setLErr("");}} type="email" placeholder="votre@email.com" onKeyDown={e=>{if(e.key==="Enter"&&loginEmail&&loginPass)loginEmail2();}}/>
     <Inp label="Mot de passe" value={loginPass} onChange={v=>{setLoginPass(v);setLErr("");}} type="password" placeholder="••••••••" onKeyDown={e=>{if(e.key==="Enter")loginEmail2();}}/>
-   </div>:<div style={{animation:shake?"sh .4s ease":"none"}}><Inp label="Code d'accès" value={pin} onChange={v=>{setPin(v);setLErr("");}} type="password" placeholder="Entrez votre PIN" onKeyDown={e=>{if(e.key==="Enter")login();}}/></div>}
+   </div>
    {lErr&&<div style={{color:C.r,fontSize:11,marginBottom:8,textAlign:"center"}}>⚠ {lErr}</div>}
-   <Btn onClick={loginMode==="email"?loginEmail2:login} full disabled={authLoading}>{authLoading?"Connexion...":"Connexion"}</Btn>
-   <div style={{textAlign:"center",marginTop:10}}><button onClick={()=>{setLoginMode(loginMode==="email"?"pin":"email");setLErr("");}} style={{background:"none",border:"none",color:C.td,fontSize:10,cursor:"pointer",fontFamily:FONT,textDecoration:"underline",opacity:.7}}>{loginMode==="email"?"Connexion par PIN":"Connexion par email"}</button></div>
-   {loginMode==="pin"&&<div className="fu d2" style={{marginTop:10,padding:"10px 12px",background:C.bg,borderRadius:9,border:`1px solid ${C.brd}`}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:4}}>ACCÈS RAPIDE</div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"2px 14px",fontSize:10}}>
-    <div><span style={{color:C.acc,fontWeight:700}}>0000</span> <span style={{color:C.td}}>Admin</span></div>
-    {socs.filter(s=>s.pin!=="admin").slice(0,5).map(s=><div key={s.id} style={{display:"flex",alignItems:"center",gap:6}}>{s.logoUrl?<img src={s.logoUrl} alt="" style={{width:16,height:16,borderRadius:8,objectFit:"cover"}}/>:<span style={{width:16,height:16,borderRadius:8,background:(s.brandColor||s.color)+"22",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:900,color:s.brandColor||s.color}}>{s.nom[0]}</span>}<span style={{color:s.brandColor||s.color,fontWeight:600}}>{s.pin}</span> <span style={{color:C.td}}>{s.nom}</span></div>)}
-    </div>
-   </div>}
+   <Btn onClick={loginEmail2} full disabled={authLoading}>{authLoading?"Connexion...":"Connexion"}</Btn>
+
+   
    {obData&&<div style={{marginTop:10,padding:"8px 12px",background:C.gD,borderRadius:8,border:`1px solid ${C.g}33`,fontSize:10,color:C.g,textAlign:"center"}}>✅ Onboarding complété{obData.companyName?` — ${obData.companyName}`:""}</div>}
-   {onboarded===false&&<button onClick={()=>setShowOnboarding(true)} style={{marginTop:10,width:"100%",padding:"9px",borderRadius:8,border:`1.5px solid ${C.acc}44`,background:C.accD,color:C.acc,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,transition:"all .15s"}}>👋 Compléter l'onboarding</button>}
-   {onboarded&&<button onClick={()=>setShowOnboarding(true)} style={{marginTop:8,width:"100%",padding:"6px",borderRadius:6,border:`1px solid ${C.brd}`,background:"transparent",color:C.td,fontSize:9,cursor:"pointer",fontFamily:FONT,opacity:.5}}>↻ Relancer l'onboarding</button>}
+
+
   </div>
  </div>;
  if(role!=="admin"){const soc=socs.find(s=>s.id===role);if(!soc)return null;
