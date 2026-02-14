@@ -551,7 +551,7 @@ async function syncSocRevolut(soc){
  const accs=(Array.isArray(accounts)?accounts:[]).map(a=>({id:a.id,name:a.name||"Compte",balance:a.balance,currency:a.currency,state:a.state,excluded:excluded.includes(a.id)}));
  const balance=accs.filter(a=>!a.excluded).reduce((s,a)=>s+(a.currency==="EUR"?a.balance:a.balance*0.92),0);
  const monthly={};
- txns.forEach(tx=>{const m=tx.month;const leg=tx.legs?.[0];if(!leg)return;const amt=leg.amount;if(!monthly[m])monthly[m]={income:0,expense:0};if(amt>0)monthly[m].income+=amt;else monthly[m].expense+=Math.abs(amt);});
+ txns.forEach(tx=>{const m=tx.month;const leg=tx.legs?.[0];if(!leg)return;if(excluded.includes(leg.account_id))return;const amt=leg.amount;if(!monthly[m])monthly[m]={income:0,expense:0};if(amt>0)monthly[m].income+=amt;else monthly[m].expense+=Math.abs(amt);});
  Object.keys(monthly).forEach(m=>{monthly[m].income=Math.round(monthly[m].income);monthly[m].expense=Math.round(monthly[m].expense);});
  return{accounts:accs,transactions:txns.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)),balance:Math.round(balance),monthly,lastSync:new Date().toISOString(),isDemo:false};
 }
