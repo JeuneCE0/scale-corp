@@ -2549,6 +2549,42 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     </div>
     <Sel label="Statut" value={editCl.status} onChange={v=>setEditCl({...editCl,status:v})} options={Object.entries(CLIENT_STATUS).map(([k,v])=>({v:k,l:`${v.icon} ${v.l}`}))}/>
     <Inp label="Notes" value={editCl.notes} onChange={v=>setEditCl({...editCl,notes:v})} placeholder="Contexte, détails du deal…"/>
+    {/* Payment tracking - auto-matched */}
+    {(()=>{
+     const clName=(editCl.name||"").toLowerCase().trim();
+     const clEmail=(editCl.email||"").toLowerCase().trim();
+     const txs=(socBankData?.transactions||[]);
+     const matched=txs.filter(tx=>{
+      const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;
+      const desc=(leg.description||tx.reference||"").toLowerCase();
+      if(clName.length>2&&desc.includes(clName))return true;
+      if(clEmail.length>3&&desc.includes(clEmail))return true;
+      const nameParts=clName.split(/\s+/).filter(p=>p.length>2);
+      if(nameParts.length>=2&&nameParts.every(p=>desc.includes(p)))return true;
+      return false;
+     }).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+     const total=matched.reduce((a,tx)=>a+(tx.legs?.[0]?.amount||0),0);
+     if(matched.length===0)return <div style={{padding:"10px 12px",background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`,margin:"8px 0"}}>
+      <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:4}}>💳 SUIVI PAIEMENTS</div>
+      <div style={{fontSize:10,color:C.td}}>Aucun paiement détecté pour ce contact</div>
+     </div>;
+     return <div style={{padding:"10px 12px",background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`,margin:"8px 0"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+       <span style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8}}>💳 SUIVI PAIEMENTS ({matched.length})</span>
+       <span style={{fontWeight:800,fontSize:12,color:C.g}}>{fmt(total)}€ total</span>
+      </div>
+      <div style={{maxHeight:180,overflowY:"auto"}}>
+      {matched.map((tx,i)=>{const leg=tx.legs[0];return <div key={tx.id||i} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:i<matched.length-1?`1px solid ${C.brd}`:"none"}}>
+       <span style={{width:18,height:18,borderRadius:5,background:C.gD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:C.g,flexShrink:0}}>💰</span>
+       <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:10,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{leg.description||tx.reference||"—"}</div>
+        <div style={{fontSize:8,color:C.td}}>{new Date(tx.created_at).toLocaleDateString("fr-FR")}</div>
+       </div>
+       <span style={{fontWeight:700,fontSize:11,color:C.g}}>+{fmt(leg.amount)}€</span>
+      </div>;})}
+      </div>
+     </div>;
+    })()}
     <div style={{padding:"10px 12px",background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`,margin:"8px 0"}}>
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:6}}>CONNEXIONS EXTERNES</div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
