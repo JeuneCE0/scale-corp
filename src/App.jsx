@@ -152,7 +152,7 @@ const CLIENT_STATUS={active:{l:"Actif",c:C.g,icon:"✓"},paused:{l:"En pause",c:
 const DEMO_CLIENTS=[];
 function clientMonthlyRevenue(cl){
  const b=cl.billing;if(!b)return 0;
- if(b.type==="fixed"&&cl.status==="active")return b.amount;
+ if(b.type==="fixed"&&cl.status==="active")return Number(b.amount)||0;
  if(b.type==="percent"&&cl.status==="active"){
   const base=b.basis==="benefice"?Math.max(0,(cl.clientCA||0)-(cl.clientCharges||0)):(cl.clientCA||0);
   return Math.round(base*(b.percent||0)/100);
@@ -161,10 +161,10 @@ function clientMonthlyRevenue(cl){
 }
 function clientTotalValue(cl){
  const b=cl.billing;if(!b)return 0;
- if(b.type==="oneoff")return b.amount;
+ if(b.type==="oneoff")return Number(b.amount)||0;
  if(b.type==="fixed"){
   const months=b.commitment||1;
-  return b.amount*months;
+  return (Number(b.amount)||0)*months;
  }
  return clientMonthlyRevenue(cl)*12;
 }
@@ -1245,6 +1245,8 @@ function SocBankWidget({bankData,onSync,soc}){
  const[txFilter,setTxFilter]=useState("all");
  const[txCatOverrides,setTxCatOverrides]=useState(()=>{try{return JSON.parse(localStorage.getItem(`scTxCat_${soc?.id}`)||"{}");}catch{return{};}});
  const[catDropdown,setCatDropdown]=useState(null);
+ const[catDropPos,setCatDropPos]=useState(null);
+ const[selectedTx,setSelectedTx]=useState(new Set());
  const saveCatOverride=(txId,catId)=>{const next={...txCatOverrides,[txId]:catId};setTxCatOverrides(next);try{localStorage.setItem(`scTxCat_${soc?.id}`,JSON.stringify(next));}catch{}setCatDropdown(null);};
  const getCat=(tx)=>txCatOverrides[tx.id]?TX_CATEGORIES.find(c=>c.id===txCatOverrides[tx.id])||categorizeTransaction(tx):categorizeTransaction(tx);
  const FILTER_PILLS=[{id:"all",label:"Toutes"},{id:"revenus",label:"💰 Revenus"},{id:"abonnements",label:"💻 Abonnements"},{id:"equipe",label:"👤 Prestataires"},{id:"dividendes",label:"🏛️ Dividendes"},{id:"transfert",label:"📤 Transferts"},{id:"autres",label:"📦 Autres"}];
@@ -1287,14 +1289,21 @@ function SocBankWidget({bankData,onSync,soc}){
   </Card>}
   {accounts.length>0&&<Sect title="Comptes">{accounts.map((a,i)=><div key={a.id} className={`fu d${Math.min(i+1,4)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",background:C.card,borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:2}}><span style={{fontSize:12}}>🏦</span><span style={{flex:1,fontWeight:600,fontSize:12}}>{a.name}</span><span style={{fontWeight:800,fontSize:13,color:C.g}}>{fmt(a.balance)} {CURR_SYMBOLS[a.currency]||a.currency}</span></div>)}</Sect>}
   <Sect title={`Transactions du mois`} sub={`${filteredTx.length} transactions`}>
-   <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8}}>{FILTER_PILLS.map(p=><span key={p.id} onClick={()=>setTxFilter(p.id)} style={{padding:"3px 10px",borderRadius:12,fontSize:10,fontWeight:600,cursor:"pointer",background:txFilter===p.id?C.acc+"22":"transparent",color:txFilter===p.id?C.acc:C.td,border:`1px solid ${txFilter===p.id?C.acc:C.brd}`,transition:"all .15s"}}>{p.label}</span>)}</div>
+   <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8,alignItems:"center"}}>{FILTER_PILLS.map(p=><span key={p.id} onClick={()=>setTxFilter(p.id)} style={{padding:"3px 10px",borderRadius:12,fontSize:10,fontWeight:600,cursor:"pointer",background:txFilter===p.id?C.acc+"22":"transparent",color:txFilter===p.id?C.acc:C.td,border:`1px solid ${txFilter===p.id?C.acc:C.brd}`,transition:"all .15s"}}>{p.label}</span>)}<span onClick={()=>{if(selectedTx.size===filteredTx.length){setSelectedTx(new Set());}else{setSelectedTx(new Set(filteredTx.map(t=>t.id)));}}} style={{padding:"3px 10px",borderRadius:12,fontSize:10,fontWeight:600,cursor:"pointer",color:C.acc,border:`1px solid ${C.acc}`,background:selectedTx.size>0?C.acc+"22":"transparent",marginLeft:"auto"}}>{selectedTx.size===filteredTx.length&&filteredTx.length>0?"☐ Désélect.":"☑ Tout"}</span></div>
    {filteredTx.length===0?<div style={{color:C.td,fontSize:11,padding:12,textAlign:"center"}}>Aucune transaction ce mois</div>:filteredTx.map((tx,i)=>{const leg=tx.legs?.[0];if(!leg)return null;const isIn=leg.amount>0;const cat=getCat(tx);const isDiv=cat.id==="dividendes";
-    return <div key={tx.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",background:isDiv?"#7c3aed11":C.card,borderRadius:7,border:`1px solid ${isDiv?"#7c3aed33":C.brd}`,marginBottom:2}}>
+    return <div key={tx.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",background:isDiv?"#7c3aed11":selectedTx.has(tx.id)?C.acc+"11":C.card,borderRadius:7,border:`1px solid ${isDiv?"#7c3aed33":selectedTx.has(tx.id)?C.acc+"44":C.brd}`,marginBottom:2}}>
+    <input type="checkbox" checked={selectedTx.has(tx.id)} onChange={()=>setSelectedTx(prev=>{const n=new Set(prev);n.has(tx.id)?n.delete(tx.id):n.add(tx.id);return n;})} style={{width:14,height:14,accentColor:C.acc,cursor:"pointer",flexShrink:0}} />
     <span style={{width:20,height:20,borderRadius:5,background:isIn?C.gD:isDiv?"#7c3aed22":C.rD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:isIn?C.g:isDiv?"#7c3aed":C.r,flexShrink:0}}>{cat.icon||"↑"}</span>
-    <div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontWeight:600,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{leg.description||tx.reference||"—"}</span><span onClick={(e)=>{e.stopPropagation();setCatDropdown(catDropdown===tx.id?null:tx.id);}} style={{fontSize:9,padding:"1px 5px",borderRadius:8,background:(catColors[cat.id]||C.td)+"22",color:catColors[cat.id]||C.td,fontWeight:600,whiteSpace:"nowrap",flexShrink:0,cursor:"pointer",position:"relative"}}>{cat.label}{catDropdown===tx.id&&<div onClick={e=>e.stopPropagation()} style={{position:"absolute",top:"100%",left:0,zIndex:50,background:C.card,border:`1px solid ${C.brd}`,borderRadius:8,padding:6,boxShadow:"0 4px 12px #0003",minWidth:140,marginTop:2}}>{TX_CATEGORIES.filter(c=>c.id!=="all").map(c=><div key={c.id} onClick={()=>saveCatOverride(tx.id,c.id)} style={{padding:"4px 8px",fontSize:10,borderRadius:5,cursor:"pointer",fontWeight:cat.id===c.id?700:500,background:cat.id===c.id?C.acc+"22":"transparent",color:cat.id===c.id?C.acc:C.tm,display:"flex",alignItems:"center",gap:4}}><span>{c.icon}</span><span>{c.label.replace(c.icon+" ","")}</span></div>)}</div>}</span></div><div style={{fontSize:9,color:C.td}}>{new Date(tx.created_at).toLocaleDateString("fr-FR")}</div></div>
+    <div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontWeight:600,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{leg.description||tx.reference||"—"}</span><span onClick={(e)=>{e.stopPropagation();if(catDropdown===tx.id){setCatDropdown(null);setCatDropPos(null);}else{setCatDropPos({x:e.clientX,y:e.clientY});setCatDropdown(tx.id);}}} style={{fontSize:9,padding:"1px 5px",borderRadius:8,background:(catColors[cat.id]||C.td)+"22",color:catColors[cat.id]||C.td,fontWeight:600,whiteSpace:"nowrap",flexShrink:0,cursor:"pointer"}}>{cat.label}</span></div><div style={{fontSize:9,color:C.td}}>{new Date(tx.created_at).toLocaleDateString("fr-FR")}</div></div>
     <span style={{fontWeight:700,fontSize:11,color:isIn?C.g:isDiv?"#7c3aed":C.r}}>{isIn?"+":""}{fmt(leg.amount)}€</span>
     </div>;})}
+   {selectedTx.size>0&&<div style={{position:"sticky",bottom:0,background:C.card,borderTop:`1px solid ${C.brd}`,padding:"8px 12px",display:"flex",alignItems:"center",gap:8,borderRadius:"0 0 10px 10px"}}>
+    <span style={{fontSize:11,fontWeight:600}}>{selectedTx.size} sélectionnée{selectedTx.size>1?"s":""}</span>
+    {TX_CATEGORIES.filter(c=>c.id!=="all").map(c=><button key={c.id} onClick={()=>{selectedTx.forEach(id=>saveCatOverride(id,c.id));setSelectedTx(new Set());}} style={{fontSize:9,padding:"3px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,cursor:"pointer",fontFamily:FONT}}>{c.icon}</button>)}
+    <button onClick={()=>setSelectedTx(new Set())} style={{marginLeft:"auto",fontSize:9,color:C.td,background:"none",border:"none",cursor:"pointer",fontFamily:FONT}}>Désélectionner</button>
+   </div>}
   </Sect>
+  {catDropdown&&catDropPos&&<><div onClick={()=>{setCatDropdown(null);setCatDropPos(null);}} style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:9998}} /><div style={{position:"fixed",left:catDropPos.x,top:catDropPos.y+240>window.innerHeight?catDropPos.y-200:catDropPos.y,zIndex:9999,background:C.card,border:`1px solid ${C.brd}`,borderRadius:8,padding:6,boxShadow:"0 4px 12px #0003",minWidth:140}}>{TX_CATEGORIES.filter(c=>c.id!=="all").map(c=><div key={c.id} onClick={()=>saveCatOverride(catDropdown,c.id)} style={{padding:"4px 8px",fontSize:10,borderRadius:5,cursor:"pointer",fontWeight:500,background:"transparent",color:C.tm,display:"flex",alignItems:"center",gap:4}}><span>{c.icon}</span><span>{c.label.replace(c.icon+" ","")}</span></div>)}</div></>}
  </>;
 }
 /* SYNERGIES MAP */
@@ -1947,10 +1956,10 @@ function ClientsPanel({soc,clients,saveClients,ghlData,socBankData,invoices,save
  const myInvoices=(invoices||[]).filter(inv=>inv.socId===soc.id);
  const active=myClients.filter(c=>c.status==="active");
  const byType=t=>myClients.filter(c=>c.billing?.type===t);
- const mrrFixed=byType("fixed").filter(c=>c.status==="active").reduce((a,c)=>a+c.billing?.amount||0,0);
+ const mrrFixed=byType("fixed").filter(c=>c.status==="active").reduce((a,c)=>a+Number(c.billing?.amount||0),0);
  const mrrPercent=byType("percent").filter(c=>c.status==="active").reduce((a,c)=>a+clientMonthlyRevenue(c),0);
- const oneoffThisMonth=byType("oneoff").filter(c=>{const d=c.billing?.paidDate;if(!d)return false;return d.startsWith(curM());}).reduce((a,c)=>a+c.billing?.amount||0,0);
- const oneoffTotal=byType("oneoff").reduce((a,c)=>a+c.billing?.amount||0,0);
+ const oneoffThisMonth=byType("oneoff").filter(c=>{const d=c.billing?.paidDate;if(!d)return false;return d.startsWith(curM());}).reduce((a,c)=>a+Number(c.billing?.amount||0),0);
+ const oneoffTotal=byType("oneoff").reduce((a,c)=>a+Number(c.billing?.amount||0),0);
  const totalMRR=mrrFixed+mrrPercent;
  const totalPortfolio=myClients.reduce((a,c)=>a+clientTotalValue(c),0);
  const avgDealValue=myClients.length?Math.round(totalPortfolio/myClients.length):0;
