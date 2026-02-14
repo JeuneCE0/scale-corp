@@ -2000,7 +2000,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
  const allOpps=Object.values(ghlData||{}).flatMap(d=>(d?.opportunities||[]));
  const uniqueStages=[...new Set(allOpps.map(o=>o.stage).filter(Boolean))];
  const ghlIdsInStage=stageFilter==="all"?null:new Set(allOpps.filter(o=>o.stage===stageFilter).map(o=>o.id));
- const afterType=filter==="all"?myClients:filter==="prospect"?myClients.filter(c=>c.status==="prospect"):filter==="active"?myClients.filter(c=>c.status==="active"):filter==="type_fixed"?myClients.filter(c=>c.billing?.type==="fixed"):filter==="type_percent"?myClients.filter(c=>c.billing?.type==="percent"):filter==="type_hybrid"?myClients.filter(c=>c.billing?.type==="hybrid"):filter==="type_oneoff"?myClients.filter(c=>c.billing?.type==="oneoff"):myClients;
+ const afterType=filter==="all"?myClients:filter.startsWith("stage_")?myClients.filter(c=>{const st=filter.replace("stage_","");return allOpps.some(o=>o.stage===st&&o.contact?.id===c.ghlId);}):filter==="no_stage"?myClients.filter(c=>!allOpps.some(o=>o.contact?.id===c.ghlId)):filter==="type_fixed"?myClients.filter(c=>c.billing?.type==="fixed"):filter==="type_percent"?myClients.filter(c=>c.billing?.type==="percent"):filter==="type_hybrid"?myClients.filter(c=>c.billing?.type==="hybrid"):filter==="type_oneoff"?myClients.filter(c=>c.billing?.type==="oneoff"):myClients;
  const afterStage=stageFilter==="all"?afterType:afterType.filter(c=>{if(!c.ghlId)return false;const opps2=allOpps.filter(o=>o.stage===stageFilter);return opps2.some(o=>o.name===c.name||o.email===c.email||o.id===c.ghlId);});
  const filtered=search.trim()===""?afterStage:afterStage.filter(c=>{const q=search.toLowerCase();return(c.name||"").toLowerCase().includes(q)||(c.email||"").toLowerCase().includes(q)||(c.phone||"").includes(q)||(c.contact||"").toLowerCase().includes(q)||(c.notes||"").toLowerCase().includes(q);});
  const addClient=(type)=>{
@@ -2262,10 +2262,13 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:14}}>✕</button>}
    </div>
    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-   {[{v:"all",l:`Tous (${myClients.length})`},{v:"prospect",l:`🔍 Prospects (${myClients.filter(c=>c.status==="prospect").length})`},{v:"active",l:`✅ Clients (${myClients.filter(c=>c.status==="active").length})`},{v:"type_fixed",l:`💰 Fixe (${byType("fixed").length})`},{v:"type_percent",l:`📊 % (${byType("percent").length})`},{v:"type_hybrid",l:`💎 Fixe+% (${byType("hybrid").length})`},{v:"type_oneoff",l:`🎯 One-off (${byType("oneoff").length})`}].map(f2=>
-    <button key={f2.v} onClick={()=>setFilter(f2.v)} style={{padding:"4px 10px",borderRadius:6,fontSize:9,fontWeight:filter===f2.v?700:500,border:`1px solid ${filter===f2.v?C.acc:C.brd}`,background:filter===f2.v?C.accD:"transparent",color:filter===f2.v?C.acc:C.td,cursor:"pointer",fontFamily:FONT}}>{f2.l}</button>
-   )}
-   {uniqueStages.length>0&&<select value={stageFilter} onChange={e=>setStageFilter(e.target.value)} style={{padding:"4px 10px",borderRadius:6,fontSize:9,border:`1px solid ${stageFilter!=="all"?C.acc:C.brd}`,background:stageFilter!=="all"?C.accD:"transparent",color:stageFilter!=="all"?C.acc:C.td,cursor:"pointer",fontFamily:FONT,outline:"none"}}><option value="all">🔀 Stage Pipeline: Tous</option>{uniqueStages.map(s=><option key={s} value={s}>{s}</option>)}</select>}
+   {[{v:"all",l:`Tous (${myClients.length})`},
+    ...((ghlData?.[soc.id]?.pipelines?.[0]?.stages||[]).map((st,i)=>{const count=myClients.filter(c=>{const opps2=allOpps.filter(o=>o.stage===st);return opps2.some(o=>o.contact?.id===c.ghlId);});return{v:`stage_${st}`,l:`${st} (${count.length})`,c:GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]};})),
+    {v:"no_stage",l:`Sans étape (${myClients.filter(c=>!allOpps.some(o=>o.contact?.id===c.ghlId)).length})`},
+    {v:"type_fixed",l:`💰 Fixe (${byType("fixed").length})`},{v:"type_percent",l:`📊 % (${byType("percent").length})`},{v:"type_hybrid",l:`💎 Fixe+% (${byType("hybrid").length})`},{v:"type_oneoff",l:`🎯 One-off (${byType("oneoff").length})`}
+   ].map(f2=>{const isStage=f2.v.startsWith("stage_");const stColor=isStage?f2.c:null;
+    return <button key={f2.v} onClick={()=>setFilter(f2.v)} style={{padding:"4px 10px",borderRadius:6,fontSize:9,fontWeight:filter===f2.v?700:500,border:`1px solid ${filter===f2.v?(stColor||C.acc):C.brd}`,background:filter===f2.v?(stColor||C.acc)+"22":"transparent",color:filter===f2.v?(stColor||C.acc):C.td,cursor:"pointer",fontFamily:FONT}}>{f2.l}</button>;
+   })}
    <div style={{marginLeft:"auto",display:"flex",gap:4}}>
     <Btn small onClick={()=>addClient("fixed")}>+ Forfait</Btn>
     <Btn small v="secondary" onClick={()=>addClient("percent")}>+ %</Btn>
