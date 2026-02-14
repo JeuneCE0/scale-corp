@@ -64,54 +64,19 @@ const DS=[
 ];
 const DH={logiciels:1200,equipe:300,service:500,cabinet:280,remun:3000,reservePct:30,crm:150,treso:2000,revolutToken:"",revolutEnv:"sandbox",slack:{enabled:false,mode:"bob",webhookUrl:"",botToken:"",channel:"",bobWebhook:"",notifyPulse:true,notifyReport:true,notifyValidation:true,notifyReminders:true}};
 const DEAL_STAGES=["Idée","Contact","Négociation","Due Diligence","Signature"];
-function mkPrefill(){
- const m=curM(),p=prevM(m);
- return{[`leadx_${p}`]:{ca:"5200",charges:"1100",chargesOps:"400",salaire:"500",formation:"0",clients:"6",churn:"0",pub:"200",leads:"45",leadsContact:"30",leadsClos:"6",notes:"Organique.",mrr:"4200",pipeline:"6500",tresoSoc:"8500",at:new Date(Date.now()-30*864e5).toISOString(),comment:"Bon démarrage !",ok:true},[`copy_${p}`]:{ca:"8500",charges:"2200",chargesOps:"800",salaire:"1000",formation:"200",clients:"",churn:"",pub:"",leads:"",leadsContact:"",leadsClos:"",notes:"Skool.",mrr:"",pipeline:"10000",tresoSoc:"12000",at:new Date(Date.now()-30*864e5).toISOString(),comment:"",ok:true},[`bbp_${p}`]:{ca:"3200",charges:"800",chargesOps:"200",salaire:"400",formation:"0",clients:"2",churn:"0",pub:"",leads:"",leadsContact:"",leadsClos:"",notes:"Contrat annuel.",mrr:"2800",pipeline:"4000",tresoSoc:"5200",at:new Date(Date.now()-30*864e5).toISOString(),comment:"",ok:true},[`studio_${p}`]:{ca:"1800",charges:"400",chargesOps:"100",salaire:"200",formation:"50",clients:"",churn:"",pub:"",leads:"",leadsContact:"",leadsClos:"",notes:"",mrr:"",pipeline:"2500",tresoSoc:"3100",at:new Date(Date.now()-30*864e5).toISOString(),comment:"",ok:true},[`eco_${p}`]:{ca:"5500",charges:"2280",chargesOps:"500",salaire:"",formation:"",clients:"",churn:"",pub:"",leads:"",leadsContact:"",leadsClos:"",notes:"",mrr:"",pipeline:"6000",tresoSoc:"",at:new Date(Date.now()-30*864e5).toISOString(),comment:"",ok:true},
- [`leadx_${m}`]:{ca:"6000",charges:"1250",chargesOps:"450",salaire:"500",formation:"100",clients:"7",churn:"0",pub:"250",leads:"52",leadsContact:"38",leadsClos:"7",notes:"Base stable.",mrr:"4800",pipeline:"7000",tresoSoc:"9200",at:new Date().toISOString(),comment:"",ok:false},[`copy_${m}`]:{ca:"10000",charges:"2500",chargesOps:"900",salaire:"1200",formation:"0",clients:"",churn:"",pub:"",leads:"",leadsContact:"",leadsClos:"",notes:"Skool + accomp.",mrr:"",pipeline:"12000",tresoSoc:"14500",at:new Date().toISOString(),comment:"",ok:false},[`bbp_${m}`]:{ca:"4000",charges:"1000",chargesOps:"300",salaire:"500",formation:"0",clients:"2",churn:"0",pub:"",leads:"",leadsContact:"",leadsClos:"",notes:"Récurrent.",mrr:"3200",pipeline:"4500",tresoSoc:"6000",at:new Date().toISOString(),comment:"",ok:false},[`studio_${m}`]:{ca:"2000",charges:"500",chargesOps:"100",salaire:"300",formation:"50",clients:"",churn:"",pub:"",leads:"",leadsContact:"",leadsClos:"",notes:"Stable.",mrr:"",pipeline:"3000",tresoSoc:"3500",at:new Date().toISOString(),comment:"",ok:false},[`eco_${m}`]:{ca:"6000",charges:"2280",chargesOps:"500",salaire:"",formation:"",clients:"",churn:"",pub:"",leads:"",leadsContact:"",leadsClos:"",notes:"",mrr:"",pipeline:"7000",tresoSoc:"",at:new Date().toISOString(),comment:"",ok:false}};
-}
-const DEMO_JOURNAL={leadx:[{id:"j1",date:new Date(Date.now()-60*864e5).toISOString(),text:"Lancement officiel — 3 premiers clients signés"},{id:"j2",date:new Date(Date.now()-15*864e5).toISOString(),text:"Test pricing à 997€ — conversion stable"}],bbp:[{id:"j3",date:new Date(Date.now()-45*864e5).toISOString(),text:"Passage en contrats annuels pour stabiliser le MRR"}]};
-const DEMO_ACTIONS=[{id:"a1",socId:"studio",text:"Revoir le pricing — tester offre premium",deadline:nextM(curM()),done:false,by:"admin",at:new Date(Date.now()-5*864e5).toISOString()},{id:"a2",socId:"leadx",text:"Documenter le process d'onboarding",deadline:curM(),done:false,by:"admin",at:new Date(Date.now()-10*864e5).toISOString()},{id:"a3",socId:"copy",text:"Lancer la page Skool V2",deadline:prevM(curM()),done:true,by:"admin",at:new Date(Date.now()-30*864e5).toISOString()}];
-const DEMO_PULSES={[`leadx_${curW()}`]:{mood:4,win:"2 nouveaux clients signés",blocker:"",conf:4,at:new Date().toISOString()},[`bbp_${curW()}`]:{mood:3,win:"Contrat renouvelé",blocker:"Attente réponse fournisseur",conf:3,at:new Date().toISOString()}};
-const DEMO_DEALS=[{id:"d1",nom:"App Fitness",contact:"Marc Dupont",stage:2,value:5000,notes:"Intéressé par 20% bénéfices",at:new Date().toISOString()},{id:"d2",nom:"E-commerce Bio",contact:"Julie Payet",stage:0,value:0,notes:"Idée de Siméon",at:new Date().toISOString()}];
+function mkPrefill(){ return {}; }
+const DEMO_JOURNAL={};
+const DEMO_ACTIONS=[];
+const DEMO_PULSES={};
+const DEMO_DEALS=[];
 const curQ=()=>{const d=new Date();return`${d.getFullYear()}-Q${Math.ceil((d.getMonth()+1)/3)}`;};
-const DEMO_OKRS=[
- {id:"o1",socId:"leadx",quarter:curQ(),obj:"Scaler l'acquisition à 10K€/mois",krs:[{id:"kr1",text:"CA mensuel > 10 000€",target:10000,current:7500,unit:"€",auto:"ca"},{id:"kr2",text:"3 nouveaux canaux testés",target:3,current:1,unit:""},{id:"kr3",text:"ROAS > 3x sur chaque campagne",target:3,current:2.1,unit:"x"}]},
- {id:"o2",socId:"leadx",quarter:curQ(),obj:"Automatiser le delivery",krs:[{id:"kr4",text:"Réduire charges à < 30% du CA",target:30,current:42,unit:"%",auto:"margin"},{id:"kr5",text:"Onboarder 2 freelances",target:2,current:0,unit:""}]},
- {id:"o3",socId:"copy",quarter:curQ(),obj:"Diversifier le portefeuille clients",krs:[{id:"kr6",text:"15 clients actifs",target:15,current:8,unit:"",auto:"clients"},{id:"kr7",text:"CA > 15 000€",target:15000,current:12000,unit:"€",auto:"ca"},{id:"kr8",text:"Pipeline > 20K€",target:20000,current:14000,unit:"€",auto:"pipeline"}]},
- {id:"o4",socId:"bbp",quarter:curQ(),obj:"Monétiser l'audience",krs:[{id:"kr9",text:"CA > 8 000€",target:8000,current:5200,unit:"€",auto:"ca"},{id:"kr10",text:"Lancer 2 offres sponsorisées",target:2,current:1,unit:""},{id:"kr11",text:"Taux conversion > 2%",target:2,current:1.3,unit:"%"}]},
- {id:"o5",socId:"studio",quarter:curQ(),obj:"Passer en mode agence",krs:[{id:"kr12",text:"5 000€ de CA mensuel",target:5000,current:3800,unit:"€",auto:"ca"},{id:"kr13",text:"3 clients récurrents",target:3,current:1,unit:""}]},
-];
-const DEMO_SYNERGIES=[
- {id:"sy1",from:"leadx",to:"studio",type:"referral",desc:"Lead qualifié pour branding",value:2500,date:"2026-01-15",status:"won"},
- {id:"sy2",from:"copy",to:"leadx",type:"collab",desc:"Landing pages pour campagnes",value:1800,date:"2026-01-20",status:"active"},
- {id:"sy3",from:"bbp",to:"copy",type:"referral",desc:"Besoin contenu pour sponsoring",value:1200,date:"2026-02-01",status:"active"},
- {id:"sy4",from:"leadx",to:"bbp",type:"referral",desc:"Client vidéo publicitaire",value:3000,date:"2025-12-10",status:"won"},
- {id:"sy5",from:"studio",to:"copy",type:"collab",desc:"Direction artistique + copie",value:0,date:"2026-02-05",status:"active"},
-];
+const DEMO_OKRS=[];
+const DEMO_SYNERGIES=[];
 const SYN_TYPES={referral:{label:"Referral",icon:"🔗",color:C.b},collab:{label:"Collaboration",icon:"🤝",color:C.v},resource:{label:"Ressource partagée",icon:"📦",color:C.o}};
 const SYN_STATUS={active:{label:"En cours",color:C.b},won:{label:"Gagné",color:C.g},lost:{label:"Perdu",color:C.r}};
 const SUB_CATS={logiciel:{l:"Logiciel",icon:"💻",c:C.b},service:{l:"Service",icon:"⚙️",c:C.o},marketing:{l:"Marketing",icon:"📢",c:C.v},autre:{l:"Autre",icon:"📦",c:C.td}};
-const DEMO_SUBS=[
- {id:"sub1",socId:"holding",name:"Notion",amount:20,freq:"monthly",cat:"logiciel",start:"2025-01-01",notes:"Team plan"},
- {id:"sub2",socId:"holding",name:"Slack",amount:15,freq:"monthly",cat:"logiciel",start:"2025-01-01",notes:"Pro"},
- {id:"sub3",socId:"holding",name:"Expert-comptable",amount:280,freq:"monthly",cat:"service",start:"2024-06-01",notes:"Cabinet Fiduciaire"},
- {id:"sub4",socId:"holding",name:"Revolut Business",amount:25,freq:"monthly",cat:"service",start:"2025-03-01",notes:"Plan Grow"},
- {id:"sub5",socId:"leadx",name:"GoHighLevel",amount:97,freq:"monthly",cat:"logiciel",start:"2025-06-01",notes:"Agency plan"},
- {id:"sub6",socId:"leadx",name:"Zapier",amount:49,freq:"monthly",cat:"logiciel",start:"2025-07-01",notes:"Professional"},
- {id:"sub7",socId:"copy",name:"Skool",amount:99,freq:"monthly",cat:"logiciel",start:"2025-04-01",notes:"Community"},
- {id:"sub8",socId:"copy",name:"ConvertKit",amount:29,freq:"monthly",cat:"marketing",start:"2025-05-01",notes:"Email"},
- {id:"sub9",socId:"bbp",name:"Adobe Suite",amount:60,freq:"monthly",cat:"logiciel",start:"2025-08-01",notes:"Premiere + After Effects"},
- {id:"sub10",socId:"studio",name:"Figma",amount:15,freq:"monthly",cat:"logiciel",start:"2025-09-01",notes:"Professional"},
- {id:"sub11",socId:"holding",name:"Assurance RC Pro",amount:600,freq:"annual",cat:"service",start:"2025-01-01",notes:""},
-];
-const DEMO_TEAM=[
- {id:"tm1",socId:"holding",name:"Arnaud",role:"CSM",payType:"fixed",amount:300,notes:"Customer Success Manager"},
- {id:"tm2",socId:"leadx",name:"Sarah",role:"Media Buyer Junior",payType:"fixed",amount:800,notes:"Temps partiel"},
- {id:"tm3",socId:"leadx",name:"Lucas",role:"Closer",payType:"percent",amount:15,notes:"15% du contrat signé"},
- {id:"tm4",socId:"copy",name:"Julie",role:"Rédactrice",payType:"fixed",amount:500,notes:"5 articles/mois"},
- {id:"tm5",socId:"bbp",name:"Théo",role:"Monteur vidéo",payType:"fixed",amount:400,notes:"Montage + sous-titres"},
- {id:"tm6",socId:"studio",name:"Enzo",role:"DA freelance",payType:"percent",amount:20,notes:"20% des projets gérés"},
-];
+const DEMO_SUBS=[];
+const DEMO_TEAM=[];
 function subMonthly(sub){return sub.freq==="annual"?Math.round(sub.amount/12):sub.amount;}
 const BILL_TYPES={
  fixed:{l:"Forfait fixe",icon:"💰",c:C.acc,desc:"Montant fixe mensuel avec ou sans engagement"},
@@ -119,41 +84,7 @@ const BILL_TYPES={
  oneoff:{l:"Prestation unique",icon:"🎯",c:C.b,desc:"Paiement unique (formation, accompagnement)"},
 };
 const CLIENT_STATUS={active:{l:"Actif",c:C.g,icon:"✓"},paused:{l:"En pause",c:C.o,icon:"⏸"},churned:{l:"Perdu",c:C.r,icon:"✗"},completed:{l:"Terminé",c:C.td,icon:"✓"},prospect:{l:"Prospect",c:C.b,icon:"◌"}};
-const DEMO_CLIENTS=[
- {id:"cl1",socId:"leadx",name:"Studio Fitness Paris",contact:"Marc Dupont",email:"marc@studiofitness.fr",phone:"06 12 34 56 78",
-  billing:{type:"fixed",amount:697,freq:"monthly",commitment:6,startDate:"2025-10-01"},
-  status:"active",notes:"Media buying Facebook + Instagram — Niche fitness",caGenerated:15000,ghlId:"",stripeId:"",at:"2025-10-01"},
- {id:"cl2",socId:"leadx",name:"CoachPro Academy",contact:"Julie Martin",email:"julie@coachpro.fr",phone:"06 98 76 54 32",
-  billing:{type:"percent",percent:10,basis:"ca",startDate:"2025-11-01"},
-  status:"active",notes:"Gestion campagne Google Ads — budget 3K/mois",clientCA:25000,ghlId:"",stripeId:"",at:"2025-11-01"},
- {id:"cl3",socId:"leadx",name:"Immo Luxe Paris",contact:"Thomas Leroy",email:"thomas@immoluxe.fr",phone:"",
-  billing:{type:"fixed",amount:997,freq:"monthly",commitment:12,startDate:"2025-08-01"},
-  status:"active",notes:"Facebook + Google Ads immobilier de luxe",caGenerated:42000,ghlId:"",stripeId:"",at:"2025-08-01"},
- {id:"cl4",socId:"leadx",name:"Sophie Leroy",contact:"Sophie Leroy",email:"sophie@gmail.com",phone:"06 11 22 33 44",
-  billing:{type:"oneoff",amount:1497,product:"Accompagnement Pub",deliveredDate:"2026-01-15",paidDate:"2026-01-10"},
-  status:"completed",notes:"Formation 4 semaines — publicité Facebook",ghlId:"",stripeId:"",at:"2025-12-20"},
- {id:"cl5",socId:"leadx",name:"Alex Moreau",contact:"Alex Moreau",email:"alex.moreau@gmail.com",phone:"",
-  billing:{type:"oneoff",amount:1497,product:"Accompagnement Pub",deliveredDate:"",paidDate:"2026-02-05"},
-  status:"active",notes:"Formation en cours — semaine 2/4",ghlId:"",stripeId:"",at:"2026-02-01"},
- {id:"cl6",socId:"leadx",name:"NutriBox",contact:"Camille Durand",email:"camille@nutribox.fr",phone:"",
-  billing:{type:"percent",percent:15,basis:"benefice",startDate:"2026-01-01"},
-  status:"active",notes:"Gestion complète acquisition + rétention — budget 5K",clientCA:18000,clientCharges:5000,ghlId:"",stripeId:"",at:"2026-01-01"},
- {id:"cl7",socId:"leadx",name:"GreenTech Solutions",contact:"Pierre Blanc",email:"",phone:"",
-  billing:{type:"fixed",amount:497,freq:"monthly",commitment:0,startDate:"2025-12-01"},
-  status:"paused",notes:"Pause pendant levée de fonds",caGenerated:8000,ghlId:"",stripeId:"",at:"2025-12-01"},
- {id:"cl8",socId:"copy",name:"Cabinet Martin Avocats",contact:"Me Martin",email:"contact@martinlaw.fr",phone:"",
-  billing:{type:"fixed",amount:500,freq:"monthly",commitment:3,startDate:"2025-09-01"},
-  status:"active",notes:"Newsletter + articles LinkedIn",ghlId:"",stripeId:"",at:"2025-09-01"},
- {id:"cl9",socId:"copy",name:"SaaS Flow",contact:"Léa Petit",email:"lea@saasflow.io",phone:"",
-  billing:{type:"fixed",amount:800,freq:"monthly",commitment:6,startDate:"2025-11-01"},
-  status:"active",notes:"Landing pages + séquences email",caGenerated:35000,ghlId:"",stripeId:"",at:"2025-11-01"},
- {id:"cl10",socId:"bbp",name:"Rhum Charrette",contact:"Sponsor",email:"",phone:"",
-  billing:{type:"fixed",amount:1200,freq:"monthly",commitment:12,startDate:"2025-08-01"},
-  status:"active",notes:"Sponsoring vidéos — 4 intégrations/mois",ghlId:"",stripeId:"",at:"2025-08-01"},
- {id:"cl11",socId:"studio",name:"Boulangerie L'Artisan",contact:"Paul Chef",email:"",phone:"",
-  billing:{type:"oneoff",amount:2500,product:"Identité visuelle complète",deliveredDate:"2026-01-20",paidDate:"2026-01-05"},
-  status:"completed",notes:"Logo + charte graphique + supports",ghlId:"",stripeId:"",at:"2025-12-10"},
-];
+const DEMO_CLIENTS=[];
 function clientMonthlyRevenue(cl){
  const b=cl.billing;if(!b)return 0;
  if(b.type==="fixed"&&cl.status==="active")return b.amount;
@@ -289,23 +220,7 @@ async function ghlSendInvoice(apiKey,ghlInvoiceId){
   return r.ok;
  }catch(e){console.warn("GHL send invoice failed:",e.message);return false;}
 }
-function mkDemoInvoices(clients2,socs2){
- let invs=[];
- clients2.forEach(cl=>{
-  const soc=socs2.find(s=>s.id===cl.socId);
-  const gen=generateInvoices(cl,soc?.nom||"SOC");
-  const today=new Date().toISOString().slice(0,10);
-  gen.forEach(inv=>{
-   if(inv.dueDate<today&&inv.status==="draft"){
-    inv.status="paid";inv.paidAt=inv.dueDate;inv.sentAt=inv.dueDate;
-   } else if(inv.installment===1&&inv.dueDate<=today){
-    inv.status="paid";inv.paidAt=inv.dueDate;inv.sentAt=inv.dueDate;
-   }
-  });
-  invs=invs.concat(gen);
- });
- return refreshInvoiceStatuses(invs);
-}
+function mkDemoInvoices(){ return []; }
 function teamMonthly(tm,socCA){return tm.payType==="fixed"?tm.amount:Math.round((socCA||0)*tm.amount/100);}
 function normalizeStr(s){return(s||"").toLowerCase().replace(/[^a-z0-9]/g,"");}
 function fuzzyMatch(a,b){
@@ -361,41 +276,7 @@ const DEMO_KB=[
 ];
 const GHL_STAGES_COLORS=["#60a5fa","#c8a44e","#fb923c","#34d399","#a78bfa","#f43f5e","#14b8a6","#eab308"];
 const GHL_BASE="/api/ghl";
-function mkGHLDemo(socs){
- const out={};
- socs.filter(s=>s.stat==="active"&&s.id!=="eco").forEach(s=>{
-  const nOpps=3+Math.floor(Math.random()*5);
-  const stages=["Nouveau lead","Qualifié","Proposition envoyée","Négociation","Gagné","Perdu"];
-  const opps=Array.from({length:nOpps},(_,i)=>({
-   id:`ghl_${s.id}_${i}`,name:`Prospect ${i+1}`,stage:stages[Math.floor(Math.random()*4)],
-   value:Math.round((1+Math.random()*8)*1000),
-   email:`prospect${i+1}@example.com`,phone:"",
-   createdAt:new Date(Date.now()-Math.random()*60*864e5).toISOString(),
-   updatedAt:new Date(Date.now()-Math.random()*10*864e5).toISOString(),
-   status:Math.random()>.2?"open":"won",source:["Facebook Ads","Google Ads","Organique","Referral","Site web"][Math.floor(Math.random()*5)]
-  }));
-  const won=opps.filter(o=>o.status==="won");
-  const open2=opps.filter(o=>o.status==="open");
-  out[s.id]={
-   pipelines:[{id:`p_${s.id}`,name:`Pipeline ${s.nom}`,stages}],
-   opportunities:opps,
-   stats:{
-    totalLeads:opps.length,
-    openDeals:open2.length,
-    wonDeals:won.length,
-    lostDeals:opps.filter(o=>o.stage==="Perdu").length,
-    pipelineValue:open2.reduce((a,o)=>a+o.value,0),
-    wonValue:won.reduce((a,o)=>a+o.value,0),
-    conversionRate:opps.length>0?Math.round(won.length/opps.length*100):0,
-    avgDealSize:opps.length>0?Math.round(opps.reduce((a,o)=>a+o.value,0)/opps.length):0,
-    sourceBreakdown:["Facebook Ads","Google Ads","Organique","Referral","Site web"].map(src=>({source:src,count:opps.filter(o=>o.source===src).length})).filter(x=>x.count>0)
-   },
-   lastSync:new Date().toISOString(),
-   isDemo:true
-  };
- });
- return out;
-}
+function mkGHLDemo(){ return {}; }
 async function fetchGHL(action,locationId,params={}){
  try{
   const r=await fetch(GHL_BASE,{
@@ -576,41 +457,7 @@ async function checkAndSendReminders(socs2,reps2,pulses2,slackConfig){
 }
 const REV_ENVS={sandbox:"https://sandbox-b2b.revolut.com/api/1.0",production:"https://b2b.revolut.com/api/1.0"};
 const CURR_SYMBOLS={EUR:"€",USD:"$",GBP:"£",CHF:"CHF",SEK:"kr",NOK:"kr",DKK:"kr",PLN:"zł",CZK:"Kč",HUF:"Ft",RON:"lei",BGN:"лв",HRK:"kn",AED:"AED",CAD:"CA$",AUD:"A$",JPY:"¥"};
-function mkRevolutDemo(){
- const now=new Date();const txns=[];
- const subTxns=[
-  {name:"Notion Team",amt:-20,daysAgo:5},{name:"Slack Pro",amt:-15,daysAgo:8},
-  {name:"Expert-comptable Fiduciaire",amt:-280,daysAgo:12},{name:"Revolut Business Plan",amt:-25,daysAgo:3},
- ];
- subTxns.forEach((st,i)=>{
-  txns.push({id:`tx_sub_${i}`,type:"card_payment",state:"completed",
-   created_at:new Date(now.getTime()-st.daysAgo*864e5).toISOString(),completed_at:new Date(now.getTime()-st.daysAgo*864e5+36e5).toISOString(),
-   reference:st.name,legs:[{amount:st.amt,currency:"EUR",description:st.name,account_id:"acc_main"}],
-   merchant:{name:st.name}
-  });
- });
- const names=["Stripe Payments","Client ABC SAS","Loyer Bureau","OVH Hosting","Achat matériel","Google Workspace","Salaire Équipe","Remboursement client","Prestation conseil"];
- const types=["transfer","card_payment","transfer","card_payment","card_payment","card_payment","transfer","transfer","transfer"];
- for(let i=0;i<11;i++){
-  const isIn=Math.random()>.45;const amt=Math.round((200+Math.random()*4800)*100)/100;
-  txns.push({id:`tx_${i}`,type:types[i%types.length],state:"completed",
-   created_at:new Date(now.getTime()-i*2*864e5).toISOString(),completed_at:new Date(now.getTime()-i*2*864e5+36e5).toISOString(),
-   reference:names[i%names.length],legs:[{amount:isIn?amt:-amt,currency:"EUR",description:names[i%names.length],account_id:"acc_main"}],
-   merchant:isIn?null:{name:names[i%names.length]}
-  });
- }
- return{
-  accounts:[
-   {id:"acc_main",name:"Compte principal",balance:18750.42,currency:"EUR",state:"active",public:true,updated_at:now.toISOString()},
-   {id:"acc_reserve",name:"Réserve",balance:6200.00,currency:"EUR",state:"active",public:false,updated_at:now.toISOString()},
-   {id:"acc_usd",name:"Compte USD",balance:3420.50,currency:"USD",state:"active",public:true,updated_at:now.toISOString()}
-  ],
-  transactions:txns,
-  totalEUR:18750.42+6200.00+3420.50*0.92,
-  lastSync:now.toISOString(),
-  isDemo:true
- };
-}
+function mkRevolutDemo(){ return null; }
 async function fetchRevolut(company,endpoint){
  try{
   const action=endpoint.includes("/transactions")?"transactions":"accounts";
@@ -629,42 +476,7 @@ async function syncRevolut(company){
  const totalEUR=accs.reduce((s,a)=>s+(a.currency==="EUR"?a.balance:a.balance*0.92),0);
  return{accounts:accs,transactions:Array.isArray(txns)?txns:[],totalEUR,lastSync:new Date().toISOString(),isDemo:false};
 }
-function mkSocRevDemo(soc){
- const now=new Date();const cm=curM();const pm=prevM(cm);
- const baseCA=soc.obj||5000;const variance=()=>0.7+Math.random()*0.6;
- const txns=[];
- const socSubNames={leadx:["GoHighLevel Agency","Zapier Professional"],copy:["Skool Community","ConvertKit Email"],bbp:["Adobe Creative Cloud"],studio:["Figma Professional"]};
- const socSubAmts={leadx:[97,49],copy:[99,29],bbp:[60],studio:[15]};
- const subN=socSubNames[soc.id]||[];const subA=socSubAmts[soc.id]||[];
- subN.forEach((name,i)=>{
-  txns.push({id:`stx_sub_${soc.id}_${i}`,type:"card_payment",state:"completed",
-   created_at:new Date(now.getTime()-(3+i*2)*864e5).toISOString(),completed_at:new Date(now.getTime()-(3+i*2)*864e5).toISOString(),
-   month:cm,reference:name,legs:[{amount:-(subA[i]||30),currency:"EUR",description:name,account_id:"acc_"+soc.id}]
-  });
- });
- const inNames=["Client paiement","Stripe transfer","Virement reçu","Paiement facture","Encaissement prestation"];
- const outNames=["Loyer","Sous-traitant","Pub Facebook","Google Ads","Fournitures","Repas affaire"];
- for(let i=0;i<20;i++){
-  const daysAgo=Math.floor(Math.random()*55);const dt=new Date(now.getTime()-daysAgo*864e5);
-  const txMonth=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;
-  const isIn=Math.random()>.4;
-  const amt=isIn?Math.round((baseCA/6)*variance()*100)/100:Math.round((baseCA/12)*variance()*100)/100;
-  txns.push({id:`stx_${soc.id}_${i}`,type:isIn?"transfer":"card_payment",state:"completed",
-   created_at:dt.toISOString(),completed_at:dt.toISOString(),month:txMonth,
-   reference:isIn?inNames[i%inNames.length]:outNames[i%outNames.length],
-   legs:[{amount:isIn?amt:-amt,currency:"EUR",description:isIn?inNames[i%inNames.length]:outNames[i%outNames.length],account_id:"acc_"+soc.id}]
-  });
- }
- const balance=Math.round(baseCA*1.2+Math.random()*3000);
- const monthly={};
- txns.forEach(tx=>{const m=tx.month;const amt=tx.legs[0].amount;if(!monthly[m])monthly[m]={income:0,expense:0};if(amt>0)monthly[m].income+=amt;else monthly[m].expense+=Math.abs(amt);});
- Object.keys(monthly).forEach(m=>{monthly[m].income=Math.round(monthly[m].income);monthly[m].expense=Math.round(monthly[m].expense);});
- return{
-  accounts:[{id:"acc_"+soc.id,name:`Compte ${soc.nom}`,balance,currency:"EUR",state:"active"}],
-  transactions:txns.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)),
-  balance,monthly,lastSync:now.toISOString(),isDemo:true
- };
-}
+function mkSocRevDemo(){ return null; }
 async function syncSocRevolut(soc){
  if(!soc.revolutCompany)return null;
  const accounts=await fetchRevolut(soc.revolutCompany,"/accounts");
@@ -2042,7 +1854,7 @@ function AIWeeklyCoach({soc,reps,allM,actions,pulses,milestones,okrs}){
 }
 /* CLIENTS PANEL (per-société CRM) */
 function ClientsPanel({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices}){
- const[editCl,setEditCl]=useState(null);const[filter,setFilter]=useState("all");const[invView,setInvView]=useState(null);
+ const[editCl,setEditCl]=useState(null);const[filter,setFilter]=useState("all");const[stageFilter,setStageFilter]=useState("all");const[invView,setInvView]=useState(null);
  const[sending,setSending]=useState(null);
  const myClients=clients.filter(c=>c.socId===soc.id);
  const myInvoices=(invoices||[]).filter(inv=>inv.socId===soc.id);
@@ -2065,7 +1877,11 @@ function ClientsPanel({soc,clients,saveClients,ghlData,socBankData,invoices,save
  const totalEncaisse=invPaid.reduce((a,i)=>a+i.amount,0);
  const totalAttente=invSent.concat(invDraft).reduce((a,i)=>a+i.amount,0);
  const endingSoon=myClients.filter(c=>{const r=commitmentRemaining(c);return r!==null&&r<=2&&r>0&&c.status==="active";});
- const filtered=filter==="all"?myClients:myClients.filter(c=>filter==="type_fixed"?c.billing?.type==="fixed":filter==="type_percent"?c.billing?.type==="percent":filter==="type_oneoff"?c.billing?.type==="oneoff":c.status===filter);
+ const allOpps=Object.values(ghlData).flatMap(d=>(d.opportunities||[]));
+ const uniqueStages=[...new Set(allOpps.map(o=>o.stage).filter(Boolean))];
+ const ghlIdsInStage=stageFilter==="all"?null:new Set(allOpps.filter(o=>o.stage===stageFilter).map(o=>o.id));
+ const afterType=filter==="all"?myClients:myClients.filter(c=>filter==="type_fixed"?c.billing?.type==="fixed":filter==="type_percent"?c.billing?.type==="percent":filter==="type_oneoff"?c.billing?.type==="oneoff":c.status===filter);
+ const filtered=stageFilter==="all"?afterType:afterType.filter(c=>{if(!c.ghlId)return false;const opps2=allOpps.filter(o=>o.stage===stageFilter);return opps2.some(o=>o.name===c.name||o.email===c.email||o.id===c.ghlId);});
  const addClient=(type)=>{
   const base={id:uid(),socId:soc.id,name:"",contact:"",email:"",phone:"",status:"active",notes:"",ghlId:"",stripeId:"",at:new Date().toISOString()};
   if(type==="fixed")base.billing={type:"fixed",amount:0,freq:"monthly",commitment:0,startDate:new Date().toISOString().slice(0,10)};
@@ -2289,6 +2105,7 @@ function ClientsPanel({soc,clients,saveClients,ghlData,socBankData,invoices,save
    {[{v:"all",l:`Tous (${myClients.length})`},{v:"type_fixed",l:`💰 Fixes (${byType("fixed").length})`},{v:"type_percent",l:`📊 % (${byType("percent").length})`},{v:"type_oneoff",l:`🎯 One-off (${byType("oneoff").length})`}].map(f2=>
     <button key={f2.v} onClick={()=>setFilter(f2.v)} style={{padding:"4px 10px",borderRadius:6,fontSize:9,fontWeight:filter===f2.v?700:500,border:`1px solid ${filter===f2.v?C.acc:C.brd}`,background:filter===f2.v?C.accD:"transparent",color:filter===f2.v?C.acc:C.td,cursor:"pointer",fontFamily:FONT}}>{f2.l}</button>
    )}
+   {uniqueStages.length>0&&<select value={stageFilter} onChange={e=>setStageFilter(e.target.value)} style={{padding:"4px 10px",borderRadius:6,fontSize:9,border:`1px solid ${stageFilter!=="all"?C.acc:C.brd}`,background:stageFilter!=="all"?C.accD:"transparent",color:stageFilter!=="all"?C.acc:C.td,cursor:"pointer",fontFamily:FONT,outline:"none"}}><option value="all">🔀 Stage Pipeline: Tous</option>{uniqueStages.map(s=><option key={s} value={s}>{s}</option>)}</select>}
    <div style={{marginLeft:"auto",display:"flex",gap:4}}>
     <Btn small onClick={()=>addClient("fixed")}>+ Forfait</Btn>
     <Btn small v="secondary" onClick={()=>addClient("percent")}>+ %</Btn>
