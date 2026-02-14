@@ -474,7 +474,7 @@ function buildReportSlackMsg(soc,report,mo){
    ]},
    ...(pf(report.leads)>0?[{type:"section",text:{type:"mrkdwn",text:`*Funnel:* ${report.leads} leads → ${report.leadsContact} contactés → ${report.leadsClos} closés`}}]:[]),
    ...(report.notes?[{type:"section",text:{type:"mrkdwn",text:`*📝 Notes:* ${report.notes}`}}]:[]),
-   {type:"context",elements:[{type:"mrkdwn",text:`Remontée théorique: *${fmt((soc.pT==="ca"?ca:Math.max(0,marge))*soc.pP/100)}€* (${soc.pP}% ${soc.pT==="ca"?"du CA":"des bénéfices"})${pf(report.dividendesHolding)>0?` · Déjà viré: ${fmt(pf(report.dividendesHolding))}€ · Reste: ${fmt(Math.max(0,(soc.pT==="ca"?ca:Math.max(0,marge))*soc.pP/100-pf(report.dividendesHolding)))}€`:""}`}]},
+   {type:"context",elements:[{type:"mrkdwn",text:`Remontée théorique: *${fmt((soc.pT==="ca"?ca:Math.max(0,ca-pf(report.prestataireAmount)))*soc.pP/100)}€* (${soc.pP}% ${soc.pT==="ca"?"du CA":"CA hors presta"})${pf(report.prestataireAmount)>0?` · Presta: ${fmt(pf(report.prestataireAmount))}€`:""}${pf(report.dividendesHolding)>0?` · Déjà viré: ${fmt(pf(report.dividendesHolding))}€ · Reste: ${fmt(Math.max(0,(soc.pT==="ca"?ca:Math.max(0,ca-pf(report.prestataireAmount)))*soc.pP/100-pf(report.dividendesHolding)))}€`:""}`}]},
   ],
  };
 }
@@ -583,7 +583,7 @@ function calcH(socs,reps,hold,month){
  return{rem,crm,eNet,eCa,tCh,tIn,res,dispo,pf:hold.remun/2+dispo/2};
 }
 function simH(socs,simCA,hold){
- let rem=0,cn=0;socs.forEach(s=>{if(s.id==="eco")return;if(["active","lancement"].includes(s.stat))cn++;const ca=simCA[s.id]||0;const ch=ca*0.25;rem+=(s.pT==="ca"?ca:Math.max(0,ca-ch))*s.pP/100;});
+ let rem=0,cn=0;socs.forEach(s=>{if(s.id==="eco")return;if(["active","lancement"].includes(s.stat))cn++;const ca=simCA[s.id]||0;const presta=ca*0.1;rem+=(s.pT==="ca"?ca:Math.max(0,ca-presta))*s.pP/100;});
  const crm=cn*hold.crm,eCa=simCA.eco||0,tCh=hold.logiciels+hold.equipe+hold.service+hold.cabinet,eNet=eCa-tCh;
  const tIn=Math.max(0,eNet)+rem+crm,after=tIn-hold.remun,res=Math.max(0,after*hold.reservePct/100),dispo=Math.max(0,after-res);
  return{rem,crm,eNet,eCa,tCh,tIn,res,dispo,pf:hold.remun/2+dispo/2};
@@ -3877,7 +3877,7 @@ export default function App(){
     <Inp label="Date d'incubation" type="date" value={eSoc.incub||""} onChange={v=>setESoc({...eSoc,incub:v})} note={eSoc.incub?`→ ${sinceLbl(eSoc.incub)} d'association`:""}/>
     <Inp label="PIN" value={eSoc.pin} onChange={v=>setESoc({...eSoc,pin:v})}/>
     <Inp label="Couleur" type="color" value={eSoc.color} onChange={v=>setESoc({...eSoc,color:v})}/>
-    <Sel label="Part sur" value={eSoc.pT} onChange={v=>setESoc({...eSoc,pT:v})} options={[{v:"benefices",l:"% bénéfices"},{v:"ca",l:"% CA"}]}/>
+    <Sel label="Part sur" value={eSoc.pT} onChange={v=>setESoc({...eSoc,pT:v})} options={[{v:"benefices",l:"% CA hors presta"},{v:"ca",l:"% CA brut"}]}/>
     <Inp label="%" value={eSoc.pP} onChange={v=>setESoc({...eSoc,pP:pf(v)})} type="number" suffix="%"/>
     <Sel label="Statut" value={eSoc.stat} onChange={v=>setESoc({...eSoc,stat:v})} options={[{v:"active",l:"Active"},{v:"lancement",l:"Lancement"},{v:"signature",l:"Signature"},{v:"inactive",l:"Inactive"}]}/>
     <Sel label="Récurrent" value={eSoc.rec?"1":"0"} onChange={v=>setESoc({...eSoc,rec:v==="1"})} options={[{v:"0",l:"Non"},{v:"1",l:"Oui"}]}/>
