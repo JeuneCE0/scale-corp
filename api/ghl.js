@@ -74,9 +74,26 @@ export default async function handler(req, res) {
         if (!params.pipeline_id) return res.status(400).json({ error: "Missing pipeline_id" });
         url = `${GHL_BASE}/opportunities/search?location_id=${locationId}&pipeline_id=${params.pipeline_id}&limit=100`;
         break;
-      case "contacts_list":
-        url = `${GHL_BASE}/contacts/?locationId=${locationId}&limit=100`;
-        break;
+      case "contacts_list": {
+        // Paginated fetch — get ALL contacts
+        let allContacts = [];
+        let startAfter = null;
+        let startAfterId = null;
+        let page = 0;
+        do {
+          let pUrl = `${GHL_BASE}/contacts/?locationId=${locationId}&limit=100`;
+          if (startAfterId) pUrl += `&startAfter=${startAfter}&startAfterId=${startAfterId}`;
+          const pRes = await fetch(pUrl, { headers });
+          if (!pRes.ok) { const t = await pRes.text(); return res.status(pRes.status).json({ error: t }); }
+          const pData = await pRes.json();
+          const batch = pData.contacts || [];
+          allContacts = allContacts.concat(batch);
+          startAfterId = pData.meta?.startAfterId || null;
+          startAfter = pData.meta?.startAfter || null;
+          page++;
+        } while (startAfterId && page < 20); // max 2000 contacts safety
+        return res.status(200).json({ contacts: allContacts, meta: { total: allContacts.length } });
+      }
       case "opportunities_all":
         if (!params.pipeline_id) return res.status(400).json({ error: "Missing pipeline_id" });
         url = `${GHL_BASE}/opportunities/search?location_id=${locationId}&pipeline_id=${params.pipeline_id}&limit=100&status=all`;
