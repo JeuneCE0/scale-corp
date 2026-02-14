@@ -95,7 +95,7 @@ const DEMO_OKRS=[];
 const DEMO_SYNERGIES=[];
 const SYN_TYPES={referral:{label:"Referral",icon:"🔗",color:C.b},collab:{label:"Collaboration",icon:"🤝",color:C.v},resource:{label:"Ressource partagée",icon:"📦",color:C.o}};
 const SYN_STATUS={active:{label:"En cours",color:C.b},won:{label:"Gagné",color:C.g},lost:{label:"Perdu",color:C.r}};
-const SUB_CATS={crm:{l:"CRM/Marketing",icon:"💻",c:C.v},design:{l:"Design",icon:"🎨",c:C.o},comms:{l:"Communication",icon:"💬",c:C.b},iadev:{l:"IA/Dev",icon:"🤖",c:C.g},productivite:{l:"Productivité",icon:"📊",c:C.acc},formation:{l:"Formation/Communauté",icon:"🎓",c:"#f59e0b"},paiement:{l:"Paiement",icon:"💳",c:C.r},autre:{l:"Autre",icon:"📦",c:C.td}};
+const SUB_CATS={crm:{l:"CRM/Marketing",icon:"💻",c:C.v},design:{l:"Design",icon:"🎨",c:C.o},comms:{l:"Communication",icon:"💬",c:C.b},iadev:{l:"IA/Dev",icon:"🤖",c:C.g},productivite:{l:"Productivité",icon:"📊",c:C.acc},formation:{l:"Formation/Communauté",icon:"🎓",c:"#f59e0b"},paiement:{l:"Paiement",icon:"💳",c:C.r},abonnement:{l:"Abonnement",icon:"🔄",c:"#8b5cf6"},prestataire:{l:"Prestataire",icon:"👤",c:"#ec4899"},autre:{l:"Autre",icon:"📦",c:C.td}};
 const AUTO_CAT_MAP=[
  [/gohighlevel|highlevel|hubspot|mailchimp|convertkit|activecampaign|brevo|sendinblue/i,"crm"],
  [/figma|canva|adobe|photoshop|illustrator|creative cloud/i,"design"],
@@ -104,6 +104,8 @@ const AUTO_CAT_MAP=[
  [/notion|zapier|make\.com|integromat|airtable|clickup|asana|monday/i,"productivite"],
  [/skool|teachable|kajabi|podia|thinkific|circle/i,"formation"],
  [/stripe|revolut|paypal|wise|mollie|gocardless/i,"paiement"],
+ [/l.cosyst.me|lecosysteme/i,"abonnement"],
+ [/lucien/i,"prestataire"],
 ];
 function autoCategorize(name){for(const[rx,cat]of AUTO_CAT_MAP)if(rx.test(name))return cat;return"autre";}
 function autoDetectSubscriptions(bankData,socId){
