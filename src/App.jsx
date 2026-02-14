@@ -74,7 +74,39 @@ const DEMO_OKRS=[];
 const DEMO_SYNERGIES=[];
 const SYN_TYPES={referral:{label:"Referral",icon:"🔗",color:C.b},collab:{label:"Collaboration",icon:"🤝",color:C.v},resource:{label:"Ressource partagée",icon:"📦",color:C.o}};
 const SYN_STATUS={active:{label:"En cours",color:C.b},won:{label:"Gagné",color:C.g},lost:{label:"Perdu",color:C.r}};
-const SUB_CATS={logiciel:{l:"Logiciel",icon:"💻",c:C.b},service:{l:"Service",icon:"⚙️",c:C.o},marketing:{l:"Marketing",icon:"📢",c:C.v},autre:{l:"Autre",icon:"📦",c:C.td}};
+const SUB_CATS={crm:{l:"CRM/Marketing",icon:"💻",c:C.v},design:{l:"Design",icon:"🎨",c:C.o},comms:{l:"Communication",icon:"💬",c:C.b},iadev:{l:"IA/Dev",icon:"🤖",c:C.g},productivite:{l:"Productivité",icon:"📊",c:C.acc},formation:{l:"Formation/Communauté",icon:"🎓",c:"#f59e0b"},paiement:{l:"Paiement",icon:"💳",c:C.r},autre:{l:"Autre",icon:"📦",c:C.td}};
+const AUTO_CAT_MAP=[
+ [/gohighlevel|highlevel|hubspot|mailchimp|convertkit|activecampaign|brevo|sendinblue/i,"crm"],
+ [/figma|canva|adobe|photoshop|illustrator|creative cloud/i,"design"],
+ [/slack|zoom|google workspace|microsoft 365|microsoft|teams|twilio/i,"comms"],
+ [/openai|anthropic|chatgpt|claude|github|vercel|aws|amazon web|heroku|netlify|railway|render/i,"iadev"],
+ [/notion|zapier|make\.com|integromat|airtable|clickup|asana|monday/i,"productivite"],
+ [/skool|teachable|kajabi|podia|thinkific|circle/i,"formation"],
+ [/stripe|revolut|paypal|wise|mollie|gocardless/i,"paiement"],
+];
+function autoCategorize(name){for(const[rx,cat]of AUTO_CAT_MAP)if(rx.test(name))return cat;return"autre";}
+function autoDetectSubscriptions(bankData,socId){
+ if(!bankData?.transactions)return[];
+ const txns=bankData.transactions.filter(t=>{const a=t.legs?.[0]?.amount;return a&&a<0;});
+ const byDesc={};
+ txns.forEach(t=>{const desc=(t.reference||t.description||t.legs?.[0]?.description||"").trim();const amt=Math.abs(t.legs[0].amount);if(!desc||amt<1)return;const key=desc.toLowerCase().replace(/[^a-z0-9]/g,"");if(!byDesc[key])byDesc[key]={desc,amounts:[],dates:[],key};byDesc[key].amounts.push(Math.round(amt));byDesc[key].dates.push(new Date(t.created_at));});
+ const subs=[];
+ const KNOWN=[/gohighlevel|highlevel/i,/zapier/i,/slack/i,/notion/i,/stripe/i,/revolut/i,/adobe|creative cloud/i,/figma/i,/skool/i,/convertkit/i,/canva/i,/chatgpt|openai/i,/anthropic|claude/i,/google workspace|google storage/i,/microsoft/i,/aws|amazon web/i,/vercel/i,/github/i,/zoom/i,/hubspot/i,/mailchimp/i,/brevo/i,/heroku/i,/airtable/i,/make\.com/i,/clickup/i];
+ Object.values(byDesc).forEach(g=>{
+  const isKnown=KNOWN.some(rx=>rx.test(g.desc));
+  const amtCounts={};g.amounts.forEach(a=>{amtCounts[a]=(amtCounts[a]||0)+1;});
+  const topAmt=Object.entries(amtCounts).sort((a,b)=>b[1]-a[1])[0];
+  const recurring=topAmt&&topAmt[1]>=2;
+  if(!isKnown&&!recurring)return;
+  const amount=parseInt(topAmt[0]);
+  const months=g.dates.length;
+  const spanMs=g.dates.length>1?Math.max(...g.dates)-Math.min(...g.dates):0;
+  const spanMonths=spanMs/(1000*60*60*24*30);
+  const freq=amount>500&&spanMonths>6?"annual":"monthly";
+  subs.push({id:"auto_"+g.key,socId:socId==="all"?"holding":socId,name:g.desc,amount,freq,cat:autoCategorize(g.desc),start:g.dates.sort((a,b)=>a-b)[0].toISOString().slice(0,10),notes:`Auto-détecté (${months}x trouvé)`,auto:true});
+ });
+ return subs;
+}
 const DEMO_SUBS=[];
 const DEMO_TEAM=[];
 function subMonthly(sub){return sub.freq==="annual"?Math.round(sub.amount/12):sub.amount;}
@@ -1581,10 +1613,17 @@ const CHALLENGE_TEMPLATES=[
 /* ABONNEMENTS & ÉQUIPE PANEL */
 function SubsTeamPanel({socs,subs,saveSubs,team,saveTeam,socId,reps,isCompact,socBankData,revData}){
  const[editSub,setEditSub]=useState(null);const[editTm,setEditTm]=useState(null);const[showRecon,setShowRecon]=useState(false);
+ const[catFilter,setCatFilter]=useState("all");const[autoSubs,setAutoSubs]=useState([]);
  const cM2=curM();
- const mySubs=socId==="all"?subs:subs.filter(s=>s.socId===socId);
+ const bankData0=socId==="all"?null:(socId==="holding"?revData:socBankData);
+ const detectSubs=useCallback(()=>{const detected=autoDetectSubscriptions(bankData0,socId);setAutoSubs(detected);},[bankData0,socId]);
+ useEffect(()=>{detectSubs();},[detectSubs]);
+ const manualSubs=socId==="all"?subs:subs.filter(s=>s.socId===socId);
+ const manualNames=new Set(manualSubs.map(s=>s.name.toLowerCase().replace(/[^a-z0-9]/g,"")));
+ const mergedAutoSubs=autoSubs.filter(a=>!manualNames.has(a.name.toLowerCase().replace(/[^a-z0-9]/g,"")));
+ const mySubs=catFilter==="all"?[...manualSubs,...mergedAutoSubs]:[...manualSubs,...mergedAutoSubs].filter(s=>s.cat===catFilter);
  const myTeam=socId==="all"?team:team.filter(t=>t.socId===socId);
- const bankData=socId==="all"?null:(socId==="holding"?revData:socBankData);
+ const bankData=bankData0;
  const matchedSubs=useMemo(()=>matchSubsToRevolut(mySubs,bankData,socId),[mySubs,bankData,socId]);
  const matchedCount=matchedSubs.filter(s=>s.revMatch).length;
  const unmatchedCount=matchedSubs.filter(s=>!s.revMatch).length;
@@ -1649,7 +1688,14 @@ function SubsTeamPanel({socs,subs,saveSubs,team,saveTeam,socId,reps,isCompact,so
    </div>)}
    <div style={{marginTop:6,fontSize:9,color:C.td,lineHeight:1.4}}>Le matching compare le nom de l'abonnement avec les transactions Revolut (similarité ≥50%, montant ±30%). Les abos matchés ne sont pas comptés en double dans l'analyse des charges.</div>
   </Card>}
-  <Sect title="💻 Abonnements" right={<Btn small onClick={addSub}>+ Abo</Btn>} sub={`${mySubs.length} · ${fmt(totalSubsMonthly)}€/mois`}>
+  <Sect title="💻 Abonnements" right={<div style={{display:"flex",gap:4,alignItems:"center"}}><Btn small onClick={detectSubs}>🔄 Détecter</Btn><Btn small onClick={addSub}>+ Abo</Btn></div>} sub={`${mySubs.length} · ${fmt(totalSubsMonthly)}€/mois · ${fmt(totalSubsMonthly*12)}€/an`}>
+   <div style={{display:"flex",gap:3,flexWrap:"wrap",marginBottom:8}}>
+    <button onClick={()=>setCatFilter("all")} style={{background:catFilter==="all"?C.acc+"22":"transparent",border:`1px solid ${catFilter==="all"?C.acc:C.brd}`,borderRadius:6,padding:"2px 8px",fontSize:9,color:catFilter==="all"?C.acc:C.td,cursor:"pointer",fontFamily:FONT,fontWeight:600}}>Tous</button>
+    {Object.entries(SUB_CATS).map(([k,v])=><button key={k} onClick={()=>setCatFilter(k)} style={{background:catFilter===k?v.c+"22":"transparent",border:`1px solid ${catFilter===k?v.c:C.brd}`,borderRadius:6,padding:"2px 8px",fontSize:9,color:catFilter===k?v.c:C.td,cursor:"pointer",fontFamily:FONT,fontWeight:600}}>{v.icon} {v.l}</button>)}
+   </div>
+   {mergedAutoSubs.length>0&&<div style={{padding:"6px 8px",background:C.bD,borderRadius:6,marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+    <span style={{fontSize:10}}>🤖</span><span style={{fontSize:9,color:C.b,fontWeight:600}}>{mergedAutoSubs.length} abonnement{mergedAutoSubs.length>1?"s":""} auto-détecté{mergedAutoSubs.length>1?"s":""} depuis Revolut</span>
+   </div>}
    {mySubs.length===0&&<div style={{color:C.td,fontSize:11,padding:12,textAlign:"center"}}>Aucun abonnement</div>}
    {Object.entries(SUB_CATS).map(([cat,info])=>{
     const catSubs=mySubs.filter(s=>s.cat===cat);
@@ -1672,6 +1718,7 @@ function SubsTeamPanel({socs,subs,saveSubs,team,saveTeam,socId,reps,isCompact,so
     {socId==="all"&&soc&&<span style={{fontSize:8,color:soc.color,background:soc.color+"18",padding:"1px 5px",borderRadius:8}}>{soc.nom}</span>}
     {socId==="all"&&s.socId==="holding"&&<span style={{fontSize:8,color:C.v,background:C.vD,padding:"1px 5px",borderRadius:8}}>Holding</span>}
     {rm&&<span style={{fontSize:7,color:C.g,background:C.gD,padding:"1px 4px",borderRadius:4,fontWeight:700}} title={`Matché avec "${rm.txDesc}" sur Revolut`}>🏦 ✓</span>}
+    {s.auto&&<span style={{fontSize:7,color:C.b,background:C.bD,padding:"1px 4px",borderRadius:4,fontWeight:700}}>🤖 auto</span>}
     </div>
     {s.notes&&<div style={{color:C.td,fontSize:9,marginTop:1}}>{s.notes}</div>}
     {rm&&<div style={{display:"flex",gap:8,marginTop:2}}>
@@ -1680,8 +1727,8 @@ function SubsTeamPanel({socs,subs,saveSubs,team,saveTeam,socId,reps,isCompact,so
     </div>}
     </div>
     <div style={{textAlign:"right"}}>
-    <div style={{fontWeight:700,fontSize:12,color:C.t}}>{fmt(s.amount)}€</div>
-    <div style={{fontSize:8,color:C.td}}>{s.freq==="annual"?"/ an":"/ mois"}</div>
+    <div style={{fontWeight:700,fontSize:12,color:C.t}}>{fmt(s.amount)}€<span style={{fontSize:8,color:C.td,fontWeight:400}}>/{s.freq==="annual"?"an":"m"}</span></div>
+    <div style={{fontSize:8,color:C.td}}>{s.freq==="annual"?`${fmt(Math.round(s.amount/12))}€/m`:`${fmt(s.amount*12)}€/an`}</div>
     {rm&&rm.txAmount!==s.amount&&<div style={{fontSize:7,color:C.o}}>Revolut: {fmt(rm.txAmount)}€</div>}
     </div>
     </div>;
