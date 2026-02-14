@@ -2769,6 +2769,171 @@ function SocSettingsPanel({soc,save,socs}){
   <Btn onClick={doSave}>💾 Sauvegarder</Btn>
  </Sect>;
 }
+/* NOTIFICATION CENTER (Porteur) */
+function genPorteurNotifications(soc,reps,socBank,ghlData,clients,allM){
+ const notifs=[];const cm=curM();const pm=prevM(cm);
+ const r=gr(reps,soc.id,cm);const rp=gr(reps,soc.id,pm);
+ const bankData=socBank?.[soc.id];
+ const ca=pf(r?.ca);const prevCa=pf(rp?.ca);
+ const balance=bankData?.balance||0;
+ const excluded=EXCLUDED_ACCOUNTS[soc.id]||[];
+ // Recent positive transactions > 100€
+ if(bankData?.transactions){
+  bankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded.includes(leg.account_id))return false;return leg.amount>100;}).slice(0,3).forEach(t=>{
+   const leg=t.legs[0];
+   notifs.push({id:"tx_"+t.id,icon:"💰",msg:`Paiement reçu: +${fmt(leg.amount)}€`,time:t.created_at,type:"success"});
+  });
+ }
+ // CA trend
+ if(prevCa>0&&ca>prevCa){const pctG=Math.round((ca-prevCa)/prevCa*100);notifs.push({id:"ca_trend",icon:"📈",msg:`CA en hausse de ${pctG}% vs mois dernier`,time:new Date().toISOString(),type:"success"});}
+ // Low treasury
+ if(balance>0&&balance<2000)notifs.push({id:"treso_low",icon:"⚠️",msg:`Trésorerie basse: ${fmt(balance)}€`,time:new Date().toISOString(),type:"warning"});
+ // Won deals from GHL
+ const gd=ghlData?.[soc.id];
+ if(gd?.stats?.wonDeals>0)notifs.push({id:"deals_won",icon:"🎯",msg:`${gd.stats.wonDeals} deal${gd.stats.wonDeals>1?"s":""} gagné${gd.stats.wonDeals>1?"s":""}!`,time:gd.lastSync||new Date().toISOString(),type:"success"});
+ // Commitment ending soon
+ (clients||[]).filter(c=>c.socId===soc.id&&c.status==="active").forEach(c=>{
+  const rem=commitmentRemaining(c);
+  if(rem!==null&&rem<=2&&rem>0)notifs.push({id:"commit_"+c.id,icon:"📅",msg:`Fin d'engagement proche: ${c.name} (${rem} mois)`,time:new Date().toISOString(),type:"warning"});
+ });
+ return notifs.sort((a,b)=>new Date(b.time)-new Date(a.time));
+}
+function NotificationCenter({notifications,open,onClose}){
+ if(!open)return null;
+ return <div className="fi" onClick={onClose} style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.4)"}}>
+  <div onClick={e=>e.stopPropagation()} style={{position:"fixed",top:0,right:0,width:340,maxWidth:"90vw",height:"100vh",background:C.card,borderLeft:`1px solid ${C.brd}`,boxShadow:"-4px 0 24px rgba(0,0,0,.3)",animation:"slideInRight .3s ease",overflowY:"auto",padding:20}}>
+   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+    <h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t,fontFamily:FONT_TITLE}}>🔔 Notifications</h3>
+    <Btn v="ghost" small onClick={onClose}>✕</Btn>
+   </div>
+   {notifications.length===0&&<div style={{textAlign:"center",padding:30,color:C.td}}><div style={{fontSize:28,marginBottom:8}}>✅</div><div style={{fontSize:12}}>Aucune notification</div></div>}
+   {notifications.map((n,i)=>{
+    const bgMap={success:C.gD,warning:C.oD,info:C.bD};const cMap={success:C.g,warning:C.o,info:C.b};
+    return <div key={n.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",background:bgMap[n.type]||C.card2,border:`1px solid ${(cMap[n.type]||C.brd)}18`,borderRadius:10,marginBottom:6}}>
+     <span style={{fontSize:18,flexShrink:0,marginTop:1}}>{n.icon}</span>
+     <div style={{flex:1,minWidth:0}}>
+      <div style={{fontSize:12,fontWeight:600,color:C.t,lineHeight:1.4}}>{n.msg}</div>
+      <div style={{fontSize:9,color:C.td,marginTop:3}}>{ago(n.time)}</div>
+     </div>
+    </div>;
+   })}
+  </div>
+ </div>;
+}
+/* AI CHAT FOR PORTEUR */
+function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
+ const[open,setOpen]=useState(false);const[msgs,setMsgs]=useState([]);const[typing,setTyping]=useState(false);const[revealIdx,setRevealIdx]=useState(-1);const[revealLen,setRevealLen]=useState(0);const ref=useRef(null);
+ const cm=curM();const pm=prevM(cm);
+ const computeAnswer=(q)=>{
+  const r=gr(reps,soc.id,cm);const rp=gr(reps,soc.id,pm);
+  const ca=pf(r?.ca);const prevCa=pf(rp?.ca);const ch=pf(r?.charges);
+  const marge=ca-ch;const margePct=ca>0?Math.round(marge/ca*100):0;
+  const trend=prevCa>0?Math.round((ca-prevCa)/prevCa*100):0;
+  const balance=socBank?.[soc.id]?.balance||0;
+  const myCl=(clients||[]).filter(c=>c.socId===soc.id);
+  const activeCl=myCl.filter(c=>c.status==="active");
+  const churnedCl=myCl.filter(c=>c.status==="churned");
+  const bankData=socBank?.[soc.id];
+  if(q.includes("CA")||q.includes("chiffre")){
+   return `📊 **Analyse CA — ${soc.nom}**\n\nCA ce mois : ${fmt(ca)}€${prevCa>0?`\nMois précédent : ${fmt(prevCa)}€\nTendance : ${trend>0?"📈 +":"📉 "}${trend}%`:""}\nMarge : ${fmt(marge)}€ (${margePct}%)\n\n${trend>10?"🔥 Excellent momentum, continue sur cette lancée !":trend<-10?"⚠️ Attention à la baisse, identifie les causes rapidement.":"📊 Stabilité — cherche un levier de croissance."}`;
+  }
+  if(q.includes("client")||q.includes("retard")){
+   const atRisk=myCl.filter(c=>{const rem=commitmentRemaining(c);return rem!==null&&rem<=2;});
+   return `👥 **Santé clients — ${soc.nom}**\n\nClients actifs : ${activeCl.length}\nClients perdus : ${churnedCl.length}\nTaux de rétention : ${myCl.length>0?Math.round((1-churnedCl.length/myCl.length)*100):100}%\n${atRisk.length>0?`\n⚠️ ${atRisk.length} engagement(s) bientôt terminé(s) :\n${atRisk.map(c=>`  • ${c.name} — ${commitmentRemaining(c)} mois restant`).join("\n")}`:"\n✅ Aucun engagement critique."}\n\nMRR actif : ${fmt(activeCl.reduce((a,c)=>a+clientMonthlyRevenue(c),0))}€`;
+  }
+  if(q.includes("dépense")||q.includes("charge")){
+   const excluded=EXCLUDED_ACCOUNTS[soc.id]||[];
+   const catTotals={};
+   if(bankData?.transactions){
+    bankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded.includes(leg.account_id))return false;const d=t.created_at||"";return d.startsWith(cm)&&leg.amount<0;}).forEach(t=>{
+     const cat=categorizeTransaction(t);const amt=Math.abs(t.legs[0].amount);
+     catTotals[cat.label]=(catTotals[cat.label]||0)+amt;
+    });
+   }
+   const sorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
+   return `💸 **Analyse dépenses — ${ml(cm)}**\n\nCharges totales : ${fmt(ch)}€\nTrésorerie : ${fmt(balance)}€\n\n${sorted.length>0?"Top catégories :\n"+sorted.slice(0,5).map(([k,v])=>`  • ${k} : ${fmt(v)}€`).join("\n"):"Pas assez de données bancaires ce mois."}\n\n${balance<2000?"⚠️ Trésorerie basse — surveille tes dépenses.":"✅ Trésorerie correcte."}`;
+  }
+  return `🤖 Je peux analyser :\n• Ton CA et sa tendance\n• La santé de tes clients\n• Tes dépenses par catégorie\n\nPose-moi une question plus précise !`;
+ };
+ const QUICK=[{q:"Comment va mon CA?",icon:"📊"},{q:"Quels clients sont en retard?",icon:"👥"},{q:"Analyse mes dépenses",icon:"💸"}];
+ const ask=(q)=>{
+  setMsgs(prev=>[...prev,{role:"user",content:q}]);setTyping(true);
+  const answer=computeAnswer(q);
+  setTimeout(()=>{setTyping(false);setMsgs(prev=>{const newMsgs=[...prev,{role:"assistant",content:answer}];setRevealIdx(newMsgs.length-1);setRevealLen(0);return newMsgs;});},800);
+ };
+ // Typing animation
+ useEffect(()=>{
+  if(revealIdx<0||revealIdx>=msgs.length)return;
+  const full=msgs[revealIdx]?.content||"";
+  if(revealLen>=full.length){setRevealIdx(-1);return;}
+  const t=setTimeout(()=>setRevealLen(prev=>Math.min(prev+3,full.length)),15);
+  return()=>clearTimeout(t);
+ },[revealIdx,revealLen,msgs]);
+ useEffect(()=>{ref.current?.scrollTo({top:ref.current.scrollHeight,behavior:"smooth"});},[msgs,revealLen]);
+ if(!open)return <div onClick={()=>setOpen(true)} style={{position:"fixed",bottom:24,right:24,width:56,height:56,borderRadius:28,background:`linear-gradient(135deg,${C.v},${C.acc})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 20px ${C.acc}44`,zIndex:800,fontSize:24,animation:"fl 3s ease-in-out infinite",transition:"transform .2s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>🤖</div>;
+ return <div style={{position:"fixed",bottom:24,right:24,width:340,maxWidth:"90vw",height:480,maxHeight:"70vh",background:C.card,border:`1px solid ${C.brd}`,borderRadius:16,boxShadow:"0 8px 40px rgba(0,0,0,.4)",zIndex:800,display:"flex",flexDirection:"column",animation:"slideInUp .3s ease",overflow:"hidden"}}>
+  <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",justifyContent:"space-between",background:`linear-gradient(135deg,${C.card2},${C.card})`}}>
+   <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:18}}>🤖</span><div><div style={{fontWeight:800,fontSize:12,color:C.v}}>Assistant IA</div><div style={{fontSize:8,color:C.td}}>{soc.nom}</div></div></div>
+   <Btn v="ghost" small onClick={()=>setOpen(false)}>✕</Btn>
+  </div>
+  <div ref={ref} style={{flex:1,overflowY:"auto",padding:12}}>
+   {msgs.length===0&&<div style={{textAlign:"center",padding:"20px 10px"}}><div style={{fontSize:28,marginBottom:8}}>🤖</div><div style={{fontSize:12,color:C.td,marginBottom:14}}>Pose-moi une question sur tes données</div>
+    <div style={{display:"flex",flexDirection:"column",gap:6}}>{QUICK.map((q,i)=><button key={i} onClick={()=>ask(q.q)} style={{padding:"10px 14px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.card2,color:C.t,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FONT,textAlign:"left",display:"flex",alignItems:"center",gap:8,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.acc;e.currentTarget.style.background=C.accD;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.brd;e.currentTarget.style.background=C.card2;}}><span style={{fontSize:16}}>{q.icon}</span>{q.q}</button>)}</div>
+   </div>}
+   {msgs.map((m,i)=>{
+    const isRevealing=i===revealIdx;
+    const displayContent=isRevealing?m.content.slice(0,revealLen):m.content;
+    return <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:8}}>
+     <div style={{maxWidth:"85%",padding:"8px 12px",borderRadius:10,background:m.role==="user"?C.acc+"22":C.card2,border:`1px solid ${m.role==="user"?C.acc+"44":C.brd}`,fontSize:11,lineHeight:1.6,color:C.t,whiteSpace:"pre-wrap"}}>
+      {m.role==="assistant"&&<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3}}><span style={{fontSize:12}}>🤖</span><span style={{fontWeight:700,fontSize:9,color:C.v}}>ASSISTANT</span></div>}
+      {displayContent}{isRevealing&&<span style={{animation:"pulse 1s infinite"}}>▎</span>}
+     </div>
+    </div>;
+   })}
+   {typing&&<div style={{padding:"8px 12px",background:C.card2,borderRadius:10,border:`1px solid ${C.brd}`,display:"inline-block"}}><span className="dots" style={{fontSize:16}}><span>·</span><span>·</span><span>·</span></span></div>}
+  </div>
+  <div style={{padding:"8px 12px",borderTop:`1px solid ${C.brd}`,display:"flex",gap:4,flexWrap:"wrap"}}>
+   {QUICK.map((q,i)=><button key={i} onClick={()=>ask(q.q)} style={{padding:"4px 10px",borderRadius:16,fontSize:9,fontWeight:600,border:`1px solid ${C.brd}`,background:C.card2,color:C.td,cursor:"pointer",fontFamily:FONT}}>{q.icon} {q.q.split(" ").slice(0,3).join(" ")}…</button>)}
+  </div>
+ </div>;
+}
+/* ADMIN LEADERBOARD CARD */
+function LeaderboardCard({socs,reps,allM,actions,pulses,socBank}){
+ const cm=curM();const pm=prevM(cm);
+ const ranked=socs.filter(s=>s.stat==="active"&&s.id!=="eco").map(s=>{
+  const r=gr(reps,s.id,cm);const rp=gr(reps,s.id,pm);
+  const ca=pf(r?.ca);const prevCa=pf(rp?.ca);
+  const trend=prevCa>0?Math.round((ca-prevCa)/prevCa*100):0;
+  return{soc:s,ca,trend,porteur:s.porteur};
+ }).sort((a,b)=>b.ca-a.ca);
+ const maxCA=ranked.length>0?ranked[0].ca:1;
+ const medals=["🥇","🥈","🥉"];
+ return <Card style={{padding:16}}>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+   <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:18}}>🏆</span><span style={{fontWeight:800,fontSize:14,fontFamily:FONT_TITLE}}>Classement CA — {ml(cm)}</span></div>
+  </div>
+  {ranked.map((r,i)=>{
+   const w=maxCA>0?Math.max(5,Math.round(r.ca/maxCA*100)):0;
+   const isTop3=i<3;
+   return <div key={r.soc.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",marginBottom:4,background:isTop3?C.accD:C.card2,border:`1px solid ${isTop3?C.acc+"33":C.brd}`,borderRadius:10}}>
+    <span style={{fontWeight:900,fontSize:isTop3?18:14,width:28,textAlign:"center"}}>{isTop3?medals[i]:i+1}</span>
+    <span style={{width:6,height:6,borderRadius:3,background:r.soc.color,flexShrink:0}}/>
+    <div style={{flex:1,minWidth:0}}>
+     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+      <span style={{fontWeight:700,fontSize:12}}>{r.soc.nom}</span>
+      <span style={{fontSize:9,color:C.td}}>{r.porteur}</span>
+      {r.trend!==0&&<span style={{fontSize:9,fontWeight:700,color:r.trend>0?C.g:C.r}}>{r.trend>0?"↑":"↓"}{Math.abs(r.trend)}%</span>}
+     </div>
+     <div style={{height:6,background:C.brd,borderRadius:3,overflow:"hidden"}}>
+      <div className="pg" style={{height:"100%",width:`${w}%`,background:isTop3?`linear-gradient(90deg,${C.acc},#FF9D00)`:r.soc.color,borderRadius:3,"--w":`${w}%`}}/>
+     </div>
+    </div>
+    <span style={{fontWeight:900,fontSize:14,color:isTop3?C.acc:C.t,minWidth:60,textAlign:"right"}}>{fmt(r.ca)}€</span>
+   </div>;
+  })}
+  {ranked.length===0&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Aucune donnée ce mois</div>}
+ </Card>;
+}
 /* PORTEUR DASHBOARD */
 function PulseDashWidget({soc,existing,savePulse,hold}){
  const w=curW();
@@ -2847,7 +3012,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
  ];
  return <div className="fu">
   {/* Hero KPIs */}
-  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:20}}>
+  <div className="kpi-grid-responsive" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:20}}>
    {kpis.map((k,i)=><div key={i} className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:20,animationDelay:`${i*0.1}s`}}>
     <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,textTransform:"uppercase",marginBottom:6,fontFamily:FONT_TITLE}}>{k.label}</div>
     <div style={{fontSize:24,fontWeight:900,color:k.accent||C.t,lineHeight:1}}>{k.value}</div>
@@ -2857,28 +3022,62 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
   </div>
   {/* Pulse widget */}
   {(()=>{const w=curW();const existing=pulses?.[`${soc.id}_${w}`];return <PulseDashWidget soc={soc} existing={existing} savePulse={savePulse} hold={hold}/>;})()}
-  {/* Revenue chart */}
+  {/* Revenue AreaChart (Recharts) */}
   <div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:20,marginBottom:20,animationDelay:"0.4s"}}>
-   <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:12}}>CA VS CHARGES — 6 DERNIERS MOIS</div>
-   <svg viewBox="0 0 480 200" style={{width:"100%",height:"auto"}}>
-    {chartData.map((d,i)=>{
-     const bw=30,gap=50,x=40+i*gap+i*bw;
-     const hCa=maxVal>0?(d.ca/maxVal)*160:0;
-     const hCh=maxVal>0?(d.charges/maxVal)*160:0;
-     return <g key={i}>
-      <rect x={x} y={180-hCa} width={bw} height={hCa} fill={acc2} rx={4} style={{transformOrigin:`${x+bw/2}px 180px`,animation:`barGrow 0.6s ease ${0.1*i}s both`}}/>
-      <rect x={x+bw+4} y={180-hCh} width={bw} height={hCh} fill={C.r+"88"} rx={4} style={{transformOrigin:`${x+bw+4+bw/2}px 180px`,animation:`barGrow 0.6s ease ${0.1*i+0.05}s both`}}/>
-      <text x={x+bw+2} y={196} textAnchor="middle" fill={C.td} fontSize="9" fontFamily={FONT}>{d.month}</text>
-      {d.ca>0&&<text x={x+bw/2} y={180-hCa-4} textAnchor="middle" fill={acc2} fontSize="8" fontWeight="700" fontFamily={FONT}>{fK(d.ca)}</text>}
-     </g>;
-    })}
-    <line x1="30" y1="180" x2="470" y2="180" stroke={C.brd} strokeWidth="1"/>
-   </svg>
-   <div style={{display:"flex",gap:16,justifyContent:"center",marginTop:8}}>
-    <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:C.td}}><span style={{width:10,height:10,borderRadius:3,background:acc2}}/> CA</div>
-    <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:C.td}}><span style={{width:10,height:10,borderRadius:3,background:C.r+"88"}}/> Charges</div>
+   <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:12,fontFamily:FONT_TITLE}}>📈 ÉVOLUTION CA VS CHARGES — 6 MOIS</div>
+   <div style={{height:220}}>
+    <ResponsiveContainer>
+     <AreaChart data={chartData} margin={{top:5,right:10,left:0,bottom:5}}>
+      <defs>
+       <linearGradient id={`gradCA_${soc.id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={acc2} stopOpacity={0.4}/><stop offset="100%" stopColor={acc2} stopOpacity={0.02}/></linearGradient>
+       <linearGradient id={`gradCh_${soc.id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.r} stopOpacity={0.3}/><stop offset="100%" stopColor={C.r} stopOpacity={0.02}/></linearGradient>
+      </defs>
+      <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
+      <XAxis dataKey="month" tick={{fill:C.td,fontSize:10}} axisLine={false} tickLine={false}/>
+      <YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/>
+      <Tooltip content={<CTip/>}/>
+      <Area type="monotone" dataKey="ca" stroke={acc2} strokeWidth={2.5} fill={`url(#gradCA_${soc.id})`} name="CA" animationDuration={1200}/>
+      <Area type="monotone" dataKey="charges" stroke={C.r} strokeWidth={2} fill={`url(#gradCh_${soc.id})`} name="Charges" animationDuration={1200} animationBegin={300}/>
+      <Legend wrapperStyle={{fontSize:10}}/>
+     </AreaChart>
+    </ResponsiveContainer>
    </div>
   </div>
+  {/* Expense Breakdown PieChart */}
+  {(()=>{
+   const excluded2=EXCLUDED_ACCOUNTS[soc.id]||[];
+   const catTotals={};
+   if(bankData?.transactions){
+    const now2=new Date();const mStart2=new Date(now2.getFullYear(),now2.getMonth(),1);
+    bankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded2.includes(leg.account_id))return false;return new Date(t.created_at)>=mStart2&&leg.amount<0;}).forEach(t=>{
+     const cat=categorizeTransaction(t);const amt=Math.abs(t.legs[0].amount);
+     if(cat.id!=="revenus"&&cat.id!=="transfert")catTotals[cat.label]=(catTotals[cat.label]||0)+amt;
+    });
+   }
+   const pieData=Object.entries(catTotals).map(([name,value])=>({name,value:Math.round(value)})).sort((a,b)=>b.value-a.value);
+   const PIE_COLORS=[C.r,C.o,C.b,C.v,"#ec4899","#14b8a6",C.acc,"#8b5cf6"];
+   if(pieData.length===0)return null;
+   return <div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:20,marginBottom:20,animationDelay:"0.5s"}}>
+    <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:12,fontFamily:FONT_TITLE}}>📊 RÉPARTITION DES DÉPENSES — {ml(cm)}</div>
+    <div style={{display:"flex",alignItems:"center",height:200}}>
+     <div style={{width:"50%"}}><ResponsiveContainer><PieChart><Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={3} strokeWidth={0} animationDuration={1000}>{pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip content={<CTip/>}/></PieChart></ResponsiveContainer></div>
+     <div style={{flex:1,paddingLeft:8}}>{pieData.slice(0,6).map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/><span style={{flex:1,fontSize:10,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span><span style={{fontWeight:700,fontSize:10,color:C.t}}>{fmt(d.value)}€</span></div>)}</div>
+    </div>
+   </div>;
+  })()}
+  {/* Pipeline Funnel */}
+  {ghlStats&&ghlStages.length>0&&<div className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:20,marginBottom:20,animationDelay:"0.6s"}}>
+   <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:12,fontFamily:FONT_TITLE}}>🔮 PIPELINE PAR ÉTAPE</div>
+   {ghlStages.map((stage,i)=>{const stageOpps=ghlOpps.filter(o=>o.stage===stage);const count=stageOpps.length;const val=stageOpps.reduce((a,o)=>a+o.value,0);const w=ghlOpps.length>0?Math.max(8,Math.round(count/ghlOpps.length*100)):0;
+    return <div key={i} className={`fu d${Math.min(i+1,6)}`} style={{marginBottom:6}}>
+     <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+      <div style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:10,height:10,borderRadius:3,background:GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]}}/><span style={{fontWeight:600,fontSize:11}}>{stage}</span></div>
+      <div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:10,color:C.td}}>{count} deal{count>1?"s":""}</span><span style={{fontWeight:700,fontSize:11,color:C.acc}}>{fmt(val)}€</span></div>
+     </div>
+     <div style={{height:8,background:C.brd,borderRadius:4,overflow:"hidden"}}><div className="pg" style={{height:"100%",width:`${w}%`,background:`linear-gradient(90deg,${GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]},${GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]}88)`,borderRadius:4,"--w":`${w}%`}}/></div>
+    </div>;
+   })}
+  </div>}
   {/* Quick Actions */}
   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
    {[{icon:"👥",title:"Mes clients",sub:"Voir le portefeuille",tab:9},{icon:"🏦",title:"Transactions",sub:"Historique bancaire",tab:5},{icon:"⚙️",title:"Paramètres",sub:"Configurer ma société",tab:12}].map((a,i)=>
@@ -2965,17 +3164,34 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
  const insights=useMemo(()=>genInsights(evo,hs,rw,myActions,soc,reps,allM),[evo,hs,rw,myActions]);
  const benchmark=useMemo(()=>calcBenchmark(soc,reps,socs,cM2),[soc,reps,socs,cM2]);
  const playbooks=useMemo(()=>getPlaybooks(evo,hs,rw,clients),[evo,hs,rw,clients]);
+ const[notifOpen,setNotifOpen]=useState(false);
+ const[mobileMenuOpen,setMobileMenuOpen]=useState(false);
+ const porteurNotifs=useMemo(()=>genPorteurNotifications(soc,reps,socBankData?{[soc.id]:socBankData}:{},ghlData,clients,allM),[soc,reps,socBankData,ghlData,clients,allM]);
  return <div style={{display:"flex",background:C.bg,minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}</style>
-  <Sidebar items={SB_PORTEUR} activeTab={pTab} setTab={setPTab} brandTitle={soc.nom} brandSub={`${soc.porteur}${soc.incub?" · "+sinceLbl(soc.incub):""}`} onLogout={onLogout} onTour={onTour||(() => {})} onThemeToggle={onThemeToggle} dataTourPrefix="porteur" brand={{logoUrl:soc.logoUrl||"",logoLetter:(soc.nom||"?")[0],accentColor:soc.brandColor||soc.color}} extra={<div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
+  <NotificationCenter notifications={porteurNotifs} open={notifOpen} onClose={()=>setNotifOpen(false)}/>
+  {/* Mobile Header */}
+  <div className="mobile-header" style={{display:"none",position:"fixed",top:0,left:0,right:0,zIndex:100,background:C.card,borderBottom:`1px solid ${C.brd}`,padding:"10px 16px",alignItems:"center",gap:10}}>
+   <button onClick={()=>setMobileMenuOpen(!mobileMenuOpen)} style={{background:"none",border:"none",fontSize:20,color:C.t,cursor:"pointer",padding:4}}>☰</button>
+   <div style={{flex:1,fontWeight:800,fontSize:13,fontFamily:FONT_TITLE,color:soc.brandColor||soc.color}}>{soc.nom}</div>
+   <button onClick={()=>setNotifOpen(true)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",position:"relative",padding:4}}>🔔{porteurNotifs.length>0&&<span style={{position:"absolute",top:0,right:0,width:14,height:14,borderRadius:7,background:C.r,color:"#fff",fontSize:8,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{porteurNotifs.length}</span>}</button>
+  </div>
+  {/* Mobile sidebar overlay */}
+  {mobileMenuOpen&&<div className="fi" onClick={()=>setMobileMenuOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:150}}><div onClick={e=>e.stopPropagation()} style={{width:240,height:"100vh",background:C.card,borderRight:`1px solid ${C.brd}`,overflowY:"auto"}}>
+   <Sidebar items={SB_PORTEUR} activeTab={pTab} setTab={t=>{setPTab(t);setMobileMenuOpen(false);}} brandTitle={soc.nom} brandSub={soc.porteur} onLogout={onLogout} onTour={onTour||(() => {})} onThemeToggle={onThemeToggle} dataTourPrefix="porteur" brand={{logoUrl:soc.logoUrl||"",logoLetter:(soc.nom||"?")[0],accentColor:soc.brandColor||soc.color}} extra={null}/>
+  </div></div>}
+  <div className="sidebar-desktop"><Sidebar items={SB_PORTEUR} activeTab={pTab} setTab={setPTab} brandTitle={soc.nom} brandSub={`${soc.porteur}${soc.incub?" · "+sinceLbl(soc.incub):""}`} onLogout={onLogout} onTour={onTour||(() => {})} onThemeToggle={onThemeToggle} dataTourPrefix="porteur" brand={{logoUrl:soc.logoUrl||"",logoLetter:(soc.nom||"?")[0],accentColor:soc.brandColor||soc.color}} extra={<div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
+   <button onClick={()=>setNotifOpen(true)} style={{background:"none",border:"none",cursor:"pointer",position:"relative",fontSize:16,padding:"2px 4px"}}>🔔{porteurNotifs.length>0&&<span style={{position:"absolute",top:-2,right:-2,width:14,height:14,borderRadius:7,background:C.r,color:"#fff",fontSize:8,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{porteurNotifs.length}</span>}</button>
    {(()=>{const myC=clients.filter(c=>c.socId===soc.id&&c.status==="active");const mrr=myC.reduce((a,c)=>a+clientMonthlyRevenue(c),0);return myC.length>0?<span style={{fontSize:8,color:C.b,fontWeight:700,background:C.bD,padding:"2px 6px",borderRadius:8}}>👥{myC.length} · {fK(mrr)}€/m</span>:null;})()}
    <MilestoneCount milestones={milestones}/>
    <GradeBadge grade={hs.grade} color={hs.color}/>
    {rw&&<span style={{fontSize:8,color:rw.months<3?C.r:rw.months<6?C.o:C.g,fontWeight:700,background:rw.months<3?C.rD:rw.months<6?C.oD:C.gD,padding:"2px 6px",borderRadius:8}}>{rw.months}m</span>}
-  </div>}/>
-  <div style={{flex:1,minWidth:0,height:"100vh",overflow:"auto"}}>
+  </div>}/></div>
+  <div className="main-content" style={{flex:1,minWidth:0,height:"100vh",overflow:"auto"}}>
+  {/* AI Chat Bubble */}
+  <PorteurAIChat soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}} ghlData={ghlData} clients={clients}/>
   {celebMs&&<CelebrationOverlay milestone={celebMs} onClose={()=>setCelebMs(null)}/>}
-  <div style={{padding:16,maxWidth:680,margin:"0 auto"}}>
+  <div style={{padding:"16px 16px 16px",maxWidth:680,margin:"0 auto"}}>
   {/* === PORTEUR DASHBOARD (pTab 0) === */}
   {pTab===0&&<PorteurDashboard soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}} ghlData={ghlData} setPTab={setPTab} soc2={soc} clients={clients} pulses={pulses} savePulse={savePulse} hold={hold}/>}
   {pTab===5&&<><SocBankWidget bankData={socBankData} onSync={()=>syncSocBank(soc.id)} soc={soc}/>
@@ -3773,6 +3989,7 @@ export default function App(){
     })()}
     </Card>
    </div>
+   <div style={{marginTop:14}}><LeaderboardCard socs={socs} reps={reps} allM={allM} actions={actions} pulses={pulses} socBank={socBank}/></div>
    <Sect title="Portfolio" sub={`${actS.filter(s=>s.id!=="eco").length} sociétés actives`}>
     <div data-tour="admin-portfolio" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:8}}>
     {actS.filter(s=>s.id!=="eco").map((s,i)=>{
