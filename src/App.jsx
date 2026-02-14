@@ -1986,7 +1986,7 @@ function AIWeeklyCoach({soc,reps,allM,actions,pulses,milestones}){
 function ClientsPanelSafe(props){return <ErrorBoundary label="Erreur dans la page Clients"><ClientsPanelInner {...props}/></ErrorBoundary>;}
 function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices}){
  const[editCl,setEditCl]=useState(null);const[filter,setFilter]=useState("all");const[stageFilter,setStageFilter]=useState("all");const[invView,setInvView]=useState(null);
- const[sending,setSending]=useState(null);const[search,setSearch]=useState("");const[selPipeline,setSelPipeline]=useState("all");
+ const[sending,setSending]=useState(null);const[search,setSearch]=useState("");const[selPipeline,setSelPipeline]=useState("all");const[sort,setSort]=useState("recent");
  const allPipelines=ghlData?.[soc.id]?.pipelines||[];
  const selPipelineStages=selPipeline==="all"?(allPipelines[0]?.stages||[]):(allPipelines.find(p=>p.id===selPipeline)?.stages||[]);
  const rawGhl=ghlData?.[soc.id]?.ghlClients||[];
@@ -2020,7 +2020,10 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
  const ghlIdsInStage=stageFilter==="all"?null:new Set(allOpps.filter(o=>o.stage===stageFilter).map(o=>o.id));
  const afterType=filter==="all"?myClients:filter.startsWith("stage_")?myClients.filter(c=>{const st=filter.replace("stage_","");return allOpps.some(o=>o.stage===st&&o.contact?.id===c.ghlId);}):filter==="no_stage"?myClients.filter(c=>!allOpps.some(o=>o.contact?.id===c.ghlId)):filter==="type_fixed"?myClients.filter(c=>c.billing?.type==="fixed"):filter==="type_percent"?myClients.filter(c=>c.billing?.type==="percent"):filter==="type_hybrid"?myClients.filter(c=>c.billing?.type==="hybrid"):filter==="type_oneoff"?myClients.filter(c=>c.billing?.type==="oneoff"):myClients;
  const afterStage=stageFilter==="all"?afterType:afterType.filter(c=>{if(!c.ghlId)return false;const opps2=allOpps.filter(o=>o.stage===stageFilter);return opps2.some(o=>o.name===c.name||o.email===c.email||o.id===c.ghlId);});
- const filtered=search.trim()===""?afterStage:afterStage.filter(c=>{const q=search.toLowerCase();return(c.name||"").toLowerCase().includes(q)||(c.email||"").toLowerCase().includes(q)||(c.phone||"").includes(q)||(c.contact||"").toLowerCase().includes(q)||(c.notes||"").toLowerCase().includes(q);});
+ const filteredRaw=search.trim()===""?afterStage:afterStage.filter(c=>{const q=search.toLowerCase();return(c.name||"").toLowerCase().includes(q)||(c.email||"").toLowerCase().includes(q)||(c.phone||"").includes(q)||(c.contact||"").toLowerCase().includes(q)||(c.notes||"").toLowerCase().includes(q);});
+ const clientBankTotals=useMemo(()=>{const m={};const txs=socBankData?.transactions||[];filteredRaw.forEach(cl=>{const cn=(cl.name||"").toLowerCase().trim();const tot=txs.filter(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;const desc=(leg.description||tx.reference||"").toLowerCase();if(cn.length>2&&desc.includes(cn))return true;const pts=cn.split(/\s+/).filter(p=>p.length>2);return pts.length>=2&&pts.every(p=>desc.includes(p));}).reduce((a,tx)=>a+(tx.legs?.[0]?.amount||0),0);m[cl.id]=tot;});return m;},[filteredRaw,socBankData?.transactions]);
+ const filtered=useMemo(()=>{const arr=[...filteredRaw];if(sort==="alpha")arr.sort((a,b)=>(a.name||"").localeCompare(b.name||"","fr"));else if(sort==="collected")arr.sort((a,b)=>(clientBankTotals[b.id]||0)-(clientBankTotals[a.id]||0));else if(sort==="oldest")arr.sort((a,b)=>new Date(a.at||a.createdAt||0)-new Date(b.at||b.createdAt||0));else arr.sort((a,b)=>new Date(b.at||b.createdAt||0)-new Date(a.at||a.createdAt||0));return arr;},[filteredRaw,sort,clientBankTotals]);
+ const exportCSV=()=>{const hdr="Nom,Entreprise,Email,Téléphone,Domaine,Statut,Type facturation,Montant,Date ajout";const rows=filtered.map(c=>{const b=c.billing||{};return[c.name||"",c.company||"",c.email||"",c.phone||"",c.domain||"",c.status||"",b.type||"",b.amount||"",c.at?new Date(c.at).toLocaleDateString("fr-FR"):""].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",");});const csv=hdr+"\n"+rows.join("\n");const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`clients_${soc.nom}_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);};
  const addClient=(type)=>{
   const base={id:uid(),socId:soc.id,name:"",contact:"",email:"",phone:"",status:"active",notes:"",ghlId:"",stripeId:"",at:new Date().toISOString()};
   if(type==="fixed")base.billing={type:"fixed",amount:0,freq:"monthly",commitment:0,startDate:new Date().toISOString().slice(0,10)};
@@ -3284,6 +3287,8 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
      {icon:"📈",label:"Taux de conversion",value:convRate+"%",sub:stratCalls>0?`${integCalls}/${stratCalls} appels`:null,color:"#a78bfa"},
      ...Object.entries(ghlStats.callsByType||{}).map(([name,count])=>{const isInteg=name.toLowerCase().includes("intégration")||name.toLowerCase().includes("integration");return{icon:isInteg?"🤝":"📞",label:name.replace(/ - LEADX| - .*$/gi,"").trim(),value:count,color:isInteg?"#a78bfa":"#14b8a6"};}),
      {icon:"💰",label:"Valeur moyenne",value:fmt(ghlStats.avgDealSize)+"€",color:C.acc},
+     (()=>{const evts=ghlData?.[soc.id]?.calendarEvents||[];const total=evts.length;const noShow=evts.filter(e=>(e.status||"").toLowerCase().includes("cancelled")||(e.status||"").toLowerCase().includes("no_show")||(e.status||"").toLowerCase().includes("no-show")).length;const rate=total>0?Math.round(noShow/total*100):0;return{icon:"🚫",label:"No-show",value:rate+"%",sub:total>0?`${noShow}/${total} RDV`:null,color:C.r};})(),
+     (()=>{const wonOpps2=(ghlData?.[soc.id]?.opportunities||[]).filter(o=>o.status==="won");const cls2=ghlData?.[soc.id]?.ghlClients||[];if(wonOpps2.length===0)return{icon:"⏱️",label:"Conversion moy.",value:"—",color:C.o};let totalDays=0,count2=0;wonOpps2.forEach(o=>{const cid=o.contact?.id;const cl=cls2.find(c=>c.ghlId===cid);const created=cl?.at||o.createdAt;const won2=o.updatedAt||o.createdAt;if(created&&won2){const diff=Math.max(0,Math.round((new Date(won2)-new Date(created))/(864e5)));totalDays+=diff;count2++;}});const avg2=count2>0?Math.round(totalDays/count2):0;return{icon:"⏱️",label:"Conversion moy.",value:count2>0?`${avg2}j`:"—",sub:count2>0?`sur ${count2} deals`:null,color:C.o};})(),
     ];
     return <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
      {kpis.map((k,i)=><div key={i} style={{padding:"12px 10px",background:k.color+"10",borderRadius:10,border:`1px solid ${k.color}22`,textAlign:"center"}}>
@@ -3295,6 +3300,46 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
     </div>;
    })()}
   </div>}
+  {/* Prospect/Client Evolution Chart */}
+  {ghlStats&&(()=>{
+   const cls3=ghlData?.[soc.id]?.ghlClients||[];const wonOpps3=(ghlData?.[soc.id]?.opportunities||[]).filter(o=>o.status==="won");
+   const now3=new Date();const months3=[];for(let i=5;i>=0;i--){const d=new Date(now3.getFullYear(),now3.getMonth()-i,1);months3.push({key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`,label:MN[d.getMonth()]});}
+   const evoData=months3.map(mo=>{const prospects=cls3.filter(c=>{const dt=(c.at||c.createdAt||"").slice(0,7);return dt===mo.key;}).length;const clients3=wonOpps3.filter(o=>{const dt=(o.updatedAt||o.createdAt||"").slice(0,7);return dt===mo.key;}).length;return{month:mo.label,prospects,clients:clients3};});
+   return <div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,animationDelay:"0.65s"}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>📈 NOUVEAUX PROSPECTS & CLIENTS — 6 MOIS</div>
+    <div style={{height:200}}>
+     <ResponsiveContainer>
+      <AreaChart data={evoData} margin={{top:5,right:10,left:0,bottom:5}}>
+       <defs>
+        <linearGradient id={`gradP_${soc.id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.o} stopOpacity={0.4}/><stop offset="100%" stopColor={C.o} stopOpacity={0.02}/></linearGradient>
+        <linearGradient id={`gradCl_${soc.id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.g} stopOpacity={0.4}/><stop offset="100%" stopColor={C.g} stopOpacity={0.02}/></linearGradient>
+       </defs>
+       <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
+       <XAxis dataKey="month" tick={{fill:C.td,fontSize:10}} axisLine={false} tickLine={false}/>
+       <YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} allowDecimals={false}/>
+       <Tooltip content={<CTip/>}/>
+       <Area type="monotone" dataKey="prospects" stroke={C.o} strokeWidth={2.5} fill={`url(#gradP_${soc.id})`} name="Prospects" animationDuration={1200}/>
+       <Area type="monotone" dataKey="clients" stroke={C.g} strokeWidth={2.5} fill={`url(#gradCl_${soc.id})`} name="Clients gagnés" animationDuration={1200} animationBegin={300}/>
+       <Legend wrapperStyle={{fontSize:10}}/>
+      </AreaChart>
+     </ResponsiveContainer>
+    </div>
+   </div>;
+  })()}
+  {/* Lead Sources */}
+  {ghlStats&&(()=>{
+   const cls4=ghlData?.[soc.id]?.ghlClients||[];
+   const srcMap={};cls4.forEach(c=>{const src=c.source||c.notes?.split(",").find(t=>t.trim())||"Inconnu";const key=src.trim()||"Inconnu";srcMap[key]=(srcMap[key]||0)+1;});
+   const sources=Object.entries(srcMap).sort((a,b)=>b[1]-a[1]);
+   const srcColors=["#60a5fa","#FFAA00","#34d399","#fb923c","#a78bfa","#f43f5e","#14b8a6","#ec4899","#eab308","#8b5cf6"];
+   if(sources.length===0)return null;
+   return <div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,animationDelay:"0.7s"}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>📣 SOURCES DES LEADS</div>
+    <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+     {sources.map(([src,count],i)=><span key={src} style={{padding:"5px 12px",borderRadius:20,fontSize:11,fontWeight:700,background:srcColors[i%srcColors.length]+"18",color:srcColors[i%srcColors.length],border:`1px solid ${srcColors[i%srcColors.length]}33`}}>{src} <span style={{fontWeight:900}}>{count}</span></span>)}
+    </div>
+   </div>;
+  })()}
   {/* Quick Actions */}
   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
    {[{icon:"👥",title:"Mes clients",sub:"Voir le portefeuille",tab:9},{icon:"🏦",title:"Transactions",sub:"Historique bancaire",tab:5},{icon:"⚙️",title:"Paramètres",sub:"Configurer ma société",tab:12}].map((a,i)=>
