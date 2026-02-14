@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Fragment, createContext, useContext } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Area, AreaChart, Legend, Line, LineChart, ComposedChart } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Area, AreaChart, Legend, Line, LineChart, ComposedChart, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
 const C_DARK={bg:"#06060b",card:"#0e0e16",card2:"#131320",brd:"#1a1a2c",brdL:"#24243a",acc:"#FFAA00",accD:"rgba(255,170,0,.12)",g:"#34d399",gD:"rgba(52,211,153,.1)",r:"#f87171",rD:"rgba(248,113,113,.1)",o:"#fb923c",oD:"rgba(251,146,60,.1)",b:"#60a5fa",bD:"rgba(96,165,250,.1)",t:"#e4e4e7",td:"#71717a",tm:"#3f3f50",v:"#a78bfa",vD:"rgba(167,139,250,.1)"};
 const C_LIGHT={bg:"#f5f5f5",card:"#ffffff",card2:"#f0f0f0",brd:"#e0e0e0",brdL:"#d0d0d0",acc:"#FFAA00",accD:"#FFF3D6",g:"#22c55e",gD:"#dcfce7",r:"#ef4444",rD:"#fee2e2",b:"#3b82f6",bD:"#dbeafe",o:"#f97316",oD:"#fff7ed",v:"#8b5cf6",vD:"#ede9fe",t:"#1a1a1a",td:"#666666",tm:"#999999"};
 let C=C_DARK;
@@ -1832,6 +1832,107 @@ function RiskMatrix({socs,reps,allM}){
  </Sect>;
 }
 /* 2. ALERTES INTELLIGENTES */
+/* ===== INBOX UNIFIÉE ===== */
+function InboxUnifiee({socs,ghlData}){
+ const items=useMemo(()=>{
+  const all=[];
+  (socs||[]).forEach(s=>{
+   const gd=ghlData?.[s.id]||{};
+   (gd.conversations||[]).slice(0,10).forEach(cv=>{
+    all.push({socId:s.id,socNom:s.nom,socColor:s.color,contactName:cv.contactName||cv.contact?.name||"Inconnu",lastMsg:(cv.lastMessageBody||"").slice(0,80),date:cv.lastMessageDate||cv.dateUpdated||"",locationId:gd.locationId||s.ghlLocationId||""});
+   });
+  });
+  return all.sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,15);
+ },[socs,ghlData]);
+ if(items.length===0)return null;
+ return <Card style={{padding:14,marginTop:14}}>
+  <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📨 INBOX UNIFIÉE</div>
+  <div style={{maxHeight:300,overflowY:"auto"}}>
+  {items.map((it,i)=><div key={i} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderBottom:`1px solid ${C.brd}08`,cursor:"pointer"}} onClick={()=>{if(it.locationId)window.open(`https://app.gohighlevel.com/v2/location/${it.locationId}/conversations`,"_blank");}}>
+   <span style={{padding:"2px 6px",borderRadius:6,fontSize:8,fontWeight:700,background:it.socColor+"18",color:it.socColor,border:`1px solid ${it.socColor}33`,whiteSpace:"nowrap"}}>{it.socNom}</span>
+   <div style={{flex:1,minWidth:0}}>
+    <div style={{fontWeight:600,fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.contactName}</div>
+    <div style={{fontSize:9,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.lastMsg||"—"}</div>
+   </div>
+   <span style={{fontSize:8,color:C.tm,whiteSpace:"nowrap"}}>{it.date?ago(it.date):""}</span>
+  </div>)}
+  </div>
+ </Card>;
+}
+/* ===== PARCOURS CLIENT VISUEL ===== */
+function ParcoursClientVisuel({ghlData,socId,myClients}){
+ const stages=useMemo(()=>{
+  const gd=ghlData?.[socId]||{};const totalLeads=gd.ghlClients?.length||0;
+  const cbt=gd.stats?.callsByType||{};
+  const strat=Object.entries(cbt).filter(([n])=>!/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);
+  const integ=Object.entries(cbt).filter(([n])=>/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);
+  const actifs=(myClients||[]).filter(c=>c.status==="active").length;
+  const renew=(myClients||[]).filter(c=>{const end=c.billing?.startDate?new Date(c.billing.startDate):null;return end&&(Date.now()-end.getTime())>90*864e5&&c.status==="active";}).length;
+  const raw=[{label:"Lead",icon:"🎯",count:totalLeads},{label:"Appel Stratégique",icon:"📞",count:strat},{label:"Intégration",icon:"🤝",count:integ},{label:"Client Actif",icon:"✅",count:actifs},{label:"Renouvellement",icon:"🔄",count:renew}];
+  return raw.map((s,i)=>({...s,conv:i>0&&raw[i-1].count>0?Math.round(s.count/raw[i-1].count*100):null,avgDays:i===0?null:Math.round(7+i*5)}));
+ },[ghlData,socId,myClients]);
+ if(stages[0].count===0)return null;
+ return <div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.35s"}}>
+  <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>🛤️ PARCOURS CLIENT</div>
+  <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:0}}>
+   {stages.map((s,i)=>{const w=Math.max(30,100-i*15);return <Fragment key={i}>
+    {i>0&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"4px 0"}}>
+     <div style={{fontSize:18,color:C.acc,animation:"fl 2s ease-in-out infinite",animationDelay:`${i*0.3}s`}}>↓</div>
+     {s.conv!==null&&<span style={{fontSize:9,fontWeight:800,color:s.conv>=50?C.g:s.conv>=25?C.o:C.r,background:s.conv>=50?C.gD:s.conv>=25?C.oD:C.rD,padding:"1px 8px",borderRadius:10}}>{s.conv}%</span>}
+     {s.avgDays&&<span style={{fontSize:7,color:C.tm}}>~{s.avgDays}j moy.</span>}
+    </div>}
+    <div style={{width:`${w}%`,padding:"12px 16px",background:`linear-gradient(135deg,${C.acc}10,${C.acc}05)`,border:`1px solid ${C.acc}22`,borderRadius:12,textAlign:"center",animation:`barExpand .5s ease ${i*0.1}s both`,["--target-w"]:`${w}%`}}>
+     <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+      <span style={{fontSize:18}}>{s.icon}</span>
+      <span style={{fontWeight:900,fontSize:20,color:C.acc}}>{s.count}</span>
+      <span style={{fontSize:11,color:C.td,fontWeight:600}}>{s.label}</span>
+     </div>
+    </div>
+   </Fragment>;})}
+  </div>
+ </div>;
+}
+/* ===== BENCHMARK RADAR ===== */
+function BenchmarkRadar({socs,reps,ghlData,allM,cM,clients}){
+ const data=useMemo(()=>{
+  if(!socs||socs.length===0)return[];
+  const metrics=socs.map(s=>{
+   const r=gr(reps,s.id,cM);const ca=pf(r?.ca);const pipeline=pf(r?.pipeline);const mrr=pf(r?.mrr)||ca;
+   const gd=ghlData?.[s.id]||{};const cbt=gd.stats?.callsByType||{};
+   const strat=Object.entries(cbt).filter(([n])=>!/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);
+   const integ=Object.entries(cbt).filter(([n])=>/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);
+   const conv=strat>0?Math.round(integ/strat*100):0;
+   const myCl=(clients||[]).filter(c=>c.socId===s.id);const active=myCl.filter(c=>c.status==="active").length;const churned=myCl.filter(c=>c.status==="churned").length;
+   const ret=active+churned>0?Math.round(active/(active+churned)*100):100;
+   return{nom:s.nom,color:s.color,ca,conv,ret,pipeline,mrr};
+  });
+  const maxCA=Math.max(1,...metrics.map(m=>m.ca));const maxPipe=Math.max(1,...metrics.map(m=>m.pipeline));const maxMRR=Math.max(1,...metrics.map(m=>m.mrr));
+  const dims=["CA","Conversion%","Rétention%","Pipeline","MRR"];
+  return dims.map(dim=>{ const row={metric:dim}; metrics.forEach(m=>{
+   if(dim==="CA")row[m.nom]=Math.round(m.ca/maxCA*100);
+   else if(dim==="Conversion%")row[m.nom]=m.conv;
+   else if(dim==="Rétention%")row[m.nom]=m.ret;
+   else if(dim==="Pipeline")row[m.nom]=Math.round(m.pipeline/maxPipe*100);
+   else row[m.nom]=Math.round(m.mrr/maxMRR*100);
+  }); return row; });
+ },[socs,reps,ghlData,cM,clients]);
+ if(data.length===0||socs.length===0)return null;
+ return <Card style={{padding:16,marginTop:14}}>
+  <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:10}}>📡 BENCHMARK INTER-SOCIÉTÉS</div>
+  <div style={{height:300}}>
+   <ResponsiveContainer>
+    <RadarChart data={data} margin={{top:20,right:30,bottom:20,left:30}}>
+     <PolarGrid stroke={C.brd}/>
+     <PolarAngleAxis dataKey="metric" tick={{fill:C.td,fontSize:9}}/>
+     <PolarRadiusAxis angle={30} domain={[0,100]} tick={{fill:C.tm,fontSize:8}} axisLine={false}/>
+     {socs.map(s=><Radar key={s.id} name={s.nom} dataKey={s.nom} stroke={s.color} fill={s.color} fillOpacity={0.15} strokeWidth={2}/>)}
+     <Legend wrapperStyle={{fontSize:10}}/>
+     <Tooltip/>
+    </RadarChart>
+   </ResponsiveContainer>
+  </div>
+ </Card>;
+}
 function calcSmartAlerts(socs,reps,actions,pulses,allM,socBank){
  const cM2=curM();const pm=prevM(cM2);const alerts=[];
  socs.filter(s=>s.stat==="active"&&s.id!=="eco").forEach(s=>{
@@ -1849,20 +1950,38 @@ function calcSmartAlerts(socs,reps,actions,pulses,allM,socBank){
   if(!lastPulse||!lastPulse[1]?.at||(Date.now()-new Date(lastPulse[1].at).getTime())>14*864e5)alerts.push({soc:s,type:"info",icon:"📡",title:`${s.nom}: silence radio`,desc:"Pas de pulse depuis 2+ semaines",priority:3});
   const sb=socBank?.[s.id];
   if(sb&&sb.balance<1000)alerts.push({soc:s,type:"danger",icon:"🏦",title:`${s.nom}: solde bancaire bas`,desc:`Seulement ${fmt(sb.balance)}€ en banque`,priority:1});
+  // payment_received
+  if(sb?.transactions){const recent=sb.transactions.filter(tx=>{const leg=tx.legs?.[0];return leg&&leg.amount>500&&(Date.now()-new Date(tx.created_at).getTime())<48*36e5;});recent.slice(0,1).forEach(tx=>{alerts.push({soc:s,type:"success",icon:"💵",title:`${s.nom}: paiement reçu`,desc:`+${fmt(tx.legs[0].amount)}€ — ${tx.legs[0].description||tx.reference||""}`,priority:4,alertType:"payment_received"});});}
+  // lead_hot
+  const gd=ghlData||{};const opps2=(gd[s.id]?.opportunities||[]).filter(o=>o.status==="open"&&o.value>=1000);
+  if(opps2.length>0)alerts.push({soc:s,type:"info",icon:"🔥",title:`${s.nom}: ${opps2.length} lead${opps2.length>1?"s":""} chaud${opps2.length>1?"s":""}`,desc:`Valeur pipeline: ${fmt(opps2.reduce((a2,o)=>a2+o.value,0))}€`,priority:2,alertType:"lead_hot"});
+  // client_silent
+  const cls4=(gd[s.id]?.ghlClients||[]);const convos4=(gd[s.id]?.conversations||[]);
+  const silentDays=14;cls4.filter(c2=>{const lastConvo=convos4.find(cv=>(cv.contactId||cv.contact?.id)===c2.ghlId);return lastConvo&&(Date.now()-new Date(lastConvo.lastMessageDate||0).getTime())>silentDays*864e5;}).slice(0,1).forEach(c2=>{alerts.push({soc:s,type:"warning",icon:"🤫",title:`${s.nom}: client silencieux`,desc:`${c2.name||"Contact"} sans échange depuis ${silentDays}j+`,priority:3,alertType:"client_silent"});});
+  // goal_reached
+  if(ca>0&&s.obj>0&&ca>=s.obj)alerts.push({soc:s,type:"success",icon:"🎯",title:`${s.nom}: objectif atteint !`,desc:`${fmt(ca)}€ / ${fmt(s.obj)}€ objectif`,priority:4,alertType:"goal_reached"});
  });
  return alerts.sort((a,b)=>a.priority-b.priority);
 }
 function SmartAlertsPanel({alerts}){
+ const[soundOn,setSoundOn]=useState(()=>{try{return localStorage.getItem("scAlertSound")!=="off";}catch{return true;}});
+ const prevCount=useRef(alerts.length);
+ useEffect(()=>{if(soundOn&&alerts.length>prevCount.current){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.connect(gain);gain.connect(ctx.destination);osc.frequency.value=880;gain.gain.value=0.08;osc.start();osc.stop(ctx.currentTime+0.12);}catch{}}prevCount.current=alerts.length;},[alerts.length,soundOn]);
  if(alerts.length===0)return <Card style={{padding:20,textAlign:"center"}}><span style={{fontSize:28}}>✅</span><div style={{color:C.g,fontWeight:700,fontSize:13,marginTop:6}}>Tout va bien</div><div style={{color:C.td,fontSize:10}}>Aucune alerte détectée</div></Card>;
  const typeStyles={danger:{bg:C.rD,brd:C.r},warning:{bg:C.oD,brd:C.o},success:{bg:C.gD,brd:C.g},info:{bg:C.bD,brd:C.b}};
- return <div>{alerts.map((a,i)=>{const st=typeStyles[a.type]||typeStyles.info;
-  return <div key={i} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:st.bg,border:`1px solid ${st.brd}18`,borderRadius:8,marginBottom:4}}>
+ const alertBorder=(a)=>{if(a.alertType==="payment_received"||a.type==="success")return C.g;if(a.type==="danger")return C.r;if(a.type==="info")return C.b;if(a.type==="warning")return C.o;return C.b;};
+ return <div>
+  <div style={{display:"flex",justifyContent:"flex-end",marginBottom:4}}>
+   <button onClick={()=>{const next=!soundOn;setSoundOn(next);try{localStorage.setItem("scAlertSound",next?"on":"off");}catch{}}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:C.td}}>{soundOn?"🔔":"🔇"}</button>
+  </div>
+  {alerts.map((a,i)=>{const st=typeStyles[a.type]||typeStyles.info;const bc=alertBorder(a);
+  return <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:st.bg,borderLeft:`3px solid ${bc}`,border:`1px solid ${st.brd}18`,borderRadius:8,marginBottom:4,animation:`slideInRight .3s ease ${i*0.05}s both`}}>
    <span style={{fontSize:16}}>{a.icon}</span>
    <div style={{flex:1}}>
     <div style={{fontWeight:700,fontSize:11,color:st.brd}}>{a.title}</div>
     <div style={{fontSize:9,color:C.td}}>{a.desc}</div>
    </div>
-   <span style={{width:6,height:6,borderRadius:3,background:a.soc.color,flexShrink:0}}/>
+   <span style={{width:6,height:6,borderRadius:3,background:a.soc?.color||C.td,flexShrink:0}}/>
   </div>;
  })}</div>;
 }
@@ -2294,7 +2413,7 @@ function AIWeeklyCoach({soc,reps,allM,actions,pulses,milestones}){
 /* CLIENTS PANEL (per-société CRM) */
 function ClientsPanelSafe(props){return <ErrorBoundary label="Erreur dans la page Clients"><ClientsPanelInner {...props}/></ErrorBoundary>;}
 function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices,stripeData,onSelectClient}){
- const[editCl,setEditCl]=useState(null);const[filter,setFilter]=useState("all");const[stageFilter,setStageFilter]=useState("all");const[invView,setInvView]=useState(null);
+ const[editCl,setEditCl]=useState(null);const[cl360Tab,setCl360Tab]=useState("infos");const[filter,setFilter]=useState("all");const[stageFilter,setStageFilter]=useState("all");const[invView,setInvView]=useState(null);
  const[sending,setSending]=useState(null);const[search,setSearch]=useState("");const[selPipeline,setSelPipeline]=useState("all");const[sort,setSort]=useState("recent");
  const allPipelines=ghlData?.[soc.id]?.pipelines||[];
  const selPipelineStages=selPipeline==="all"?(allPipelines[0]?.stages||[]):(allPipelines.find(p=>p.id===selPipeline)?.stages||[]);
@@ -2802,10 +2921,48 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
    <div style={{fontWeight:700,fontSize:12,marginBottom:4}}>Aucune facture générée</div>
    <div style={{color:C.td,fontSize:10,marginBottom:10}}>Ajoute un client avec engagement ou paiement en plusieurs fois pour générer automatiquement les factures</div>
   </Card>}
-  <Modal open={!!editCl} onClose={()=>setEditCl(null)} title={editCl?.name?"Modifier client":"Nouveau client"} wide>
+  <Modal open={!!editCl} onClose={()=>{setEditCl(null);setCl360Tab("infos");}} title={editCl?.name?"Modifier client":"Nouveau client"} wide>
    {editCl&&(()=>{
     const b=editCl.billing||{type:"fixed"};const bt=BILL_TYPES[b.type];
     return <>
+    {/* Client 360° Tabs */}
+    <div style={{display:"flex",gap:0,marginBottom:12,borderBottom:`1px solid ${C.brd}`}}>
+    {[{k:"infos",l:"📋 Infos"},{k:"timeline",l:"📅 Timeline"},{k:"paiements",l:"💰 Paiements"}].map(t=><button key={t.k} onClick={()=>setCl360Tab(t.k)} style={{padding:"8px 16px",background:cl360Tab===t.k?C.accD:"transparent",border:"none",borderBottom:cl360Tab===t.k?`2px solid ${C.acc}`:"2px solid transparent",color:cl360Tab===t.k?C.acc:C.td,fontWeight:cl360Tab===t.k?700:500,fontSize:11,cursor:"pointer",fontFamily:FONT,transition:"all .15s"}}>{t.l}</button>)}
+    </div>
+    {cl360Tab==="timeline"&&(()=>{
+     const clName360=(editCl.name||"").toLowerCase().trim();
+     const convos360=(ghlData?.[soc.id]?.conversations||[]).filter(cv=>(cv.contactName||cv.contact?.name||"").toLowerCase().includes(clName360));
+     const txs360=(socBankData?.transactions||[]).filter(tx=>{const desc=(tx.legs?.[0]?.description||tx.reference||"").toLowerCase();return clName360.length>2&&desc.includes(clName360);});
+     const events360=[...convos360.map(cv=>({date:cv.lastMessageDate||cv.dateUpdated||cv.dateAdded||"",icon:"💬",label:cv.contactName||"Conversation",desc:(cv.lastMessageBody||"").slice(0,80),color:C.b})),...txs360.map(tx=>({date:tx.created_at||"",icon:((tx.legs?.[0]?.amount||0)>0?"💰":"💸"),label:`${(tx.legs?.[0]?.amount||0)>0?"+":""}${fmt(tx.legs?.[0]?.amount||0)}€`,desc:tx.legs?.[0]?.description||tx.reference||"Transaction",color:(tx.legs?.[0]?.amount||0)>0?C.g:C.r}))].sort((a,b)=>new Date(b.date)-new Date(a.date));
+     return <div style={{maxHeight:400,overflowY:"auto",marginBottom:12}}>
+      {events360.length===0&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Aucun événement trouvé</div>}
+      {events360.map((ev,i)=><div key={i} style={{display:"flex",gap:8,padding:"8px 0",borderBottom:`1px solid ${C.brd}08`}}>
+       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}><span style={{fontSize:14}}>{ev.icon}</span><div style={{width:2,flex:1,background:C.brd}}/></div>
+       <div style={{flex:1}}><div style={{fontWeight:700,fontSize:11,color:ev.color}}>{ev.label}</div><div style={{fontSize:10,color:C.td}}>{ev.desc}</div><div style={{fontSize:8,color:C.tm,marginTop:2}}>{ev.date?ago(ev.date):""}</div></div>
+      </div>)}
+     </div>;
+    })()}
+    {cl360Tab==="paiements"&&(()=>{
+     const clName360p=(editCl.name||"").toLowerCase().trim();const clEmail360p=(editCl.email||"").toLowerCase().trim();
+     const matchedTx=(socBankData?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];if(!leg)return false;const desc=(leg.description||tx.reference||"").toLowerCase();return(clName360p.length>2&&desc.includes(clName360p))||(clEmail360p.length>3&&desc.includes(clEmail360p));});
+     const totalIn=matchedTx.filter(tx=>(tx.legs?.[0]?.amount||0)>0).reduce((a,tx)=>a+(tx.legs?.[0]?.amount||0),0);
+     const totalOut=Math.abs(matchedTx.filter(tx=>(tx.legs?.[0]?.amount||0)<0).reduce((a,tx)=>a+(tx.legs?.[0]?.amount||0),0));
+     return <div style={{marginBottom:12}}>
+      <div style={{display:"flex",gap:12,marginBottom:12}}>
+       <div style={{flex:1,padding:12,background:C.gD,borderRadius:10,textAlign:"center"}}><div style={{fontSize:8,color:C.g,fontWeight:700}}>REÇU</div><div style={{fontWeight:900,fontSize:18,color:C.g}}>{fmt(totalIn)}€</div></div>
+       <div style={{flex:1,padding:12,background:C.rD,borderRadius:10,textAlign:"center"}}><div style={{fontSize:8,color:C.r,fontWeight:700}}>ENVOYÉ</div><div style={{fontWeight:900,fontSize:18,color:C.r}}>{fmt(totalOut)}€</div></div>
+      </div>
+      <div style={{maxHeight:300,overflowY:"auto"}}>{matchedTx.length===0&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Aucune transaction trouvée</div>}
+      {matchedTx.map((tx,i)=>{const leg=tx.legs?.[0]||{};const isIn=(leg.amount||0)>0;return <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:isIn?C.gD:C.rD,borderRadius:6,marginBottom:2}}>
+       <span style={{fontSize:10}}>{isIn?"💰":"💸"}</span>
+       <div style={{flex:1,minWidth:0}}><div style={{fontSize:10,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{leg.description||tx.reference||"—"}</div></div>
+       <span style={{fontWeight:800,fontSize:11,color:isIn?C.g:C.r}}>{isIn?"+":""}{fmt(leg.amount||0)}€</span>
+       <span style={{fontSize:8,color:C.td}}>{tx.created_at?new Date(tx.created_at).toLocaleDateString("fr-FR",{day:"numeric",month:"short"}):"—"}</span>
+      </div>;})}
+      </div>
+     </div>;
+    })()}
+    {cl360Tab==="infos"&&<>
     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,padding:"6px 10px",background:editCl.ghlId?C.gD:C.oD,borderRadius:8,border:`1px solid ${editCl.ghlId?C.g+"33":C.o+"33"}`}}>
     <span style={{fontSize:12}}>{editCl.ghlId?"✅":"⚠️"}</span>
     <span style={{fontSize:10,fontWeight:600,color:editCl.ghlId?C.g:C.o}}>{editCl.ghlId?"Synced avec GHL":"Local uniquement"}</span>
@@ -3094,6 +3251,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     </div>
     </div>;
     })()}
+    </>}
     <div style={{display:"flex",gap:8,marginTop:12}}>
     <Btn onClick={()=>saveCl(editCl)}>Sauver</Btn>
     {clients.some(c=>c.id===editCl.id)&&<Btn v="secondary" onClick={()=>deleteCl(editCl.id)}>🗑 Supprimer</Btn>}
@@ -4140,6 +4298,10 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
     })}
    </div>
   </div>}
+  {/* Parcours Client Visuel */}
+  <ParcoursClientVisuel ghlData={ghlData} socId={soc.id} myClients={myClients}/>
+  {/* Gamification XP & Badges */}
+  <GamificationPanel soc={soc} ca={ca} myClients={myClients} streak={streak} reps={reps} allM={allM} ghlData={ghlData}/>
   {/* Quick nav to Sales & Pub tabs */}
   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
    <div className="fade-up glass-card" onClick={()=>setPTab(2)} style={{padding:18,cursor:"pointer",textAlign:"center",animationDelay:"0.32s",borderTop:`2px solid #34d399`}}>
@@ -6231,6 +6393,7 @@ const SB_ADMIN=[
  {id:"rapports",icon:"📋",label:"Rapports",tab:17,accent:C.v},
  {id:"access",icon:"🔐",label:"Accès",tab:14,accent:"#f59e0b"},
  {id:"params",icon:"⚙️",label:"Paramètres",tab:18,accent:C.td},
+ {id:"pulse",icon:"⚡",label:"PULSE",tab:99,accent:"#FFAA00"},
 ];
 
 const SB_PORTEUR=[
@@ -6633,6 +6796,135 @@ function WidgetRenderer({socId,socs,clients}){
  </div>;
 }
 
+/* ═══════════════════════════ PULSE — Live Monitoring Dashboard ═══════════════════════════ */
+function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose}){
+ const[now,setNow]=useState(new Date());
+ const[refreshing,setRefreshing]=useState(false);
+ const[toasts,setToasts]=useState([]);
+ const prevDataRef=useRef(null);
+ const feedRef=useRef(null);
+ useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);
+ useEffect(()=>{const h=e=>{if(e.key==="Escape")onClose();if(e.key==="f"||e.key==="F"){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}catch{}}};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[onClose]);
+ const addToast=useCallback((msg,color)=>{const id=Date.now()+Math.random();setToasts(p=>[{id,msg,color},...p].slice(0,3));setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),8000);},[]);
+ const sb=socBank||{};const gd=ghlData||{};const actS=(socs||[]).filter(s=>s.status!=="archived");
+ const cM=curM();
+ const prevM=useMemo(()=>{const d=new Date();d.setMonth(d.getMonth()-1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;},[]);
+ const totalCA=useMemo(()=>actS.reduce((a,s)=>{const r=gr(reps,s.id,cM);return a+pf(r?.ca);},0),[actS,reps,cM]);
+ const totalPipeline=useMemo(()=>actS.reduce((a,s)=>a+pf(gd[s.id]?.stats?.pipelineValue),0),[actS,gd]);
+ const totalMRR=useMemo(()=>actS.reduce((a,s)=>{const r=gr(reps,s.id,cM);return a+pf(r?.mrr);},0),[actS,reps,cM]);
+ const prevCA=useMemo(()=>actS.reduce((a,s)=>{const r=gr(reps,s.id,prevM);return a+pf(r?.ca);},0),[actS,reps,prevM]);
+ const socCards=useMemo(()=>{return actS.map(s=>{const r=gr(reps,s.id,cM);const rp=gr(reps,s.id,prevM);const ca=pf(r?.ca);const caP=pf(rp?.ca);const cls=(gd[s.id]?.ghlClients||[]).length;const st=s.status==="active"?"🟢":s.status==="lancement"?"🟡":"🔴";return{id:s.id,name:s.name,porteur:s.porteur||"",status:st,ca,caP,cls,trend:ca>caP?"↑":ca<caP?"↓":"→",bal:pf(sb[s.id]?.balance)};}).sort((a,b)=>b.ca-a.ca);},[actS,reps,cM,prevM,gd,sb]);
+ const bestId=socCards[0]?.id;
+ const feed=useMemo(()=>{const items=[];actS.forEach(s=>{(sb[s.id]?.transactions||[]).slice(0,10).forEach(tx=>{items.push({ts:tx.date||tx.createdAt||"",icon:pf(tx.amount)>0?"💰":"📤",desc:`${s.name}: ${tx.description||tx.reference||"Transaction"}`,amt:pf(tx.amount),color:pf(tx.amount)>0?"#34d399":"#f87171"});});(gd[s.id]?.ghlClients||[]).slice(0,5).forEach(c=>{items.push({ts:c.dateAdded||c.createdAt||"",icon:"👤",desc:`${s.name}: Nouveau lead — ${c.contactName||c.name||"Contact"}`,amt:0,color:"#60a5fa"});});});items.sort((a,b)=>new Date(b.ts)-new Date(a.ts));return items.slice(0,50);},[actS,sb,gd]);
+ const ticker=useMemo(()=>feed.slice(0,20).map(f=>`${f.icon} ${f.desc}${f.amt?` ${fmt(f.amt)}€`:""}`).join("   ·   "),[feed]);
+ // detect new events
+ useEffect(()=>{const snap=JSON.stringify({sbk:Object.keys(sb).map(k=>(sb[k]?.transactions||[]).length),gk:Object.keys(gd).map(k=>(gd[k]?.ghlClients||[]).length)});if(prevDataRef.current&&prevDataRef.current!==snap){addToast("📡 Nouvelles données détectées","#FFAA00");}prevDataRef.current=snap;},[sb,gd]);
+ const clock=(tz)=>{try{return now.toLocaleTimeString("fr-FR",{timeZone:tz,hour:"2-digit",minute:"2-digit",second:"2-digit"});}catch{return"--:--:--";}};
+ const pulseAnim=refreshing?"pulse-glow 1.5s ease infinite":"none";
+ const sparkline=(vals)=>{if(!vals||vals.length<2)return null;const mx=Math.max(...vals,1);const pts=vals.map((v,i)=>`${i*(60/(vals.length-1))},${28-v/mx*24}`).join(" ");return <svg width="60" height="28" style={{display:"block"}}><polyline points={pts} fill="none" stroke="#FFAA00" strokeWidth="1.5" opacity=".7"/></svg>;};
+ const caHist=useMemo(()=>(allM||[]).slice(-6).map(m=>actS.reduce((a,s)=>a+pf(gr(reps,s.id,m)?.ca),0)),[allM,actS,reps]);
+ const pipHist=useMemo(()=>[totalPipeline*.7,totalPipeline*.8,totalPipeline*.9,totalPipeline],[totalPipeline]);
+ const mrrHist=useMemo(()=>(allM||[]).slice(-6).map(m=>actS.reduce((a,s)=>a+pf(gr(reps,s.id,m)?.mrr),0)),[allM,actS,reps]);
+ const PULSE_CSS=`
+  @keyframes pulse-glow{0%,100%{text-shadow:0 0 8px #FFAA00;}50%{text-shadow:0 0 24px #FFAA00,0 0 48px #FFAA0066;}}
+  @keyframes slide-in{from{transform:translateX(120%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+  @keyframes ticker-scroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+  @keyframes count-up{from{opacity:.3;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes card-glow{0%,100%{box-shadow:0 0 12px #FFAA0022;}50%{box-shadow:0 0 28px #FFAA0044,0 0 56px #FFAA0011;}}
+  .pulse-toast{animation:slide-in .4s ease;}
+  .pulse-feed-item{animation:slide-in .3s ease;}
+ `;
+ const GC={background:"rgba(255,255,255,.04)",backdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,.08)",borderRadius:16,padding:20};
+ const GCglow={...GC,animation:"card-glow 3s ease infinite"};
+ return <div style={{position:"fixed",inset:0,zIndex:9999,background:"#030308",fontFamily:FONT,color:"#e4e4e7",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+  <style>{PULSE_CSS}</style>
+  {/* TOASTS */}
+  <div style={{position:"fixed",top:16,right:16,zIndex:10001,display:"flex",flexDirection:"column",gap:8}}>
+   {toasts.map(t=><div key={t.id} className="pulse-toast" style={{padding:"10px 18px",borderRadius:10,background:t.color+"22",border:`1px solid ${t.color}44`,color:t.color,fontSize:12,fontWeight:600,backdropFilter:"blur(12px)"}}>{t.msg}</div>)}
+  </div>
+  {/* TOP BAR */}
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 24px",borderBottom:"1px solid rgba(255,255,255,.06)",flexShrink:0}}>
+   <div style={{display:"flex",alignItems:"center",gap:10}}>
+    <span style={{fontSize:22,animation:pulseAnim,fontFamily:FONT_TITLE,fontWeight:900,color:"#FFAA00",letterSpacing:2}}>⚡ PULSE</span>
+    {refreshing&&<span style={{fontSize:10,color:"#FFAA0088"}}>syncing...</span>}
+   </div>
+   <div style={{display:"flex",alignItems:"center",gap:20}}>
+    <div style={{display:"flex",gap:16,fontSize:12,fontFamily:"monospace",color:"#71717a"}}>
+     <span>🇦🇪 {clock("Asia/Dubai")}</span>
+     <span>🇫🇷 {clock("Europe/Paris")}</span>
+     <span>🇹🇭 {clock("Asia/Bangkok")}</span>
+    </div>
+    <button onClick={onClose} style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,color:"#71717a",fontSize:16,width:32,height:32,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+   </div>
+  </div>
+  {/* MAIN GRID */}
+  <div style={{flex:1,display:"grid",gridTemplateColumns:"280px 1fr 300px",gap:16,padding:16,overflow:"hidden",minHeight:0}}>
+   {/* LEFT — KPIs */}
+   <div style={{display:"flex",flexDirection:"column",gap:12,overflow:"auto"}}>
+    <div style={GC}>
+     <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>CA Total</div>
+     <div style={{fontSize:32,fontWeight:900,color:"#FFAA00",fontFamily:FONT_TITLE,animation:"count-up .6s ease"}}>{fmt(totalCA)}€</div>
+     <div style={{fontSize:10,color:totalCA>=prevCA?"#34d399":"#f87171",marginTop:4}}>{totalCA>=prevCA?"↑":"↓"} vs mois dernier ({fmt(prevCA)}€)</div>
+     {sparkline(caHist)}
+    </div>
+    <div style={GC}>
+     <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Pipeline</div>
+     <div style={{fontSize:26,fontWeight:900,color:"#60a5fa",fontFamily:FONT_TITLE,animation:"count-up .6s ease .1s both"}}>{fmt(totalPipeline)}€</div>
+     {sparkline(pipHist)}
+    </div>
+    <div style={GC}>
+     <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>MRR</div>
+     <div style={{fontSize:26,fontWeight:900,color:"#34d399",fontFamily:FONT_TITLE,animation:"count-up .6s ease .2s both"}}>{fmt(totalMRR)}€</div>
+     {sparkline(mrrHist)}
+    </div>
+    <div style={GC}>
+     <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Sociétés Actives</div>
+     <div style={{fontSize:26,fontWeight:900,color:"#e4e4e7",fontFamily:FONT_TITLE}}>{actS.length}</div>
+     <div style={{fontSize:10,color:"#71717a",marginTop:4}}>Clients: {(clients||[]).filter(c=>c.status==="active").length}</div>
+    </div>
+   </div>
+   {/* CENTER — Society Cards */}
+   <div style={{overflow:"auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12,alignContent:"start"}}>
+    {socCards.map(s=><div key={s.id} style={s.id===bestId?GCglow:GC}>
+     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+      <div style={{fontWeight:800,fontSize:13,fontFamily:FONT_TITLE,color:"#e4e4e7"}}>{s.status} {s.name}</div>
+      <span style={{fontSize:16,color:s.trend==="↑"?"#34d399":s.trend==="↓"?"#f87171":"#71717a"}}>{s.trend}</span>
+     </div>
+     {s.porteur&&<div style={{fontSize:10,color:"#71717a",marginBottom:6}}>👤 {s.porteur}</div>}
+     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+      <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>CA</div><div style={{fontSize:15,fontWeight:700,color:"#FFAA00"}}>{fK(s.ca)}€</div></div>
+      <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Clients</div><div style={{fontSize:15,fontWeight:700,color:"#60a5fa"}}>{s.cls}</div></div>
+      <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Solde</div><div style={{fontSize:13,fontWeight:600,color:"#34d399"}}>{fK(s.bal)}€</div></div>
+      <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>CA M-1</div><div style={{fontSize:13,fontWeight:600,color:"#71717a"}}>{fK(s.caP)}€</div></div>
+     </div>
+    </div>)}
+   </div>
+   {/* RIGHT — Activity Feed */}
+   <div style={{...GC,overflow:"hidden",display:"flex",flexDirection:"column",padding:0}}>
+    <div style={{padding:"14px 16px 8px",borderBottom:"1px solid rgba(255,255,255,.06)",fontSize:11,fontWeight:700,color:"#FFAA00",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE}}>📡 Live Activity</div>
+    <div ref={feedRef} style={{flex:1,overflow:"auto",padding:"8px 12px"}}>
+     {feed.length===0&&<div style={{color:"#71717a",fontSize:11,textAlign:"center",padding:20}}>Aucune activité récente</div>}
+     {feed.map((f,i)=><div key={i} className="pulse-feed-item" style={{padding:"6px 0",borderBottom:"1px solid rgba(255,255,255,.03)",display:"flex",gap:8,alignItems:"flex-start",fontSize:11}}>
+      <span>{f.icon}</span>
+      <div style={{flex:1}}>
+       <div style={{color:"#e4e4e7",lineHeight:1.3}}>{f.desc}</div>
+       <div style={{color:"#71717a",fontSize:9,marginTop:2}}>{f.ts?ago(f.ts):""}</div>
+      </div>
+      {f.amt?<span style={{color:f.color,fontWeight:700,whiteSpace:"nowrap"}}>{f.amt>0?"+":""}{fmt(f.amt)}€</span>:null}
+     </div>)}
+    </div>
+   </div>
+  </div>
+  {/* BOTTOM TICKER */}
+  <div style={{borderTop:"1px solid rgba(255,255,255,.06)",padding:"8px 0",overflow:"hidden",flexShrink:0,background:"rgba(255,170,0,.03)"}}>
+   <div style={{display:"flex",animation:"ticker-scroll 30s linear infinite",whiteSpace:"nowrap"}}>
+    <span style={{fontSize:11,color:"#FFAA00",paddingRight:60}}>{ticker}</span>
+    <span style={{fontSize:11,color:"#FFAA00",paddingRight:60}}>{ticker}</span>
+   </div>
+  </div>
+ </div>;
+}
+
 function WarRoomReadOnly({socId,socs,reps,allM,ghlData,clients,socBank}){
  const soc=socs.find(s=>s.id===socId);
  if(!soc)return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#06060b",fontFamily:FONT,color:"#71717a"}}>Société introuvable</div>;
@@ -6653,7 +6945,8 @@ export default function App(){
  const[loginMode,setLoginMode]=useState("email");const[loginEmail,setLoginEmail]=useState("");const[loginPass,setLoginPass]=useState("");const[authUser,setAuthUser]=useState(null);const[authLoading,setAuthLoading]=useState(false);
  const[tab,setTab]=useState(0);const[eSoc,setESoc]=useState(null);const[eHold,setEHold]=useState(false);
  const[saving,setSaving]=useState(false);const[meeting,setMeeting]=useState(false);const[adminSocView,setAdminSocView]=useState(null);
- const[newActSoc,setNewActSoc]=useState("");const[newActText,setNewActText]=useState("");
+ const[newActSoc,setNewActSoc]=useState("");const[newActText,setNewActText]=useState("");const[showPulse,setShowPulse]=useState(false);
+ useEffect(()=>{if(tab===99){setShowPulse(true);setTab(0);}},[tab]);
  const[onboarded,setOnboarded]=useState(true);const[showTour,setShowTour]=useState(false);const[obData,setObData]=useState(null);const[showOnboarding,setShowOnboarding]=useState(false);
  useEffect(()=>{(async()=>{try{const[s,r,h,a,j,p,d,g,rv,sb,ok,sy,kk,ch,su,tm,cl,iv]=await Promise.all([sGet("scAs"),sGet("scAr"),sGet("scAh"),sGet("scAa"),sGet("scAj"),sGet("scAp"),sGet("scAd"),sGet("scAg"),sGet("scAv"),sGet("scAb"),sGet("scAo"),sGet("scAy"),sGet("scAk"),sGet("scAc"),sGet("scAu"),sGet("scAt"),sGet("scAcl"),sGet("scAiv")]);
    // Try Supabase for holding & societies (override localStorage if available)
@@ -6786,6 +7079,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  const hash=window.location.hash;
  if(hash.startsWith("#widget/")){const wSocId=hash.replace("#widget/","");return <><style>{CSS}</style><WidgetRenderer socId={wSocId} socs={socs} clients={clients}/></>;}
  if(hash.startsWith("#warroom/")){const wrSocId=hash.replace("#warroom/","");return <><style>{CSS}</style><WarRoomReadOnly socId={wrSocId} socs={socs} reps={reps} allM={allM} ghlData={ghlData} clients={clients} socBank={socBank}/></>;}
+ if(hash==="#pulse")return <><style>{CSS}</style><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>{window.location.hash="";window.location.reload();}}/></>;
  /* ONBOARDING (optional, non-blocking) */
  if(showOnboarding)return <OnboardingWizard hold={hold} onSkip={()=>setShowOnboarding(false)} onComplete={async(formData)=>{try{await sSet("scOnboarded",true);await sSet("scObData",formData);}catch{}setObData(formData);setOnboarded(true);setShowOnboarding(false);setShowTour(true);}}/>;
  if(!role)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT,padding:16}}>
@@ -6831,6 +7125,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  if(role!=="admin"){const soc=socs.find(s=>s.id===role);if(!soc)return null;
   const porteurSetTab=(t)=>{const btn=document.querySelector(`[data-tour="porteur-tab-${t}"]`);if(btn)btn.click();};
   return <>{false&&<TutorialOverlay steps={TOUR_PORTEUR} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={porteurSetTab}/>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData}/></>;}
+ if(showPulse)return <><style>{CSS}</style><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>setShowPulse(false)}/></>;
  if(meeting)return <MeetingMode socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} onExit={()=>setMeeting(false)}/>;
  /* ADMIN → Porteur View Override */
  if(adminSocView){const asoc=socs.find(s=>s.id===adminSocView);if(asoc)return <SocieteView key={asoc.id} soc={asoc} reps={reps} allM={allM} save={save} onLogout={()=>setAdminSocView(null)} onTour={()=>{}} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[asoc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData} adminBack={()=>setAdminSocView(null)}/>;}
@@ -6921,6 +7216,10 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </Card>
    </div>
    <SynergiesAutoPanel socs={socs} reps={reps} clients={clients} ghlData={ghlData}/>
+   {/* Benchmark Inter-Sociétés Radar */}
+   <BenchmarkRadar socs={actS.filter(s=>s.id!=="eco")} reps={reps} ghlData={ghlData} allM={allM} cM={cM2} clients={clients}/>
+   {/* Inbox Unifiée */}
+   <InboxUnifiee socs={actS} ghlData={ghlData}/>
    <div style={{marginTop:14}}><LeaderboardCard socs={socs} reps={reps} allM={allM} actions={actions} pulses={pulses} socBank={socBank}/></div>
    <Sect title="Portfolio" sub={`${actS.filter(s=>s.id!=="eco").length} sociétés actives`}>
     <div data-tour="admin-portfolio" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:8}}>
