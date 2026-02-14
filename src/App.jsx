@@ -3496,8 +3496,9 @@ function NotificationCenter({notifications,open,onClose}){
 }
 /* AI CHAT FOR PORTEUR */
 function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
- const[open,setOpen]=useState(false);const[msgs,setMsgs]=useState([]);const[typing,setTyping]=useState(false);const[revealIdx,setRevealIdx]=useState(-1);const[revealLen,setRevealLen]=useState(0);const ref=useRef(null);
+ const[open,setOpen]=useState(false);const[msgs,setMsgs]=useState([]);const[typing,setTyping]=useState(false);const[revealIdx,setRevealIdx]=useState(-1);const[revealLen,setRevealLen]=useState(0);const[inputVal,setInputVal]=useState("");const ref=useRef(null);const inputRef=useRef(null);
  const cm=curM();const pm=prevM(cm);
+ const parseNum=(s)=>{const m2=s.match(/(\d+[\s.,]?\d*)/);return m2?parseFloat(m2[1].replace(/\s/g,"").replace(",",".")):null;};
  const computeAnswer=(q)=>{
   const ql=q.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   const r=gr(reps,soc.id,cm);const rp=gr(reps,soc.id,pm);
@@ -3516,14 +3517,78 @@ function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
   const stats=gd?.stats;
   const mrr=activeCl.reduce((a,c)=>a+clientMonthlyRevenue(c),0);
   const monthGoal=pf(soc.obj)||0;
-  // Bank transactions this month
   const excluded=EXCLUDED_ACCOUNTS[soc.id]||[];
   const monthTxns=(bankData?.transactions||[]).filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded.includes(leg.account_id))return false;return(t.created_at||"").startsWith(cm);});
-  const monthIncome=monthTxns.filter(t=>(t.legs?.[0]?.amount||0)>0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0);
 
-  // Pattern matching
+  // aide/help
+  if(ql.match(/^aide$|^help$|comment.*fonctionne|que.*peux/)){
+   return `🤖 **Commandes disponibles**\n\n📋 **résumé** — Vue d'ensemble complète\n📊 **CA ce mois** — Chiffre d'affaires\n👥 **combien de clients actifs** — Comptage\n💸 **qui n'a pas payé** — Impayés\n📅 **prochains RDV** — Agenda\n🏅 **top clients** — Meilleurs clients\n🔄 **pipeline** — État du pipeline\n⚖️ **compare** — Mois vs précédent\n🔮 **prévision** — Forecast T+3\n💸 **dépenses** — Charges par catégorie\n📈 **conversion** — Taux de conversion\n⚠️ **alertes** — Clients à risque\n🌡️ **météo** — Santé business\n💰 **rentabilité** — ROAS & marges\n🎯 **objectif** — Progression objectifs\n📈 **évolution CA** — Tendance mensuelle\n\n💡 Tu peux aussi poser des questions libres !`;
+  }
+  // météo business
+  if(ql.match(/meteo|sante.*business|weather|comment.*va/)){
+   const score=ca>0?(margePct>30?5:margePct>15?4:margePct>5?3:margePct>0?2:1):1;
+   const emojis=["","😫","😟","😐","🙂","🔥"];
+   const labels=["","Critique","Fragile","Stable","En forme","On fire"];
+   return `🌡️ **Météo Business — ${soc.nom}**\n\n${emojis[score]} **${labels[score]}**\n\n• CA : ${fmt(ca)}€ ${trend>0?"📈":"📉"} (${trend>0?"+":""}${trend}%)\n• Marge : ${margePct}%\n• Trésorerie : ${fmt(balance)}€ ${balance>5000?"✅":"⚠️"}\n• Clients : ${activeCl.length} actifs\n• MRR : ${fmt(mrr)}€\n\n${score>=4?"🎉 Tout va bien, continue sur cette lancée !":score>=3?"👍 Stable, quelques optimisations possibles.":"⚠️ Attention, des actions correctives sont nécessaires."}`;
+  }
+  // objectif
+  if(ql.match(/objectif|goal|progression|target/)){
+   if(!monthGoal)return `🎯 **Objectif non défini**\n\nDemande à l'admin de configurer ton objectif mensuel.`;
+   const pctGoal=Math.round(ca/monthGoal*100);
+   const remaining=Math.max(0,monthGoal-ca);
+   const daysLeft=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate()-new Date().getDate();
+   const dailyNeeded=daysLeft>0?Math.round(remaining/daysLeft):remaining;
+   return `🎯 **Objectif — ${ml(cm)}**\n\n📊 Progression : **${fmt(ca)}€ / ${fmt(monthGoal)}€** (${pctGoal}%)\n${"█".repeat(Math.min(20,Math.round(pctGoal/5)))}${"░".repeat(Math.max(0,20-Math.round(pctGoal/5)))} ${pctGoal}%\n\n${remaining>0?`• Reste : ${fmt(remaining)}€\n• ${daysLeft} jours restants\n• Besoin : ~${fmt(dailyNeeded)}€/jour`:"✅ Objectif atteint ! 🎉"}\n\n${pctGoal>=100?"🔥 Bravo !":pctGoal>=75?"👍 Presque ! Dernière ligne droite.":pctGoal>=50?"📈 Mi-chemin, accélère.":"⚠️ En retard, focus sur les quick wins."}`;
+  }
+  // rentabilité / ROAS
+  if(ql.match(/rentabilite|roas|marge.*analyse|margin/)){
+   const pub=pf(r?.pub);const leads2=pf(r?.leads);const cpl=leads2>0?Math.round(pub/leads2):0;
+   const roas=pub>0?Math.round(ca/pub*100)/100:0;
+   return `💰 **Rentabilité — ${soc.nom}**\n\n📊 CA : ${fmt(ca)}€\n📉 Charges : ${fmt(ch)}€\n📈 Marge : ${fmt(marge)}€ (**${margePct}%**)\n\n🎯 Pub dépensée : ${fmt(pub)}€\n📞 Leads : ${leads2}\n💵 CPL : ${cpl>0?fmt(cpl)+"€":"—"}\n📈 ROAS : ${roas>0?roas+"x":"—"}\n\n${margePct>30?"🟢 Excellente rentabilité":margePct>15?"🟡 Rentabilité correcte":margePct>0?"🟠 Marge faible":"🔴 Non rentable — action urgente"}`;
+  }
+  // évolution du CA
+  if(ql.match(/evolution.*ca|tendance.*ca|historique.*ca|ca.*evolution/)){
+   const last6=allM.slice(-6);
+   const data=last6.map(m=>{const rv=gr(reps,soc.id,m);return{m:ml(m),ca:pf(rv?.ca)};});
+   return `📈 **Évolution CA — ${soc.nom}**\n\n${data.map(d=>{const bar="█".repeat(Math.min(15,Math.round(d.ca/(Math.max(...data.map(x=>x.ca))||1)*15)));return`• ${d.m} : ${fmt(d.ca)}€ ${bar}`;}).join("\n")}\n\n${trend>0?"📈 Tendance haussière":"📉 Tendance baissière"} (${trend>0?"+":""}${trend}% vs mois précédent)`;
+  }
+  // combien de [X] — generic count
   if(ql.match(/combien.*client.*actif|clients actifs|nombre.*client/)){
    return `👥 **Clients actifs — ${soc.nom}**\n\n✅ ${activeCl.length} clients actifs\n📊 MRR : ${fmt(mrr)}€/mois\n❌ ${churnedCl.length} clients perdus\n📈 Rétention : ${myCl.length>0?Math.round((1-churnedCl.length/myCl.length)*100):100}%`;
+  }
+  if(ql.match(/combien.*lead|nombre.*lead|leads.*total/)){
+   return `📞 **Leads — ${soc.nom}**\n\n🎯 Total leads : ${pf(r?.leads)||ghlCl.length}\n📊 Leads contactés : ${pf(r?.leadsContact)||0}\n✅ Leads clos : ${pf(r?.leadsClos)||0}\n📈 Taux conversion : ${pf(r?.leads)>0?Math.round(pf(r?.leadsClos)/pf(r?.leads)*100):0}%`;
+  }
+  if(ql.match(/combien de/)){
+   const num=parseNum(ql);
+   if(ql.includes("deal")||ql.includes("opportun"))return `🔄 ${opps.length} opportunités au total (${opps.filter(o=>o.status==="open").length} ouvertes)`;
+   if(ql.includes("rdv")||ql.includes("rendez"))return `📅 ${calEvts.filter(e=>new Date(e.startTime||0)>new Date()).length} RDV à venir`;
+   if(ql.includes("facture")||ql.includes("transaction"))return `🧾 ${monthTxns.length} transactions ce mois`;
+  }
+  // liste/montre les [X]
+  if(ql.match(/^(liste|montre|affiche|donne|voir)\s/)){
+   if(ql.match(/client/)){
+    if(activeCl.length===0)return `👥 Aucun client enregistré.`;
+    return `👥 **Liste clients — ${soc.nom}**\n\n${myCl.slice(0,10).map(c=>`• **${c.name}** — ${CLIENT_STATUS[c.status]?.icon||""} ${CLIENT_STATUS[c.status]?.l||c.status} · ${fmt(clientMonthlyRevenue(c))}€/mois`).join("\n")}${myCl.length>10?`\n\n… et ${myCl.length-10} autres`:""}`;
+   }
+   if(ql.match(/lead|contact/)){
+    return `📞 **Contacts GHL — ${soc.nom}**\n\n${ghlCl.slice(0,10).map(c=>`• ${c.name||c.email||"Sans nom"} ${c.phone?"📱":"📧"}`).join("\n")}${ghlCl.length>10?`\n\n… et ${ghlCl.length-10} autres`:""}`;
+   }
+   if(ql.match(/depense|charge|transaction/)){
+    const recent=monthTxns.filter(t=>(t.legs?.[0]?.amount||0)<0).slice(0,10);
+    return `💸 **Dernières dépenses**\n\n${recent.map(t=>`• ${t.reference||t.description||"—"} : **${fmt(Math.abs(t.legs?.[0]?.amount||0))}€**`).join("\n")||"Aucune dépense trouvée."}`;
+   }
+  }
+  // quel client [condition]
+  if(ql.match(/quel.*client.*plus.*pay|client.*plus.*cher/)){
+   const sorted3=activeCl.map(c=>({name:c.name,rev:clientMonthlyRevenue(c)})).sort((a,b)=>b.rev-a.rev);
+   if(sorted3.length===0)return "👥 Aucun client trouvé.";
+   return `💰 **Client qui paie le plus**\n\n🥇 **${sorted3[0].name}** — ${fmt(sorted3[0].rev)}€/mois${sorted3.length>1?`\n🥈 ${sorted3[1].name} — ${fmt(sorted3[1].rev)}€/mois`:""}${sorted3.length>2?`\n🥉 ${sorted3[2].name} — ${fmt(sorted3[2].rev)}€/mois`:""}`;
+  }
+  if(ql.match(/client.*plus de (\d+)|client.*>\s*(\d+)/)){
+   const threshold=parseNum(ql)||500;
+   const filtered=activeCl.filter(c=>clientMonthlyRevenue(c)>threshold);
+   return `👥 **Clients > ${fmt(threshold)}€/mois**\n\n${filtered.length>0?filtered.map(c=>`• **${c.name}** — ${fmt(clientMonthlyRevenue(c))}€/mois`).join("\n"):"Aucun client au-dessus de ce seuil."}\n\n📊 ${filtered.length} client${filtered.length>1?"s":""} trouvé${filtered.length>1?"s":""}`;
   }
   if(ql.match(/ca.*mois|chiffre.*affaire|mon ca|revenue/)){
    return `📊 **CA — ${ml(cm)}**\n\nCA ce mois : ${fmt(ca)}€${monthGoal>0?` / ${fmt(monthGoal)}€ (${Math.round(ca/monthGoal*100)}%)`:""}\n${prevCa>0?`Mois précédent : ${fmt(prevCa)}€\nTendance : ${trend>0?"📈 +":"📉 "}${trend}%\n`:""}\nMarge : ${fmt(marge)}€ (${margePct}%)\nTrésorerie : ${fmt(balance)}€\n\n${trend>10?"🔥 Excellent momentum !":trend<-10?"⚠️ Baisse détectée, identifie les causes.":"📊 Stabilité."}`;
@@ -3558,7 +3623,7 @@ function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
    const openO=opps.filter(o=>o.status==="open");const pVal=openO.reduce((a,o)=>a+(o.value||0),0);const wonO=opps.filter(o=>o.status==="won");
    return `🔄 **Pipeline — ${soc.nom}**\n\n🎯 ${openO.length} deals actifs — ${fmt(pVal)}€\n✅ ${wonO.length} gagnés — ${fmt(wonO.reduce((a,o)=>a+(o.value||0),0))}€\n❌ ${opps.filter(o=>o.status==="lost").length} perdus\n\n💰 Valeur moyenne : ${fmt(stats?.avgDealSize||0)}€`;
   }
-  if(ql.match(/resume|brief|résumé|synthese|vue.*ensemble/)){
+  if(ql.match(/resume|brief|recap|résumé|synthese|vue.*ensemble/)){
    const openO=opps.filter(o=>o.status==="open");const pVal=openO.reduce((a,o)=>a+(o.value||0),0);
    return `📋 **Résumé — ${soc.nom} — ${ml(cm)}**\n\n💰 CA : ${fmt(ca)}€${monthGoal>0?` / ${fmt(monthGoal)}€ (${Math.round(ca/monthGoal*100)}%)`:""}\n📉 Charges : ${fmt(ch)}€\n📊 Marge : ${fmt(marge)}€ (${margePct}%)\n🏦 Trésorerie : ${fmt(balance)}€\n\n👥 ${activeCl.length} clients actifs · MRR ${fmt(mrr)}€\n🔄 Pipeline : ${openO.length} deals (${fmt(pVal)}€)\n📅 ${calEvts.filter(e=>new Date(e.startTime||0)>new Date()).length} RDV à venir\n🟢 ${ghlCl.length} contacts GHL\n\n${trend>0?"📈 Tendance positive !":"📉 Surveille la tendance."}`;
   }
@@ -3589,15 +3654,22 @@ function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
    const s3=Object.entries(catTotals2).sort((a,b)=>b[1]-a[1]);
    return `💸 **Dépenses par catégorie — ${ml(cm)}**\n\n${s3.map(([k,v])=>`• **${k}** : ${fmt(v)}€`).join("\n")}\n\nTotal : **${fmt(s3.reduce((a,[,v])=>a+v,0))}€**`;
   }
-  return `🤖 Je peux répondre sur : clients, CA, paiements, RDV, pipeline, conversion, comparaison, prévisions. Essaie une de ces questions !`;
+  // qui/quel generic
+  if(ql.match(/^qui\s|^quel\s|^quels\s|^quand\s/)){
+   if(ql.match(/qui.*pay|qui.*rapport/))return `💰 **Revenus clients ce mois**\n\n${activeCl.slice(0,8).map(c=>`• ${c.name} — ${fmt(clientMonthlyRevenue(c))}€/mois`).join("\n")||"Aucun client."}`;
+   if(ql.match(/quand.*prochain|quand.*rdv/)){const now=new Date();const next2=calEvts.filter(e=>new Date(e.startTime||0)>now).sort((a,b)=>new Date(a.startTime)-new Date(b.startTime))[0];return next2?`📅 Prochain RDV : **${new Date(next2.startTime).toLocaleDateString("fr-FR")} ${new Date(next2.startTime).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}** — ${next2.title||"RDV"}`:"📅 Aucun RDV prévu.";}
+  }
+  return `🤖 Je n'ai pas compris ta question.\n\nEssaie :\n• « combien de clients actifs »\n• « CA ce mois »\n• « qui n'a pas payé »\n• « prochains RDV »\n• « résumé »\n• « aide » pour voir toutes les commandes`;
  };
- const QUICK=[{q:"Résumé",icon:"📋"},{q:"Quel est mon CA ce mois ?",icon:"📊"},{q:"Qui n'a pas payé ?",icon:"💸"},{q:"Prochains RDV",icon:"📅"},{q:"Top clients",icon:"🏅"},{q:"Combien dans le pipeline ?",icon:"🔄"},{q:"Compare ce mois vs le précédent",icon:"⚖️"},{q:"Prévision du mois prochain",icon:"🔮"}];
+ const SUGGESTIONS=[{q:"Résumé",icon:"📋"},{q:"CA ce mois",icon:"📊"},{q:"Impayés",icon:"💸"},{q:"RDV",icon:"📅"},{q:"Objectif",icon:"🎯"},{q:"Météo",icon:"🌡️"}];
  const ask=(q)=>{
-  setMsgs(prev=>[...prev,{role:"user",content:q}]);setTyping(true);
-  const answer=computeAnswer(q);
-  setTimeout(()=>{setTyping(false);setMsgs(prev=>{const newMsgs=[...prev,{role:"assistant",content:answer}];setRevealIdx(newMsgs.length-1);setRevealLen(0);return newMsgs;});},800);
+  if(!q.trim())return;
+  const trimmed=q.trim();
+  setMsgs(prev=>{const n=[...prev,{role:"user",content:trimmed}];return n.length>20?n.slice(-20):n;});
+  setTyping(true);setInputVal("");
+  const answer=computeAnswer(trimmed);
+  setTimeout(()=>{setTyping(false);setMsgs(prev=>{const newMsgs=[...prev,{role:"assistant",content:answer}];const capped=newMsgs.length>20?newMsgs.slice(-20):newMsgs;setRevealIdx(capped.length-1);setRevealLen(0);return capped;});},800);
  };
- // Typing animation
  useEffect(()=>{
   if(revealIdx<0||revealIdx>=msgs.length)return;
   const full=msgs[revealIdx]?.content||"";
@@ -3605,34 +3677,42 @@ function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
   const t=setTimeout(()=>setRevealLen(prev=>Math.min(prev+3,full.length)),15);
   return()=>clearTimeout(t);
  },[revealIdx,revealLen,msgs]);
- useEffect(()=>{ref.current?.scrollTo({top:ref.current.scrollHeight,behavior:"smooth"});},[msgs,revealLen]);
+ useEffect(()=>{ref.current?.scrollTo({top:ref.current.scrollHeight,behavior:"smooth"});},[msgs,revealLen,typing]);
+ useEffect(()=>{if(open)setTimeout(()=>inputRef.current?.focus(),300);},[open]);
  if(!open)return <div onClick={()=>setOpen(true)} style={{position:"fixed",bottom:24,right:24,width:56,height:56,borderRadius:28,background:`linear-gradient(135deg,${C.v},${C.acc})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 20px ${C.acc}44`,zIndex:800,fontSize:24,animation:"fl 3s ease-in-out infinite",transition:"transform .2s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>🤖</div>;
- return <div style={{position:"fixed",bottom:24,right:24,width:400,maxWidth:"90vw",height:520,maxHeight:"75vh",background:"rgba(14,14,22,.85)",backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",border:"1px solid rgba(255,255,255,.08)",borderRadius:20,boxShadow:"0 12px 48px rgba(0,0,0,.5)",zIndex:800,display:"flex",flexDirection:"column",animation:"slideInUp .3s ease",overflow:"hidden"}}>
-  <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",justifyContent:"space-between",background:`linear-gradient(135deg,${C.card2},${C.card})`}}>
-   <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:18}}>🤖</span><div><div style={{fontWeight:800,fontSize:12,color:C.v}}>Assistant IA</div><div style={{fontSize:8,color:C.td}}>{soc.nom}</div></div></div>
-   <Btn v="ghost" small onClick={()=>setOpen(false)}>✕</Btn>
+ return <div style={{position:"fixed",bottom:24,right:24,width:420,maxWidth:"92vw",height:550,maxHeight:"80vh",background:"rgba(14,14,22,.9)",backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",border:"1px solid rgba(255,255,255,.08)",borderRadius:20,boxShadow:"0 12px 48px rgba(0,0,0,.5)",zIndex:800,display:"flex",flexDirection:"column",animation:"slideInUp .3s ease",overflow:"hidden"}}>
+  <div style={{padding:"14px 18px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",justifyContent:"space-between",background:`linear-gradient(135deg,${C.card2},${C.card})`}}>
+   <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:20}}>🤖</span><div><div style={{fontWeight:800,fontSize:13,color:C.t}}>Assistant IA</div><div style={{fontSize:9,color:C.td}}>{soc.nom} · Tape "aide" pour les commandes</div></div></div>
+   <div style={{display:"flex",gap:4}}>
+    <button onClick={()=>setMsgs([])} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:C.td,padding:"2px 6px",borderRadius:6}} title="Effacer l'historique">🗑</button>
+    <button onClick={()=>setOpen(false)} style={{background:"none",border:`1px solid ${C.brd}`,cursor:"pointer",fontSize:12,color:C.td,padding:"2px 8px",borderRadius:6,fontFamily:FONT}}>✕</button>
+   </div>
   </div>
-  <div ref={ref} style={{flex:1,overflowY:"auto",padding:12}}>
-   {msgs.length===0&&<div style={{textAlign:"center",padding:"20px 10px"}}><div style={{fontSize:28,marginBottom:8}}>🤖</div><div style={{fontSize:12,color:C.td,marginBottom:14}}>Pose-moi une question sur tes données</div>
-    <div style={{display:"flex",flexDirection:"column",gap:6}}>{QUICK.map((q,i)=><button key={i} onClick={()=>ask(q.q)} style={{padding:"10px 14px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.card2,color:C.t,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FONT,textAlign:"left",display:"flex",alignItems:"center",gap:8,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.acc;e.currentTarget.style.background=C.accD;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.brd;e.currentTarget.style.background=C.card2;}}><span style={{fontSize:16}}>{q.icon}</span>{q.q}</button>)}</div>
+  <div ref={ref} style={{flex:1,overflowY:"auto",padding:14}}>
+   {msgs.length===0&&<div style={{textAlign:"center",padding:"24px 10px"}}><div style={{fontSize:32,marginBottom:10}}>🤖</div><div style={{fontSize:13,fontWeight:700,color:C.t,marginBottom:4}}>Bienvenue !</div><div style={{fontSize:11,color:C.td,marginBottom:16}}>Pose-moi n'importe quelle question sur tes données.</div>
+    <div style={{display:"flex",flexWrap:"wrap",gap:6,justifyContent:"center"}}>{SUGGESTIONS.map((q,i)=><button key={i} onClick={()=>ask(q.q)} style={{padding:"6px 12px",borderRadius:20,border:`1px solid ${C.brd}`,background:C.card2,color:C.t,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.acc;e.currentTarget.style.background=C.accD;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.brd;e.currentTarget.style.background=C.card2;}}><span style={{fontSize:14}}>{q.icon}</span>{q.q}</button>)}</div>
    </div>}
    {msgs.map((m,i)=>{
     const isRevealing=i===revealIdx;
     const displayContent=isRevealing?m.content.slice(0,revealLen):m.content;
-    return <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:8}}>
-     <div style={{maxWidth:"85%",padding:"8px 12px",borderRadius:10,background:m.role==="user"?C.acc+"22":C.card2,border:`1px solid ${m.role==="user"?C.acc+"44":C.brd}`,fontSize:11,lineHeight:1.6,color:C.t,whiteSpace:"pre-wrap"}}>
-      {m.role==="assistant"&&<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3}}><span style={{fontSize:12}}>🤖</span><span style={{fontWeight:700,fontSize:9,color:C.v}}>ASSISTANT</span></div>}
-      {displayContent}{isRevealing&&<span style={{animation:"pulse 1s infinite"}}>▎</span>}
+    return <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:10,animation:"fu .25s ease both"}}>
+     <div style={{maxWidth:"88%",padding:"10px 14px",borderRadius:m.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px",background:m.role==="user"?`linear-gradient(135deg,${C.acc}22,${C.acc}11)`:C.card2,border:`1px solid ${m.role==="user"?C.acc+"33":C.brd}`,fontSize:11,lineHeight:1.7,color:C.t,whiteSpace:"pre-wrap"}}>
+      {m.role==="assistant"&&<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}><span style={{fontSize:12}}>🤖</span><span style={{fontWeight:700,fontSize:9,color:C.v}}>ASSISTANT</span></div>}
+      {displayContent}{isRevealing&&<span style={{animation:"pulse 1s infinite",color:C.acc}}>▎</span>}
      </div>
     </div>;
    })}
-   {typing&&<div style={{padding:"10px 14px",background:C.card2,borderRadius:10,border:`1px solid ${C.brd}`,display:"inline-flex",alignItems:"center",gap:6}}>
+   {typing&&<div style={{padding:"12px 14px",background:C.card2,borderRadius:"14px 14px 14px 4px",border:`1px solid ${C.brd}`,display:"inline-flex",alignItems:"center",gap:6,animation:"fu .2s ease both"}}>
     <span style={{fontSize:12}}>🤖</span>
     <span className="typing-dots"><span></span><span></span><span></span></span>
    </div>}
   </div>
-  <div style={{padding:"6px 10px",borderTop:`1px solid ${C.brd}`,display:"flex",gap:3,flexWrap:"wrap"}}>
-   {QUICK.map((q,i)=><button key={i} onClick={()=>ask(q.q)} style={{padding:"3px 8px",borderRadius:12,fontSize:8,fontWeight:600,border:`1px solid ${C.brd}`,background:C.card2,color:C.td,cursor:"pointer",fontFamily:FONT,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.acc;e.currentTarget.style.color=C.acc;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.brd;e.currentTarget.style.color=C.td;}}>{q.icon} {q.q}</button>)}
+  <div style={{padding:"10px 14px",borderTop:`1px solid ${C.brd}`,background:"rgba(6,6,11,.5)"}}>
+   {msgs.length>0&&<div style={{display:"flex",gap:4,marginBottom:8,flexWrap:"wrap"}}>{SUGGESTIONS.map((q,i)=><button key={i} onClick={()=>ask(q.q)} style={{padding:"2px 8px",borderRadius:12,fontSize:8,fontWeight:600,border:`1px solid ${C.brd}`,background:"transparent",color:C.td,cursor:"pointer",fontFamily:FONT,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.acc;e.currentTarget.style.color=C.acc;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.brd;e.currentTarget.style.color=C.td;}}>{q.icon} {q.q}</button>)}</div>}
+   <div style={{display:"flex",gap:8,alignItems:"center"}}>
+    <input ref={inputRef} value={inputVal} onChange={e=>setInputVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();ask(inputVal);}}} placeholder="Posez votre question..." style={{flex:1,padding:"10px 14px",borderRadius:12,border:`1px solid ${C.brd}`,background:"rgba(6,6,11,.6)",backdropFilter:"blur(10px)",color:C.t,fontSize:12,fontFamily:FONT,outline:"none",transition:"border-color .2s"}} onFocus={e=>e.target.style.borderColor=C.acc+"66"} onBlur={e=>e.target.style.borderColor=C.brd}/>
+    <button onClick={()=>ask(inputVal)} disabled={!inputVal.trim()} style={{width:38,height:38,borderRadius:12,border:"none",background:inputVal.trim()?`linear-gradient(135deg,${C.acc},#FF9D00)`:`${C.card2}`,color:inputVal.trim()?"#0a0a0f":C.td,fontSize:16,cursor:inputVal.trim()?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .2s",flexShrink:0}}>↑</button>
+   </div>
   </div>
  </div>;
 }
@@ -5833,25 +5913,14 @@ function TutorialOverlay({steps,onFinish,onSkip,setActiveTab}){
 /* SIDEBAR NAVIGATION */
 const SB_ADMIN=[
  {id:"dash",icon:"◉",label:"Dashboard",tab:0,accent:C.acc},
- {id:"portfolio",icon:"▣",label:"Portfolio",accent:C.b,children:[
-  {icon:"📋",label:"Sociétés",tab:1},
-  {icon:"📊",label:"Analytique",tab:2},
-  {icon:"⚡",label:"Challenges",tab:12},
- ]},
- {id:"finance",icon:"💰",label:"Finance",accent:C.g,children:[
-  {icon:"🏛",label:"Holding",tab:4},
-  {icon:"🏦",label:"Banque",tab:8},
-  {icon:"📐",label:"Simulateur",tab:3},
-  {icon:"🔄",label:"Charges & Équipe",tab:13},
- ]},
- {id:"commercial",icon:"🎯",label:"Commercial",accent:C.o,children:[
-  {icon:"◎",label:"Pipeline",tab:6},
-  {icon:"📇",label:"CRM",tab:7},
-  {icon:"🤝",label:"Synergies",tab:10},
- ]},
- {id:"copilot",icon:"✦",label:"AI Copilot",tab:5,accent:"#a78bfa"},
- {id:"kb",icon:"📚",label:"Ressources",tab:11,accent:C.v},
+ {id:"societes",icon:"🏢",label:"Sociétés",tab:1,accent:C.b},
+ {id:"finances",icon:"💰",label:"Finances",tab:2,accent:C.g},
+ {id:"clients",icon:"👥",label:"Clients",tab:3,accent:C.o},
+ {id:"sales",icon:"📞",label:"Sales",tab:15,accent:"#34d399"},
+ {id:"pub",icon:"📣",label:"Publicité",tab:16,accent:"#f472b6"},
+ {id:"rapports",icon:"📋",label:"Rapports",tab:17,accent:C.v},
  {id:"access",icon:"🔐",label:"Accès",tab:14,accent:"#f59e0b"},
+ {id:"params",icon:"⚙️",label:"Paramètres",tab:18,accent:C.td},
 ];
 
 const SB_PORTEUR=[
@@ -6288,9 +6357,31 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </Card>}
   </>}
   {tab===1&&<>
-   <div style={{display:"flex",justifyContent:"space-between",marginTop:6,marginBottom:12}}><span style={{color:C.td,fontSize:12}}>{socs.length} sociétés</span><Btn small onClick={()=>setESoc({id:`s${Date.now()}`,nom:"",porteur:"",act:"",pT:"benefices",pP:20,stat:"lancement",color:"#22d3ee",pin:String(2000+socs.length),rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:new Date().toISOString().slice(0,10),slackId:""})}>+ Ajouter</Btn></div>
-   {socs.map((s,i)=>{const hs2=healthScore(s,reps);const ms=calcMilestones(s,reps,actions,pulses,allM);return <Card key={s.id} accent={s.color} style={{marginBottom:4,padding:"10px 14px"}} delay={Math.min(i+1,8)} onClick={()=>setESoc({...s})}><div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><GradeBadge grade={hs2.grade} color={hs2.color}/><div style={{flex:"1 1 130px"}}><div style={{fontWeight:700,fontSize:12}}>{s.nom} <span style={{color:C.td,fontWeight:400,fontSize:10}}>· {s.porteur}</span></div><div style={{color:C.td,fontSize:10}}>{s.act}</div></div><div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}><MilestoneCount milestones={ms}/><IncubBadge incub={s.incub}/><Badge s={s.stat}/></div></div></Card>;})}
-   <Sect title="Actions"><div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}><select value={newActSoc} onChange={e=>setNewActSoc(e.target.value)} style={{background:C.bg,border:`1px solid ${C.brd}`,borderRadius:6,color:C.t,padding:"6px 8px",fontSize:11,fontFamily:FONT,outline:"none"}}><option value="">Société…</option>{socs.map(s=><option key={s.id} value={s.id}>{s.nom}</option>)}</select><input value={newActText} onChange={e=>setNewActText(e.target.value)} placeholder="Nouvelle action…" style={{flex:1,minWidth:120,background:C.bg,border:`1px solid ${C.brd}`,borderRadius:6,color:C.t,padding:"6px 8px",fontSize:11,fontFamily:FONT,outline:"none"}}/><Btn small onClick={()=>{if(newActSoc&&newActText.trim()){addAction(newActSoc,newActText.trim());setNewActText("");}}} disabled={!newActSoc||!newActText.trim()}>+ Créer</Btn></div>{actions.filter(a=>!a.done).map(a=><ActionItem key={a.id} a={a} socs={socs} onToggle={toggleAction} onDelete={deleteAction}/>)}</Sect>
+   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6,marginBottom:14}}>
+    <div><span style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE}}>🏢 Sociétés</span><span style={{color:C.td,fontSize:11,marginLeft:8}}>{socs.length} sociétés</span></div>
+    <div style={{display:"flex",gap:6}}>
+     <select value="" onChange={e=>{}} style={{background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,color:C.td,padding:"6px 10px",fontSize:10,fontFamily:FONT,outline:"none"}}><option value="">Toutes</option><option value="active">Actives</option>{[...new Set(socs.map(s=>s.porteur))].map(p=><option key={p} value={p}>{p}</option>)}</select>
+     <Btn small onClick={()=>setESoc({id:`s${Date.now()}`,nom:"",porteur:"",act:"",pT:"benefices",pP:20,stat:"lancement",color:"#22d3ee",pin:String(2000+socs.length),rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:new Date().toISOString().slice(0,10),slackId:""})}>+ Ajouter une société</Btn>
+    </div>
+   </div>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10}}>
+   {socs.map((s,i)=>{const hs2=healthScore(s,reps);const r=gr(reps,s.id,cM2);const ca2=pf(r?.ca);const rp2=gr(reps,s.id,prevM(cM2));const prevCa2=pf(rp2?.ca);const trend2=prevCa2>0?Math.round((ca2-prevCa2)/prevCa2*100):0;const sb=socBank[s.id];const myCl2=(clients||[]).filter(c=>c.socId===s.id&&c.status==="active");
+   return <div key={s.id} className={`glass-card fu d${Math.min(i+1,8)}`} style={{padding:16,cursor:"pointer"}} onClick={()=>setESoc({...s})}>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+     <div style={{width:36,height:36,borderRadius:10,background:s.color+"22",border:`2px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:15,color:s.color}}>{s.nom[0]}</div>
+     <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.nom}</div><div style={{color:C.td,fontSize:10}}>{s.porteur}</div></div>
+     <span style={{fontSize:16}}>{hs2.grade==="A"||hs2.grade==="B"?"🟢":hs2.grade==="C"?"🟡":"🔴"}</span>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
+     <div style={{background:C.bg,borderRadius:8,padding:"6px 8px"}}><div style={{color:C.td,fontSize:8,fontWeight:600}}>CA</div><div style={{fontWeight:800,fontSize:14,color:C.acc}}>{ca2>0?`${fmt(ca2)}€`:"—"}</div></div>
+     <div style={{background:C.bg,borderRadius:8,padding:"6px 8px"}}><div style={{color:C.td,fontSize:8,fontWeight:600}}>CLIENTS</div><div style={{fontWeight:800,fontSize:14,color:C.b}}>{myCl2.length}</div></div>
+    </div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+     {trend2!==0&&<span style={{fontSize:10,fontWeight:700,color:trend2>0?C.g:C.r}}>{trend2>0?"↑":"↓"}{Math.abs(trend2)}%</span>}
+     <Badge s={s.stat}/>
+    </div>
+   </div>;})}
+   </div>
    <Sect title="Journal">{Object.entries(journal).filter(([,v])=>v.length>0).map(([sid,entries])=>{const s=socs.find(x=>x.id===sid);if(!s)return null;return <div key={sid} style={{marginBottom:8}}><div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:5,height:5,borderRadius:3,background:s.color}}/><span style={{fontWeight:700,fontSize:12}}>{s.nom}</span></div>{entries.sort((a2,b2)=>new Date(b2.date)-new Date(a2.date)).map(j=><div key={j.id} style={{padding:"4px 0 4px 14px",borderLeft:`2px solid ${s.color}33`,marginBottom:2}}><div style={{fontSize:11,color:C.t}}>{j.text}</div><div style={{fontSize:9,color:C.td}}>{new Date(j.date).toLocaleDateString("fr-FR")}</div></div>)}</div>;})}</Sect>
    <Modal open={!!eSoc} onClose={()=>setESoc(null)} title={eSoc?.nom||"Nouvelle société"} wide>{eSoc&&<>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
@@ -6319,8 +6410,83 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={()=>{const idx=socs.findIndex(x=>x.id===eSoc.id);save(idx>=0?socs.map(x=>x.id===eSoc.id?eSoc:x):[...socs,eSoc]);setESoc(null);}}>Sauver</Btn><Btn v="secondary" onClick={()=>setESoc(null)}>Annuler</Btn>{socs.find(x=>x.id===eSoc.id)&&<Btn v="danger" onClick={()=>{save(socs.filter(x=>x.id!==eSoc.id));setESoc(null);}} style={{marginLeft:"auto"}}>Supprimer</Btn>}</div>
    </>}</Modal>
   </>}
-  {tab===2&&<AnalytiqueTab socs={socs} reps={reps} allM={allM}/>}
-  {tab===3&&<TabSimulateur socs={socs} reps={reps} hold={hold}/>}
+  {tab===2&&<>
+   {/* FINANCES — Consolidated */}
+   <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>💰 Finances Consolidées</div>
+   {(()=>{
+    const totalCA=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.ca),0);
+    const totalCh=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.charges),0);
+    const totalMarge=totalCA-totalCh;const margePctG=totalCA>0?Math.round(totalMarge/totalCA*100):0;
+    const totalTreso=actS.reduce((a,s)=>a+(socBank[s.id]?.balance||pf(gr(reps,s.id,cM2)?.tresoSoc)),0);
+    return <><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:8,marginBottom:14}}>
+     <KPI label="CA Total" value={`${fmt(totalCA)}€`} accent={C.acc} icon="💰" delay={1}/>
+     <KPI label="Charges Totales" value={`${fmt(totalCh)}€`} accent={C.r} icon="📤" delay={2}/>
+     <KPI label="Marge Nette" value={`${fmt(totalMarge)}€ (${margePctG}%)`} accent={totalMarge>0?C.g:C.r} icon="📊" delay={3}/>
+     <KPI label="Trésorerie" value={`${fmt(totalTreso)}€`} accent={totalTreso>5000?C.g:C.r} icon="🏦" delay={4}/>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+     <Card style={{padding:14}}><div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📊 CA PAR SOCIÉTÉ (6 MOIS)</div>
+      <div style={{height:220}}><ResponsiveContainer><AreaChart data={allM.slice(-6).map(m=>{const row={mois:ml(m)};actS.filter(s=>s.id!=="eco").forEach(s=>{row[s.nom]=pf(gr(reps,s.id,m)?.ca);});return row;})}><CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis dataKey="mois" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/><YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/><Tooltip content={<CTip/>}/><Legend wrapperStyle={{fontSize:9}}/>{actS.filter(s=>s.id!=="eco").map(s=><Area key={s.id} type="monotone" dataKey={s.nom} stackId="1" stroke={s.color} fill={s.color+"44"} strokeWidth={1.5}/>)}</AreaChart></ResponsiveContainer></div>
+     </Card>
+     <Card style={{padding:14}}><div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>🥧 RÉPARTITION CA</div>
+      <div style={{height:220}}><ResponsiveContainer><PieChart><Pie data={actS.filter(s=>pf(gr(reps,s.id,cM2)?.ca)>0).map(s=>({name:s.nom,value:pf(gr(reps,s.id,cM2).ca),color:s.color}))} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={3} strokeWidth={0}>{actS.filter(s=>pf(gr(reps,s.id,cM2)?.ca)>0).map((s,i)=><Cell key={i} fill={s.color}/>)}</Pie><Tooltip content={<CTip/>}/></PieChart></ResponsiveContainer></div>
+     </Card>
+    </div>
+    <Card style={{padding:14}}><div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📋 P&L PAR SOCIÉTÉ</div>
+     <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+      <thead><tr style={{borderBottom:`1px solid ${C.brd}`}}>{["Société","CA","Charges","Marge","%","Remontée due","Versé","Reste"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:C.td,fontWeight:600,fontSize:9}}>{h}</th>)}</tr></thead>
+      <tbody>{actS.filter(s=>s.id!=="eco").map(s=>{const r=gr(reps,s.id,cM2);const ca2=pf(r?.ca);const ch2=pf(r?.charges);const m2=ca2-ch2;const mp=ca2>0?Math.round(m2/ca2*100):0;const presta=pf(r?.prestataireAmount||0);const base=s.pT==="ca"?ca2:Math.max(0,ca2-presta);const rem=base*s.pP/100;const div=pf(r?.dividendesHolding);const rest=rem-div;
+       return <tr key={s.id} style={{borderBottom:`1px solid ${C.brd}08`}}>
+        <td style={{padding:"6px 8px",fontWeight:600}}><span style={{width:6,height:6,borderRadius:3,background:s.color,display:"inline-block",marginRight:6}}/>{s.nom}</td>
+        <td style={{padding:"6px 8px",fontWeight:700}}>{fmt(ca2)}€</td>
+        <td style={{padding:"6px 8px",color:C.r}}>{fmt(ch2)}€</td>
+        <td style={{padding:"6px 8px",color:m2>=0?C.g:C.r,fontWeight:700}}>{fmt(m2)}€</td>
+        <td style={{padding:"6px 8px",color:C.td}}>{mp}%</td>
+        <td style={{padding:"6px 8px",color:C.acc,fontWeight:700}}>{fmt(rem)}€</td>
+        <td style={{padding:"6px 8px",color:C.g}}>{fmt(div)}€</td>
+        <td style={{padding:"6px 8px",color:rest>0?C.o:C.g,fontWeight:700}}>{rest>0?fmt(rest)+"€":"✅"}</td>
+       </tr>;})}
+      </tbody>
+     </table></div>
+    </Card>
+    <div style={{marginTop:14}}><Card style={{padding:14}}><div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>💰 TRÉSORERIE — ÉVOLUTION</div>
+     <div style={{height:200}}><ResponsiveContainer><LineChart data={allM.slice(-6).map(m=>{const tot=actS.reduce((a,s)=>a+(pf(gr(reps,s.id,m)?.tresoSoc)),0);return{mois:ml(m),treso:tot};})}><CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis dataKey="mois" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/><YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/><Tooltip content={<CTip/>}/><Line type="monotone" dataKey="treso" stroke={C.g} strokeWidth={2} dot={{fill:C.g,r:3}} name="Trésorerie"/></LineChart></ResponsiveContainer></div>
+    </Card></div>
+    </>;
+   })()}
+  </>}
+  {tab===3&&<>
+   {/* CLIENTS — All societies */}
+   <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>👥 Clients — Toutes sociétés</div>
+   {(()=>{
+    const allCl=(clients||[]);const activeAll=allCl.filter(c=>c.status==="active");const churnedAll=allCl.filter(c=>c.status==="churned");
+    const totalMRR=activeAll.reduce((a,c)=>a+clientMonthlyRevenue(c),0);
+    const[clSearch,setClSearch]=useState("");const[clSort,setClSort]=useState("ca");
+    const filtered=allCl.filter(c=>!clSearch||c.name?.toLowerCase().includes(clSearch.toLowerCase())||socs.find(s=>s.id===c.socId)?.nom?.toLowerCase().includes(clSearch.toLowerCase()));
+    const sorted=filtered.sort((a,b)=>{if(clSort==="ca")return clientMonthlyRevenue(b)-clientMonthlyRevenue(a);if(clSort==="society")return(a.socId||"").localeCompare(b.socId||"");return(a.name||"").localeCompare(b.name||"");});
+    return <><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:14}}>
+     <KPI label="Total clients" value={allCl.length} accent={C.b} icon="👥" delay={1}/>
+     <KPI label="Actifs" value={activeAll.length} accent={C.g} icon="✅" delay={2}/>
+     <KPI label="Perdus" value={churnedAll.length} accent={C.r} icon="❌" delay={3}/>
+     <KPI label="MRR Global" value={`${fmt(totalMRR)}€`} accent={C.acc} icon="💰" delay={4}/>
+     <KPI label="LTV Moyen" value={activeAll.length>0?`${fmt(Math.round(totalMRR/activeAll.length*12))}€`:"—"} accent={C.v} icon="📊" delay={5}/>
+    </div>
+    <div style={{display:"flex",gap:8,marginBottom:12}}>
+     <input value={clSearch} onChange={e=>setClSearch(e.target.value)} placeholder="🔍 Rechercher un client..." style={{flex:1,padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
+     <select value={clSort} onChange={e=>setClSort(e.target.value)} style={{padding:"8px 10px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none"}}><option value="ca">Trier par CA</option><option value="society">Par société</option><option value="name">Par nom</option></select>
+    </div>
+    {sorted.slice(0,30).map((c,i)=>{const s=socs.find(x=>x.id===c.socId);const rev=clientMonthlyRevenue(c);return <div key={c.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:C.card,borderRadius:10,border:`1px solid ${C.brd}`,marginBottom:3}}>
+     <span style={{width:6,height:6,borderRadius:3,background:s?.color||C.td,flexShrink:0}}/>
+     <div style={{flex:1,minWidth:0}}><span style={{fontWeight:600,fontSize:11}}>{c.name}</span>
+      <span style={{fontSize:8,color:s?.color||C.td,background:(s?.color||C.td)+"15",padding:"1px 6px",borderRadius:6,marginLeft:6,fontWeight:600}}>{s?.nom||"?"}</span>
+     </div>
+     <span style={{fontSize:9,color:C.td}}>{CLIENT_STATUS[c.status]?.l||c.status}</span>
+     <span style={{fontWeight:700,fontSize:11,color:C.acc,minWidth:50,textAlign:"right"}}>{fmt(rev)}€</span>
+    </div>;})}
+    {sorted.length>30&&<div style={{color:C.td,fontSize:10,textAlign:"center",padding:8}}>… et {sorted.length-30} autres clients</div>}
+    </>;
+   })()}
+  </>}
   {tab===4&&(()=>{
    const holdSubs=subs.filter(s=>s.socId==="holding");const holdTeam=team.filter(t=>t.socId==="holding");
    const holdSubsM=holdSubs.reduce((a,s)=>a+subMonthly(s),0);
@@ -6482,6 +6648,148 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   {tab===12&&<ChallengesPanel socs={socs} reps={reps} allM={allM} pulses={pulses} challenges={challenges} saveChallenges={saveChallenges}/>}
   {tab===13&&<SubsTeamPanel socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId="all" reps={reps} revData={revData}/>}
   {tab===14&&<UserAccessPanel socs={socs}/>}
+  {tab===15&&<>
+   {/* SALES GLOBAL */}
+   <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>📞 Sales — Vue consolidée</div>
+   {(()=>{
+    const totalLeads=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.leads),0);
+    const totalClos=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.leadsClos),0);
+    const totalPipeline=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.pipeline),0);
+    const convRate=totalLeads>0?Math.round(totalClos/totalLeads*100):0;
+    return <><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:14}}>
+     <KPI label="Leads Total" value={totalLeads} accent={C.b} icon="📞" delay={1}/>
+     <KPI label="Deals Clos" value={totalClos} accent={C.g} icon="✅" delay={2}/>
+     <KPI label="Pipeline" value={`${fmt(totalPipeline)}€`} accent={C.acc} icon="🔄" delay={3}/>
+     <KPI label="Conversion" value={`${convRate}%`} accent={convRate>20?C.g:C.o} icon="📈" delay={4}/>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+     <Card style={{padding:14}}><div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📊 LEADS PAR SOCIÉTÉ</div>
+      <div style={{height:220}}><ResponsiveContainer><BarChart data={actS.filter(s=>s.id!=="eco").map(s=>({nom:s.nom,leads:pf(gr(reps,s.id,cM2)?.leads),clos:pf(gr(reps,s.id,cM2)?.leadsClos),color:s.color}))}><CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis dataKey="nom" tick={{fill:C.td,fontSize:8}} axisLine={false} tickLine={false}/><YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/><Tooltip content={<CTip/>}/><Legend wrapperStyle={{fontSize:9}}/><Bar dataKey="leads" fill={C.b} radius={[3,3,0,0]} name="Leads"/><Bar dataKey="clos" fill={C.g} radius={[3,3,0,0]} name="Clos"/></BarChart></ResponsiveContainer></div>
+     </Card>
+     <Card style={{padding:14}}><div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📈 CONVERSION PAR SOCIÉTÉ</div>
+      {actS.filter(s=>s.id!=="eco").map((s,i)=>{const l=pf(gr(reps,s.id,cM2)?.leads);const c=pf(gr(reps,s.id,cM2)?.leadsClos);const rt=l>0?Math.round(c/l*100):0;
+       return <div key={s.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.brd}08`}}>
+        <span style={{width:5,height:5,borderRadius:3,background:s.color}}/><span style={{flex:1,fontSize:10,fontWeight:600}}>{s.nom}</span>
+        <div style={{width:80,height:5,background:C.brd,borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:`${rt}%`,background:rt>30?C.g:rt>15?C.o:C.r,borderRadius:3}}/></div>
+        <span style={{fontWeight:700,fontSize:10,color:rt>30?C.g:rt>15?C.o:C.r,minWidth:30,textAlign:"right"}}>{rt}%</span>
+       </div>;})}
+     </Card>
+    </div></>;
+   })()}
+  </>}
+  {tab===16&&<>
+   {/* PUBLICITÉ GLOBAL */}
+   <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>📣 Publicité — Vue consolidée</div>
+   {(()=>{
+    const totalPub=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.pub),0);
+    const totalCA=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.ca),0);
+    const totalLeads2=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.leads),0);
+    const cplG=totalLeads2>0?Math.round(totalPub/totalLeads2):0;
+    const roasG=totalPub>0?Math.round(totalCA/totalPub*100)/100:0;
+    return <><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:14}}>
+     <KPI label="Dépenses Pub" value={`${fmt(totalPub)}€`} accent={C.r} icon="📣" delay={1}/>
+     <KPI label="CA Généré" value={`${fmt(totalCA)}€`} accent={C.g} icon="💰" delay={2}/>
+     <KPI label="CPL Moyen" value={cplG>0?`${fmt(cplG)}€`:"—"} accent={C.o} icon="📞" delay={3}/>
+     <KPI label="ROAS Global" value={roasG>0?`${roasG}x`:"—"} accent={roasG>3?C.g:roasG>1?C.o:C.r} icon="📈" delay={4}/>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+     <Card style={{padding:14}}><div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>💸 PUB vs CA PAR SOCIÉTÉ</div>
+      <div style={{height:220}}><ResponsiveContainer><BarChart data={actS.filter(s=>s.id!=="eco"&&pf(gr(reps,s.id,cM2)?.pub)>0).map(s=>({nom:s.nom,pub:pf(gr(reps,s.id,cM2)?.pub),ca:pf(gr(reps,s.id,cM2)?.ca)}))}><CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis dataKey="nom" tick={{fill:C.td,fontSize:8}} axisLine={false} tickLine={false}/><YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/><Tooltip content={<CTip/>}/><Legend wrapperStyle={{fontSize:9}}/><Bar dataKey="pub" fill={C.r} radius={[3,3,0,0]} name="Pub"/><Bar dataKey="ca" fill={C.g} radius={[3,3,0,0]} name="CA"/></BarChart></ResponsiveContainer></div>
+     </Card>
+     <Card style={{padding:14}}><div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📊 CPL / ROAS PAR SOCIÉTÉ</div>
+      {actS.filter(s=>s.id!=="eco").map((s,i)=>{const pub2=pf(gr(reps,s.id,cM2)?.pub);const ca2=pf(gr(reps,s.id,cM2)?.ca);const l2=pf(gr(reps,s.id,cM2)?.leads);const cpl2=l2>0?Math.round(pub2/l2):0;const roas2=pub2>0?Math.round(ca2/pub2*100)/100:0;
+       return <div key={s.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.brd}08`}}>
+        <span style={{width:5,height:5,borderRadius:3,background:s.color}}/><span style={{flex:1,fontSize:10,fontWeight:600}}>{s.nom}</span>
+        <span style={{fontSize:9,color:C.td}}>CPL: <strong style={{color:cpl2>50?C.r:C.g}}>{cpl2>0?fmt(cpl2)+"€":"—"}</strong></span>
+        <span style={{fontSize:9,color:C.td}}>ROAS: <strong style={{color:roas2>3?C.g:roas2>1?C.o:C.r}}>{roas2>0?roas2+"x":"—"}</strong></span>
+       </div>;})}
+     </Card>
+    </div></>;
+   })()}
+  </>}
+  {tab===17&&<>
+   {/* RAPPORTS */}
+   <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>📋 Rapports Holding</div>
+   <Card style={{padding:14,marginBottom:12}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📊 RAPPORT MENSUEL — {ml(cM2)}</div>
+    <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+     <thead><tr style={{borderBottom:`2px solid ${C.brd}`}}>{["Société","CA","Charges","Marge","%","Leads","Clos","Conv.","Pub","ROAS"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:C.td,fontWeight:600,fontSize:9}}>{h}</th>)}</tr></thead>
+     <tbody>{actS.filter(s=>s.id!=="eco").map(s=>{const r=gr(reps,s.id,cM2);const ca2=pf(r?.ca);const ch2=pf(r?.charges);const m2=ca2-ch2;const mp=ca2>0?Math.round(m2/ca2*100):0;const l=pf(r?.leads);const c=pf(r?.leadsClos);const cv=l>0?Math.round(c/l*100):0;const pb=pf(r?.pub);const rs2=pb>0?Math.round(ca2/pb*100)/100:0;
+      return <tr key={s.id} style={{borderBottom:`1px solid ${C.brd}08`}}>
+       <td style={{padding:"6px 8px",fontWeight:600}}><span style={{width:6,height:6,borderRadius:3,background:s.color,display:"inline-block",marginRight:6}}/>{s.nom}</td>
+       <td style={{padding:"6px 8px",fontWeight:700,color:C.acc}}>{fmt(ca2)}€</td>
+       <td style={{padding:"6px 8px",color:C.r}}>{fmt(ch2)}€</td>
+       <td style={{padding:"6px 8px",color:m2>=0?C.g:C.r,fontWeight:700}}>{fmt(m2)}€</td>
+       <td style={{padding:"6px 8px",color:C.td}}>{mp}%</td>
+       <td style={{padding:"6px 8px"}}>{l||"—"}</td>
+       <td style={{padding:"6px 8px",color:C.g}}>{c||"—"}</td>
+       <td style={{padding:"6px 8px",color:cv>20?C.g:C.o}}>{cv>0?cv+"%":"—"}</td>
+       <td style={{padding:"6px 8px",color:C.r}}>{pb>0?fmt(pb)+"€":"—"}</td>
+       <td style={{padding:"6px 8px",color:rs2>3?C.g:rs2>1?C.o:C.r,fontWeight:700}}>{rs2>0?rs2+"x":"—"}</td>
+      </tr>;})}
+     <tr style={{borderTop:`2px solid ${C.acc}33`,background:C.accD}}>
+      <td style={{padding:"6px 8px",fontWeight:800,color:C.acc}}>TOTAL</td>
+      <td style={{padding:"6px 8px",fontWeight:800,color:C.acc}}>{fmt(actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.ca),0))}€</td>
+      <td style={{padding:"6px 8px",fontWeight:700,color:C.r}}>{fmt(actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.charges),0))}€</td>
+      <td style={{padding:"6px 8px",fontWeight:700,color:C.g}}>{fmt(actS.reduce((a,s)=>{const r=gr(reps,s.id,cM2);return a+pf(r?.ca)-pf(r?.charges);},0))}€</td>
+      <td colSpan={6}/>
+     </tr>
+     </tbody>
+    </table></div>
+   </Card>
+   <Card style={{padding:14}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📅 STATUT DES RAPPORTS — {ml(cM2)}</div>
+    {socs.map((s,i)=>{const r=gr(reps,s.id,cM2);return <div key={s.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderBottom:`1px solid ${C.brd}08`}}>
+     <span style={{width:5,height:5,borderRadius:3,background:s.color}}/><span style={{flex:1,fontSize:11,fontWeight:600}}>{s.nom}</span>
+     {r?.ok&&<span style={{fontSize:9,color:C.g,background:C.gD,padding:"2px 8px",borderRadius:6,fontWeight:600}}>✅ Validé</span>}
+     {r&&!r.ok&&<span style={{fontSize:9,color:C.o,background:C.oD,padding:"2px 8px",borderRadius:6,fontWeight:600}}>⏳ En attente</span>}
+     {!r&&<span style={{fontSize:9,color:C.r,background:C.rD,padding:"2px 8px",borderRadius:6,fontWeight:600}}>❌ Manquant</span>}
+    </div>;})}
+   </Card>
+  </>}
+  {tab===18&&<>
+   {/* PARAMÈTRES */}
+   <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>⚙️ Paramètres Holding</div>
+   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+    <Card style={{padding:16}}>
+     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>🎨</span><span style={{fontWeight:700,fontSize:12}}>Branding</span></div>
+     <Inp label="Nom plateforme" value={hold.brand?.name||"L'INCUBATEUR ECS"} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),name:v}})}/>
+     <Inp label="Sous-titre" value={hold.brand?.sub||""} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),sub:v}})}/>
+     <Inp label="Logo URL" value={hold.brand?.logoUrl||""} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),logoUrl:v}})} placeholder="https://..."/>
+     <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6}}>
+      <label style={{fontSize:10,color:C.td,fontWeight:600}}>Couleur accent</label>
+      <input type="color" value={hold.brand?.accentColor||"#FFAA00"} onChange={e=>setHold({...hold,brand:{...(hold.brand||DH.brand),accentColor:e.target.value}})} style={{width:28,height:22,border:`1px solid ${C.brd}`,borderRadius:6,cursor:"pointer"}}/>
+     </div>
+    </Card>
+    <Card style={{padding:16}}>
+     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>💰</span><span style={{fontWeight:700,fontSize:12}}>Finance Holding</span></div>
+     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 8px"}}>
+      <Inp label="Réserve" type="number" value={hold.reservePct} onChange={v=>setHold({...hold,reservePct:pf(v)})} suffix="%"/>
+      <Inp label="Rémunération" type="number" value={hold.remun} onChange={v=>setHold({...hold,remun:pf(v)})} suffix="€"/>
+      <Inp label="Logiciels" type="number" value={hold.logiciels} onChange={v=>setHold({...hold,logiciels:pf(v)})} suffix="€"/>
+      <Inp label="Cabinet" type="number" value={hold.cabinet} onChange={v=>setHold({...hold,cabinet:pf(v)})} suffix="€"/>
+     </div>
+    </Card>
+    <Card style={{padding:16}}>
+     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>🏢</span><span style={{fontWeight:700,fontSize:12}}>Sociétés ({socs.length})</span></div>
+     {socs.slice(0,8).map(s=><div key={s.id} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 0",borderBottom:`1px solid ${C.brd}08`}}>
+      <span style={{width:5,height:5,borderRadius:3,background:s.color}}/><span style={{flex:1,fontSize:10,fontWeight:600}}>{s.nom}</span>
+      <Badge s={s.stat}/>
+      <button onClick={()=>setESoc({...s})} style={{fontSize:8,color:C.td,background:"none",border:`1px solid ${C.brd}`,borderRadius:4,padding:"2px 6px",cursor:"pointer",fontFamily:FONT}}>✏️</button>
+     </div>)}
+     <Btn small style={{marginTop:8}} onClick={()=>setTab(1)}>Gérer toutes →</Btn>
+    </Card>
+    <Card style={{padding:16}}>
+     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>🔌</span><span style={{fontWeight:700,fontSize:12}}>Connexions API</span></div>
+     {[{name:"GoHighLevel",status:socs.some(s=>s.ghlKey),icon:"📡"},{name:"Revolut",status:!!hold.revolutToken||socs.some(s=>s.revToken),icon:"🏦"},{name:"Stripe",status:false,icon:"💳"},{name:"Slack",status:hold.slack?.enabled,icon:"💬"},{name:"Meta Ads",status:false,icon:"📱"}].map(api=><div key={api.name} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:`1px solid ${C.brd}08`}}>
+      <span style={{fontSize:12}}>{api.icon}</span>
+      <span style={{flex:1,fontSize:11,fontWeight:600}}>{api.name}</span>
+      <span style={{fontSize:10,fontWeight:600,color:api.status?C.g:C.td}}>{api.status?"✅ Connecté":"⏳ Non connecté"}</span>
+     </div>)}
+    </Card>
+   </div>
+   <div style={{marginTop:12}}><Btn onClick={()=>{save(null,null,hold);}}>💾 Sauvegarder les paramètres</Btn></div>
+  </>}
   </div>
   </div>
  </div>;
