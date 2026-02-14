@@ -2340,12 +2340,11 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     {!b.commitment&&<span style={{fontSize:8,color:C.o}}>Sans engagement</span>}
     </>}
     {b.type==="percent"&&<>
-    <span style={{fontSize:9,color:C.v,fontWeight:700}}>{b.percent}% {b.basis==="benefice"?"du bénéfice":"du CA"}</span>
-    {cl.clientCA>0&&<span style={{fontSize:8,color:C.td}}>CA client: {fmt(cl.clientCA)}€ → <strong style={{color:C.v}}>{fmt(monthly)}€/mois</strong></span>}
+    {cl.company&&<span style={{fontSize:9,color:"#60a5fa",fontWeight:700}}>{cl.company}</span>}
+    {!cl.company&&cl.clientCA>0&&<span style={{fontSize:8,color:C.td}}>CA client: {fmt(cl.clientCA)}€</span>}
     </>}
     {b.type==="hybrid"&&<>
-    <span style={{fontSize:9,color:"#ec4899",fontWeight:700}}>{fmt(b.amount)}€/{b.freq==="annual"?"an":"mois"} + {b.percent}% {b.basis==="benefice"?"bénéf.":"CA"}</span>
-    {cl.clientCA>0&&<span style={{fontSize:8,color:C.td}}>→ <strong style={{color:"#ec4899"}}>{fmt(clientMonthlyRevenue(cl))}€/mois</strong></span>}
+    {cl.company?<span style={{fontSize:9,color:"#60a5fa",fontWeight:700}}>{cl.company}</span>:<span style={{fontSize:9,color:"#ec4899",fontWeight:700}}>{fmt(b.amount)}€/mois + {b.percent}% {b.basis==="benefice"?"bénéf.":"CA"}</span>}
     </>}
     {b.type==="oneoff"&&<>
     <span style={{fontSize:9,color:C.b,fontWeight:700}}>{fmt(b.amount)}€</span>
