@@ -2337,16 +2337,16 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     </>}
     </div>
     </div>
-    <div style={{textAlign:"right",flexShrink:0}}>
+    {b.type&&<div style={{textAlign:"right",flexShrink:0}}>
     {b.type!=="oneoff"&&<>
-    <div style={{fontWeight:900,fontSize:16,color:bt.c}}>{fmt(monthly)}€</div>
+    <div style={{fontWeight:900,fontSize:16,color:bt?.c||C.td}}>{fmt(monthly)}€</div>
     <div style={{fontSize:8,color:C.td}}>/ mois</div>
     </>}
     {b.type==="oneoff"&&<>
-    <div style={{fontWeight:900,fontSize:16,color:bt.c}}>{fmt(b.amount)}€</div>
+    <div style={{fontWeight:900,fontSize:16,color:bt?.c||C.td}}>{fmt(b.amount)}€</div>
     <div style={{fontSize:8,color:C.td}}>one-off</div>
     </>}
-    </div>
+    </div>}
     </div>
    </Card>;
   })}
