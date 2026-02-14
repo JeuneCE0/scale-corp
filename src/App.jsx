@@ -673,6 +673,7 @@ function revFinancials(socBankData,month){
 }
 const STORE_URL="/api/store";
 let _storeToken=null;
+let _currentSocId=null;
 async function storeCall(action,key,value){
  try{
   if(!_storeToken){const m=localStorage.getItem("sc_store_token");if(m)_storeToken=m;}
@@ -681,27 +682,58 @@ async function storeCall(action,key,value){
   if(!r.ok)return null;return await r.json();
  }catch{return null;}
 }
+// Supabase helper — fire-and-forget upsert
+function sbUpsert(table, data){
+ fetch('/api/supabase?action=upsert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({table,data})}).catch(()=>{});
+}
+// Supabase helper — get rows
+async function sbGet(table, societyId, filters){
+ try{
+  let url=`/api/supabase?action=get&table=${encodeURIComponent(table)}`;
+  if(societyId)url+=`&society_id=${encodeURIComponent(societyId)}`;
+  if(filters)url+=`&filters=${encodeURIComponent(JSON.stringify(filters))}`;
+  const r=await fetch(url);if(!r.ok)return null;return await r.json();
+ }catch{return null;}
+}
+async function sbList(table, societyId){
+ try{
+  let url=`/api/supabase?action=list&table=${encodeURIComponent(table)}`;
+  if(societyId)url+=`&society_id=${encodeURIComponent(societyId)}`;
+  const r=await fetch(url);if(!r.ok)return null;return await r.json();
+ }catch{return null;}
+}
 async function sGet(k){
  try{
-  // Try localStorage first (fast)
   const ls=localStorage.getItem(k);const local=ls?JSON.parse(ls):null;
-  // Then try backend (authoritative if available)
-  const remote=await storeCall("get",k);
-  if(remote?.value!==undefined&&remote.value!==null){
-   // Sync remote to local
-   localStorage.setItem(k,JSON.stringify(remote.value));
-   return remote.value;
-  }
   return local;
  }catch{try{const ls=localStorage.getItem(k);return ls?JSON.parse(ls):null;}catch{return null;}}
 }
 async function sSet(k,v){
  try{
-  const s=JSON.stringify(v);
-  localStorage.setItem(k,s);
-  // Async push to backend (fire-and-forget)
+  localStorage.setItem(k,JSON.stringify(v));
+  // Fire-and-forget to Supabase user_settings
+  sbUpsert('user_settings',{society_id:_currentSocId||'global',key:k,value:v});
+  // Also legacy store
   storeCall("set",k,v);
  }catch(e){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+}
+// One-time pull from Supabase to localStorage on login
+async function syncFromSupabase(socId){
+ try{
+  const data=await sbList('user_settings',socId);
+  if(Array.isArray(data)){data.forEach(row=>{if(row.key&&row.value!==undefined)localStorage.setItem(row.key,JSON.stringify(row.value));});}
+  // Also pull global settings
+  const globalData=await sbList('user_settings','global');
+  if(Array.isArray(globalData)){globalData.forEach(row=>{if(row.key&&row.value!==undefined){const existing=localStorage.getItem(row.key);if(!existing)localStorage.setItem(row.key,JSON.stringify(row.value));}});}
+ }catch(e){}
+}
+// Fetch holding config from Supabase
+async function fetchHoldingFromSB(){
+ try{const data=await sbGet('holding',null,{id:'main'});return Array.isArray(data)&&data[0]?data[0].config:null;}catch{return null;}
+}
+// Fetch societies from Supabase
+async function fetchSocietiesFromSB(){
+ try{const data=await sbList('societies');return Array.isArray(data)?data:null;}catch{return null;}
 }
 function calcH(socs,reps,hold,month){
  let rem=0,cn=0;socs.forEach(s=>{if(s.id==="eco")return;if(["active","lancement"].includes(s.stat))cn++;const r=gr(reps,s.id,month);if(!r)return;const ca=pf(r.ca),presta=pf(r.prestataireAmount||0);rem+=(s.pT==="ca"?ca:Math.max(0,ca-presta))*s.pP/100;});
@@ -3344,7 +3376,7 @@ function SocSettingsPanel({soc,save,socs}){
     const[metaForm,setMetaForm]=useState(()=>{try{return JSON.parse(localStorage.getItem(metaKey))||{spend:0,impressions:0,clicks:0,leads:0,revenue:0};}catch{return{spend:0,impressions:0,clicks:0,leads:0,revenue:0};}});
     const[metaSaved,setMetaSaved]=useState(false);
     const loadMeta=(mo)=>{setMetaMonth(mo);try{const raw=JSON.parse(localStorage.getItem(`metaAds_${soc.id}_${mo}`));setMetaForm(raw||{spend:0,impressions:0,clicks:0,leads:0,revenue:0});}catch{setMetaForm({spend:0,impressions:0,clicks:0,leads:0,revenue:0});}};
-    const saveMeta=()=>{try{localStorage.setItem(metaKey,JSON.stringify(metaForm));sSet(metaKey,metaForm);}catch{}setMetaSaved(true);setTimeout(()=>setMetaSaved(false),2000);};
+    const saveMeta=()=>{try{localStorage.setItem(metaKey,JSON.stringify(metaForm));sSet(metaKey,metaForm);sbUpsert('meta_ads',{society_id:soc.id,month:metaMonth,...metaForm});}catch{}setMetaSaved(true);setTimeout(()=>setMetaSaved(false),2000);};
     return <>
      <Sel label="Mois" value={metaMonth} onChange={loadMeta} options={monthOpts}/>
      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
@@ -5883,10 +5915,16 @@ export default function App(){
  const[saving,setSaving]=useState(false);const[meeting,setMeeting]=useState(false);
  const[newActSoc,setNewActSoc]=useState("");const[newActText,setNewActText]=useState("");
  const[onboarded,setOnboarded]=useState(true);const[showTour,setShowTour]=useState(false);const[obData,setObData]=useState(null);const[showOnboarding,setShowOnboarding]=useState(false);
- useEffect(()=>{(async()=>{try{const[s,r,h,a,j,p,d,g,rv,sb,ok,sy,kk,ch,su,tm,cl,iv]=await Promise.all([sGet("scAs"),sGet("scAr"),sGet("scAh"),sGet("scAa"),sGet("scAj"),sGet("scAp"),sGet("scAd"),sGet("scAg"),sGet("scAv"),sGet("scAb"),sGet("scAo"),sGet("scAy"),sGet("scAk"),sGet("scAc"),sGet("scAu"),sGet("scAt"),sGet("scAcl"),sGet("scAiv")]);setSocs(s||DS);setReps(r||mkPrefill());setHold(h||DH);setActions(a||DEMO_ACTIONS);setJournal(j||DEMO_JOURNAL);setPulses(p||DEMO_PULSES);setDeals(d||DEMO_DEALS);setGhlData(g||{});setRevData(rv||null);setSocBank(sb||{});setOkrs(ok||DEMO_OKRS);setSynergies(sy||DEMO_SYNERGIES);setKb(kk||DEMO_KB);setChallenges(ch||[]);setSubs(su||DEMO_SUBS);setTeam(tm||DEMO_TEAM);setClients(cl||DEMO_CLIENTS);setInvoices(iv||mkDemoInvoices(cl||DEMO_CLIENTS,s||DS));}catch{setSocs(DS);setReps(mkPrefill());setHold(DH);setActions(DEMO_ACTIONS);setJournal(DEMO_JOURNAL);setPulses(DEMO_PULSES);setDeals(DEMO_DEALS);setOkrs(DEMO_OKRS);setSynergies(DEMO_SYNERGIES);setKb(DEMO_KB);setSubs(DEMO_SUBS);setTeam(DEMO_TEAM);setClients(DEMO_CLIENTS);setInvoices(mkDemoInvoices(DEMO_CLIENTS,DS));}
+ useEffect(()=>{(async()=>{try{const[s,r,h,a,j,p,d,g,rv,sb,ok,sy,kk,ch,su,tm,cl,iv]=await Promise.all([sGet("scAs"),sGet("scAr"),sGet("scAh"),sGet("scAa"),sGet("scAj"),sGet("scAp"),sGet("scAd"),sGet("scAg"),sGet("scAv"),sGet("scAb"),sGet("scAo"),sGet("scAy"),sGet("scAk"),sGet("scAc"),sGet("scAu"),sGet("scAt"),sGet("scAcl"),sGet("scAiv")]);
+   // Try Supabase for holding & societies (override localStorage if available)
+   let finalSocs=s||DS,finalHold=h||DH;
+   try{const[sbHold,sbSocs]=await Promise.all([fetchHoldingFromSB(),fetchSocietiesFromSB()]);
+   if(sbHold){finalHold=sbHold;localStorage.setItem("scAh",JSON.stringify(sbHold));}
+   if(sbSocs&&sbSocs.length>0){const sbMap=Object.fromEntries(sbSocs.map(x=>[x.id,x]));finalSocs=(s||DS).map(sc=>sbMap[sc.id]?{...sc,...sbMap[sc.id]}:sc);const newIds=sbSocs.filter(x=>!(s||DS).find(d=>d.id===x.id));if(newIds.length)finalSocs=[...finalSocs,...newIds];localStorage.setItem("scAs",JSON.stringify(finalSocs));}}catch{}
+   setSocs(finalSocs);setReps(r||mkPrefill());setHold(finalHold);setActions(a||DEMO_ACTIONS);setJournal(j||DEMO_JOURNAL);setPulses(p||DEMO_PULSES);setDeals(d||DEMO_DEALS);setGhlData(g||{});setRevData(rv||null);setSocBank(sb||{});setOkrs(ok||DEMO_OKRS);setSynergies(sy||DEMO_SYNERGIES);setKb(kk||DEMO_KB);setChallenges(ch||[]);setSubs(su||DEMO_SUBS);setTeam(tm||DEMO_TEAM);setClients(cl||DEMO_CLIENTS);setInvoices(iv||mkDemoInvoices(cl||DEMO_CLIENTS,finalSocs));}catch{setSocs(DS);setReps(mkPrefill());setHold(DH);setActions(DEMO_ACTIONS);setJournal(DEMO_JOURNAL);setPulses(DEMO_PULSES);setDeals(DEMO_DEALS);setOkrs(DEMO_OKRS);setSynergies(DEMO_SYNERGIES);setKb(DEMO_KB);setSubs(DEMO_SUBS);setTeam(DEMO_TEAM);setClients(DEMO_CLIENTS);setInvoices(mkDemoInvoices(DEMO_CLIENTS,DS));}
    try{const obStatus=await sGet("scOnboarded");const obD=await sGet("scObData");setOnboarded(!!obStatus);setObData(obD||null);}catch{setOnboarded(false);}
    setLoaded(true);})();},[]);
- const save=useCallback(async(ns,nr,nh)=>{setSaving(true);try{if(ns!=null){setSocs(ns);await sSet("scAs",ns);}if(nr!=null){setReps(nr);await sSet("scAr",nr);}if(nh!=null){setHold(nh);await sSet("scAh",nh);}}catch{}setSaving(false);},[]);
+ const save=useCallback(async(ns,nr,nh)=>{setSaving(true);try{if(ns!=null){setSocs(ns);await sSet("scAs",ns);(ns||[]).forEach(s=>sbUpsert('societies',{id:s.id,...s}));}if(nr!=null){setReps(nr);await sSet("scAr",nr);}if(nh!=null){setHold(nh);await sSet("scAh",nh);sbUpsert('holding',{id:'main',config:nh});}}catch{}setSaving(false);},[]);
  const saveAJ=useCallback(async(na,nj)=>{try{if(na!=null){setActions(na);await sSet("scAa",na);}if(nj!=null){setJournal(nj);await sSet("scAj",nj);}}catch{}},[]);
  const savePulse=useCallback(async(k,v)=>{const np={...pulses,[k]:v};setPulses(np);await sSet("scAp",np);},[pulses]);
  const saveDeals=useCallback(async(nd)=>{setDeals(nd);await sSet("scAd",nd);},[]);
@@ -5988,7 +6026,7 @@ export default function App(){
  const cM2=curM(),actS=socs.filter(s=>s.stat==="active");
  const smartAlerts=useMemo(()=>calcSmartAlerts(socs,reps,actions,pulses,allM,socBank),[socs,reps,actions,pulses,allM,socBank]);
  const login=useCallback(async()=>{async function hashPin(p){const e=new TextEncoder().encode(p);const h=await crypto.subtle.digest('SHA-256',e);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');}
-const doLogin=(rid)=>{setRole(rid);setLErr("");_storeToken=pin;localStorage.setItem("sc_store_token",pin);if(!onboarded)setShowTour(true);};
+const doLogin=(rid)=>{setRole(rid);setLErr("");_storeToken=pin;_currentSocId=rid;localStorage.setItem("sc_store_token",pin);if(!onboarded)setShowTour(true);syncFromSupabase(rid).then(()=>{}).catch(()=>{});};
 // Admin check
 if(pin==="0000"||pin==="admin"){const hk="sc_pin_hash_admin";const stored=localStorage.getItem(hk);if(!stored){localStorage.setItem(hk,await hashPin(pin));}doLogin("admin");return;}
 // Check stored hashes first
