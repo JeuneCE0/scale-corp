@@ -6301,6 +6301,35 @@ function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,ext
 /* ===== WAVE 2 GAME-CHANGERS ===== */
 
 /* 5. WAR ROOM */
+function AdminClientsTab({clients,socs}){
+ const[clSearch,setClSearch]=useState("");const[clSort,setClSort]=useState("ca");
+ const allCl=(clients||[]);const activeAll=allCl.filter(c=>c.status==="active");const churnedAll=allCl.filter(c=>c.status==="churned");
+ const totalMRR=activeAll.reduce((a,c)=>a+clientMonthlyRevenue(c),0);
+ const filtered=allCl.filter(c=>!clSearch||c.name?.toLowerCase().includes(clSearch.toLowerCase())||socs.find(s=>s.id===c.socId)?.nom?.toLowerCase().includes(clSearch.toLowerCase()));
+ const sorted=[...filtered].sort((a,b)=>{if(clSort==="ca")return clientMonthlyRevenue(b)-clientMonthlyRevenue(a);if(clSort==="society")return(a.socId||"").localeCompare(b.socId||"");return(a.name||"").localeCompare(b.name||"");});
+ return <><div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>👥 Clients — Toutes sociétés</div>
+  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:14}}>
+   <KPI label="Total clients" value={allCl.length} accent={C.b} icon="👥" delay={1}/>
+   <KPI label="Actifs" value={activeAll.length} accent={C.g} icon="✅" delay={2}/>
+   <KPI label="Perdus" value={churnedAll.length} accent={C.r} icon="❌" delay={3}/>
+   <KPI label="MRR Global" value={`${fmt(totalMRR)}€`} accent={C.acc} icon="💰" delay={4}/>
+   <KPI label="LTV Moyen" value={activeAll.length>0?`${fmt(Math.round(totalMRR/activeAll.length*12))}€`:"—"} accent={C.v} icon="📊" delay={5}/>
+  </div>
+  <div style={{display:"flex",gap:8,marginBottom:12}}>
+   <input value={clSearch} onChange={e=>setClSearch(e.target.value)} placeholder="🔍 Rechercher un client..." style={{flex:1,padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
+   <select value={clSort} onChange={e=>setClSort(e.target.value)} style={{padding:"8px 10px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none"}}><option value="ca">Trier par CA</option><option value="society">Par société</option><option value="name">Par nom</option></select>
+  </div>
+  {sorted.slice(0,30).map((c,i)=>{const s=socs.find(x=>x.id===c.socId);const rev=clientMonthlyRevenue(c);return <div key={c.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:C.card,borderRadius:10,border:`1px solid ${C.brd}`,marginBottom:3}}>
+   <span style={{width:6,height:6,borderRadius:3,background:s?.color||C.td,flexShrink:0}}/>
+   <div style={{flex:1,minWidth:0}}><span style={{fontWeight:600,fontSize:11}}>{c.name}</span>
+    <span style={{fontSize:8,color:s?.color||C.td,background:(s?.color||C.td)+"15",padding:"1px 6px",borderRadius:6,marginLeft:6,fontWeight:600}}>{s?.nom||"?"}</span>
+   </div>
+   <span style={{fontSize:9,color:C.td}}>{CLIENT_STATUS[c.status]?.l||c.status}</span>
+   <span style={{fontWeight:700,fontSize:11,color:C.acc,minWidth:50,textAlign:"right"}}>{fmt(rev)}€</span>
+  </div>;})}
+  {sorted.length>30&&<div style={{color:C.td,fontSize:10,textAlign:"center",padding:8}}>… et {sorted.length-30} autres clients</div>}
+ </>;
+}
 function WarRoom({soc,reps,allM,ghlData,clients,socBank,socs,onClose,readOnly}){
  const cm=curM();const r=gr(reps,soc.id,cm);
  const ca=r?pf(r.ca):0;const leads=r?pf(r.leads):0;const deals=r?pf(r.leadsClos):0;const pipeline=r?pf(r.pipeline):0;
@@ -7087,38 +7116,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </>;
    })()}
   </>}
-  {tab===3&&<>
-   {/* CLIENTS — All societies */}
-   <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>👥 Clients — Toutes sociétés</div>
-   {(()=>{
-    const allCl=(clients||[]);const activeAll=allCl.filter(c=>c.status==="active");const churnedAll=allCl.filter(c=>c.status==="churned");
-    const totalMRR=activeAll.reduce((a,c)=>a+clientMonthlyRevenue(c),0);
-    const[clSearch,setClSearch]=useState("");const[clSort,setClSort]=useState("ca");
-    const filtered=allCl.filter(c=>!clSearch||c.name?.toLowerCase().includes(clSearch.toLowerCase())||socs.find(s=>s.id===c.socId)?.nom?.toLowerCase().includes(clSearch.toLowerCase()));
-    const sorted=filtered.sort((a,b)=>{if(clSort==="ca")return clientMonthlyRevenue(b)-clientMonthlyRevenue(a);if(clSort==="society")return(a.socId||"").localeCompare(b.socId||"");return(a.name||"").localeCompare(b.name||"");});
-    return <><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:14}}>
-     <KPI label="Total clients" value={allCl.length} accent={C.b} icon="👥" delay={1}/>
-     <KPI label="Actifs" value={activeAll.length} accent={C.g} icon="✅" delay={2}/>
-     <KPI label="Perdus" value={churnedAll.length} accent={C.r} icon="❌" delay={3}/>
-     <KPI label="MRR Global" value={`${fmt(totalMRR)}€`} accent={C.acc} icon="💰" delay={4}/>
-     <KPI label="LTV Moyen" value={activeAll.length>0?`${fmt(Math.round(totalMRR/activeAll.length*12))}€`:"—"} accent={C.v} icon="📊" delay={5}/>
-    </div>
-    <div style={{display:"flex",gap:8,marginBottom:12}}>
-     <input value={clSearch} onChange={e=>setClSearch(e.target.value)} placeholder="🔍 Rechercher un client..." style={{flex:1,padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
-     <select value={clSort} onChange={e=>setClSort(e.target.value)} style={{padding:"8px 10px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none"}}><option value="ca">Trier par CA</option><option value="society">Par société</option><option value="name">Par nom</option></select>
-    </div>
-    {sorted.slice(0,30).map((c,i)=>{const s=socs.find(x=>x.id===c.socId);const rev=clientMonthlyRevenue(c);return <div key={c.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:C.card,borderRadius:10,border:`1px solid ${C.brd}`,marginBottom:3}}>
-     <span style={{width:6,height:6,borderRadius:3,background:s?.color||C.td,flexShrink:0}}/>
-     <div style={{flex:1,minWidth:0}}><span style={{fontWeight:600,fontSize:11}}>{c.name}</span>
-      <span style={{fontSize:8,color:s?.color||C.td,background:(s?.color||C.td)+"15",padding:"1px 6px",borderRadius:6,marginLeft:6,fontWeight:600}}>{s?.nom||"?"}</span>
-     </div>
-     <span style={{fontSize:9,color:C.td}}>{CLIENT_STATUS[c.status]?.l||c.status}</span>
-     <span style={{fontWeight:700,fontSize:11,color:C.acc,minWidth:50,textAlign:"right"}}>{fmt(rev)}€</span>
-    </div>;})}
-    {sorted.length>30&&<div style={{color:C.td,fontSize:10,textAlign:"center",padding:8}}>… et {sorted.length-30} autres clients</div>}
-    </>;
-   })()}
-  </>}
+  {tab===3&&<AdminClientsTab clients={clients} socs={socs}/>}
   {tab===4&&(()=>{
    const holdSubs=subs.filter(s=>s.socId==="holding");const holdTeam=team.filter(t=>t.socId==="holding");
    const holdSubsM=holdSubs.reduce((a,s)=>a+subMonthly(s),0);
