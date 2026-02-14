@@ -871,9 +871,9 @@ function MeetingMode({socs,reps,hold,actions,pulses,allM,onExit}){
  const steps=[{title:"Vue d'ensemble",icon:"📊"},{title:"Alertes & Actions",icon:"⚠"},...actS.map(s=>({title:s.nom,icon:"🏢",soc:s})),{title:"Décisions & Prochaines étapes",icon:"✅"}];
  useEffect(()=>{let id;if(running)id=setInterval(()=>setTimer(t=>t+1),1e3);return()=>clearInterval(id);},[running]);
  const fmtT=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
- return <div style={{background:C.bg,minHeight:"100vh",fontFamily:FONT,color:C.t}}>
+ return <div className="glass-bg" style={{minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}</style>
-  <div style={{background:`linear-gradient(135deg,${C.card},${C.card2})`,borderBottom:`1px solid ${C.brd}`,padding:"14px 20px"}}>
+  <div style={{background:"rgba(14,14,22,.7)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,.06)",padding:"14px 20px"}}>
    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
     <div><div style={{color:C.acc,fontSize:10,fontWeight:700,letterSpacing:2}}>MODE RÉUNION</div><h1 style={{margin:0,fontSize:18,fontWeight:900}}>{hold?.brand?.name||"Scale Corp"} — {ml(cM2)}</h1></div>
     <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -2813,7 +2813,7 @@ function genPorteurNotifications(soc,reps,socBank,ghlData,clients,allM){
 function NotificationCenter({notifications,open,onClose}){
  if(!open)return null;
  return <div className="fi" onClick={onClose} style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.4)"}}>
-  <div onClick={e=>e.stopPropagation()} style={{position:"fixed",top:0,right:0,width:340,maxWidth:"90vw",height:"100vh",background:C.card,borderLeft:`1px solid ${C.brd}`,boxShadow:"-4px 0 24px rgba(0,0,0,.3)",animation:"slideInRight .3s ease",overflowY:"auto",padding:20}}>
+  <div onClick={e=>e.stopPropagation()} style={{position:"fixed",top:0,right:0,width:340,maxWidth:"90vw",height:"100vh",background:"rgba(14,14,22,.85)",backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",borderLeft:"1px solid rgba(255,255,255,.06)",boxShadow:"-4px 0 40px rgba(0,0,0,.5)",animation:"slideInRight .3s ease",overflowY:"auto",padding:20}}>
    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
     <h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t,fontFamily:FONT_TITLE}}>🔔 Notifications</h3>
     <Btn v="ghost" small onClick={onClose}>✕</Btn>
@@ -2883,7 +2883,7 @@ function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
  },[revealIdx,revealLen,msgs]);
  useEffect(()=>{ref.current?.scrollTo({top:ref.current.scrollHeight,behavior:"smooth"});},[msgs,revealLen]);
  if(!open)return <div onClick={()=>setOpen(true)} style={{position:"fixed",bottom:24,right:24,width:56,height:56,borderRadius:28,background:`linear-gradient(135deg,${C.v},${C.acc})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 20px ${C.acc}44`,zIndex:800,fontSize:24,animation:"fl 3s ease-in-out infinite",transition:"transform .2s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>🤖</div>;
- return <div style={{position:"fixed",bottom:24,right:24,width:340,maxWidth:"90vw",height:480,maxHeight:"70vh",background:C.card,border:`1px solid ${C.brd}`,borderRadius:16,boxShadow:"0 8px 40px rgba(0,0,0,.4)",zIndex:800,display:"flex",flexDirection:"column",animation:"slideInUp .3s ease",overflow:"hidden"}}>
+ return <div style={{position:"fixed",bottom:24,right:24,width:340,maxWidth:"90vw",height:480,maxHeight:"70vh",background:"rgba(14,14,22,.85)",backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",border:"1px solid rgba(255,255,255,.06)",borderRadius:20,boxShadow:"0 12px 48px rgba(0,0,0,.5)",zIndex:800,display:"flex",flexDirection:"column",animation:"slideInUp .3s ease",overflow:"hidden"}}>
   <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",justifyContent:"space-between",background:`linear-gradient(135deg,${C.card2},${C.card})`}}>
    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:18}}>🤖</span><div><div style={{fontWeight:800,fontSize:12,color:C.v}}>Assistant IA</div><div style={{fontSize:8,color:C.td}}>{soc.nom}</div></div></div>
    <Btn v="ghost" small onClick={()=>setOpen(false)}>✕</Btn>
@@ -3183,7 +3183,7 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
   <style>{CSS}</style>
   <NotificationCenter notifications={porteurNotifs} open={notifOpen} onClose={()=>setNotifOpen(false)}/>
   {/* Mobile Header */}
-  <div className="mobile-header" style={{display:"none",position:"fixed",top:0,left:0,right:0,zIndex:100,background:C.card,borderBottom:`1px solid ${C.brd}`,padding:"10px 16px",alignItems:"center",gap:10}}>
+  <div className="mobile-header" style={{display:"none",position:"fixed",top:0,left:0,right:0,zIndex:100,background:"rgba(14,14,22,.8)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,.06)",padding:"10px 16px",alignItems:"center",gap:10}}>
    <button onClick={()=>setMobileMenuOpen(!mobileMenuOpen)} style={{background:"none",border:"none",fontSize:20,color:C.t,cursor:"pointer",padding:4}}>☰</button>
    <div style={{flex:1,fontWeight:800,fontSize:13,fontFamily:FONT_TITLE,color:soc.brandColor||soc.color}}>{soc.nom}</div>
    <button onClick={()=>setNotifOpen(true)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",position:"relative",padding:4}}>🔔{porteurNotifs.length>0&&<span style={{position:"absolute",top:0,right:0,width:14,height:14,borderRadius:7,background:C.r,color:"#fff",fontSize:8,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{porteurNotifs.length}</span>}</button>
@@ -3872,14 +3872,14 @@ export default function App(){
  const addAction=(socId,text,dl)=>{saveAJ([...actions,{id:uid(),socId,text,deadline:dl||nextM(cM2),done:false,by:"admin",at:new Date().toISOString()}],null);};
  const toggleAction=(id)=>{saveAJ(actions.map(a=>a.id===id?{...a,done:!a.done}:a),null);};
  const deleteAction=(id)=>{saveAJ(actions.filter(a=>a.id!==id),null);};
- if(!loaded)return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}><style>{CSS}</style><div style={{width:36,height:36,border:`3px solid ${C.brd}`,borderTopColor:C.acc,borderRadius:"50%",animation:"sp 1s linear infinite"}}/></div>;
+ if(!loaded)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}><style>{CSS}</style><div style={{width:40,height:40,border:"3px solid rgba(255,255,255,.06)",borderTopColor:C.acc,borderRadius:"50%",animation:"sp 1s linear infinite",boxShadow:"0 0 20px rgba(255,170,0,.15)"}}/></div>;
  /* ONBOARDING (optional, non-blocking) */
  if(showOnboarding)return <OnboardingWizard hold={hold} onSkip={()=>setShowOnboarding(false)} onComplete={async(formData)=>{try{await sSet("scOnboarded",true);await sSet("scObData",formData);}catch{}setObData(formData);setOnboarded(true);setShowOnboarding(false);setShowTour(true);}}/>;
  if(!role)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT,padding:16}}>
   <style>{CSS}</style>
   {/* TUTORIAL OVERLAY ON LOGIN */}
   {showTour&&<div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(0,0,0,.6)",backdropFilter:"blur(3px)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}>
-   <div className="si" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:18,padding:0,width:500,maxWidth:"92vw",boxShadow:"0 24px 60px rgba(0,0,0,.5)",overflow:"hidden"}}>
+   <div className="si glass-modal" style={{borderRadius:20,padding:0,width:500,maxWidth:"92vw",overflow:"hidden"}}>
     <div style={{padding:"24px 28px",background:`linear-gradient(135deg,${C.accD},transparent)`,borderBottom:`1px solid ${C.brd}`,textAlign:"center"}}>
      <div style={{width:64,height:64,borderRadius:16,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:30,marginBottom:12,boxShadow:`0 8px 32px ${C.accD}`}}>🎓</div>
      <h2 style={{margin:0,fontSize:22,fontWeight:800,color:C.t,fontFamily:FONT_TITLE}}>Bienvenue {obData?.founderName||""} !</h2>
