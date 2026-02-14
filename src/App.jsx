@@ -1956,7 +1956,8 @@ function ClientsPanelSafe(props){return <ErrorBoundary label="Erreur dans la pag
 function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices}){
  const[editCl,setEditCl]=useState(null);const[filter,setFilter]=useState("all");const[stageFilter,setStageFilter]=useState("all");const[invView,setInvView]=useState(null);
  const[sending,setSending]=useState(null);
- const myClients=clients.filter(c=>c.socId===soc.id);
+ const ghlClients=(ghlData?.[soc.id]?.ghlClients||[]).map(gc=>({id:gc.id||gc.contactId||uid(),socId:soc.id,name:gc.name||gc.contactName||"—",email:gc.email||"",phone:gc.phone||"",status:gc.status||"prospect",ghlId:gc.id||gc.contactId||"",notes:"",at:gc.dateAdded||new Date().toISOString(),billing:null,_fromGHL:true}));
+ const myClients=[...clients.filter(c=>c.socId===soc.id),...ghlClients.filter(gc=>!clients.some(c=>c.ghlId===gc.ghlId))];
  const myInvoices=(invoices||[]).filter(inv=>inv.socId===soc.id);
  const active=myClients.filter(c=>c.status==="active");
  const byType=t=>myClients.filter(c=>c.billing?.type===t);
@@ -2040,6 +2041,17 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
   saveInvoices(updated);
  };
  const clientInvoices=(clId)=>(invoices||[]).filter(i=>i.clientId===clId).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+ if(myClients.length===0)return <div style={{textAlign:"center",padding:40}}>
+  <div style={{fontSize:40,marginBottom:12}}>👥</div>
+  <div style={{fontWeight:700,fontSize:15,marginBottom:6,color:C.t}}>Aucun client</div>
+  <div style={{color:C.td,fontSize:12,marginBottom:16}}>Connectez GHL ou ajoutez des clients manuellement</div>
+  <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+   <Btn small onClick={()=>addClient("fixed")}>+ Client fixe</Btn>
+   <Btn small onClick={()=>addClient("percent")}>+ Client %</Btn>
+   <Btn small onClick={()=>addClient("oneoff")}>+ Client one-off</Btn>
+  </div>
+  {editCl&&<ClientEditModal cl={editCl} onSave={saveCl} onClose={()=>setEditCl(null)} onDelete={deleteCl} soc={soc} invoices={clientInvoices(editCl.id)} regenInvoices={regenInvoices} sendInvoice={sendInvoice} markPaid={markPaid} cancelInvoice={cancelInvoice} sending={sending}/>}
+ </div>;
  return <div>
   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:6,marginBottom:12}}>
    <Card accent={C.acc} style={{padding:"10px 12px",textAlign:"center"}} delay={1}>
@@ -2811,6 +2823,13 @@ function genPorteurNotifications(soc,reps,socBank,ghlData,clients,allM){
  return notifs.sort((a,b)=>new Date(b.time)-new Date(a.time));
 }
 function NotificationCenter({notifications,open,onClose}){
+ const[readIds,setReadIds]=useState(()=>{try{return JSON.parse(localStorage.getItem("notif_read")||"[]");}catch{return[];}});
+ const[dismissedIds,setDismissedIds]=useState(()=>{try{return JSON.parse(localStorage.getItem("notif_dismissed")||"[]");}catch{return[];}});
+ const markRead=(id)=>{const n=[...new Set([...readIds,id])];setReadIds(n);localStorage.setItem("notif_read",JSON.stringify(n));};
+ const markAllRead=()=>{const n=[...new Set([...readIds,...visible.map(x=>x.id)])];setReadIds(n);localStorage.setItem("notif_read",JSON.stringify(n));};
+ const dismiss=(id)=>{const n=[...new Set([...dismissedIds,id])];setDismissedIds(n);localStorage.setItem("notif_dismissed",JSON.stringify(n));};
+ const clearAll=()=>{const n=[...new Set([...dismissedIds,...visible.map(x=>x.id)])];setDismissedIds(n);localStorage.setItem("notif_dismissed",JSON.stringify(n));};
+ const visible=notifications.filter(n=>!dismissedIds.includes(n.id));
  if(!open)return null;
  return <div className="fi" onClick={onClose} style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.4)"}}>
   <div onClick={e=>e.stopPropagation()} style={{position:"fixed",top:0,right:0,width:340,maxWidth:"90vw",height:"100vh",background:"rgba(14,14,22,.85)",backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",borderLeft:"1px solid rgba(255,255,255,.06)",boxShadow:"-4px 0 40px rgba(0,0,0,.5)",animation:"slideInRight .3s ease",overflowY:"auto",padding:20}}>
@@ -2818,15 +2837,21 @@ function NotificationCenter({notifications,open,onClose}){
     <h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t,fontFamily:FONT_TITLE}}>🔔 Notifications</h3>
     <Btn v="ghost" small onClick={onClose}>✕</Btn>
    </div>
-   {notifications.length===0&&<div style={{textAlign:"center",padding:30,color:C.td}}><div style={{fontSize:28,marginBottom:8}}>✅</div><div style={{fontSize:12}}>Aucune notification</div></div>}
-   {notifications.map((n,i)=>{
+   {visible.length>0&&<div style={{display:"flex",gap:6,marginBottom:12}}>
+    <Btn small v="ghost" onClick={markAllRead}>✓ Tout marquer comme lu</Btn>
+    <Btn small v="ghost" onClick={clearAll}>🗑 Effacer tout</Btn>
+   </div>}
+   {visible.length===0&&<div style={{textAlign:"center",padding:30,color:C.td}}><div style={{fontSize:28,marginBottom:8}}>✅</div><div style={{fontSize:12}}>Aucune notification</div></div>}
+   {visible.map((n,i)=>{
     const bgMap={success:C.gD,warning:C.oD,info:C.bD};const cMap={success:C.g,warning:C.o,info:C.b};
-    return <div key={n.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",background:bgMap[n.type]||C.card2,border:`1px solid ${(cMap[n.type]||C.brd)}18`,borderRadius:10,marginBottom:6}}>
+    const isRead=readIds.includes(n.id);
+    return <div key={n.id} onClick={()=>markRead(n.id)} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",background:bgMap[n.type]||C.card2,border:`1px solid ${(cMap[n.type]||C.brd)}18`,borderRadius:10,marginBottom:6,opacity:isRead?0.5:1,cursor:"pointer",transition:"opacity .2s"}}>
      <span style={{fontSize:18,flexShrink:0,marginTop:1}}>{n.icon}</span>
      <div style={{flex:1,minWidth:0}}>
       <div style={{fontSize:12,fontWeight:600,color:C.t,lineHeight:1.4}}>{n.msg}</div>
       <div style={{fontSize:9,color:C.td,marginTop:3}}>{ago(n.time)}</div>
      </div>
+     <button onClick={e=>{e.stopPropagation();dismiss(n.id);}} style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0,lineHeight:1}}>✕</button>
     </div>;
    })}
   </div>
@@ -3068,11 +3093,14 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
    }
    const pieData=Object.entries(catTotals).map(([name,value])=>({name,value:Math.round(value)})).sort((a,b)=>b.value-a.value);
    const PIE_COLORS=[C.r,C.o,C.b,C.v,"#ec4899","#14b8a6",C.acc,"#8b5cf6"];
-   if(pieData.length===0)return null;
+   if(pieData.length===0)return <div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,animationDelay:"0.5s"}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>📊 RÉPARTITION DES DÉPENSES — {ml(cm)}</div>
+    <div style={{textAlign:"center",padding:20,color:C.td,fontSize:12}}>Aucune donnée de dépenses</div>
+   </div>;
    return <div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,animationDelay:"0.5s"}}>
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>📊 RÉPARTITION DES DÉPENSES — {ml(cm)}</div>
     <div style={{display:"flex",alignItems:"center",height:200}}>
-     <div style={{width:"50%"}}><ResponsiveContainer><PieChart><Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={3} strokeWidth={0} animationDuration={1000}>{pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip content={<CTip/>}/></PieChart></ResponsiveContainer></div>
+     <div style={{width:"50%",height:200}}><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={3} strokeWidth={0} animationDuration={1000}>{pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip content={<CTip/>}/></PieChart></ResponsiveContainer></div>
      <div style={{flex:1,paddingLeft:8}}>{pieData.slice(0,6).map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/><span style={{flex:1,fontSize:10,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span><span style={{fontWeight:700,fontSize:10,color:C.t}}>{fmt(d.value)}€</span></div>)}</div>
     </div>
    </div>;
