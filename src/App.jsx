@@ -1510,6 +1510,19 @@ function RapportsPanel({soc,socBankData,ghlData,clients}){
       <span style={{fontSize:10,color:C.g,fontWeight:600}}>✅ {d.wonThisMonth} client{d.wonThisMonth>1?"s":""} gagné{d.wonThisMonth>1?"s":""}</span>
       <span style={{fontSize:10,color:C.r,fontWeight:600}}>❌ {d.lostThisMonth} perdu{d.lostThisMonth>1?"s":""}</span>
      </div>
+     {/* Objectifs vs Réalité */}
+     {(soc.obj||soc.monthlyGoal)>0&&(()=>{const obj=soc.obj||soc.monthlyGoal||0;const atteint=d.ca>=obj;return <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:atteint?C.gD:C.rD,borderRadius:8,marginBottom:12}}>
+      <span style={{fontSize:14}}>{atteint?"✅":"❌"}</span>
+      <div style={{flex:1}}><div style={{fontSize:10,fontWeight:700,color:atteint?C.g:C.r}}>{atteint?"Objectif atteint":"Non atteint"}</div><div style={{fontSize:9,color:C.td}}>Objectif: {fmt(obj)}€ · Réalisé: {fmt(d.ca)}€ ({obj>0?Math.round(d.ca/obj*100):0}%)</div></div>
+     </div>;})()}
+     {/* Export PDF */}
+     <button onClick={(e)=>{e.stopPropagation();const logo=hold?.brand?.logoUrl||"";const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rapport ${ml(month)} — ${soc.nom}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#1a1a1a}h1{color:#FFAA00;font-size:24px}h2{color:#333;font-size:16px;margin-top:20px}.kpi{display:inline-block;padding:12px 20px;margin:6px;background:#f5f5f5;border-radius:8px;text-align:center}.kpi .val{font-size:22px;font-weight:900}.kpi .lbl{font-size:11px;color:#666}table{width:100%;border-collapse:collapse;margin-top:10px}td,th{padding:6px 10px;border-bottom:1px solid #eee;text-align:left;font-size:12px}@media print{body{padding:20px}}</style></head><body>${logo?`<img src="${logo}" style="height:40px;margin-bottom:12px"/>`:""}
+<h1>Rapport ${ml(month)}</h1><p>${soc.nom} — ${soc.porteur}</p>
+<div><div class="kpi"><div class="val" style="color:#22c55e">${fmt(d.ca)}€</div><div class="lbl">CA</div></div><div class="kpi"><div class="val" style="color:#ef4444">${fmt(d.charges)}€</div><div class="lbl">Charges</div></div><div class="kpi"><div class="val" style="color:${d.marge>=0?"#22c55e":"#ef4444"}">${fmt(d.marge)}€</div><div class="lbl">Marge</div></div></div>
+<h2>Top Clients</h2><table>${d.topClients.map(([n,v])=>`<tr><td>${n}</td><td style="font-weight:700;color:#22c55e">${fmt(v)}€</td></tr>`).join("")}</table>
+<h2>Top Dépenses</h2><table>${d.topExpenses.map(([n,v])=>`<tr><td>${n}</td><td style="font-weight:700;color:#ef4444">${fmt(v)}€</td></tr>`).join("")}</table>
+${(soc.obj||0)>0?`<h2>Objectif</h2><p>${d.ca>=(soc.obj||0)?"✅ Atteint":"❌ Non atteint"} — ${fmt(d.ca)}€ / ${fmt(soc.obj)}€</p>`:""}
+<p style="margin-top:30px;color:#999;font-size:10px">MRR théorique: ${fmt(mrrTheorique)}€ · Généré le ${new Date().toLocaleDateString("fr-FR")}</p></body></html>`;const w=window.open("","_blank");w.document.write(html);w.document.close();w.focus();setTimeout(()=>w.print(),500);}} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${C.acc}`,background:C.accD,color:C.acc,fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:FONT,marginBottom:12}}>📥 Exporter PDF</button>
      {/* Notes per month */}
      <div style={{marginTop:8}}>
       <label style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:.5,display:"block",marginBottom:4}}>📝 NOTES DU MOIS</label>
@@ -1518,6 +1531,11 @@ function RapportsPanel({soc,socBankData,ghlData,clients}){
     </>}
    </div>;
   })}
+  {/* Objectifs summary */}
+  {(soc.obj||soc.monthlyGoal)>0&&(()=>{const obj=soc.obj||soc.monthlyGoal||0;const results=months.map(mo=>getMonthData(mo)).filter(d=>d.txCount>0);const atteints=results.filter(d=>d.ca>=obj).length;const total=results.length;const pctObj=total>0?Math.round(atteints/total*100):0;return <div className="glass-card-static" style={{padding:16,marginTop:12,marginBottom:4,display:"flex",alignItems:"center",gap:12}}>
+   <span style={{fontSize:24}}>{pctObj>=70?"🏆":pctObj>=40?"📊":"📉"}</span>
+   <div><div style={{fontWeight:800,fontSize:12,color:pctObj>=70?C.g:pctObj>=40?C.o:C.r}}>Objectifs atteints: {atteints}/{total} mois ({pctObj}%)</div><div style={{fontSize:9,color:C.td}}>Objectif mensuel: {fmt(obj)}€</div></div>
+  </div>;})()}
   {/* MRR TRACKING */}
   {activeClients.length>0&&<div className="glass-card-static" style={{padding:20,marginTop:16}}>
    <div style={{fontSize:9,fontWeight:700,color:C.v,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📊 SUIVI MRR — RÉCURRENCE CLIENTS</div>
@@ -2538,6 +2556,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     <span style={{fontWeight:700,fontSize:12}}>{cl.name||"Sans nom"}</span>
     <span title={cl.ghlId?"Synced avec GHL":"Local uniquement"} style={{fontSize:8,cursor:"default"}}>{cl.ghlId?"✅":"⚠️"}</span>
     <HealthBadge score={calcClientHealthScore(cl,socBankData,ghlData,soc)}/>
+    {cl.status==="prospect"&&(()=>{const lscore=(()=>{let s=0;if((cl.source||"").toLowerCase().includes("organic"))s+=20;const added=new Date(cl.at||cl.createdAt||0);const days=Math.floor((Date.now()-added.getTime())/864e5);s+=days<7?30:days<30?15:0;const cn5=(cl.name||"").toLowerCase();const calls5=(ghlData?.[soc.id]?.calendarEvents||[]).filter(e=>(e.contactName||e.title||"").toLowerCase().includes(cn5)).length;s+=Math.min(30,calls5*10);if(cl.email)s+=10;if(cl.phone)s+=10;return clamp(s,0,100);})();const lc=lscore>70?"#34d399":lscore>=40?"#FFAA00":"#f87171";const lt=lscore>70?"Chaud":lscore>=40?"Tiède":"Froid";return <span style={{fontSize:7,fontWeight:700,color:lc,background:lc+"18",padding:"1px 5px",borderRadius:8}}>{lscore>70?"🟢":lscore>=40?"🟡":"🔴"} {lt} ({lscore})</span>;})()}
     {(()=>{if(cl.status!=="active")return null;const cn3=(cl.name||"").toLowerCase().trim();const excl4=EXCLUDED_ACCOUNTS[soc.id]||[];const now45c=Date.now()-45*864e5;const now30c=Date.now()-30*864e5;const hasPayment=(socBankData?.transactions||[]).some(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;if(excl4.includes(leg.account_id))return false;return new Date(tx.created_at).getTime()>now45c&&(leg.description||tx.reference||"").toLowerCase().includes(cn3);});const calEvts2=(ghlData?.[soc.id]?.calendarEvents||[]);const hasCall=calEvts2.some(e=>new Date(e.startTime||0).getTime()>now30c&&(e.contactName||e.title||"").toLowerCase().includes(cn3));const endDate=commitmentEnd(cl);const endsClose=endDate&&(endDate.getTime()-Date.now())<60*864e5;if((!hasPayment||!hasCall)&&endsClose)return <span style={{fontSize:7,color:C.r,background:C.rD,padding:"1px 5px",borderRadius:8,fontWeight:700}}>⚠️ Risque</span>;return null;})()}
     <span style={{fontSize:7,color:cs.c,background:cs.c+"18",padding:"1px 5px",borderRadius:8,fontWeight:700}}>{cs.icon} {cs.l}</span>
     {bt&&<span style={{fontSize:7,color:bt.c,background:bt.c+"18",padding:"1px 5px",borderRadius:8}}>{bt.l}</span>}
@@ -2552,6 +2571,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     {clDraft>0&&<span style={{fontSize:7,color:C.td,background:C.card2,padding:"1px 5px",borderRadius:8}}>{clDraft} brouillon{clDraft>1?"s":""}</span>}
     </div>
     {(cl.contact||cl.company||cl.email)&&<div style={{color:C.td,fontSize:9,marginTop:1}}>{cl.company&&<span style={{fontWeight:600,color:"#60a5fa"}}>{cl.company}</span>}{cl.company&&(cl.contact||cl.email)?" · ":""}{cl.contact||""}{cl.email?` · ${cl.email}`:""}</div>}
+    {(()=>{const cn6=(cl.name||"").toLowerCase().trim();const calEvts6=(ghlData?.[soc.id]?.calendarEvents||[]);const txs6=(socBankData?.transactions||[]);let lastDate=null;calEvts6.forEach(e=>{if((e.contactName||e.title||"").toLowerCase().includes(cn6)){const d=new Date(e.startTime||0);if(!lastDate||d>lastDate)lastDate=d;}});txs6.forEach(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return;const desc=(leg.description||tx.reference||"").toLowerCase();if(cn6.length>2&&desc.includes(cn6)){const d=new Date(tx.created_at);if(!lastDate||d>lastDate)lastDate=d;}});if(!lastDate)return <div style={{fontSize:8,color:C.tm,marginTop:1}}>Aucune interaction</div>;const diffMs=Date.now()-lastDate.getTime();const diffH=Math.floor(diffMs/36e5);const diffD=Math.floor(diffMs/864e5);const txt=diffD===0?`il y a ${diffH}h`:`il y a ${diffD}j`;const col=diffD<14?C.td:diffD<30?C.o:C.r;return <div style={{fontSize:8,color:col,marginTop:1,fontWeight:diffD>=14?600:400}}>Dernier contact : {txt}</div>;})()}
     {cl.notes&&<div style={{color:C.td,fontSize:9,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cl.notes}</div>}
     <div style={{display:"flex",gap:8,marginTop:3,flexWrap:"wrap"}}>
     {b.type==="fixed"&&<>
@@ -2917,6 +2937,21 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
        <span style={{fontWeight:700,fontSize:11,color:ok?C.v:C.r}}>{ok?"+":""}{fmt(amt)}€</span>
       </div>;})}
       </div>
+     </div>;
+    })()}
+    {/* LTV Section */}
+    {(()=>{
+     const clName7=(editCl.name||"").toLowerCase().trim();
+     const txs7=(socBankData?.transactions||[]);
+     const collected=txs7.filter(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;const desc=(leg.description||tx.reference||"").toLowerCase();if(clName7.length>2&&desc.includes(clName7))return true;const pts=clName7.split(/\s+/).filter(p=>p.length>2);return pts.length>=2&&pts.every(p=>desc.includes(p));}).reduce((a,tx)=>a+(tx.legs?.[0]?.amount||0),0);
+     const b7=editCl.billing||{};const monthly7=clientMonthlyRevenue(editCl);
+     const ltv=(b7.freq==="monthly"||b7.type==="fixed"||b7.type==="percent"||b7.type==="hybrid")?monthly7*12:collected;
+     const ratio=ltv>0?Math.min(100,Math.round(collected/ltv*100)):0;
+     return <div style={{padding:"10px 12px",background:C.bg,borderRadius:10,border:`1px solid ${C.acc}22`,margin:"8px 0"}}>
+      <div style={{color:C.acc,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:6}}>📊 VALEUR CLIENT (LTV)</div>
+      <div style={{fontSize:12,fontWeight:700,color:C.t,marginBottom:6}}>💰 Collecté: {fmt(collected)}€ | LTV estimé: {fmt(ltv)}€</div>
+      {ltv>0&&<><div style={{height:6,background:C.brd,borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:`${ratio}%`,background:`linear-gradient(90deg,${C.acc},#FF9D00)`,borderRadius:3,transition:"width .5s ease"}}/></div>
+      <div style={{fontSize:8,color:C.td,marginTop:3}}>{ratio}% de la valeur estimée collectée</div></>}
      </div>;
     })()}
     <div style={{padding:"10px 12px",background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`,margin:"8px 0"}}>
@@ -3665,7 +3700,72 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
    </div>)}
   </div>;
  }
+ // Streak tracking
+ const streak=useMemo(()=>{
+  const key=`streak_${soc.id}`;
+  try{
+   const raw=JSON.parse(localStorage.getItem(key)||"null");
+   const today=new Date().toISOString().slice(0,10);
+   const yesterday=new Date(Date.now()-864e5).toISOString().slice(0,10);
+   if(!raw){const v={lastLogin:today,count:1};localStorage.setItem(key,JSON.stringify(v));return v;}
+   if(raw.lastLogin===today)return raw;
+   if(raw.lastLogin===yesterday){const v={lastLogin:today,count:raw.count+1};localStorage.setItem(key,JSON.stringify(v));return v;}
+   const v={lastLogin:today,count:1};localStorage.setItem(key,JSON.stringify(v));return v;
+  }catch{return{lastLogin:"",count:1};}
+ },[soc.id]);
+ // Météo Business
+ const meteo=useMemo(()=>{
+  const critAlerts=smartAlerts.filter(a=>a.priority===1).length;
+  const allAlertCount=smartAlerts.length;
+  if(perfScore>75&&critAlerts===0)return{emoji:"☀️",text:"Tout roule !",glow:"rgba(52,211,153,.15)",color:C.g};
+  if((perfScore>=50&&perfScore<=75)||allAlertCount<=2)return{emoji:"⛅",text:"Quelques points d'attention",glow:"rgba(251,146,60,.15)",color:C.o};
+  if((perfScore>=30&&perfScore<50)||allAlertCount>=3)return{emoji:"🌧️",text:"Vigilance requise",glow:"rgba(248,113,113,.15)",color:C.r};
+  return{emoji:"⛈️",text:"Actions urgentes nécessaires",glow:"rgba(248,113,113,.25)",color:C.r};
+ },[perfScore,smartAlerts]);
+ // Conseil du jour IA
+ const conseilDuJour=useMemo(()=>{
+  const dayOfMonth=new Date().getDate();const tips=[];
+  // Clients sans appels >20j
+  const calEvts=ghlData?.[soc.id]?.calendarEvents||[];
+  const now20=Date.now()-20*864e5;
+  const noCallClients=myClients.filter(cl=>{const cn=(cl.name||"").toLowerCase();return !calEvts.some(e=>new Date(e.startTime||0).getTime()>now20&&(e.contactName||e.title||"").toLowerCase().includes(cn));});
+  if(noCallClients.length>0)tips.push(`💡 ${noCallClients.length} client${noCallClients.length>1?"s":""} ${noCallClients.length>1?"n'ont":"n'a"} pas eu d'appel depuis 20j — planifie un check-in`);
+  // Conversion rate
+  const gd=ghlData?.[soc.id];const cbt=gd?.stats?.callsByType||{};
+  const stratC=Object.entries(cbt).filter(([n])=>!/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);
+  const integC=Object.entries(cbt).filter(([n])=>/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);
+  const convR=stratC>0?Math.round(integC/stratC*100):0;
+  if(convR>0)tips.push(`💡 Ton taux de conversion est à ${convR}% — ${convR>30?"continue comme ça !":"essaie d'améliorer ton pitch"}`);
+  // New untouched leads
+  const h48=Date.now()-48*36e5;
+  const newLeads=(gd?.ghlClients||[]).filter(c2=>new Date(c2.at||c2.dateAdded||0).getTime()>h48).length;
+  if(newLeads>0)tips.push(`💡 ${newLeads} lead${newLeads>1?"s":""} ${newLeads>1?"attendent":"attend"} une réponse depuis 48h`);
+  // Payment gaps
+  const excl5=EXCLUDED_ACCOUNTS[soc.id]||[];const now45b=Date.now()-45*864e5;
+  const unpaid=myClients.filter(cl=>{const cn=(cl.name||"").toLowerCase().trim();return !(bankData?.transactions||[]).some(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;if(excl5.includes(leg.account_id))return false;return new Date(tx.created_at).getTime()>now45b&&(leg.description||tx.reference||"").toLowerCase().includes(cn);});}).length;
+  if(unpaid>0)tips.push(`💡 ${unpaid} client${unpaid>1?"s":""} sans paiement détecté depuis 45j+ — relance nécessaire`);
+  // Contract expirations
+  const expiring=myClients.filter(cl=>{const end=commitmentEnd(cl);return end&&(end.getTime()-Date.now())<30*864e5&&(end.getTime()-Date.now())>0;}).length;
+  if(expiring>0)tips.push(`💡 ${expiring} contrat${expiring>1?"s":""} ${expiring>1?"expirent":"expire"} dans les 30 prochains jours`);
+  if(tips.length===0)tips.push("💡 Tout semble en ordre — continue sur ta lancée !");
+  return tips[dayOfMonth%tips.length];
+ },[soc.id,ghlData,myClients,bankData]);
  return <div className="fu">
+  {/* Météo Business + Streak */}
+  <div style={{display:"flex",gap:12,marginBottom:16,alignItems:"stretch"}}>
+   <div className="glass-card-static" style={{flex:1,padding:"16px 20px",display:"flex",alignItems:"center",gap:14,boxShadow:`0 0 24px ${meteo.glow}`}}>
+    <span style={{fontSize:48,lineHeight:1}}>{meteo.emoji}</span>
+    <div><div style={{fontWeight:800,fontSize:14,color:meteo.color}}>{meteo.text}</div><div style={{fontSize:9,color:C.td,marginTop:2}}>Score: {perfScore} · Alertes: {smartAlerts.length}</div></div>
+   </div>
+   <div className="glass-card-static" style={{padding:"16px 20px",display:"flex",alignItems:"center",gap:8,minWidth:80}}>
+    <span style={{fontSize:28}}>🔥</span>
+    <div><div style={{fontWeight:900,fontSize:20,color:C.acc}}>{streak.count}j</div>{streak.count>=7&&<div style={{fontSize:9,color:C.acc,fontWeight:600}}>semaine !</div>}</div>
+   </div>
+  </div>
+  {/* Conseil du jour IA */}
+  <div className="glass-card-static" style={{padding:"12px 16px",marginBottom:16,borderLeft:`3px solid ${C.acc}`,background:"rgba(255,170,0,.04)"}}>
+   <div style={{fontSize:12,fontWeight:600,color:C.t}}>{conseilDuJour}</div>
+  </div>
   {/* Smart Alerts */}
   {smartAlerts.length>0&&<div style={{marginBottom:16}}>
    {smartAlerts.slice(0,3).map((a,i)=><div key={a.id} className={`glass-card-static fu d${i+1}`} style={{padding:"10px 14px",marginBottom:4,display:"flex",alignItems:"center",gap:8}}>
@@ -4268,7 +4368,20 @@ function ActivitePanel({soc,ghlData,socBankData,clients}){
   (gd?.opportunities||[]).filter(o=>o.status==="won"||o.status==="lost").forEach(o=>{const d=new Date(o.updatedAt||o.createdAt||0);all.push({id:"deal_"+o.id,type:"deal",icon:o.status==="won"?"🏆":"❌",desc:`Deal ${o.status==="won"?"gagné":"perdu"}: ${o.name||"—"} (${fmt(o.value||0)}€)`,date:d});});
   return all.sort((a,b)=>b.date-a.date).slice(0,30);
  },[soc.id,ghlData,socBankData]);
+ // Productivité semaine
+ const weekKey=`prod_${soc.id}_${curW()}`;
+ const[weekDone,setWeekDone]=useState(()=>{try{return parseInt(localStorage.getItem(weekKey)||"0");}catch{return 0;}});
+ useEffect(()=>{const cnt=sorted.filter(t=>doneIds.includes(t.id)).length;setWeekDone(cnt);try{localStorage.setItem(weekKey,String(cnt));}catch{}},[doneIds,sorted]);
+ const weekTotal=sorted.length;const weekPct=weekTotal>0?Math.round(weekDone/weekTotal*100):0;
  return <Sect title="⚡ Activité" sub="Tâches & feed d'activité">
+  {/* Productivité semaine */}
+  <div className="glass-card-static" style={{padding:14,marginBottom:12,display:"flex",alignItems:"center",gap:12}}>
+   <span style={{fontSize:20}}>📊</span>
+   <div style={{flex:1}}>
+    <div style={{fontSize:11,fontWeight:700,color:C.t}}>Cette semaine: {weekDone} tâches complétées / {weekTotal} total ({weekPct}%)</div>
+    <div style={{height:5,background:C.brd,borderRadius:3,overflow:"hidden",marginTop:4}}><div style={{height:"100%",width:`${weekPct}%`,background:weekPct>=80?C.g:weekPct>=50?C.acc:C.o,borderRadius:3,transition:"width .5s ease"}}/></div>
+   </div>
+  </div>
   {/* Tasks section */}
   <div className="glass-card-static" style={{padding:16,marginBottom:16}}>
    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
@@ -4284,6 +4397,9 @@ function ActivitePanel({soc,ghlData,socBankData,clients}){
     <span style={{fontSize:11,flexShrink:0}}>{priorityIcon[t.priority]||"🟢"}</span>
     <div style={{flex:1,fontSize:11,fontWeight:done?400:600,color:done?C.td:C.t,textDecoration:done?"line-through":"none"}}>{t.text}</div>
     {t.auto&&<span style={{fontSize:8,color:C.td,background:C.card2,padding:"1px 5px",borderRadius:6}}>auto</span>}
+    {/* Actions 1-clic */}
+    {t.auto&&t.id.startsWith("cal_")&&<button onClick={(e)=>{e.stopPropagation();const cName=t.text.replace(/^📞 Appel avec /,"").replace(/ à .*$/,"");const cl2=(clients||[]).find(c=>c.socId===soc.id&&(c.name||"").toLowerCase().includes(cName.toLowerCase()));if(cl2?.phone)window.open(`tel:${cl2.phone}`);else if(soc.ghlLocationId)window.open(`https://app.gohighlevel.com/v2/location/${soc.ghlLocationId}/calendar`);}} style={{padding:"2px 6px",borderRadius:5,border:`1px solid ${C.b}`,background:C.bD,color:C.b,fontSize:8,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>📞</button>}
+    {t.auto&&(t.id.startsWith("unpaid_")||t.id.startsWith("newlead_"))&&<button onClick={(e)=>{e.stopPropagation();const clId=t.id.split("_").slice(1).join("_");const cl2=(clients||[]).find(c=>c.id===clId)||(ghlData?.[soc.id]?.ghlClients||[]).find(c=>(c.id||c.ghlId)===clId);if(cl2)alert(`💬 Contact: ${cl2.name||"—"}\n📧 ${cl2.email||"—"}\n📱 ${cl2.phone||"—"}`);}} style={{padding:"2px 6px",borderRadius:5,border:`1px solid ${C.o}`,background:C.oD,color:C.o,fontSize:8,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>💬</button>}
     {!t.auto&&<button onClick={()=>saveManual(manualTasks.filter(m=>m.id!==t.id))} style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:10}}>✕</button>}
    </div>;})}
    {sorted.length===0&&<div style={{textAlign:"center",padding:12,color:C.td,fontSize:11}}>✅ Aucune tâche</div>}
