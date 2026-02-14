@@ -2047,7 +2047,7 @@ function AIWeeklyCoach({soc,reps,allM,actions,pulses,milestones}){
 }
 /* CLIENTS PANEL (per-société CRM) */
 function ClientsPanelSafe(props){return <ErrorBoundary label="Erreur dans la page Clients"><ClientsPanelInner {...props}/></ErrorBoundary>;}
-function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices,stripeData}){
+function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices,stripeData,onSelectClient}){
  const[editCl,setEditCl]=useState(null);const[filter,setFilter]=useState("all");const[stageFilter,setStageFilter]=useState("all");const[invView,setInvView]=useState(null);
  const[sending,setSending]=useState(null);const[search,setSearch]=useState("");const[selPipeline,setSelPipeline]=useState("all");const[sort,setSort]=useState("recent");
  const allPipelines=ghlData?.[soc.id]?.pipelines||[];
@@ -2388,7 +2388,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
    const b=cl.billing||{};const bt=b.type?BILL_TYPES[b.type]:null;const cs=CLIENT_STATUS[cl.status]||CLIENT_STATUS.active;
    const monthly=clientMonthlyRevenue(cl);const cr=commitmentRemaining(cl);
    const clInvs=clientInvoices(cl.id);const clDraft=clInvs.filter(x=>x.status==="draft").length;const clPaid=clInvs.filter(x=>x.status==="paid").length;const clOverdue=clInvs.filter(x=>x.status==="overdue").length;
-   return <Card key={cl.id} accent={bt?.c||C.td} style={{marginBottom:4,padding:"12px 14px",cursor:"pointer"}} delay={Math.min(i+1,8)} onClick={()=>setEditCl({...cl})}>
+   return <Card key={cl.id} accent={bt?.c||C.td} style={{marginBottom:4,padding:"12px 14px",cursor:"pointer"}} delay={Math.min(i+1,8)} onClick={()=>{setEditCl({...cl});if(onSelectClient)onSelectClient(cl);}}>
     <div style={{display:"flex",alignItems:"center",gap:8}}>
     <div style={{width:36,height:36,borderRadius:9,background:(bt?.c||C.td)+"18",border:`1.5px solid ${(bt?.c||C.td)}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>{bt?.icon||"👤"}</div>
     <div style={{flex:1,minWidth:0}}>
@@ -3084,6 +3084,11 @@ function SocSettingsPanel({soc,save,socs}){
     </div>
    </div>
   </Card>
+  {/* Monthly CA Goal */}
+  <Card style={{padding:16,marginBottom:12}}>
+   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}><span style={{fontSize:16}}>🎯</span><div><div style={{fontWeight:800,fontSize:13,color:C.t}}>Objectif mensuel</div><div style={{fontSize:10,color:C.td}}>Utilisé dans le Dashboard pour le ring de progression</div></div></div>
+   <Inp label="Objectif CA mensuel (€)" value={soc.obj||""} onChange={v=>{const updated=socs.map(s=>s.id===soc.id?{...s,obj:pf(v)}:s);save(updated,null,null);}} type="number" suffix="€" placeholder="Ex: 10000"/>
+  </Card>
   <Btn onClick={doSave}>💾 Sauvegarder</Btn>
  </Sect>;
 }
@@ -3156,6 +3161,7 @@ function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
  const[open,setOpen]=useState(false);const[msgs,setMsgs]=useState([]);const[typing,setTyping]=useState(false);const[revealIdx,setRevealIdx]=useState(-1);const[revealLen,setRevealLen]=useState(0);const ref=useRef(null);
  const cm=curM();const pm=prevM(cm);
  const computeAnswer=(q)=>{
+  const ql=q.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   const r=gr(reps,soc.id,cm);const rp=gr(reps,soc.id,pm);
   const ca=pf(r?.ca);const prevCa=pf(rp?.ca);const ch=pf(r?.charges);
   const marge=ca-ch;const margePct=ca>0?Math.round(marge/ca*100):0;
@@ -3165,28 +3171,68 @@ function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
   const activeCl=myCl.filter(c=>c.status==="active");
   const churnedCl=myCl.filter(c=>c.status==="churned");
   const bankData=socBank?.[soc.id];
-  if(q.includes("CA")||q.includes("chiffre")){
-   return `📊 **Analyse CA — ${soc.nom}**\n\nCA ce mois : ${fmt(ca)}€${prevCa>0?`\nMois précédent : ${fmt(prevCa)}€\nTendance : ${trend>0?"📈 +":"📉 "}${trend}%`:""}\nMarge : ${fmt(marge)}€ (${margePct}%)\n\n${trend>10?"🔥 Excellent momentum, continue sur cette lancée !":trend<-10?"⚠️ Attention à la baisse, identifie les causes rapidement.":"📊 Stabilité — cherche un levier de croissance."}`;
+  const gd=ghlData?.[soc.id];
+  const opps=gd?.opportunities||[];
+  const calEvts=gd?.calendarEvents||[];
+  const ghlCl=gd?.ghlClients||[];
+  const stats=gd?.stats;
+  const mrr=activeCl.reduce((a,c)=>a+clientMonthlyRevenue(c),0);
+  const monthGoal=pf(soc.obj)||0;
+  // Bank transactions this month
+  const excluded=EXCLUDED_ACCOUNTS[soc.id]||[];
+  const monthTxns=(bankData?.transactions||[]).filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded.includes(leg.account_id))return false;return(t.created_at||"").startsWith(cm);});
+  const monthIncome=monthTxns.filter(t=>(t.legs?.[0]?.amount||0)>0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0);
+
+  // Pattern matching
+  if(ql.match(/combien.*client.*actif|clients actifs|nombre.*client/)){
+   return `👥 **Clients actifs — ${soc.nom}**\n\n✅ ${activeCl.length} clients actifs\n📊 MRR : ${fmt(mrr)}€/mois\n❌ ${churnedCl.length} clients perdus\n📈 Rétention : ${myCl.length>0?Math.round((1-churnedCl.length/myCl.length)*100):100}%`;
   }
-  if(q.includes("client")||q.includes("retard")){
+  if(ql.match(/ca.*mois|chiffre.*affaire|mon ca|revenue/)){
+   return `📊 **CA — ${ml(cm)}**\n\nCA ce mois : ${fmt(ca)}€${monthGoal>0?` / ${fmt(monthGoal)}€ (${Math.round(ca/monthGoal*100)}%)`:""}\n${prevCa>0?`Mois précédent : ${fmt(prevCa)}€\nTendance : ${trend>0?"📈 +":"📉 "}${trend}%\n`:""}\nMarge : ${fmt(marge)}€ (${margePct}%)\nTrésorerie : ${fmt(balance)}€\n\n${trend>10?"🔥 Excellent momentum !":trend<-10?"⚠️ Baisse détectée, identifie les causes.":"📊 Stabilité."}`;
+  }
+  if(ql.match(/pas paye|impaye|n'a pas paye|retard.*paiement|facture/)){
+   const txs=bankData?.transactions||[];const now45=Date.now()-45*864e5;
+   const unpaid=activeCl.filter(cl=>{if(!cl.billing||cl.billing.type==="oneoff")return false;const cn=(cl.name||"").toLowerCase().trim();return!txs.some(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;return new Date(tx.created_at||0).getTime()>now45&&(leg.description||tx.reference||"").toLowerCase().includes(cn);});});
+   if(unpaid.length===0)return `✅ **Aucun impayé !**\n\nTous tes clients actifs ont payé dans les 45 derniers jours.`;
+   return `⚠️ **Clients sans paiement (+45j)**\n\n${unpaid.map(c=>`• ${c.name} — ${fmt(clientMonthlyRevenue(c))}€/mois`).join("\n")}\n\n💡 ${unpaid.length} client${unpaid.length>1?"s":""} à relancer`;
+  }
+  if(ql.match(/prochain.*rdv|rendez.vous|agenda|prochains rdv/)){
+   const now=new Date();const upcoming=calEvts.filter(e=>new Date(e.startTime||0)>now).sort((a,b)=>new Date(a.startTime)-new Date(b.startTime)).slice(0,5);
+   if(upcoming.length===0)return `📅 **Aucun RDV à venir**`;
+   return `📅 **Prochains RDV**\n\n${upcoming.map(e=>`• ${new Date(e.startTime).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})} ${new Date(e.startTime).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})} — ${e.title||e.contactName||"RDV"}`).join("\n")}`;
+  }
+  if(ql.match(/top client|meilleur.*client|plus gros/)){
+   const withRev=activeCl.map(c=>({name:c.name,rev:clientMonthlyRevenue(c)})).filter(c=>c.rev>0).sort((a,b)=>b.rev-a.rev).slice(0,5);
+   if(withRev.length===0){const wonO=opps.filter(o=>o.status==="won").sort((a,b)=>(b.value||0)-(a.value||0)).slice(0,5);if(wonO.length>0)return `🏅 **Top deals gagnés**\n\n${wonO.map((o,i)=>`${i+1}. ${o.name||o.contact?.name||"—"} — ${fmt(o.value||0)}€`).join("\n")}`;return `🏅 Pas assez de données clients.`;}
+   return `🏅 **Top clients par revenu**\n\n${withRev.map((c,i)=>`${["🥇","🥈","🥉","4️⃣","5️⃣"][i]} ${c.name} — ${fmt(c.rev)}€/mois`).join("\n")}\n\n💰 Total MRR top 5 : ${fmt(withRev.reduce((a,c)=>a+c.rev,0))}€`;
+  }
+  if(ql.match(/taux.*conversion|conversion rate/)){
+   const cbt=stats?.callsByType||{};const strat=Object.entries(cbt).filter(([n])=>!n.toLowerCase().includes("intégration")&&!n.toLowerCase().includes("integration")).reduce((a,[,v])=>a+v,0);
+   const integ=Object.entries(cbt).filter(([n])=>n.toLowerCase().includes("intégration")||n.toLowerCase().includes("integration")).reduce((a,[,v])=>a+v,0);
+   const rate=strat>0?Math.round(integ/strat*100):0;
+   return `📈 **Taux de conversion**\n\n🎯 ${rate}%\n📞 Appels strat : ${strat}\n🤝 Intégrations : ${integ}\n\n${rate>30?"🔥 Excellent taux !":rate>15?"👍 Correct, continue !":"⚠️ À améliorer — travaille ton closing."}`;
+  }
+  if(ql.match(/client.*retard|retard|en retard|alerte/)){
    const atRisk=myCl.filter(c=>{const rem=commitmentRemaining(c);return rem!==null&&rem<=2;});
-   return `👥 **Santé clients — ${soc.nom}**\n\nClients actifs : ${activeCl.length}\nClients perdus : ${churnedCl.length}\nTaux de rétention : ${myCl.length>0?Math.round((1-churnedCl.length/myCl.length)*100):100}%\n${atRisk.length>0?`\n⚠️ ${atRisk.length} engagement(s) bientôt terminé(s) :\n${atRisk.map(c=>`  • ${c.name} — ${commitmentRemaining(c)} mois restant`).join("\n")}`:"\n✅ Aucun engagement critique."}\n\nMRR actif : ${fmt(activeCl.reduce((a,c)=>a+clientMonthlyRevenue(c),0))}€`;
+   return `⚠️ **Alertes clients**\n\n${atRisk.length>0?atRisk.map(c=>`• ${c.name} — ${commitmentRemaining(c)} mois restant`).join("\n"):`✅ Aucun engagement critique`}\n\n👥 ${activeCl.length} actifs · ❌ ${churnedCl.length} perdus`;
   }
-  if(q.includes("dépense")||q.includes("charge")){
-   const excluded=EXCLUDED_ACCOUNTS[soc.id]||[];
+  if(ql.match(/pipeline|combien.*pipeline|opportunite/)){
+   const openO=opps.filter(o=>o.status==="open");const pVal=openO.reduce((a,o)=>a+(o.value||0),0);const wonO=opps.filter(o=>o.status==="won");
+   return `🔄 **Pipeline — ${soc.nom}**\n\n🎯 ${openO.length} deals actifs — ${fmt(pVal)}€\n✅ ${wonO.length} gagnés — ${fmt(wonO.reduce((a,o)=>a+(o.value||0),0))}€\n❌ ${opps.filter(o=>o.status==="lost").length} perdus\n\n💰 Valeur moyenne : ${fmt(stats?.avgDealSize||0)}€`;
+  }
+  if(ql.match(/resume|brief|résumé|synthese|vue.*ensemble/)){
+   const openO=opps.filter(o=>o.status==="open");const pVal=openO.reduce((a,o)=>a+(o.value||0),0);
+   return `📋 **Résumé — ${soc.nom} — ${ml(cm)}**\n\n💰 CA : ${fmt(ca)}€${monthGoal>0?` / ${fmt(monthGoal)}€ (${Math.round(ca/monthGoal*100)}%)`:""}\n📉 Charges : ${fmt(ch)}€\n📊 Marge : ${fmt(marge)}€ (${margePct}%)\n🏦 Trésorerie : ${fmt(balance)}€\n\n👥 ${activeCl.length} clients actifs · MRR ${fmt(mrr)}€\n🔄 Pipeline : ${openO.length} deals (${fmt(pVal)}€)\n📅 ${calEvts.filter(e=>new Date(e.startTime||0)>new Date()).length} RDV à venir\n🟢 ${ghlCl.length} contacts GHL\n\n${trend>0?"📈 Tendance positive !":"📉 Surveille la tendance."}`;
+  }
+  if(ql.match(/depense|charge|cout/)){
    const catTotals={};
-   if(bankData?.transactions){
-    bankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded.includes(leg.account_id))return false;const d=t.created_at||"";return d.startsWith(cm)&&leg.amount<0;}).forEach(t=>{
-     const cat=categorizeTransaction(t);const amt=Math.abs(t.legs?.[0]?.amount||0);
-     catTotals[cat.label]=(catTotals[cat.label]||0)+amt;
-    });
-   }
-   const sorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
-   return `💸 **Analyse dépenses — ${ml(cm)}**\n\nCharges totales : ${fmt(ch)}€\nTrésorerie : ${fmt(balance)}€\n\n${sorted.length>0?"Top catégories :\n"+sorted.slice(0,5).map(([k,v])=>`  • ${k} : ${fmt(v)}€`).join("\n"):"Pas assez de données bancaires ce mois."}\n\n${balance<2000?"⚠️ Trésorerie basse — surveille tes dépenses.":"✅ Trésorerie correcte."}`;
+   if(bankData?.transactions){bankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded.includes(leg.account_id))return false;return(t.created_at||"").startsWith(cm)&&leg.amount<0;}).forEach(t=>{const cat=categorizeTransaction(t);const amt=Math.abs(t.legs?.[0]?.amount||0);catTotals[cat.label]=(catTotals[cat.label]||0)+amt;});}
+   const sorted2=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
+   return `💸 **Dépenses — ${ml(cm)}**\n\nTotal : ${fmt(ch)}€\nTrésorerie : ${fmt(balance)}€\n\n${sorted2.length>0?"Par catégorie :\n"+sorted2.slice(0,5).map(([k,v])=>`  • ${k} : ${fmt(v)}€`).join("\n"):"Pas assez de données."}\n\n${balance<2000?"⚠️ Trésorerie basse.":"✅ Trésorerie OK."}`;
   }
-  return `🤖 Je peux analyser :\n• Ton CA et sa tendance\n• La santé de tes clients\n• Tes dépenses par catégorie\n\nPose-moi une question plus précise !`;
+  return `🤖 Je peux répondre sur : clients, CA, paiements, RDV, pipeline, conversion. Essaie une de ces questions !`;
  };
- const QUICK=[{q:"Comment va mon CA?",icon:"📊"},{q:"Quels clients sont en retard?",icon:"👥"},{q:"Analyse mes dépenses",icon:"💸"}];
+ const QUICK=[{q:"Résumé",icon:"📋"},{q:"Quel est mon CA ce mois ?",icon:"📊"},{q:"Qui n'a pas payé ?",icon:"💸"},{q:"Prochains RDV",icon:"📅"},{q:"Top clients",icon:"🏅"},{q:"Combien dans le pipeline ?",icon:"🔄"}];
  const ask=(q)=>{
   setMsgs(prev=>[...prev,{role:"user",content:q}]);setTyping(true);
   const answer=computeAnswer(q);
@@ -3202,7 +3248,7 @@ function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
  },[revealIdx,revealLen,msgs]);
  useEffect(()=>{ref.current?.scrollTo({top:ref.current.scrollHeight,behavior:"smooth"});},[msgs,revealLen]);
  if(!open)return <div onClick={()=>setOpen(true)} style={{position:"fixed",bottom:24,right:24,width:56,height:56,borderRadius:28,background:`linear-gradient(135deg,${C.v},${C.acc})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 20px ${C.acc}44`,zIndex:800,fontSize:24,animation:"fl 3s ease-in-out infinite",transition:"transform .2s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>🤖</div>;
- return <div style={{position:"fixed",bottom:24,right:24,width:340,maxWidth:"90vw",height:480,maxHeight:"70vh",background:"rgba(14,14,22,.85)",backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",border:"1px solid rgba(255,255,255,.06)",borderRadius:20,boxShadow:"0 12px 48px rgba(0,0,0,.5)",zIndex:800,display:"flex",flexDirection:"column",animation:"slideInUp .3s ease",overflow:"hidden"}}>
+ return <div style={{position:"fixed",bottom:24,right:24,width:400,maxWidth:"90vw",height:520,maxHeight:"75vh",background:"rgba(14,14,22,.85)",backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",border:"1px solid rgba(255,255,255,.08)",borderRadius:20,boxShadow:"0 12px 48px rgba(0,0,0,.5)",zIndex:800,display:"flex",flexDirection:"column",animation:"slideInUp .3s ease",overflow:"hidden"}}>
   <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",justifyContent:"space-between",background:`linear-gradient(135deg,${C.card2},${C.card})`}}>
    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:18}}>🤖</span><div><div style={{fontWeight:800,fontSize:12,color:C.v}}>Assistant IA</div><div style={{fontSize:8,color:C.td}}>{soc.nom}</div></div></div>
    <Btn v="ghost" small onClick={()=>setOpen(false)}>✕</Btn>
@@ -3223,8 +3269,8 @@ function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
    })}
    {typing&&<div style={{padding:"8px 12px",background:C.card2,borderRadius:10,border:`1px solid ${C.brd}`,display:"inline-block"}}><span className="dots" style={{fontSize:16}}><span>·</span><span>·</span><span>·</span></span></div>}
   </div>
-  <div style={{padding:"8px 12px",borderTop:`1px solid ${C.brd}`,display:"flex",gap:4,flexWrap:"wrap"}}>
-   {QUICK.map((q,i)=><button key={i} onClick={()=>ask(q.q)} style={{padding:"4px 10px",borderRadius:16,fontSize:9,fontWeight:600,border:`1px solid ${C.brd}`,background:C.card2,color:C.td,cursor:"pointer",fontFamily:FONT}}>{q.icon} {q.q.split(" ").slice(0,3).join(" ")}…</button>)}
+  <div style={{padding:"6px 10px",borderTop:`1px solid ${C.brd}`,display:"flex",gap:3,flexWrap:"wrap"}}>
+   {QUICK.map((q,i)=><button key={i} onClick={()=>ask(q.q)} style={{padding:"3px 8px",borderRadius:12,fontSize:8,fontWeight:600,border:`1px solid ${C.brd}`,background:C.card2,color:C.td,cursor:"pointer",fontFamily:FONT,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.acc;e.currentTarget.style.color=C.acc;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.brd;e.currentTarget.style.color=C.td;}}>{q.icon} {q.q}</button>)}
   </div>
  </div>;
 }
@@ -3354,6 +3400,28 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
   </div>
   {/* Pulse widget */}
   {(()=>{const w=curW();const existing=pulses?.[`${soc.id}_${w}`];return <PulseDashWidget soc={soc} existing={existing} savePulse={savePulse} hold={hold}/>;})()}
+  {/* Today's Agenda Summary + Alerts */}
+  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+   <div className="fade-up glass-card-static" style={{padding:16,animationDelay:"0.3s"}}>
+    <div style={{fontSize:9,fontWeight:700,color:C.v,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>📅 AGENDA DU JOUR</div>
+    {(()=>{const now2=new Date();const ts2=now2.toISOString().slice(0,10);const evts2=(ghlData?.[soc.id]?.calendarEvents||[]).filter(e=>(e.startTime||"").startsWith(ts2)).sort((a,b)=>new Date(a.startTime)-new Date(b.startTime)).slice(0,3);
+     if(evts2.length===0)return <div style={{color:C.td,fontSize:11}}>Aucun RDV aujourd'hui</div>;
+     return evts2.map((e,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 0",borderBottom:i<evts2.length-1?`1px solid ${C.brd}`:"none"}}>
+      <span style={{fontSize:12}}>{/strat/i.test(e.title||"")?"📞":/int[eé]g/i.test(e.title||"")?"🤝":"📅"}</span>
+      <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.contactName||e.title||"RDV"}</div><div style={{fontSize:8,color:C.td}}>{new Date(e.startTime).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</div></div>
+     </div>);
+    })()}
+   </div>
+   <div className="fade-up glass-card-static" style={{padding:16,animationDelay:"0.35s"}}>
+    <div style={{fontSize:9,fontWeight:700,color:C.o,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>🔔 ALERTES</div>
+    {(()=>{const alerts=[];const gd2=ghlData?.[soc.id];const h48=Date.now()-48*36e5;
+     (gd2?.ghlClients||[]).filter(c2=>new Date(c2.at||c2.dateAdded||0).getTime()>h48).slice(0,2).forEach(c2=>{alerts.push({icon:"🟢",text:`Lead: ${c2.name||c2.email||"—"}`});});
+     (socBank?.[soc.id]?.transactions||[]).filter(t=>(t.legs?.[0]?.amount||0)>0).slice(0,1).forEach(t=>{alerts.push({icon:"💰",text:`+${fmt(t.legs?.[0]?.amount||0)}€ reçu`});});
+     if(alerts.length===0)return <div style={{color:C.td,fontSize:11}}>Rien de nouveau</div>;
+     return alerts.map((a,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 0"}}><span style={{fontSize:11}}>{a.icon}</span><span style={{fontSize:10,fontWeight:600}}>{a.text}</span></div>);
+    })()}
+   </div>
+  </div>
   {/* Revenue AreaChart (Recharts) */}
   <div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,animationDelay:"0.4s"}}>
    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>📈 ÉVOLUTION CA VS CHARGES — 6 MOIS</div>
@@ -3820,6 +3888,166 @@ function RessourcesPanel({soc,clients}){
  </Sect>;
 }
 
+/* ===== ACTIVITE PANEL (merged Inbox + Todo) ===== */
+function ActivitePanel({soc,ghlData,socBankData,clients}){
+ const[manualTasks,setManualTasks]=useState(()=>{try{return JSON.parse(localStorage.getItem(`todo_${soc.id}`)||"[]");}catch{return[];}});
+ const[doneIds,setDoneIds]=useState(()=>{try{return JSON.parse(localStorage.getItem(`todo_done_${soc.id}`)||"[]");}catch{return[];}});
+ const[newTask,setNewTask]=useState("");
+ const[readIds,setReadIds]=useState(()=>{try{return JSON.parse(localStorage.getItem(`inbox_read_${soc.id}`)||"[]");}catch{return[];}});
+ const saveDone=(ids)=>{setDoneIds(ids);try{localStorage.setItem(`todo_done_${soc.id}`,JSON.stringify(ids));}catch{}};
+ const saveManual=(tasks)=>{setManualTasks(tasks);try{localStorage.setItem(`todo_${soc.id}`,JSON.stringify(tasks));}catch{}};
+ const toggleDone=(id)=>{const n=doneIds.includes(id)?doneIds.filter(x=>x!==id):[...doneIds,id];saveDone(n);};
+ const addTask=()=>{if(!newTask.trim())return;saveManual([...manualTasks,{id:uid(),text:newTask.trim(),priority:"normal",at:new Date().toISOString()}]);setNewTask("");};
+ const markRead=(id)=>{const n=[...readIds,id];setReadIds(n);try{localStorage.setItem(`inbox_read_${soc.id}`,JSON.stringify(n));}catch{}};
+ // Auto tasks
+ const autoTasks=useMemo(()=>{
+  const tasks=[];const now=new Date();const todayStr=now.toISOString().slice(0,10);
+  (ghlData?.[soc.id]?.calendarEvents||[]).filter(e=>(e.startTime||"").startsWith(todayStr)).forEach(e=>{const t=new Date(e.startTime).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});tasks.push({id:"cal_"+e.id,text:`📞 Appel avec ${e.contactName||e.title||"client"} à ${t}`,priority:"urgent",auto:true});});
+  const myCl=(clients||[]).filter(c=>c.socId===soc.id&&c.status==="active");
+  const txs=socBankData?.transactions||[];const now45=Date.now()-45*864e5;
+  myCl.forEach(cl=>{if(!cl.billing||cl.billing.type==="oneoff")return;const cn=(cl.name||"").toLowerCase().trim();const hasRecent=txs.some(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;return new Date(tx.created_at||tx.date||0).getTime()>now45&&(leg.description||tx.reference||"").toLowerCase().includes(cn);});if(!hasRecent)tasks.push({id:"unpaid_"+cl.id,text:`💸 Relancer ${cl.name} — facture impayée`,priority:"urgent",auto:true});});
+  const h48=Date.now()-48*36e5;
+  (ghlData?.[soc.id]?.ghlClients||[]).filter(c=>new Date(c.at||c.dateAdded||0).getTime()>h48).forEach(c=>{tasks.push({id:"newlead_"+c.id,text:`🟢 Nouveau lead: ${c.name||c.email||"—"} — à contacter`,priority:"important",auto:true});});
+  myCl.forEach(cl=>{const end=commitmentEnd(cl);if(end){const days=Math.round((end-now)/(864e5));if(days>0&&days<=30)tasks.push({id:"expiry_"+cl.id,text:`📋 Contrat ${cl.name} expire dans ${days} jours`,priority:days<=7?"urgent":"important",auto:true});}});
+  return tasks;
+ },[soc.id,ghlData,socBankData,clients]);
+ const allTasks=[...autoTasks,...manualTasks.map(t=>({...t,auto:false}))];
+ const priorityIcon={urgent:"🔴",important:"🟡",normal:"🟢"};
+ const priorityOrder={urgent:0,important:1,normal:2};
+ const sorted=[...allTasks].sort((a,b)=>(priorityOrder[a.priority]||2)-(priorityOrder[b.priority]||2));
+ // Activity feed
+ const feedItems=useMemo(()=>{
+  const all=[];const gd=ghlData?.[soc.id];
+  (gd?.ghlClients||[]).forEach(c=>{const d=new Date(c.at||c.dateAdded||0);all.push({id:"lead_"+c.id,type:"lead",icon:"🟢",desc:`Nouveau lead: ${c.name||c.email||"—"}`,date:d});});
+  (socBankData?.transactions||[]).filter(t=>(t.legs?.[0]?.amount||0)>0).forEach(t=>{const d=new Date(t.created_at||t.date||0);const amt=Math.abs(t.legs?.[0]?.amount||0);all.push({id:"pay_"+t.id,type:"payment",icon:"💰",desc:`${t.legs?.[0]?.description||t.reference||"Paiement"}: +${fmt(amt)}€`,date:d});});
+  (gd?.calendarEvents||[]).forEach(e=>{const d=new Date(e.startTime||0);all.push({id:"rdv_"+e.id,type:"rdv",icon:"📅",desc:`RDV: ${e.title||e.contactName||"—"}`,date:d});});
+  (gd?.opportunities||[]).filter(o=>o.status==="won"||o.status==="lost").forEach(o=>{const d=new Date(o.updatedAt||o.createdAt||0);all.push({id:"deal_"+o.id,type:"deal",icon:o.status==="won"?"🏆":"❌",desc:`Deal ${o.status==="won"?"gagné":"perdu"}: ${o.name||"—"} (${fmt(o.value||0)}€)`,date:d});});
+  return all.sort((a,b)=>b.date-a.date).slice(0,30);
+ },[soc.id,ghlData,socBankData]);
+ return <Sect title="⚡ Activité" sub="Tâches & feed d'activité">
+  {/* Tasks section */}
+  <div className="glass-card-static" style={{padding:16,marginBottom:16}}>
+   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+    <span style={{fontSize:11,fontWeight:800,color:C.acc,fontFamily:FONT_TITLE}}>📋 TÂCHES DU JOUR</span>
+    <span style={{fontSize:9,color:C.td}}>{sorted.filter(t=>!doneIds.includes(t.id)).length} restantes</span>
+   </div>
+   <div style={{display:"flex",gap:6,marginBottom:10}}>
+    <input value={newTask} onChange={e=>setNewTask(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();}} placeholder="Ajouter une tâche..." style={{flex:1,padding:"7px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
+    <Btn small onClick={addTask}>+</Btn>
+   </div>
+   {sorted.map(t=>{const done=doneIds.includes(t.id);return <div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:done?"transparent":"rgba(14,14,22,.6)",borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3,opacity:done?.5:1}}>
+    <div onClick={()=>toggleDone(t.id)} style={{width:16,height:16,borderRadius:4,border:`2px solid ${done?C.g:C.brd}`,background:done?C.gD:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{done&&<span style={{color:C.g,fontSize:9}}>✓</span>}</div>
+    <span style={{fontSize:11,flexShrink:0}}>{priorityIcon[t.priority]||"🟢"}</span>
+    <div style={{flex:1,fontSize:11,fontWeight:done?400:600,color:done?C.td:C.t,textDecoration:done?"line-through":"none"}}>{t.text}</div>
+    {t.auto&&<span style={{fontSize:8,color:C.td,background:C.card2,padding:"1px 5px",borderRadius:6}}>auto</span>}
+    {!t.auto&&<button onClick={()=>saveManual(manualTasks.filter(m=>m.id!==t.id))} style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:10}}>✕</button>}
+   </div>;})}
+   {sorted.length===0&&<div style={{textAlign:"center",padding:12,color:C.td,fontSize:11}}>✅ Aucune tâche</div>}
+  </div>
+  {/* Activity feed */}
+  <div className="glass-card-static" style={{padding:16}}>
+   <div style={{fontSize:11,fontWeight:800,color:C.b,fontFamily:FONT_TITLE,marginBottom:10}}>📥 ACTIVITÉ RÉCENTE</div>
+   <div style={{maxHeight:400,overflowY:"auto"}}>
+    {feedItems.map(it=>{const isRead=readIds.includes(it.id);return <div key={it.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:isRead?"transparent":"rgba(255,170,0,.03)",borderRadius:8,border:`1px solid ${isRead?C.brd:"rgba(255,170,0,.12)"}`,marginBottom:3}}>
+     <span style={{fontSize:14,flexShrink:0}}>{it.icon}</span>
+     <div style={{flex:1,minWidth:0}}>
+      <div style={{fontSize:11,fontWeight:isRead?400:600,color:isRead?C.td:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.desc}</div>
+      <div style={{fontSize:9,color:C.td}}>{ago(it.date)}</div>
+     </div>
+     {!isRead&&<button onClick={()=>markRead(it.id)} style={{padding:"2px 6px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:8,cursor:"pointer",fontFamily:FONT}}>✓</button>}
+    </div>;})}
+    {feedItems.length===0&&<div style={{textAlign:"center",padding:16,color:C.td,fontSize:11}}>Aucune activité récente</div>}
+   </div>
+  </div>
+ </Sect>;
+}
+
+/* ===== CLIENTS UNIFIED PANEL (Clients + Conversations + Pipeline toggle) ===== */
+function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices,stripeData}){
+ const[viewMode,setViewMode]=useState("list");
+ const[selClient,setSelClient]=useState(null);
+ const[convos,setConvos]=useState([]);const[convoMsgs,setConvoMsgs]=useState([]);const[convoLoading,setConvoLoading]=useState(false);const[msgInput,setMsgInput]=useState("");
+ const socKey=soc.ghlLocationId||soc.id;
+ // Load conversations for selected client
+ useEffect(()=>{
+  if(!selClient)return;setConvoLoading(true);setConvos([]);setConvoMsgs([]);
+  const contactId=selClient.ghlId||selClient.id;
+  fetch(`/api/ghl?action=conversations_list&loc=${socKey}&contactId=${contactId}`).then(r=>r.json()).then(d=>{setConvos(d.conversations||d||[]);
+   if((d.conversations||d||[]).length>0){const c=(d.conversations||d)[0];
+    fetch(`/api/ghl?action=conversations_messages&loc=${socKey}&conversationId=${c.id}`).then(r2=>r2.json()).then(d2=>setConvoMsgs(d2.messages||d2||[])).catch(()=>{});}
+  }).catch(()=>{}).finally(()=>setConvoLoading(false));
+ },[selClient,socKey]);
+ const sendMsg=()=>{if(!msgInput.trim()||!selClient||convos.length===0)return;
+  fetch(`/api/ghl?action=conversation_send&loc=${socKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"Email",contactId:selClient.ghlId||selClient.id,message:msgInput})}).then(()=>{setConvoMsgs(p=>[...p,{body:msgInput,direction:"outbound",dateAdded:new Date().toISOString()}]);setMsgInput("");}).catch(()=>{});
+ };
+ // Pipeline data
+ const gd=ghlData?.[soc.id];const opps=gd?.opportunities||[];const stages=gd?.pipelines?.[0]?.stages||[];
+ const stageNames=stages.length>0?stages.map(s=>s.name||s):["Nouveau","Contacté","Qualifié","Proposition","Gagné"];
+ const byStage=useMemo(()=>{const m={};stageNames.forEach(s=>{m[s]=opps.filter(o=>o.stage===s);});return m;},[opps,stageNames]);
+ // Find pipeline stage for a client
+ const clientStage=(cl)=>{const opp=opps.find(o=>(o.contact?.name||"").toLowerCase()===(cl.name||"").toLowerCase()||o.contact?.email===cl.email);return opp?{stage:opp.stage,value:opp.value,status:opp.status}:null;};
+ if(viewMode==="kanban"){
+  return <Sect title="👥 Clients" sub="Vue Pipeline Kanban" right={<div style={{display:"flex",gap:4}}><Btn small v={viewMode==="list"?"primary":"ghost"} onClick={()=>setViewMode("list")}>📋 Liste</Btn><Btn small v={viewMode==="kanban"?"primary":"ghost"} onClick={()=>setViewMode("kanban")}>🔄 Kanban</Btn></div>}>
+   <div style={{display:"flex",gap:8,overflow:"auto",paddingBottom:8}}>
+    {Object.entries(byStage).map(([stage,cards],si)=><div key={stage} style={{minWidth:180,flex:"1 0 180px"}}>
+     <div style={{padding:"8px 10px",borderRadius:"10px 10px 0 0",background:GHL_STAGES_COLORS[si%GHL_STAGES_COLORS.length]+"22",borderBottom:`2px solid ${GHL_STAGES_COLORS[si%GHL_STAGES_COLORS.length]}`,marginBottom:4}}>
+      <div style={{fontWeight:700,fontSize:11,color:GHL_STAGES_COLORS[si%GHL_STAGES_COLORS.length]}}>{stage}</div>
+      <div style={{fontSize:9,color:C.td}}>{cards.length} deal{cards.length>1?"s":""} · {fmt(cards.reduce((a,o)=>a+(o.value||0),0))}€</div>
+     </div>
+     {cards.map(o=><div key={o.id} className="glass-card-static" style={{padding:10,marginBottom:4,cursor:"pointer",borderLeft:`3px solid ${GHL_STAGES_COLORS[si%GHL_STAGES_COLORS.length]}`}} onClick={()=>{const cl=(clients||[]).find(c=>(c.name||"").toLowerCase()===(o.name||o.contact?.name||"").toLowerCase());if(cl)setSelClient(cl);}}>
+      <div style={{fontWeight:600,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.name||o.contact?.name||"—"}</div>
+      <div style={{fontSize:10,fontWeight:800,color:C.acc,marginTop:2}}>{fmt(o.value||0)}€</div>
+      <div style={{fontSize:8,color:C.td,marginTop:2}}>{o.createdAt?ago(o.createdAt):""}</div>
+     </div>)}
+     {cards.length===0&&<div style={{padding:16,textAlign:"center",color:C.tm,fontSize:10,border:`1px dashed ${C.brd}`,borderRadius:8}}>Vide</div>}
+    </div>)}
+   </div>
+  </Sect>;
+ }
+ return <div>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+   <div><h2 style={{color:C.t,fontSize:13,fontWeight:800,margin:0,fontFamily:FONT_TITLE}}>👥 CLIENTS</h2><p style={{color:C.td,fontSize:10,margin:"1px 0 0"}}>Portefeuille & conversations</p></div>
+   <div style={{display:"flex",gap:4}}><Btn small v={viewMode==="list"?"primary":"ghost"} onClick={()=>setViewMode("list")}>📋 Liste</Btn><Btn small v={viewMode==="kanban"?"primary":"ghost"} onClick={()=>setViewMode("kanban")}>🔄 Kanban</Btn></div>
+  </div>
+  <div style={{display:"flex",gap:12}}>
+   <div style={{flex:1,minWidth:0}}>
+    <ClientsPanelSafe soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices} stripeData={stripeData} onSelectClient={setSelClient}/>
+   </div>
+   {selClient&&<div className="si" style={{width:340,flexShrink:0,background:"rgba(14,14,22,.6)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,.08)",borderRadius:16,padding:16,maxHeight:"80vh",overflowY:"auto",position:"sticky",top:20}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+     <div style={{fontWeight:800,fontSize:14,color:C.t}}>{selClient.name||"Client"}</div>
+     <button onClick={()=>setSelClient(null)} style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:14}}>✕</button>
+    </div>
+    {(()=>{const ps=clientStage(selClient);return ps?<div style={{padding:"6px 10px",borderRadius:8,background:C.accD,border:`1px solid ${C.acc}33`,marginBottom:10}}>
+     <div style={{fontSize:9,color:C.td,fontWeight:600}}>Pipeline</div>
+     <div style={{fontWeight:700,fontSize:12,color:C.acc}}>{ps.stage} {ps.status==="won"?"✅":ps.status==="lost"?"❌":""}</div>
+     {ps.value>0&&<div style={{fontSize:10,color:C.t}}>{fmt(ps.value)}€</div>}
+    </div>:null;})()}
+    <div style={{padding:"6px 10px",borderRadius:8,background:C.card2,marginBottom:10}}>
+     <div style={{fontSize:9,color:C.td,fontWeight:600}}>Status</div>
+     <div style={{fontWeight:600,fontSize:11,color:(CLIENT_STATUS[selClient.status]||{}).c||C.td}}>{(CLIENT_STATUS[selClient.status]||{}).l||selClient.status}</div>
+     {selClient.billing&&<div style={{fontSize:10,color:C.t,marginTop:2}}>{fmt(clientMonthlyRevenue(selClient))}€/mois</div>}
+    </div>
+    <div style={{fontSize:10,fontWeight:800,color:C.v,marginBottom:6,fontFamily:FONT_TITLE}}>💬 CONVERSATIONS</div>
+    {convoLoading&&<div style={{color:C.td,fontSize:10,padding:8}}>Chargement...</div>}
+    {!convoLoading&&convoMsgs.length===0&&<div style={{color:C.td,fontSize:10,padding:8}}>Aucune conversation</div>}
+    <div style={{maxHeight:250,overflowY:"auto",marginBottom:8}}>
+     {convoMsgs.map((m,i)=><div key={i} style={{display:"flex",justifyContent:m.direction==="outbound"?"flex-end":"flex-start",marginBottom:4}}>
+      <div style={{maxWidth:"85%",padding:"6px 10px",borderRadius:10,background:m.direction==="outbound"?"linear-gradient(135deg,#FFBF00,#FF9D00)":"rgba(255,255,255,.06)",color:m.direction==="outbound"?"#0a0a0f":C.t,fontSize:10}}>
+       <div>{m.body||m.text||"—"}</div>
+       <div style={{fontSize:7,color:m.direction==="outbound"?"rgba(0,0,0,.5)":C.tm,marginTop:1}}>{m.dateAdded?ago(m.dateAdded):""}</div>
+      </div>
+     </div>)}
+    </div>
+    <div style={{display:"flex",gap:4}}>
+     <input value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")sendMsg();}} placeholder="Message..." style={{flex:1,padding:"6px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none"}}/>
+     <Btn small onClick={sendMsg}>→</Btn>
+    </div>
+   </div>}
+  </div>
+ </div>;
+}
+
 /* ===== CLIENT HEALTH SCORE ===== */
 function calcClientHealthScore(cl,socBankData,ghlData,soc){
  let score=0;
@@ -3908,14 +4136,9 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
   {pTab===5&&<><SocBankWidget bankData={socBankData} onSync={()=>syncSocBank(soc.id)} soc={soc}/>
    <SubsTeamPanel socs={[soc]} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId={soc.id} reps={reps} socBankData={socBankData}/>
   </>}
-  {pTab===9&&<ClientsPanelSafe soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices} stripeData={stripeData}/>}
+  {pTab===9&&<ErrorBoundary label="Clients"><ClientsUnifiedPanel soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices} stripeData={stripeData}/></ErrorBoundary>}
   {pTab===12&&<SocSettingsPanel soc={soc} save={save} socs={socs}/>}
-  {pTab===1&&<ErrorBoundary label="Inbox"><InboxPanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
-  {pTab===2&&<ErrorBoundary label="Agenda"><AgendaPanel soc={soc} ghlData={ghlData}/></ErrorBoundary>}
-  {pTab===3&&<ErrorBoundary label="Conversations"><ConversationsPanel soc={soc}/></ErrorBoundary>}
-  {pTab===4&&<ErrorBoundary label="To-Do"><TodoPanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
-  {pTab===6&&<ErrorBoundary label="Pipeline"><PipelineKanbanPanel soc={soc} ghlData={ghlData}/></ErrorBoundary>}
-  {pTab===11&&<ErrorBoundary label="Ressources"><RessourcesPanel soc={soc} clients={clients}/></ErrorBoundary>}
+  {pTab===1&&<ErrorBoundary label="Activité"><ActivitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
   </div>
   </div>
  </div>;
@@ -4392,14 +4615,9 @@ const SB_ADMIN=[
 
 const SB_PORTEUR=[
  {id:"dashboard",icon:"📊",label:"Dashboard",tab:0,accent:C.acc},
- {id:"inbox",icon:"📥",label:"Inbox",tab:1,accent:C.b},
- {id:"agenda",icon:"📅",label:"Agenda",tab:2,accent:C.v},
- {id:"conversations",icon:"💬",label:"Conversations",tab:3,accent:"#ec4899"},
- {id:"todo",icon:"✅",label:"To-Do",tab:4,accent:C.o},
- {id:"bank",icon:"🏦",label:"Banque",tab:5,accent:C.g},
- {id:"pipeline",icon:"🔄",label:"Pipeline",tab:6,accent:"#14b8a6"},
+ {id:"activite",icon:"⚡",label:"Activité",tab:1,accent:C.b},
  {id:"clients",icon:"👥",label:"Clients",tab:9,accent:C.o},
- {id:"ressources",icon:"📹",label:"Ressources",tab:11,accent:C.v},
+ {id:"bank",icon:"🏦",label:"Banque",tab:5,accent:C.g},
  {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
 ];
 
