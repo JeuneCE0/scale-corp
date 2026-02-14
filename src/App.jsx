@@ -3503,9 +3503,30 @@ function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
    const sorted2=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
    return `💸 **Dépenses — ${ml(cm)}**\n\nTotal : ${fmt(ch)}€\nTrésorerie : ${fmt(balance)}€\n\n${sorted2.length>0?"Par catégorie :\n"+sorted2.slice(0,5).map(([k,v])=>`  • ${k} : ${fmt(v)}€`).join("\n"):"Pas assez de données."}\n\n${balance<2000?"⚠️ Trésorerie basse.":"✅ Trésorerie OK."}`;
   }
-  return `🤖 Je peux répondre sur : clients, CA, paiements, RDV, pipeline, conversion. Essaie une de ces questions !`;
+  if(ql.match(/compare|comparer|vs|versus/)){
+   const mPrev=prevM(cm);const rPrev=gr(reps,soc.id,mPrev);const caPrev2=pf(rPrev?.ca);const chPrev2=pf(rPrev?.charges);
+   const margePrev2=caPrev2-chPrev2;const margePctPrev=caPrev2>0?Math.round(margePrev2/caPrev2*100):0;
+   return `📊 **Comparaison ${ml(mPrev)} vs ${ml(cm)}**\n\n|  | ${ml(mPrev)} | ${ml(cm)} | Δ |\n|---|---|---|---|\n| **CA** | ${fmt(caPrev2)}€ | ${fmt(ca)}€ | ${trend>0?"+":""}${trend}% |\n| **Charges** | ${fmt(chPrev2)}€ | ${fmt(ch)}€ | ${chPrev2>0?(ch>chPrev2?"↑":"↓")+" "+Math.abs(Math.round((ch-chPrev2)/chPrev2*100))+"%":"—"} |\n| **Marge** | ${fmt(margePrev2)}€ (${margePctPrev}%) | ${fmt(marge)}€ (${margePct}%) | ${marge>margePrev2?"📈":"📉"} |\n| **Tréso** | ${fmt(pf(rp?.tresoSoc))}€ | ${fmt(balance)}€ | — |`;
+  }
+  if(ql.match(/meilleur.*client|best.*client|plus.*rentable/)){
+   const withCol=activeCl.map(c=>{const cn=(c.name||"").toLowerCase().trim();const col=(bankData?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;return(leg.description||tx.reference||"").toLowerCase().includes(cn);}).reduce((a,tx)=>a+(tx.legs?.[0]?.amount||0),0);return{name:c.name,rev:clientMonthlyRevenue(c),col};}).sort((a,b)=>b.col-a.col).slice(0,5);
+   if(withCol.length===0)return "🏅 Pas assez de données pour identifier le meilleur client.";
+   return `🏅 **Meilleur${withCol.length>1?"s":""} client${withCol.length>1?"s":""}**\n\n${withCol.map((c,i)=>`${["🥇","🥈","🥉","4️⃣","5️⃣"][i]} **${c.name}** — ${fmt(c.col)}€ collecté · ${fmt(c.rev)}€/mois`).join("\n")}`;
+  }
+  if(ql.match(/prevision|prévision|prochain.*mois|forecast/)){
+   const proj2=project(reps,soc.id,allM);
+   if(!proj2)return "📈 Pas assez de données pour projeter. Il faut au moins 2 mois de données.";
+   return `📈 **Prévision T+3**\n\n${proj2.map((v,i)=>`• ${ml(nextM(i===0?cm:nextM(i===1?cm:nextM(cm))))} : **${fmt(v)}€**`).join("\n")}\n\n⚠️ Basé sur la tendance des 3 derniers mois.`;
+  }
+  if(ql.match(/combien.*depens|depens.*en|categ/)){
+   const catTotals2={};
+   if(bankData?.transactions){bankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded.includes(leg.account_id))return false;return(t.created_at||"").startsWith(cm)&&leg.amount<0;}).forEach(t=>{const cat=categorizeTransaction(t);const amt=Math.abs(t.legs?.[0]?.amount||0);catTotals2[cat.label]=(catTotals2[cat.label]||0)+amt;});}
+   const s3=Object.entries(catTotals2).sort((a,b)=>b[1]-a[1]);
+   return `💸 **Dépenses par catégorie — ${ml(cm)}**\n\n${s3.map(([k,v])=>`• **${k}** : ${fmt(v)}€`).join("\n")}\n\nTotal : **${fmt(s3.reduce((a,[,v])=>a+v,0))}€**`;
+  }
+  return `🤖 Je peux répondre sur : clients, CA, paiements, RDV, pipeline, conversion, comparaison, prévisions. Essaie une de ces questions !`;
  };
- const QUICK=[{q:"Résumé",icon:"📋"},{q:"Quel est mon CA ce mois ?",icon:"📊"},{q:"Qui n'a pas payé ?",icon:"💸"},{q:"Prochains RDV",icon:"📅"},{q:"Top clients",icon:"🏅"},{q:"Combien dans le pipeline ?",icon:"🔄"}];
+ const QUICK=[{q:"Résumé",icon:"📋"},{q:"Quel est mon CA ce mois ?",icon:"📊"},{q:"Qui n'a pas payé ?",icon:"💸"},{q:"Prochains RDV",icon:"📅"},{q:"Top clients",icon:"🏅"},{q:"Combien dans le pipeline ?",icon:"🔄"},{q:"Compare ce mois vs le précédent",icon:"⚖️"},{q:"Prévision du mois prochain",icon:"🔮"}];
  const ask=(q)=>{
   setMsgs(prev=>[...prev,{role:"user",content:q}]);setTyping(true);
   const answer=computeAnswer(q);
@@ -3540,7 +3561,10 @@ function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
      </div>
     </div>;
    })}
-   {typing&&<div style={{padding:"8px 12px",background:C.card2,borderRadius:10,border:`1px solid ${C.brd}`,display:"inline-block"}}><span className="dots" style={{fontSize:16}}><span>·</span><span>·</span><span>·</span></span></div>}
+   {typing&&<div style={{padding:"10px 14px",background:C.card2,borderRadius:10,border:`1px solid ${C.brd}`,display:"inline-flex",alignItems:"center",gap:6}}>
+    <span style={{fontSize:12}}>🤖</span>
+    <span className="typing-dots"><span></span><span></span><span></span></span>
+   </div>}
   </div>
   <div style={{padding:"6px 10px",borderTop:`1px solid ${C.brd}`,display:"flex",gap:3,flexWrap:"wrap"}}>
    {QUICK.map((q,i)=><button key={i} onClick={()=>ask(q.q)} style={{padding:"3px 8px",borderRadius:12,fontSize:8,fontWeight:600,border:`1px solid ${C.brd}`,background:C.card2,color:C.td,cursor:"pointer",fontFamily:FONT,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.acc;e.currentTarget.style.color=C.acc;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.brd;e.currentTarget.style.color=C.td;}}>{q.icon} {q.q}</button>)}
@@ -3855,22 +3879,39 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
   })()}
   {/* Smart Alerts */}
   {smartAlerts.length>0&&<div style={{marginBottom:16}}>
-   {smartAlerts.slice(0,3).map((a,i)=><div key={a.id} className={`glass-card-static fu d${i+1}`} style={{padding:"10px 14px",marginBottom:4,display:"flex",alignItems:"center",gap:8}}>
-    <span style={{fontSize:14}}>{a.icon}</span>
-    <span style={{flex:1,fontSize:11,fontWeight:600,color:C.t}}>{a.text}</span>
-    <button onClick={()=>dismissAlert(a.id)} style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:12,padding:2}}>✕</button>
-   </div>)}
+   {smartAlerts.slice(0,3).map((a,i)=>{const borderColor=a.priority===1?C.r:a.priority===2?C.o:a.priority===3?C.b:C.g;const actionTab=a.text.includes("impayé")||a.text.includes("expire")||a.text.includes("lead")?3:1;
+    return <div key={a.id} className={`glass-card-static slide-down`} style={{padding:"10px 14px",marginBottom:4,display:"flex",alignItems:"center",gap:8,borderLeft:`3px solid ${borderColor}`,animationDelay:`${i*0.08}s`}}>
+     <span style={{fontSize:14}}>{a.icon}</span>
+     <span style={{flex:1,fontSize:11,fontWeight:600,color:C.t}}>{a.text}</span>
+     <button onClick={()=>setPTab(actionTab)} style={{background:borderColor+"18",border:`1px solid ${borderColor}33`,borderRadius:6,color:borderColor,fontSize:9,fontWeight:700,padding:"3px 8px",cursor:"pointer",fontFamily:FONT}}>Voir</button>
+     <button onClick={()=>dismissAlert(a.id)} style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:12,padding:2}}>✕</button>
+    </div>;
+   })}
    {smartAlerts.length>3&&<button onClick={()=>setPTab(1)} style={{background:"none",border:"none",color:C.acc,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT,marginTop:4}}>Voir tout ({smartAlerts.length}) →</button>}
   </div>}
   {/* Performance Score + Prévisionnel row */}
   <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:12,marginBottom:16}}>
-   <div className="glass-card-static" style={{padding:20,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minWidth:100}}>
-    <div style={{position:"relative",width:72,height:72,marginBottom:6}}>
-     <svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="30" fill="none" stroke={C.brd} strokeWidth="6"/><circle cx="36" cy="36" r="30" fill="none" stroke={perfColor} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${perfScore*1.884} 188.4`} transform="rotate(-90 36 36)" style={{transition:"stroke-dasharray .8s ease"}}/></svg>
-     <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:20,color:perfColor}}>{perfScore}</div>
-    </div>
-    <div style={{fontSize:8,fontWeight:700,color:C.td,letterSpacing:.5,textAlign:"center",fontFamily:FONT_TITLE}}>SCORE PERFORMANCE</div>
-   </div>
+   {(()=>{
+    const[displayScore,setDisplayScore]=useState(0);
+    const[showBreakdown,setShowBreakdown]=useState(false);
+    useEffect(()=>{let frame=0;const target=perfScore;const duration=40;const step=()=>{frame++;const progress=Math.min(frame/duration,1);const eased=1-Math.pow(1-progress,3);setDisplayScore(Math.round(eased*target));if(frame<duration)requestAnimationFrame(step);};requestAnimationFrame(step);},[perfScore]);
+    const caScore=soc.obj>0?Math.min(40,Math.round(ca/soc.obj*40)):ca>0?20:0;
+    const gd9=ghlData?.[soc.id];const s2=Object.entries(gd9?.stats?.callsByType||{}).filter(([n])=>!/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);const i2=Object.entries(gd9?.stats?.callsByType||{}).filter(([n])=>/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);const convScore=Math.min(20,s2>0?Math.round(i2/s2*20):0);
+    const clientScore=Math.min(20,Math.round(myClients.length/Math.max(1,gd9?.ghlClients?.length||1)*20));
+    const payScore=perfScore-caScore-convScore-clientScore;
+    const gradientColor=perfScore>70?"#34d399":perfScore>=40?"#FFAA00":"#f87171";
+    return <div className="glass-card-static" style={{padding:20,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minWidth:110,position:"relative",cursor:"pointer"}} onMouseEnter={()=>setShowBreakdown(true)} onMouseLeave={()=>setShowBreakdown(false)}>
+     <div style={{position:"relative",width:80,height:80,marginBottom:6}}>
+      <svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="33" fill="none" stroke={C.brd} strokeWidth="6"/><circle cx="40" cy="40" r="33" fill="none" stroke={gradientColor} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${displayScore*2.073} 207.3`} transform="rotate(-90 40 40)" style={{transition:"stroke-dasharray .6s ease, stroke .4s ease"}}/></svg>
+      <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:22,color:gradientColor}}>{displayScore}</div>
+     </div>
+     <div style={{fontSize:8,fontWeight:700,color:C.td,letterSpacing:.5,textAlign:"center",fontFamily:FONT_TITLE}}>SCORE PERFORMANCE</div>
+     {showBreakdown&&<div style={{position:"absolute",bottom:-60,left:"50%",transform:"translateX(-50%)",background:"rgba(14,14,22,.95)",border:`1px solid ${C.brd}`,borderRadius:10,padding:"8px 12px",zIndex:10,whiteSpace:"nowrap",boxShadow:"0 8px 32px rgba(0,0,0,.6)",fontSize:9,color:C.td}}>
+      <div>CA: <strong style={{color:C.acc}}>{caScore}/40</strong> | Conv: <strong style={{color:C.v}}>{convScore}/20</strong></div>
+      <div>Clients: <strong style={{color:C.b}}>{clientScore}/20</strong> | Paiements: <strong style={{color:C.g}}>{Math.max(0,payScore)}/20</strong></div>
+     </div>}
+    </div>;
+   })()}
    {prevu>0&&<div className="glass-card-static" style={{padding:20}}>
     <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>📊 PRÉVISIONNEL</div>
     <div style={{display:"flex",gap:16,marginBottom:8}}>
@@ -4716,7 +4757,12 @@ function calcClientHealthScore(cl,socBankData,ghlData,soc){
 }
 function HealthBadge({score}){
  const color=score>70?C.g:score>=40?C.o:C.r;
- return <span style={{width:24,height:24,borderRadius:12,background:color+"22",border:`2px solid ${color}`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color,flexShrink:0}}>{score}</span>;
+ const label=score>70?"Sain":score>=40?"À suivre":"Critique";
+ return <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"2px 8px",borderRadius:12,background:color+"18",border:`1.5px solid ${color}55`,flexShrink:0}}>
+  <span style={{width:8,height:8,borderRadius:4,background:color,boxShadow:`0 0 4px ${color}66`}}/>
+  <span style={{fontSize:9,fontWeight:800,color}}>{score}</span>
+  <span style={{fontSize:7,color,fontWeight:600}}>{label}</span>
+ </span>;
 }
 
 function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,savePulse,socBankData,syncSocBank,okrs,saveOkrs,kb,saveKb,socs,subs,saveSubs,team,saveTeam,clients,saveClients,ghlData,invoices,saveInvoices,hold,onTour,onThemeToggle,stripeData}){
