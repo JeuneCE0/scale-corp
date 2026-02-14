@@ -1832,6 +1832,77 @@ function RiskMatrix({socs,reps,allM}){
  </Sect>;
 }
 /* 2. ALERTES INTELLIGENTES */
+/* ===== GAMIFICATION XP & BADGES ===== */
+function GamificationPanel({soc,ca,myClients,streak,reps,allM,ghlData}){
+ const BADGES=[
+  {id:"first_client",label:"Premier Client 🎉",desc:"Signe ton premier client",check:(ctx)=>ctx.activeClients>=1},
+  {id:"10k_club",label:"10K€ Club 💰",desc:"Atteins 10 000€ de CA mensuel",check:(ctx)=>ctx.ca>=10000},
+  {id:"streak_7",label:"Streak 7j 🔥",desc:"7 jours de connexion consécutifs",check:(ctx)=>ctx.streakCount>=7},
+  {id:"retention_100",label:"100% Rétention 🏆",desc:"Zéro churn ce mois",check:(ctx)=>ctx.activeClients>0&&ctx.churnedClients===0},
+  {id:"pipeline_king",label:"Pipeline King 👑",desc:"5+ opportunités ouvertes",check:(ctx)=>ctx.openOpps>=5},
+  {id:"zero_churn",label:"Zero Churn 🛡️",desc:"Aucun client perdu en 3 mois",check:(ctx)=>ctx.churn3m===0&&ctx.activeClients>0},
+  {id:"early_bird",label:"Early Bird ☀️",desc:"Connecté avant 8h",check:(ctx)=>ctx.earlyLogin},
+ ];
+ const ctx=useMemo(()=>{
+  const activeClients=(myClients||[]).filter(c=>c.status==="active").length;
+  const churnedClients=(myClients||[]).filter(c=>c.status==="churned").length;
+  const gd=ghlData?.[soc.id]||{};
+  const openOpps=(gd.opportunities||[]).filter(o=>o.status==="open").length;
+  const churn3m=0; // simplified
+  const earlyLogin=new Date().getHours()<8;
+  const streakCount=streak?.count||0;
+  return{ca:ca||0,activeClients,churnedClients,openOpps,churn3m,earlyLogin,streakCount};
+ },[ca,myClients,ghlData,soc.id,streak]);
+
+ const[unlockedBadges,setUnlockedBadges]=useState(()=>{try{return JSON.parse(localStorage.getItem(`scBadges_${soc.id}`)||"[]");}catch{return[];}});
+ const[celebBadge,setCelebBadge]=useState(null);
+
+ useEffect(()=>{
+  const newUnlocked=[...unlockedBadges];let changed=false;
+  BADGES.forEach(b=>{if(!newUnlocked.includes(b.id)&&b.check(ctx)){newUnlocked.push(b.id);changed=true;setCelebBadge(b);}});
+  if(changed){setUnlockedBadges(newUnlocked);try{localStorage.setItem(`scBadges_${soc.id}`,JSON.stringify(newUnlocked));sSet(`scBadges_${soc.id}`,JSON.stringify(newUnlocked));}catch{}}
+ },[ctx]);
+
+ useEffect(()=>{if(celebBadge){const t=setTimeout(()=>setCelebBadge(null),3000);return()=>clearTimeout(t);}},[celebBadge]);
+
+ // XP calculation
+ const xp=useMemo(()=>{
+  let pts=0;pts+=Math.min(400,Math.round((ctx.ca||0)/25));pts+=ctx.activeClients*50;pts+=(ctx.streakCount||0)*10;pts+=unlockedBadges.length*100;
+  const level=Math.floor(pts/500)+1;const xpInLevel=pts%500;
+  return{pts,level,xpInLevel,nextLevel:500};
+ },[ctx,unlockedBadges]);
+
+ return <div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.33s"}}>
+  <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>🎮 GAMIFICATION — NIVEAU {xp.level}</div>
+  {/* XP Bar */}
+  <div style={{marginBottom:14}}>
+   <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+    <span style={{fontSize:10,fontWeight:700,color:C.acc}}>⭐ {xp.pts} XP</span>
+    <span style={{fontSize:9,color:C.td}}>Niveau {xp.level} → {xp.level+1}</span>
+   </div>
+   <div style={{height:8,background:C.brd,borderRadius:4,overflow:"hidden"}}>
+    <div style={{height:"100%",width:`${Math.round(xp.xpInLevel/xp.nextLevel*100)}%`,background:`linear-gradient(90deg,${C.acc},#FF9D00)`,borderRadius:4,transition:"width .5s ease"}}/>
+   </div>
+  </div>
+  {/* Badge Grid */}
+  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(100px,1fr))",gap:6}}>
+   {BADGES.map(b=>{const unlocked=unlockedBadges.includes(b.id);return <div key={b.id} style={{padding:"10px 6px",borderRadius:10,border:`1px solid ${unlocked?C.acc+"44":C.brd}`,background:unlocked?C.accD:"transparent",textAlign:"center",opacity:unlocked?1:0.4,transition:"all .3s"}}>
+    <div style={{fontSize:20,marginBottom:2,filter:unlocked?"none":"grayscale(1)"}}>{b.label.split(" ").pop()}</div>
+    <div style={{fontSize:8,fontWeight:700,color:unlocked?C.acc:C.td}}>{b.label.replace(/\s*[^\w\s]+$/,"").trim()}</div>
+    {!unlocked&&<div style={{fontSize:7,color:C.tm,marginTop:2}}>🔒</div>}
+   </div>;})}
+  </div>
+  {/* Celebration overlay */}
+  {celebBadge&&<div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.6)",animation:"fi .3s ease"}}>
+   <div style={{textAlign:"center",animation:"celebIn .5s cubic-bezier(.16,1,.3,1)",padding:40}}>
+    <div style={{fontSize:64,marginBottom:8}}>{celebBadge.label.split(" ").pop()}</div>
+    <div style={{fontWeight:900,fontSize:18,color:C.acc,marginBottom:4}}>Badge Débloqué !</div>
+    <div style={{fontSize:14,color:C.t,fontWeight:600}}>{celebBadge.label}</div>
+    <div style={{fontSize:11,color:C.td,marginTop:4}}>{celebBadge.desc}</div>
+   </div>
+  </div>}
+ </div>;
+}
 /* ===== INBOX UNIFIÉE ===== */
 function InboxUnifiee({socs,ghlData}){
  const items=useMemo(()=>{
