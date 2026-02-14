@@ -2764,6 +2764,40 @@ function CollapsibleSection({title,icon,children,defaultOpen=false}){
  </div>;
 }
 
+function SocSettingsPanel({soc,save,socs}){
+ const[form,setForm]=useState({nom:soc.nom,porteur:soc.porteur,act:soc.act,color:soc.color,logo:soc.logo||"",email:soc.email||"",phone:soc.phone||"",desc:soc.desc||""});
+ const[saved,setSaved]=useState(false);
+ const doSave=()=>{const updated=socs.map(s=>s.id===soc.id?{...s,...form}:s);save(updated,null,null);setSaved(true);setTimeout(()=>setSaved(false),2500);};
+ return <Sect title="⚙️ Paramètres" sub={soc.nom}>
+  {saved&&<div style={{background:C.gD,border:`1px solid ${C.g}22`,borderRadius:8,padding:"8px 12px",marginBottom:12,color:C.g,fontSize:11,fontWeight:700}}>✅ Paramètres sauvegardés</div>}
+  <Card style={{padding:16,marginBottom:12}}>
+   <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
+    <div style={{width:56,height:56,borderRadius:14,background:form.color+"22",border:`2px solid ${form.color}44`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
+     {form.logo?<img src={form.logo} alt="" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:12}}/>:<span style={{fontSize:24,fontWeight:900,color:form.color}}>{(form.nom||"?")[0]}</span>}
+    </div>
+    <div style={{flex:1}}>
+     <div style={{fontWeight:800,fontSize:16,color:C.t}}>{form.nom||"Sans nom"}</div>
+     <div style={{fontSize:11,color:C.td}}>{form.act} · {form.porteur}</div>
+    </div>
+   </div>
+   <Inp label="Nom de la société" value={form.nom} onChange={v=>setForm({...form,nom:v})}/>
+   <Inp label="Activité" value={form.act} onChange={v=>setForm({...form,act:v})}/>
+   <Inp label="Porteur (fondateur)" value={form.porteur} onChange={v=>setForm({...form,porteur:v})}/>
+   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <Inp label="Email" value={form.email} onChange={v=>setForm({...form,email:v})} placeholder="contact@..."/>
+    <Inp label="Téléphone" value={form.phone} onChange={v=>setForm({...form,phone:v})} placeholder="+33..."/>
+   </div>
+   <Inp label="Logo URL" value={form.logo} onChange={v=>setForm({...form,logo:v})} placeholder="https://..."/>
+   <Inp label="Description" value={form.desc} onChange={v=>setForm({...form,desc:v})} placeholder="Décrivez l'activité de la société..."/>
+   <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
+    <label style={{fontSize:11,color:C.td,fontWeight:600}}>Couleur</label>
+    <input type="color" value={form.color} onChange={e=>setForm({...form,color:e.target.value})} style={{width:32,height:24,border:`1px solid ${C.brd}`,borderRadius:6,background:C.bg,cursor:"pointer"}}/>
+    <span style={{fontSize:10,color:C.td}}>{form.color}</span>
+   </div>
+  </Card>
+  <Btn onClick={doSave}>💾 Sauvegarder</Btn>
+ </Sect>;
+}
 function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,savePulse,socBankData,syncSocBank,okrs,saveOkrs,kb,saveKb,socs,subs,saveSubs,team,saveTeam,clients,saveClients,ghlData,invoices,saveInvoices,hold,onTour}){
  const cM2=curM();const[pTab,setPTab]=useState(10);const[mo,setMo]=useState(cM2);
  const[f,setF]=useState(()=>gr(reps,soc.id,cM2)||{...BF});const[done,setDone]=useState(false);const[showPub,setShowPub]=useState(false);const[jText,setJText]=useState("");
@@ -3132,6 +3166,7 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
   {pTab===9&&<ClientsPanel soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices}/>}
   {/* === MEETING PREP (pTab 11) === */}
   {pTab===11&&<MeetingPrepView soc={soc} evo={evo} myActions={myActions} myJournal={myJournal} pulses={pulses} hs={hs} rw={rw} milestones={milestones} cM2={cM2} insights={insights}/>}
+  {pTab===12&&<SocSettingsPanel soc={soc} save={save} socs={socs}/>}
   </div>
   </div>
  </div>;
@@ -3623,6 +3658,7 @@ const SB_PORTEUR=[
  {id:"clients",icon:"👥",label:"Clients",tab:9,accent:C.o},
  {id:"meeting",icon:"📋",label:"Prépa point",tab:11,accent:"#a78bfa"},
  {id:"kb2",icon:"📚",label:"Ressources",tab:8,accent:C.v},
+ {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
 ];
 
 function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,extra,dataTourPrefix}){
