@@ -72,7 +72,7 @@ function autoGenerateReport(socId, month, socBank, ghlData, subs){
  const txns=(sb?.transactions||[]).filter(t=>{const d=t.created_at||t.date||"";return d.startsWith(month);});
  const sumTxns=(keywords)=>Math.abs(txns.filter(t=>{const desc=((t.description||"")+(t.reference||"")).toLowerCase();return keywords.some(k=>desc.includes(k))&&(t.legs?.[0]?.amount||0)<0;}).reduce((a,t)=>a+Math.abs(t.legs?.[0]?.amount||0),0));
  const ca=monthly?.income||0;
- const dividendesHolding=Math.round(Math.abs(txns.filter(t=>{const desc=((t.description||"")+(t.reference||"")+(t.legs?.[0]?.description||"")).toLowerCase();return/scale\s*corp|dividende.*holding|holding.*dividende|dividend/.test(desc)&&(t.legs?.[0]?.amount||0)<0;}).reduce((a,t)=>a+Math.abs(t.legs?.[0]?.amount||0),0)));
+ const dividendesHolding=Math.round(Math.abs(txns.filter(t=>{const hasCpty=!!t.legs?.[0]?.counterparty;const single=(t.legs||[]).length===1;const legDesc=((t.legs?.[0]?.description||"")).toLowerCase();return((/dividend/i.test(t.reference||"")&&hasCpty&&single)||(/scale\s*corp/i.test(legDesc)&&hasCpty&&single))&&(t.legs?.[0]?.amount||0)<0;}).reduce((a,t)=>a+Math.abs(t.legs?.[0]?.amount||0),0)));
  const charges=Math.max(0,(monthly?.expense||0)-dividendesHolding);
  const chargesOps=Math.round(sumTxns(["abonnement","subscription","saas","hosting","heroku","vercel","aws","stripe fee"]));
  const salaire=Math.round(sumTxns(["salaire","salary","freelance","prestation"]));
@@ -943,7 +943,9 @@ function categorizeTransaction(tx){
  const leg=tx.legs?.[0];if(!leg)return{id:"autres",label:"📦 Autres dépenses",icon:"📦"};
  const amt=leg.amount;const ref=((leg.description||"")+" "+(tx.reference||"")).toLowerCase();
  const legDesc=((tx.legs?.[0]?.description||"")+"").toLowerCase();
- if(/scale\s*corp|dividende.*holding|holding.*dividende|dividend/.test(ref)||/scale\s*corp/i.test(legDesc))return TX_CATEGORIES[8];
+ const hasCounterparty=!!tx.legs?.[0]?.counterparty;const isSingleLeg=(tx.legs||[]).length===1;
+ const isRealDividend=(/dividend/i.test(tx.reference||"")&&hasCounterparty&&isSingleLeg)||(/scale\s*corp/i.test(legDesc)&&hasCounterparty&&isSingleLeg);
+ if(isRealDividend)return TX_CATEGORIES[8];
  if(amt>0)return TX_CATEGORIES[1];
  if(/loyer|rent/.test(ref))return TX_CATEGORIES[2];
  if(/facebook|google ads|meta|tiktok|pub/.test(ref))return TX_CATEGORIES[3];
