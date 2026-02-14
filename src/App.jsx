@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment, createContext, useContext } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Area, AreaChart, Legend } from "recharts";
-const C={bg:"#06060b",card:"#0e0e16",card2:"#131320",brd:"#1a1a2c",brdL:"#24243a",acc:"#c8a44e",accD:"rgba(200,164,78,.1)",g:"#34d399",gD:"rgba(52,211,153,.1)",r:"#f87171",rD:"rgba(248,113,113,.1)",o:"#fb923c",oD:"rgba(251,146,60,.1)",b:"#60a5fa",bD:"rgba(96,165,250,.1)",t:"#e4e4e7",td:"#71717a",tm:"#3f3f50",v:"#a78bfa",vD:"rgba(167,139,250,.1)"};
+const C_DARK={bg:"#06060b",card:"#0e0e16",card2:"#131320",brd:"#1a1a2c",brdL:"#24243a",acc:"#FFAA00",accD:"rgba(255,170,0,.12)",g:"#34d399",gD:"rgba(52,211,153,.1)",r:"#f87171",rD:"rgba(248,113,113,.1)",o:"#fb923c",oD:"rgba(251,146,60,.1)",b:"#60a5fa",bD:"rgba(96,165,250,.1)",t:"#e4e4e7",td:"#71717a",tm:"#3f3f50",v:"#a78bfa",vD:"rgba(167,139,250,.1)"};
+const C_LIGHT={bg:"#f5f5f5",card:"#ffffff",card2:"#f0f0f0",brd:"#e0e0e0",brdL:"#d0d0d0",acc:"#FFAA00",accD:"#FFF3D6",g:"#22c55e",gD:"#dcfce7",r:"#ef4444",rD:"#fee2e2",b:"#3b82f6",bD:"#dbeafe",o:"#f97316",oD:"#fff7ed",v:"#8b5cf6",vD:"#ede9fe",t:"#1a1a1a",td:"#666666",tm:"#999999"};
+let C=C_DARK;
 const MN=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
 const curM=()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;};
 const ml=k=>{if(!k)return"";const[y,m]=k.split("-");return`${MN[parseInt(m)-1]} ${y}`;};
@@ -11,7 +13,8 @@ const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 const prevM=m=>{const[y,mo]=m.split("-").map(Number);const d=new Date(y,mo-2,1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;};
 const nextM=m=>{const[y,mo]=m.split("-").map(Number);const d=new Date(y,mo,1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;};
 const pf=v=>parseFloat(v)||0;const gr=(reps,id,m)=>reps[`${id}_${m}`]||null;
-const FONT="'DM Sans',system-ui,sans-serif";
+const FONT="'Teachers',sans-serif";
+const FONT_TITLE="'Eurostile','Square721 BT','Arial Black',sans-serif";
 const BF={ca:"",charges:"",chargesOps:"",salaire:"",formation:"",clients:"",churn:"",pub:"",leads:"",leadsContact:"",leadsClos:"",notes:"",mrr:"",pipeline:"",tresoSoc:""};
 const deadline=m=>{const[y,mo]=m.split("-").map(Number);return new Date(y,mo,5).toLocaleDateString("fr-FR",{day:"numeric",month:"long"});};
 const qOf=m=>Math.ceil(parseInt(m.split("-")[1])/3);
@@ -23,7 +26,7 @@ const curW=()=>{const d=new Date();const jan1=new Date(d.getFullYear(),0,1);retu
 const MOODS=["😫","😟","😐","🙂","🔥"];
 const sinceLbl=d=>{if(!d)return"";const s=new Date(d),n=new Date();const m=(n.getFullYear()-s.getFullYear())*12+n.getMonth()-s.getMonth();if(m<1)return"Ce mois";if(m===1)return"1 mois";if(m<12)return`${m} mois`;const y=Math.floor(m/12),rm=m%12;return rm>0?`${y}a ${rm}m`:`${y} an${y>1?"s":""}`;};
 const sinceMonths=d=>{if(!d)return 0;const s=new Date(d),n=new Date();return(n.getFullYear()-s.getFullYear())*12+n.getMonth()-s.getMonth();};
-const CSS=`*{box-sizing:border-box;margin:0;padding:0}body{margin:0;overflow-x:hidden}
+const CSS=`@import url('https://fonts.googleapis.com/css2?family=Teachers:wght@400;500;600;700;800;900&display=swap');\n*{box-sizing:border-box;margin:0;padding:0}body{margin:0;overflow-x:hidden}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}.fade-up{animation:fadeUp 0.5s ease forwards;opacity:0}
 @keyframes barGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
 @keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -31,14 +34,14 @@ const CSS=`*{box-sizing:border-box;margin:0;padding:0}body{margin:0;overflow-x:h
 @keyframes bg{from{width:0}to{width:var(--w,100%)}}
 @keyframes mi{from{opacity:0;transform:scale(.95) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
 @keyframes sp{to{transform:rotate(360deg)}}@keyframes sh{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
-@keyframes gl{0%,100%{border-color:rgba(200,164,78,.1)}50%{border-color:rgba(200,164,78,.35)}}
+@keyframes gl{0%,100%{border-color:rgba(255,170,0,.1)}50%{border-color:rgba(255,170,0,.35)}}
 @keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 @keyframes typing{0%{opacity:.2}20%{opacity:1}100%{opacity:.2}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 @keyframes celebIn{0%{opacity:0;transform:scale(.3) translateY(50px)}40%{transform:scale(1.1) translateY(-10px)}100%{opacity:1;transform:scale(1) translateY(0)}}
 @keyframes confetti{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(120vh) rotate(720deg);opacity:0}}
-@keyframes celebGlow{0%,100%{box-shadow:0 0 20px rgba(200,164,78,.15)}50%{box-shadow:0 0 40px rgba(200,164,78,.4),0 0 80px rgba(200,164,78,.15)}}
-@keyframes mglow{0%,100%{box-shadow:0 0 3px rgba(200,164,78,.2)}50%{box-shadow:0 0 10px rgba(200,164,78,.4)}}
+@keyframes celebGlow{0%,100%{box-shadow:0 0 20px rgba(255,170,0,.15)}50%{box-shadow:0 0 40px rgba(255,170,0,.4),0 0 80px rgba(255,170,0,.15)}}
+@keyframes mglow{0%,100%{box-shadow:0 0 3px rgba(255,170,0,.2)}50%{box-shadow:0 0 10px rgba(255,170,0,.4)}}
 .fu{animation:fu .35s ease both}.fi{animation:fi .25s ease both}.si{animation:si .3s ease both}
 .d1{animation-delay:.03s}.d2{animation-delay:.06s}.d3{animation-delay:.09s}.d4{animation-delay:.12s}.d5{animation-delay:.15s}.d6{animation-delay:.18s}.d7{animation-delay:.21s}.d8{animation-delay:.24s}
 .hv{transition:all .18s ease}.hv:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.25)}
@@ -48,11 +51,11 @@ const CSS=`*{box-sizing:border-box;margin:0;padding:0}body{margin:0;overflow-x:h
 .dots span{animation:typing 1.4s infinite both}.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:${C.brd};border-radius:3px}
 input[type=range]{-webkit-appearance:none;background:${C.brd};height:3px;border-radius:4px;outline:none}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:${C.acc};cursor:pointer;box-shadow:0 2px 6px rgba(200,164,78,.3)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:${C.acc};cursor:pointer;box-shadow:0 2px 6px rgba(255,170,0,.3)}
 select{cursor:pointer}select:focus{border-color:${C.acc}44}
 button:focus-visible{outline:2px solid ${C.acc}44;outline-offset:2px}`;
 const DS=[
- {id:"leadx",nom:"LEADX",porteur:"Dayyaan",act:"Media Buying",pT:"benefices",pP:30,stat:"active",color:"#c8a44e",pin:"1001",rec:true,obj:10000,objQ:28000,ghlKey:"",ghlLocationId:"BjQ4DxmWrLl3nCNcjmhE",revToken:"",revEnv:"sandbox",revolutCompany:"leadx",incub:"2025-06-01",slackId:""},
+ {id:"leadx",nom:"LEADX",porteur:"Dayyaan",act:"Media Buying",pT:"benefices",pP:30,stat:"active",color:"#FFAA00",pin:"1001",rec:true,obj:10000,objQ:28000,ghlKey:"",ghlLocationId:"BjQ4DxmWrLl3nCNcjmhE",revToken:"",revEnv:"sandbox",revolutCompany:"leadx",incub:"2025-06-01",slackId:""},
  {id:"copy",nom:"Copywriting",porteur:"Sol",act:"Copywriting",pT:"benefices",pP:20,stat:"active",color:"#60a5fa",pin:"1002",rec:false,obj:15000,objQ:42000,ghlKey:"",ghlLocationId:"2lB0paK192CFU1cLz5eT",revToken:"",revEnv:"sandbox",revolutCompany:"bcs",incub:"2025-03-15",slackId:""},
  {id:"bbp",nom:"BourbonBonsPlans",porteur:"Siméon",act:"Vidéo",pT:"benefices",pP:20,stat:"active",color:"#34d399",pin:"1003",rec:true,obj:8000,objQ:22000,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2025-08-01",slackId:""},
  {id:"studio",nom:"Studio Branding",porteur:"Pablo",act:"Design",pT:"benefices",pP:20,stat:"active",color:"#fb923c",pin:"1004",rec:false,obj:5000,objQ:14000,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2025-09-01",slackId:""},
@@ -64,7 +67,7 @@ const DS=[
  {id:"virale",nom:"Vidéo Virale",porteur:"À définir",act:"Vidéo",pT:"benefices",pP:20,stat:"signature",color:"#f43f5e",pin:"1009",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
  {id:"mindset",nom:"Coaching Mindset",porteur:"À définir",act:"Mindset",pT:"benefices",pP:20,stat:"signature",color:"#eab308",pin:"1010",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
 ];
-const DH={logiciels:1200,equipe:300,service:500,cabinet:280,remun:3000,reservePct:30,crm:150,treso:2000,revolutToken:"",revolutEnv:"sandbox",slack:{enabled:false,mode:"bob",webhookUrl:"",botToken:"",channel:"",bobWebhook:"",notifyPulse:true,notifyReport:true,notifyValidation:true,notifyReminders:true},brand:{name:"SCALE CORP",sub:"Plateforme de pilotage",logoUrl:"",logoLetter:"S",accentColor:"#c8a44e"}};
+const DH={logiciels:1200,equipe:300,service:500,cabinet:280,remun:3000,reservePct:30,crm:150,treso:2000,revolutToken:"",revolutEnv:"sandbox",slack:{enabled:false,mode:"bob",webhookUrl:"",botToken:"",channel:"",bobWebhook:"",notifyPulse:true,notifyReport:true,notifyValidation:true,notifyReminders:true},brand:{name:"SCALE CORP",sub:"Plateforme de pilotage",logoUrl:"",logoLetter:"S",accentColor:"#FFAA00",gradientFrom:"#FFBF00",gradientTo:"#FF9D00"}};
 const DEAL_STAGES=["Idée","Contact","Négociation","Due Diligence","Signature"];
 function mkPrefill(){ return {}; }
 
@@ -86,7 +89,8 @@ function autoGenerateReport(socId, month, socBank, ghlData, subs){
  const tresoSoc=sb?.balance||0;
  const activeClients=gd?.ghlClients?.filter(c=>c.status==="active")||[];
  const mrr=activeClients.reduce((a,c)=>{const b=c.billing;if(!b)return a;if(b.freq==="monthly")return a+pf(b.amount);if(b.freq==="annual")return a+pf(b.amount)/12;return a;},0);
- return{ca:String(Math.round(ca)),charges:String(Math.round(charges)),chargesOps:String(chargesOps),salaire:String(salaire),formation:String(formation),clients:String(clients),churn:"",pub:String(pub),leads:String(leads),leadsContact:"",leadsClos:String(gd?.stats?.wonDeals||0),notes:"Auto-généré depuis Revolut + GHL",mrr:String(Math.round(mrr)),pipeline:String(Math.round(pipeline)),tresoSoc:String(Math.round(tresoSoc)),dividendesHolding:String(dividendesHolding),ok:false,at:new Date().toISOString(),comment:"",_auto:true};
+ const prestataire=Math.round(sumTxns(["lucien","prestataire"]));
+ return{ca:String(Math.round(ca)),charges:String(Math.round(charges)),prestataireAmount:String(prestataire),chargesOps:String(chargesOps),salaire:String(salaire),formation:String(formation),clients:String(clients),churn:"",pub:String(pub),leads:String(leads),leadsContact:"",leadsClos:String(gd?.stats?.wonDeals||0),notes:"Auto-généré depuis Revolut + GHL",mrr:String(Math.round(mrr)),pipeline:String(Math.round(pipeline)),tresoSoc:String(Math.round(tresoSoc)),dividendesHolding:String(dividendesHolding),ok:false,at:new Date().toISOString(),comment:"",_auto:true};
 }
 const DEMO_JOURNAL={};
 const DEMO_ACTIONS=[];
@@ -333,7 +337,7 @@ const DEMO_KB=[
  {id:"kb5",title:"Méthode pricing \"Value-Based\"",cat:"tip",author:"copy",content:"Ne jamais pricer au temps passé. Toujours pricer à la valeur créée.\n\nFormule : Prix = 10% de la valeur annuelle que tu génères pour le client.\n\nExemple : tu gères 50K€/an de pub → facture 5K€/mois minimum.",tags:["pricing","mindset"],date:"2026-02-01",likes:4},
  {id:"kb6",title:"Script Appel Découverte",cat:"playbook",author:"leadx",content:"Intro (2min) : Contexte, pourquoi cet appel\nDouleur (5min) : Quel est le plus gros frein à ta croissance ?\nImpact (3min) : Combien ça te coûte de ne rien faire ?\nSolution (5min) : Voici comment on résout ça\nClose (2min) : On démarre quand ?",tags:["vente","appel","closing"],date:"2026-02-08",likes:6},
 ];
-const GHL_STAGES_COLORS=["#60a5fa","#c8a44e","#fb923c","#34d399","#a78bfa","#f43f5e","#14b8a6","#eab308"];
+const GHL_STAGES_COLORS=["#60a5fa","#FFAA00","#fb923c","#34d399","#a78bfa","#f43f5e","#14b8a6","#eab308"];
 const GHL_BASE="/api/ghl";
 function mkGHLDemo(){ return {}; }
 async function fetchGHL(action,locationId,params={}){
@@ -570,7 +574,7 @@ function revFinancials(socBankData,month){
 async function sGet(k){try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch{return null;}}
 async function sSet(k,v){try{await window.storage.set(k,JSON.stringify(v));}catch{}}
 function calcH(socs,reps,hold,month){
- let rem=0,cn=0;socs.forEach(s=>{if(s.id==="eco")return;if(["active","lancement"].includes(s.stat))cn++;const r=gr(reps,s.id,month);if(!r)return;const ca=pf(r.ca),ch=pf(r.charges);rem+=(s.pT==="ca"?ca:Math.max(0,ca-ch))*s.pP/100;});
+ let rem=0,cn=0;socs.forEach(s=>{if(s.id==="eco")return;if(["active","lancement"].includes(s.stat))cn++;const r=gr(reps,s.id,month);if(!r)return;const ca=pf(r.ca),presta=pf(r.prestataireAmount||0);rem+=(s.pT==="ca"?ca:Math.max(0,ca-presta))*s.pP/100;});
  const crm=cn*hold.crm,eR=gr(reps,"eco",month),eCa=eR?pf(eR.ca):0,tCh=hold.logiciels+hold.equipe+hold.service+hold.cabinet,eNet=eCa-tCh;
  const tIn=Math.max(0,eNet)+rem+crm,after=tIn-hold.remun,res=Math.max(0,after*hold.reservePct/100),dispo=Math.max(0,after-res);
  return{rem,crm,eNet,eCa,tCh,tIn,res,dispo,pf:hold.remun/2+dispo/2};
@@ -742,14 +746,14 @@ function IncubBadge({incub}){if(!incub)return null;const lbl=sinceLbl(incub);ret
 function GradeBadge({grade,color,size="sm"}){const s=size==="lg"?{w:32,h:32,fs:16,r:9,bw:2}:{w:22,h:22,fs:11,r:6,bw:1.5};return <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:s.w,height:s.h,borderRadius:s.r,background:color+"15",color,fontWeight:900,fontSize:s.fs,border:`${s.bw}px solid ${color}33`,flexShrink:0}}>{grade}</span>;}
 function KPI({label,value,sub,accent,small,delay=0,icon}){
  return <div className={`fu d${delay}`} style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:12,padding:small?"10px 12px":"14px 16px",flex:"1 1 130px",minWidth:small?90:120,transition:"border-color .2s"}} onMouseEnter={e=>e.currentTarget.style.borderColor=accent||C.brdL} onMouseLeave={e=>e.currentTarget.style.borderColor=C.brd}>
-  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3}}>{icon&&<span style={{fontSize:10}}>{icon}</span>}<span style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,textTransform:"uppercase"}}>{label}</span></div>
+  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3}}>{icon&&<span style={{fontSize:10}}>{icon}</span>}<span style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,textTransform:"uppercase",fontFamily:FONT_TITLE}}>{label}</span></div>
   <div style={{fontSize:small?14:20,fontWeight:800,color:accent||C.t,lineHeight:1.1}}>{value}</div>
   {sub&&<div style={{color:C.td,fontSize:9,marginTop:2}}>{sub}</div>}
  </div>;
 }
 function PBar({value,max,color,h=5}){const w=clamp(pct(value,max),0,100);return <div style={{background:C.brd,borderRadius:h,height:h,overflow:"hidden"}}><div className="pg" style={{background:color||C.acc,height:"100%",width:`${w}%`,"--w":`${w}%`,borderRadius:h}}/></div>;}
 function Btn({children,onClick,v="primary",small,style:sx,disabled,full}){
- const t={primary:{background:C.acc,color:"#0a0a0f"},secondary:{background:C.card2,color:C.t,border:`1px solid ${C.brd}`},ghost:{background:"transparent",color:C.td},danger:{background:C.rD,color:C.r},success:{background:C.gD,color:C.g},ai:{background:`linear-gradient(135deg,${C.v},${C.acc})`,color:"#0a0a0f"}};
+ const t={primary:{background:`linear-gradient(135deg,#FFBF00,#FF9D00)`,color:"#0a0a0f"},secondary:{background:C.card2,color:C.t,border:`1px solid ${C.brd}`},ghost:{background:"transparent",color:C.td},danger:{background:C.rD,color:C.r},success:{background:C.gD,color:C.g},ai:{background:`linear-gradient(135deg,${C.v},${C.acc})`,color:"#0a0a0f"}};
  return <button className="ba" disabled={disabled} onClick={onClick} style={{border:"none",borderRadius:8,fontWeight:600,cursor:disabled?"not-allowed":"pointer",fontFamily:FONT,opacity:disabled?0.35:1,padding:small?"5px 10px":"9px 18px",fontSize:small?10:12,width:full?"100%":"auto",letterSpacing:.3,...t[v],...sx}}>{children}</button>;
 }
 function Inp({label,value,onChange,type="text",placeholder,suffix,textarea,small,note,onKeyDown}){
@@ -762,7 +766,7 @@ function Inp({label,value,onChange,type="text",placeholder,suffix,textarea,small
   </div>{note&&<div style={{color:C.tm,fontSize:9,marginTop:2}}>{note}</div>}</div>;
 }
 function Sel({label,value,onChange,options}){return <div style={{marginBottom:10}}>{label&&<label style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:3,letterSpacing:.3}}>{label}</label>}<select value={value} onChange={e=>onChange(e.target.value)} style={{width:"100%",background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,color:C.t,padding:"8px 10px",fontSize:12,fontFamily:FONT,outline:"none"}}>{options.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}</select></div>;}
-function Sect({children,title,sub,right}){return <div className="fu" style={{marginTop:16}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:8,flexWrap:"wrap",gap:4}}><div>{title&&<h2 style={{color:C.t,fontSize:13,fontWeight:800,margin:0,letterSpacing:.2}}>{title}</h2>}{sub&&<p style={{color:C.td,fontSize:10,margin:"1px 0 0"}}>{sub}</p>}</div>{right}</div>{children}</div>;}
+function Sect({children,title,sub,right}){return <div className="fu" style={{marginTop:16}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:8,flexWrap:"wrap",gap:4}}><div>{title&&<h2 style={{color:C.t,fontSize:13,fontWeight:800,margin:0,letterSpacing:.2,fontFamily:FONT_TITLE}}>{title}</h2>}{sub&&<p style={{color:C.td,fontSize:10,margin:"1px 0 0"}}>{sub}</p>}</div>{right}</div>{children}</div>;}
 function Card({children,style:sx,onClick,accent,delay=0}){return <div className={`fu d${Math.min(delay,8)}`} onClick={onClick} style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:11,padding:14,cursor:onClick?"pointer":"default",transition:"border-color .15s, box-shadow .15s",...(accent?{borderLeft:`3px solid ${accent}`}:{}),...sx}} onMouseEnter={onClick?e=>{e.currentTarget.style.borderColor=C.brdL;e.currentTarget.style.boxShadow="0 2px 12px rgba(0,0,0,.2)";}:undefined} onMouseLeave={onClick?e=>{e.currentTarget.style.borderColor=accent||C.brd;e.currentTarget.style.boxShadow="none";}:undefined}>{children}</div>;}
 function Modal({open,onClose,title,children,wide}){if(!open)return null;return <div className="fi" onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"28px 14px",overflowY:"auto",backdropFilter:"blur(6px)"}}><div className="mi" onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:20,width:wide?700:440,maxWidth:"100%",boxShadow:"0 16px 50px rgba(0,0,0,.5)"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t}}>{title}</h3><Btn v="ghost" small onClick={onClose}>✕</Btn></div>{children}</div></div>;}
 function CTip({active,payload,label}){if(!active||!payload)return null;return <div style={{background:C.card2,border:`1px solid ${C.brd}`,borderRadius:8,padding:"6px 10px",boxShadow:"0 4px 16px rgba(0,0,0,.4)"}}><div style={{color:C.t,fontWeight:700,fontSize:9,marginBottom:2}}>{label}</div>{payload.map((p,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:4,marginBottom:1}}><span style={{width:4,height:4,borderRadius:2,background:p.color}}/><span style={{color:C.td,fontSize:9}}>{p.name}:</span><span style={{color:C.t,fontSize:9,fontWeight:600}}>{fmt(p.value)}€</span></div>)}</div>;}
@@ -2572,12 +2576,12 @@ function GoalEditor({goals,setGoals,evo}){
 function CelebrationOverlay({milestone,onClose}){
  const[show,setShow]=useState(true);
  useEffect(()=>{const t=setTimeout(()=>{setShow(false);setTimeout(onClose,400);},5000);return()=>clearTimeout(t);},[]);
- const colors=["#c8a44e","#34d399","#60a5fa","#a78bfa","#fb923c","#f87171"];
+ const colors=["#FFAA00","#34d399","#60a5fa","#a78bfa","#fb923c","#f87171"];
  return <div style={{position:"fixed",inset:0,zIndex:10000,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.7)",opacity:show?1:0,transition:"opacity .4s",pointerEvents:"auto"}} onClick={()=>{setShow(false);setTimeout(onClose,400);}}>
   {/* Confetti */}
   {Array.from({length:30}).map((_,i)=><div key={i} style={{position:"fixed",left:`${Math.random()*100}%`,top:-20,width:8+Math.random()*8,height:8+Math.random()*8,background:colors[i%colors.length],borderRadius:Math.random()>.5?"50%":"2px",animation:`confetti ${2+Math.random()*2}s ease-in ${Math.random()*.8}s both`,transform:`rotate(${Math.random()*360}deg)`}}/>)}
   {/* Card */}
-  <div onClick={e=>e.stopPropagation()} style={{background:`linear-gradient(135deg,${C.card} 0%,#1a1a2c 100%)`,border:`2px solid ${C.acc}44`,borderRadius:20,padding:"32px 28px",maxWidth:340,textAlign:"center",animation:"celebIn .5s cubic-bezier(.16,1,.3,1) both",boxShadow:`0 0 60px rgba(200,164,78,.15)`}}>
+  <div onClick={e=>e.stopPropagation()} style={{background:`linear-gradient(135deg,${C.card} 0%,#1a1a2c 100%)`,border:`2px solid ${C.acc}44`,borderRadius:20,padding:"32px 28px",maxWidth:340,textAlign:"center",animation:"celebIn .5s cubic-bezier(.16,1,.3,1) both",boxShadow:`0 0 60px rgba(255,170,0,.15)`}}>
    <div style={{fontSize:48,marginBottom:12,animation:"celebGlow 2s ease infinite"}}>{milestone.icon}</div>
    <div style={{color:C.acc,fontSize:10,fontWeight:700,letterSpacing:1.5,marginBottom:4}}>FÉLICITATIONS ! 🎉</div>
    <div style={{fontWeight:900,fontSize:20,color:C.t,marginBottom:6,fontFamily:FONT}}>{milestone.label}</div>
@@ -2585,7 +2589,7 @@ function CelebrationOverlay({milestone,onClose}){
    <div style={{display:"flex",justifyContent:"center",gap:4,marginBottom:16}}>
     {["🥉","🥈","🥇","💎","👑"].map((t,i)=><span key={i} style={{fontSize:i<=(milestone.tier||0)?20:14,opacity:i<=(milestone.tier||0)?1:.2,transition:"all .3s",transitionDelay:`${i*.1}s`}}>{t}</span>)}
    </div>
-   <button onClick={()=>{setShow(false);setTimeout(onClose,400);}} style={{background:`linear-gradient(135deg,${C.acc},#e8c85a)`,color:"#0a0a0f",border:"none",borderRadius:10,padding:"10px 24px",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:FONT}}>Continuer →</button>
+   <button onClick={()=>{setShow(false);setTimeout(onClose,400);}} style={{background:`linear-gradient(135deg,${C.acc},#FF9D00)`,color:"#0a0a0f",border:"none",borderRadius:10,padding:"10px 24px",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:FONT}}>Continuer →</button>
   </div>
  </div>;
 }
@@ -2794,7 +2798,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab}){
   {/* Hero KPIs */}
   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:20}}>
    {kpis.map((k,i)=><div key={i} className="fade-up" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:14,padding:20,animationDelay:`${i*0.1}s`}}>
-    <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,textTransform:"uppercase",marginBottom:6}}>{k.label}</div>
+    <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8,textTransform:"uppercase",marginBottom:6,fontFamily:FONT_TITLE}}>{k.label}</div>
     <div style={{fontSize:24,fontWeight:900,color:k.accent||C.t,lineHeight:1}}>{k.value}</div>
     {k.trend!==undefined&&k.trend!==0&&<div style={{marginTop:4,fontSize:11,fontWeight:700,color:k.trend>0?C.g:C.r}}>{k.trend>0?"↑":"↓"} {Math.abs(k.trend)}% vs mois dernier</div>}
     {k.sub&&!k.trend&&<div style={{marginTop:4,fontSize:11,fontWeight:700,color:k.accent}}>{k.sub}</div>}
@@ -2866,12 +2870,12 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab}){
   </div>}
  </div>;
 }
-function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,savePulse,socBankData,syncSocBank,okrs,saveOkrs,kb,saveKb,socs,subs,saveSubs,team,saveTeam,clients,saveClients,ghlData,invoices,saveInvoices,hold,onTour}){
+function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,savePulse,socBankData,syncSocBank,okrs,saveOkrs,kb,saveKb,socs,subs,saveSubs,team,saveTeam,clients,saveClients,ghlData,invoices,saveInvoices,hold,onTour,onThemeToggle}){
  const cM2=curM();const[pTab,setPTab]=useState(0);const[mo,setMo]=useState(cM2);
  const[f,setF]=useState(()=>gr(reps,soc.id,cM2)||{...BF});const[done,setDone]=useState(false);const[showPub,setShowPub]=useState(false);const[jText,setJText]=useState("");
  useEffect(()=>{const ex=gr(reps,soc.id,mo)||{...BF};setF(ex);setShowPub(!!pf(ex.pub));setDone(false);},[mo,soc.id]);
  const ex=gr(reps,soc.id,mo),ca=pf(f.ca),ch=pf(f.charges),marge=ca-ch;
- const remontee=(soc.pT==="ca"?ca:Math.max(0,marge))*soc.pP/100;
+ const prestaP=pf(f.prestataireAmount||0);const remontee=(soc.pT==="ca"?ca:Math.max(0,ca-prestaP))*soc.pP/100;
  const oP=soc.obj>0&&ca>0?pct(ca,soc.obj):null;const past=Object.entries(reps).filter(([k])=>k.startsWith(soc.id+"_")).sort(([a2],[b2])=>b2.localeCompare(a2)).slice(0,6);
  const evo=allM.map(m=>{const r=gr(reps,soc.id,m);if(!r)return null;const rca=pf(r.ca),rch=pf(r.charges),sal=pf(r.salaire),ops=pf(r.chargesOps),form=pf(r.formation),pub=pf(r.pub),lds=pf(r.leads),ldC=pf(r.leadsContact),ldCl=pf(r.leadsClos);return{mois:ml(m),m,ca:rca,marge:rca-rch,margePct:rca>0?Math.round((rca-rch)/rca*100):0,mrr:pf(r.mrr),pipeline:pf(r.pipeline),treso:pf(r.tresoSoc),salaire:sal,chargesOps:ops,formation:form,pub,leads:lds,leadsContact:ldC,leadsClos:ldCl,charges:rch};}).filter(Boolean);
  const exCur=gr(reps,soc.id,cM2);const status=exCur?(exCur.ok?"validated":"pending"):"missing";
@@ -2910,7 +2914,7 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
  const playbooks=useMemo(()=>getPlaybooks(evo,hs,rw,clients),[evo,hs,rw,clients]);
  return <div style={{display:"flex",background:C.bg,minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}</style>
-  <Sidebar items={SB_PORTEUR} activeTab={pTab} setTab={setPTab} brandTitle={soc.nom} brandSub={`${soc.porteur}${soc.incub?" · "+sinceLbl(soc.incub):""}`} onLogout={onLogout} onTour={onTour||(() => {})} dataTourPrefix="porteur" brand={{logoUrl:soc.logoUrl||"",logoLetter:(soc.nom||"?")[0],accentColor:soc.brandColor||soc.color}} extra={<div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
+  <Sidebar items={SB_PORTEUR} activeTab={pTab} setTab={setPTab} brandTitle={soc.nom} brandSub={`${soc.porteur}${soc.incub?" · "+sinceLbl(soc.incub):""}`} onLogout={onLogout} onTour={onTour||(() => {})} onThemeToggle={onThemeToggle} dataTourPrefix="porteur" brand={{logoUrl:soc.logoUrl||"",logoLetter:(soc.nom||"?")[0],accentColor:soc.brandColor||soc.color}} extra={<div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
    {(()=>{const myC=clients.filter(c=>c.socId===soc.id&&c.status==="active");const mrr=myC.reduce((a,c)=>a+clientMonthlyRevenue(c),0);return myC.length>0?<span style={{fontSize:8,color:C.b,fontWeight:700,background:C.bD,padding:"2px 6px",borderRadius:8}}>👥{myC.length} · {fK(mrr)}€/m</span>:null;})()}
    <MilestoneCount milestones={milestones}/>
    <GradeBadge grade={hs.grade} color={hs.color}/>
@@ -3024,7 +3028,7 @@ function ObSelect({label,value,onChange,options,placeholder,required}){
    {label}{required&&<span style={{color:C.r,marginLeft:3,fontSize:10}}>*</span>}
   </label>}
   <select value={value} onChange={e=>onChange(e.target.value)}
-   style={{width:"100%",padding:"10px 13px",borderRadius:9,border:`1.5px solid ${C.brd}`,fontSize:13,fontFamily:FONT,background:C.bg,color:value?C.t:C.td,outline:"none",boxSizing:"border-box",appearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c8a44e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 12px center"}}>
+   style={{width:"100%",padding:"10px 13px",borderRadius:9,border:`1.5px solid ${C.brd}`,fontSize:13,fontFamily:FONT,background:C.bg,color:value?C.t:C.td,outline:"none",boxSizing:"border-box",appearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23FFAA00' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 12px center"}}>
    <option value="" disabled>{placeholder||"Sélectionner..."}</option>
    {options.map(o=><option key={o} value={o}>{o}</option>)}
   </select>
@@ -3033,7 +3037,7 @@ function ObSelect({label,value,onChange,options,placeholder,required}){
 function ObCheck({checked,onChange,label}){
  return <label style={{display:"flex",alignItems:"flex-start",gap:9,cursor:"pointer",fontSize:12.5,color:C.t,lineHeight:1.5,fontFamily:FONT,marginBottom:10}}>
   <div onClick={e=>{e.preventDefault();onChange(!checked);}}
-   style={{width:18,height:18,minWidth:18,borderRadius:5,marginTop:1,border:checked?"none":`1.5px solid ${C.brd}`,background:checked?`linear-gradient(135deg,${C.acc},#e8c85a)`:"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .2s",cursor:"pointer"}}>
+   style={{width:18,height:18,minWidth:18,borderRadius:5,marginTop:1,border:checked?"none":`1.5px solid ${C.brd}`,background:checked?`linear-gradient(135deg,${C.acc},#FF9D00)`:"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .2s",cursor:"pointer"}}>
    {checked&&<span style={{color:"#0a0a0f",fontSize:11,fontWeight:900}}>✓</span>}
   </div>
   <span>{label}</span>
@@ -3197,12 +3201,12 @@ function OnboardingWizard({onComplete,onSkip,hold}){
  };
 
  return <div style={{minHeight:"100vh",display:"flex",background:C.bg,fontFamily:FONT,color:C.t}}>
-  <style>{CSS}{`@keyframes obSlide{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}@keyframes obPulse{0%,100%{box-shadow:0 0 0 0 rgba(200,164,78,.4)}70%{box-shadow:0 0 0 8px rgba(200,164,78,0)}}`}</style>
+  <style>{CSS}{`@keyframes obSlide{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}@keyframes obPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,170,0,.4)}70%{box-shadow:0 0 0 8px rgba(255,170,0,0)}}`}</style>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   {/* Sidebar stepper */}
   <div style={{width:220,minHeight:"100vh",background:C.card,borderRight:`1px solid ${C.brd}`,padding:"28px 16px",display:"flex",flexDirection:"column"}}>
    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:28}}>
-    <div style={{width:32,height:32,background:hold?.brand?.logoUrl?"transparent":`linear-gradient(135deg,${hold?.brand?.accentColor||C.acc},#e8c85a)`,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:"#0a0a0f",overflow:"hidden"}}>{hold?.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(hold?.brand?.logoLetter||"S")}</div>
+    <div style={{width:32,height:32,background:hold?.brand?.logoUrl?"transparent":`linear-gradient(135deg,${hold?.brand?.accentColor||C.acc},#FF9D00)`,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:"#0a0a0f",overflow:"hidden"}}>{hold?.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(hold?.brand?.logoLetter||"S")}</div>
     <div><div style={{fontWeight:800,fontSize:13,letterSpacing:.5}}>{hold?.brand?.name||"SCALE CORP"}</div><div style={{color:C.td,fontSize:9}}>Onboarding</div></div>
    </div>
    <div style={{flex:1}}>
@@ -3214,7 +3218,7 @@ function OnboardingWizard({onComplete,onSkip,hold}){
    </div>
    <div style={{padding:"10px 12px",background:C.bg,borderRadius:8,border:`1px solid ${C.brd}`}}>
     <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.td,marginBottom:4}}><span>Progression</span><span>{Math.round(prog)}%</span></div>
-    <div style={{height:4,background:C.brd,borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:`${prog}%`,background:`linear-gradient(90deg,${C.acc},#e8c85a)`,borderRadius:4,transition:"width .3s ease"}}/></div>
+    <div style={{height:4,background:C.brd,borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:`${prog}%`,background:`linear-gradient(90deg,${C.acc},#FF9D00)`,borderRadius:4,transition:"width .3s ease"}}/></div>
    </div>
    {onSkip&&<button onClick={onSkip} style={{marginTop:8,width:"100%",padding:"8px",borderRadius:7,border:`1px solid ${C.brd}`,background:"transparent",color:C.td,fontSize:10,cursor:"pointer",fontFamily:FONT,transition:"all .15s"}}>← Retour à la connexion</button>}
   </div>
@@ -3233,7 +3237,7 @@ function OnboardingWizard({onComplete,onSkip,hold}){
      style={{padding:"9px 20px",borderRadius:9,border:`1px solid ${C.brd}`,background:"transparent",color:step>0?C.t:C.tm,fontSize:12,fontWeight:600,cursor:step>0?"pointer":"default",fontFamily:FONT}}>← Retour</button>
     {step<OB_STEPS.length-1?
      <button onClick={()=>{if(canNext())go(step+1);}} disabled={!canNext()}
-      style={{padding:"9px 24px",borderRadius:9,border:"none",background:canNext()?`linear-gradient(135deg,${C.acc},#e8c85a)`:"#1a1a2c",color:canNext()?"#0a0a0f":C.tm,fontSize:12,fontWeight:700,cursor:canNext()?"pointer":"default",fontFamily:FONT,boxShadow:canNext()?`0 4px 16px ${C.accD}`:"none",animation:canNext()?"obPulse 2s infinite":"none"}}>Continuer →</button>
+      style={{padding:"9px 24px",borderRadius:9,border:"none",background:canNext()?`linear-gradient(135deg,${C.acc},#FF9D00)`:"#1a1a2c",color:canNext()?"#0a0a0f":C.tm,fontSize:12,fontWeight:700,cursor:canNext()?"pointer":"default",fontFamily:FONT,boxShadow:canNext()?`0 4px 16px ${C.accD}`:"none",animation:canNext()?"obPulse 2s infinite":"none"}}>Continuer →</button>
     :<button onClick={()=>{if(form.acceptTerms&&form.acceptReporting&&form.companyName&&form.founderName)onComplete(form);}}
       disabled={!(form.acceptTerms&&form.acceptReporting&&form.companyName&&form.founderName)}
       style={{padding:"9px 24px",borderRadius:9,border:"none",background:(form.acceptTerms&&form.acceptReporting&&form.companyName&&form.founderName)?`linear-gradient(135deg,${C.g},#16a34a)`:"#1a1a2c",color:(form.acceptTerms&&form.acceptReporting&&form.companyName&&form.founderName)?"#fff":C.tm,fontSize:12,fontWeight:700,cursor:(form.acceptTerms&&form.acceptReporting&&form.companyName&&form.founderName)?"pointer":"default",fontFamily:FONT,display:"flex",alignItems:"center",gap:6,boxShadow:(form.acceptTerms&&form.acceptReporting&&form.companyName&&form.founderName)?`0 4px 16px ${C.gD}`:"none"}}>🚀 Accéder à la plateforme</button>
@@ -3407,7 +3411,7 @@ const SB_PORTEUR=[
  {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
 ];
 
-function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,extra,dataTourPrefix,brand}){
+function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,extra,dataTourPrefix,brand,onThemeToggle}){
  const[exp,setExp]=useState(()=>{
   const init={};items.forEach(g=>{if(g.children&&g.children.some(c=>c.tab===activeTab))init[g.id]=true;});return init;
  });
@@ -3417,8 +3421,8 @@ function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,ext
 
  return <aside data-tour={`${dataTourPrefix}-nav`} style={{width:210,minWidth:210,height:"100vh",position:"sticky",top:0,background:`linear-gradient(180deg,${C.card} 0%,${C.bg} 100%)`,borderRight:`1px solid ${C.brd}`,display:"flex",flexDirection:"column",fontFamily:FONT,overflow:"hidden",zIndex:50}}>
   <div style={{padding:"16px 14px 14px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",gap:9}}>
-   <div style={{width:30,height:30,background:brand?.logoUrl?"transparent":`linear-gradient(135deg,${brand?.accentColor||C.acc},#e8c85a)`,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:13,color:"#0a0a0f",boxShadow:`0 2px 8px ${(brand?.accentColor||C.acc)}44`,flexShrink:0,overflow:"hidden"}}>{brand?.logoUrl?<img src={brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(brand?.logoLetter||brandTitle?.[0]||"S")}</div>
-   <div style={{minWidth:0}}><div style={{fontWeight:800,fontSize:12,letterSpacing:.5,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{brandTitle}</div><div style={{fontSize:8,color:C.td}}>{brandSub}</div></div>
+   <div style={{width:30,height:30,background:brand?.logoUrl?"transparent":`linear-gradient(135deg,${brand?.accentColor||C.acc},#FF9D00)`,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:13,color:"#0a0a0f",boxShadow:`0 2px 8px ${(brand?.accentColor||C.acc)}44`,flexShrink:0,overflow:"hidden"}}>{brand?.logoUrl?<img src={brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(brand?.logoLetter||brandTitle?.[0]||"S")}</div>
+   <div style={{minWidth:0}}><div style={{fontWeight:800,fontSize:12,letterSpacing:.5,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontFamily:FONT_TITLE}}>{brandTitle}</div><div style={{fontSize:8,color:C.td}}>{brandSub}</div></div>
   </div>
   <nav style={{flex:1,overflow:"auto",padding:"8px 6px 8px 6px"}}>
    {items.map(g=>{
@@ -3448,9 +3452,15 @@ function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,ext
   </nav>
   {extra&&<div style={{padding:"6px 10px",borderTop:`1px solid ${C.brd}`}}>{extra}</div>}
   <div style={{padding:"6px 6px 10px",borderTop:extra?"none":`1px solid ${C.brd}`,display:"flex",flexDirection:"column",gap:1}}>
+   {onThemeToggle&&<button onClick={onThemeToggle} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:"none",background:"transparent",color:C.td,fontSize:10,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=C.card2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+    <span style={{fontSize:12}}>{getTheme()==="light"?"🌙":"☀️"}</span><span>{getTheme()==="light"?"Mode sombre":"Mode clair"}</span>
+   </button>}
    <button onClick={onTour} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:"none",background:"transparent",color:C.td,fontSize:10,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=C.card2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
     <span style={{fontSize:12}}>🎓</span><span>Tutoriel</span>
    </button>
+   {onThemeToggle&&<button onClick={onThemeToggle} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:"none",background:"transparent",color:C.td,fontSize:10,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=C.card2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+    <span style={{fontSize:12}}>{C===C_LIGHT?"🌙":"☀️"}</span><span>{C===C_LIGHT?"Mode sombre":"Mode clair"}</span>
+   </button>}
    <button onClick={onLogout} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:"none",background:"transparent",color:C.td,fontSize:10,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"background .12s"}} onMouseEnter={e=>{e.currentTarget.style.background=C.rD;e.currentTarget.style.color=C.r;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.td;}}>
     <span style={{fontSize:12}}>↩</span><span>Déconnexion</span>
    </button>
@@ -3460,7 +3470,9 @@ function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,ext
 
 /* MAIN APP */
 export default function App(){
- const[loaded,setLoaded]=useState(false);const[role,setRole]=useState(null);
+ const[loaded,setLoaded]=useState(false);const[role,setRole]=useState(null);const[theme,setThemeState]=useState(getTheme);
+ const toggleTheme=useCallback(()=>{const t=getTheme()==="dark"?"light":"dark";applyTheme(t);setThemeState(t);},[]);
+ const[theme,setTheme]=useState(()=>{try{return localStorage.getItem("scTheme")||"dark";}catch{return"dark";}});
  const[socs,setSocs]=useState([]);const[reps,setReps]=useState({});const[hold,setHold]=useState(DH);
  const[actions,setActions]=useState([]);const[journal,setJournal]=useState({});
  const[pulses,setPulses]=useState({});const[deals,setDeals]=useState([]);const[ghlData,setGhlData]=useState({});const[revData,setRevData]=useState(null);const[socBank,setSocBank]=useState({});
@@ -3514,7 +3526,9 @@ export default function App(){
  },[socs]);
  // Auto-sync GHL every 30s + on mount
  useEffect(()=>{
-  if(!loaded)return;
+  const toggleTheme=()=>{const next=theme==="dark"?"light":"dark";setTheme(next);try{localStorage.setItem("scTheme",next);}catch{}};
+ C=theme==="light"?C_LIGHT:C_DARK;
+ if(!loaded)return;
   const doSync=()=>{syncGHL().catch(e=>console.warn("Auto-sync GHL failed:",e));};
   doSync();
   const id=setInterval(doSync,30000);
@@ -3588,8 +3602,8 @@ export default function App(){
   {showTour&&<div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(0,0,0,.6)",backdropFilter:"blur(3px)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}>
    <div className="si" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:18,padding:0,width:500,maxWidth:"92vw",boxShadow:"0 24px 60px rgba(0,0,0,.5)",overflow:"hidden"}}>
     <div style={{padding:"24px 28px",background:`linear-gradient(135deg,${C.accD},transparent)`,borderBottom:`1px solid ${C.brd}`,textAlign:"center"}}>
-     <div style={{width:64,height:64,borderRadius:16,background:`linear-gradient(135deg,${C.acc},#e8c85a)`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:30,marginBottom:12,boxShadow:`0 8px 32px ${C.accD}`}}>🎓</div>
-     <h2 style={{margin:0,fontSize:22,fontWeight:800,color:C.t}}>Bienvenue {obData?.founderName||""} !</h2>
+     <div style={{width:64,height:64,borderRadius:16,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:30,marginBottom:12,boxShadow:`0 8px 32px ${C.accD}`}}>🎓</div>
+     <h2 style={{margin:0,fontSize:22,fontWeight:800,color:C.t,fontFamily:FONT_TITLE}}>Bienvenue {obData?.founderName||""} !</h2>
      <p style={{color:C.td,fontSize:13,margin:"8px 0 0",lineHeight:1.5}}>Votre espace est configuré. Connectez-vous puis découvrez la plateforme avec un tutoriel guidé de chaque onglet.</p>
     </div>
     <div style={{padding:"20px 28px"}}>
@@ -3598,14 +3612,15 @@ export default function App(){
        <span style={{fontSize:18}}>{it.icon}</span><div><div style={{fontWeight:700,fontSize:11,color:C.t}}>{it.label}</div><div style={{fontSize:10,color:C.td}}>{it.desc}</div></div></div>)}</div>
     </div>
     <div style={{padding:"14px 28px",borderTop:`1px solid ${C.brd}`,textAlign:"center"}}>
-     <button onClick={()=>setShowTour(false)} style={{padding:"10px 28px",borderRadius:9,border:"none",background:`linear-gradient(135deg,${C.acc},#e8c85a)`,color:"#0a0a0f",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT,boxShadow:`0 4px 16px ${C.accD}`}}>Se connecter →</button>
+     <button onClick={()=>setShowTour(false)} style={{padding:"10px 28px",borderRadius:9,border:"none",background:`linear-gradient(135deg,${C.acc},#FF9D00)`,color:"#0a0a0f",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT,boxShadow:`0 4px 16px ${C.accD}`}}>Se connecter →</button>
     </div>
    </div>
   </div>}
+  <button onClick={toggleTheme} style={{position:"fixed",top:16,right:16,width:36,height:36,borderRadius:18,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}}>{C===C_LIGHT?"🌙":"☀️"}</button>
   <div className="si" style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:16,padding:28,width:340,maxWidth:"100%",boxShadow:"0 24px 60px rgba(0,0,0,.5)"}}>
    <div style={{textAlign:"center",marginBottom:24}}>
-    <div className="fl" style={{width:44,height:44,background:hold.brand?.logoUrl?"transparent":`linear-gradient(135deg,${hold.brand?.accentColor||C.acc},#e8c85a)`,borderRadius:10,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:10,boxShadow:`0 4px 16px ${(hold.brand?.accentColor||C.acc)}44`,overflow:"hidden"}}>{hold.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(hold.brand?.logoLetter||"S")}</div>
-    <h1 style={{margin:0,fontSize:18,fontWeight:900,letterSpacing:.5}}>{hold.brand?.name||"SCALE CORP"}</h1>
+    <div className="fl" style={{width:44,height:44,background:hold.brand?.logoUrl?"transparent":`linear-gradient(135deg,${hold.brand?.accentColor||C.acc},#FF9D00)`,borderRadius:10,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:10,boxShadow:`0 4px 16px ${(hold.brand?.accentColor||C.acc)}44`,overflow:"hidden"}}>{hold.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(hold.brand?.logoLetter||"S")}</div>
+    <h1 style={{margin:0,fontSize:18,fontWeight:900,letterSpacing:.5,fontFamily:FONT_TITLE}}>{hold.brand?.name||"SCALE CORP"}</h1>
     <p style={{color:C.td,fontSize:11,margin:"4px 0 0"}}>{hold.brand?.sub||"Plateforme de pilotage"}</p>
    </div>
    <div style={{animation:shake?"sh .4s ease":"none"}}><Inp label="Code d'accès" value={pin} onChange={v=>{setPin(v);setLErr("");}} type="password" placeholder="Entrez votre PIN" onKeyDown={e=>{if(e.key==="Enter")login();}}/></div>
@@ -3625,14 +3640,14 @@ export default function App(){
  </div>;
  if(role!=="admin"){const soc=socs.find(s=>s.id===role);if(!soc)return null;
   const porteurSetTab=(t)=>{const btn=document.querySelector(`[data-tour="porteur-tab-${t}"]`);if(btn)btn.click();};
-  return <>{showTour&&<TutorialOverlay steps={TOUR_PORTEUR} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={porteurSetTab}/>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold}/></>;}
+  return <>{showTour&&<TutorialOverlay steps={TOUR_PORTEUR} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={porteurSetTab}/>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme}/></>;}
  if(meeting)return <MeetingMode socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} onExit={()=>setMeeting(false)}/>;
  const hc=calcH(socs,reps,hold,cM2);const pending=socs.filter(s=>{const r=gr(reps,s.id,cM2);return r&&!r.ok;});
  const missing=actS.filter(s=>!gr(reps,s.id,cM2));const lateActions=actions.filter(a=>!a.done&&a.deadline<cM2);
  return <div style={{display:"flex",background:C.bg,minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}</style>
   {showTour&&role==="admin"&&<TutorialOverlay steps={TOUR_ADMIN} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={setTab}/>}
-  <Sidebar items={SB_ADMIN} activeTab={tab} setTab={setTab} brandTitle={hold.brand?.name||"SCALE CORP"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>setRole(null)} onTour={()=>setShowTour(true)} dataTourPrefix="admin" brand={hold.brand} extra={<div style={{display:"flex",flexDirection:"column",gap:2}}>
+  <Sidebar items={SB_ADMIN} activeTab={tab} setTab={setTab} brandTitle={hold.brand?.name||"SCALE CORP"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>setRole(null)} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand} onThemeToggle={toggleTheme} extra={<div style={{display:"flex",flexDirection:"column",gap:2}}>
    {hold.slack?.enabled&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 4px"}}><span style={{width:5,height:5,borderRadius:3,background:C.g}}/>
     <span style={{fontSize:8,color:C.td}}>{SLACK_MODES[hold.slack?.mode]?.icon} Slack connecté</span>
     {missing.length>0&&<button onClick={async()=>{const results=[];for(const s of missing){const r=await slackSend(hold.slack,buildReminderSlackMsg(s,"report",deadline(cM2)));results.push({nom:s.nom,ok:r.ok});}const ok=results.filter(r=>r.ok).length;alert(`📤 ${ok}/${results.length} rappels envoyés`);}} style={{marginLeft:"auto",fontSize:8,color:C.o,background:C.oD,border:"none",borderRadius:4,padding:"2px 5px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>🔔 {missing.length}</button>}
@@ -3883,7 +3898,8 @@ export default function App(){
    <Sect title="Ce que chaque société rapporte" sub="Remontées au holding ce mois">
     {socs.filter(s=>s.id!=="eco").map((s,i)=>{
     const r=gr(reps,s.id,cM2);const ca2=r?pf(r.ca):0,ch2=r?pf(r.charges):0;
-    const base=s.pT==="ca"?ca2:Math.max(0,ca2-ch2);const remontee=base*s.pP/100;
+    const presta2=r?pf(r.prestataireAmount||0):0;
+    const base=s.pT==="ca"?ca2:Math.max(0,ca2-presta2);const remontee=base*s.pP/100;
     const margeNet=ca2-ch2;const margePct2=ca2>0?Math.round(margeNet/ca2*100):0;
     const salaire=r?pf(r.salaire):0;
     const divHold=r?pf(r.dividendesHolding):0;const resteVerser=remontee-divHold;
@@ -3893,10 +3909,11 @@ export default function App(){
     <div style={{flex:1}}>
     <div style={{display:"flex",alignItems:"center",gap:6}}>
     <span style={{fontWeight:700,fontSize:12}}>{s.nom}</span>
-    <span style={{fontSize:9,color:C.td}}>({s.pP}% {s.pT==="ca"?"du CA":"des bénéfices"})</span>
+    <span style={{fontSize:9,color:C.td}}>({s.pP}% {s.pT==="ca"?"du CA":"CA hors presta"})</span>
     </div>
     <div style={{display:"flex",gap:8,marginTop:3,flexWrap:"wrap"}}>
     <span style={{fontSize:9,color:C.td}}>CA: <strong style={{color:C.t}}>{fmt(ca2)}€</strong></span>
+    {presta2>0&&<span style={{fontSize:9,color:C.td}}>Presta: <strong style={{color:C.o}}>{fmt(presta2)}€</strong></span>}
     <span style={{fontSize:9,color:C.td}}>Marge: <strong style={{color:margeNet>=0?C.g:C.r}}>{fmt(margeNet)}€ ({margePct2}%)</strong></span>
     {salaire>0&&<span style={{fontSize:9,color:C.td}}>Rém fondateur: <strong style={{color:C.o}}>{fmt(salaire)}€</strong></span>}
     {divHold>0&&<span style={{fontSize:9,color:"#7c3aed"}}>🏛️ Viré: <strong>{fmt(divHold)}€</strong></span>}
@@ -3953,8 +3970,8 @@ export default function App(){
     </div>
     <div style={{display:"flex",alignItems:"center",gap:10,marginTop:4}}>
      <label style={{fontSize:10,color:C.td,fontWeight:600}}>Couleur accent</label>
-     <input type="color" value={hold.brand?.accentColor||"#c8a44e"} onChange={e=>setHold({...hold,brand:{...(hold.brand||DH.brand),accentColor:e.target.value}})} style={{width:32,height:24,border:`1px solid ${C.brd}`,borderRadius:6,background:C.bg,cursor:"pointer"}}/>
-     <span style={{fontSize:10,color:C.td}}>{hold.brand?.accentColor||"#c8a44e"}</span>
+     <input type="color" value={hold.brand?.accentColor||"#FFAA00"} onChange={e=>setHold({...hold,brand:{...(hold.brand||DH.brand),accentColor:e.target.value}})} style={{width:32,height:24,border:`1px solid ${C.brd}`,borderRadius:6,background:C.bg,cursor:"pointer"}}/>
+     <span style={{fontSize:10,color:C.td}}>{hold.brand?.accentColor||"#FFAA00"}</span>
     </div>
     {hold.brand?.logoUrl&&<div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:9,color:C.td}}>Aperçu:</span><div style={{width:36,height:36,borderRadius:8,overflow:"hidden",border:`1px solid ${C.brd}`}}><img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/></div></div>}
    </div>
