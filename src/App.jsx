@@ -108,7 +108,8 @@ const AUTO_CAT_MAP=[
 function autoCategorize(name){for(const[rx,cat]of AUTO_CAT_MAP)if(rx.test(name))return cat;return"autre";}
 function autoDetectSubscriptions(bankData,socId){
  if(!bankData?.transactions)return[];
- const txns=bankData.transactions.filter(t=>{const a=t.legs?.[0]?.amount;return a&&a<0;});
+ const excluded=EXCLUDED_ACCOUNTS[socId]||[];
+ const txns=bankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded.includes(leg.account_id))return false;return leg.amount<0;});
  const byDesc={};
  txns.forEach(t=>{const desc=(t.reference||t.description||t.legs?.[0]?.description||"").trim();const amt=Math.abs(t.legs[0].amount);if(!desc||amt<1)return;const key=desc.toLowerCase().replace(/[^a-z0-9]/g,"");if(!byDesc[key])byDesc[key]={desc,amounts:[],dates:[],key};byDesc[key].amounts.push(Math.round(amt));byDesc[key].dates.push(new Date(t.created_at));});
  const subs=[];
