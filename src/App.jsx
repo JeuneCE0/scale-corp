@@ -1900,7 +1900,6 @@ function AIWeeklyCoach({soc,reps,allM,actions,pulses,milestones}){
    if(mPct<20)ins.push({type:"warning",icon:"💸",text:`Marge à ${mPct}% — trop basse. Objectif : passer à 40%+ en optimisant les charges.`});
    else if(mPct>60)ins.push({type:"success",icon:"💎",text:`Marge excellente à ${mPct}%. Réinvestis dans l'acquisition.`});
   }
-  }
   if(openActs.length>3)ins.push({type:"warning",icon:"📋",text:`${openActs.length} actions ouvertes. Ferme-en 2 cette semaine avant d'en créer de nouvelles.`});
   if(nextMs)ins.push({type:"info",icon:"🏆",text:`Prochain milestone : "${nextMs.label}" — ${nextMs.desc}. Tu y es presque !`});
   if(hs.grade==="D"||hs.grade==="F")ins.push({type:"danger",icon:"⚠️",text:`Grade ${hs.grade} — focus sur ${hs.obj<hs.growth?"les objectifs":"la croissance"} en priorité.`});
