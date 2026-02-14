@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Fragment, createContext, useContext } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Area, AreaChart, Legend, Line, LineChart } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Area, AreaChart, Legend, Line, LineChart, ComposedChart } from "recharts";
 const C_DARK={bg:"#06060b",card:"#0e0e16",card2:"#131320",brd:"#1a1a2c",brdL:"#24243a",acc:"#FFAA00",accD:"rgba(255,170,0,.12)",g:"#34d399",gD:"rgba(52,211,153,.1)",r:"#f87171",rD:"rgba(248,113,113,.1)",o:"#fb923c",oD:"rgba(251,146,60,.1)",b:"#60a5fa",bD:"rgba(96,165,250,.1)",t:"#e4e4e7",td:"#71717a",tm:"#3f3f50",v:"#a78bfa",vD:"rgba(167,139,250,.1)"};
 const C_LIGHT={bg:"#f5f5f5",card:"#ffffff",card2:"#f0f0f0",brd:"#e0e0e0",brdL:"#d0d0d0",acc:"#FFAA00",accD:"#FFF3D6",g:"#22c55e",gD:"#dcfce7",r:"#ef4444",rD:"#fee2e2",b:"#3b82f6",bD:"#dbeafe",o:"#f97316",oD:"#fff7ed",v:"#8b5cf6",vD:"#ede9fe",t:"#1a1a1a",td:"#666666",tm:"#999999"};
 let C=C_DARK;
@@ -3362,6 +3362,24 @@ function SocSettingsPanel({soc,save,socs}){
     </>;
    })()}
   </Card>
+  {/* 📊 Données Sales */}
+  <Card style={{padding:16,marginBottom:12}}>
+   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}><span style={{fontSize:16}}>📊</span><div><div style={{fontWeight:800,fontSize:13,color:C.t}}>Données Sales</div><div style={{fontSize:10,color:C.td}}>No-show mensuels et données complémentaires</div></div></div>
+   {(()=>{
+    const now=new Date();const monthOpts=[];for(let i=0;i<7;i++){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;monthOpts.push({v:k,l:ml(k)});}
+    const[salesMonth,setSalesMonth]=useState(curM());
+    const[noShowVal,setNoShowVal]=useState(()=>parseInt(localStorage.getItem(`salesNoShow_${soc.id}_${curM()}`)||"0"));
+    const[salesSaved,setSalesSaved]=useState(false);
+    const loadSales=(mo)=>{setSalesMonth(mo);setNoShowVal(parseInt(localStorage.getItem(`salesNoShow_${soc.id}_${mo}`)||"0"));};
+    const saveSales=()=>{localStorage.setItem(`salesNoShow_${soc.id}_${salesMonth}`,String(noShowVal));setSalesSaved(true);setTimeout(()=>setSalesSaved(false),2000);};
+    return <>
+     <Sel label="Mois" value={salesMonth} onChange={loadSales} options={monthOpts}/>
+     <Inp label="Nombre de no-show" type="number" value={noShowVal||""} onChange={v=>setNoShowVal(parseInt(v)||0)}/>
+     {salesSaved&&<div style={{background:C.gD,border:`1px solid ${C.g}22`,borderRadius:8,padding:"6px 10px",marginBottom:8,color:C.g,fontSize:10,fontWeight:700}}>✅ Données Sales sauvegardées</div>}
+     <Btn small onClick={saveSales}>💾 Sauvegarder Sales</Btn>
+    </>;
+   })()}
+  </Card>
   <Btn onClick={doSave}>💾 Sauvegarder</Btn>
  </Sect>;
 }
@@ -4066,6 +4084,165 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
        </div>
       </Fragment>;
      })}
+    </div>
+   </div>;
+  })()}
+  {/* 📊 SALES OVERVIEW */}
+  {(()=>{
+   const now6=new Date();const months6=[];for(let i=5;i>=0;i--){const d=new Date(now6.getFullYear(),now6.getMonth()-i,1);months6.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);}
+   const gd=ghlData?.[soc.id];const calEvts=gd?.calendarEvents||[];const opps=gd?.opportunities||[];
+   const getSalesMonth=(mo)=>{
+    let metaD=null;try{metaD=JSON.parse(localStorage.getItem(`metaAds_${soc.id}_${mo}`));}catch{}
+    const spend=metaD?.spend||0;const leads=metaD?.leads||0;
+    const moEvts=calEvts.filter(e=>(e.startTime||"").startsWith(mo));
+    const stratCalls=moEvts.filter(e=>!/int[eé]g/i.test(e.title||"")&&!/int[eé]g/i.test(e.calendarName||"")).length;
+    const integCalls=moEvts.filter(e=>/int[eé]g/i.test(e.title||"")||/int[eé]g/i.test(e.calendarName||"")).length;
+    const noShowManual=parseInt(localStorage.getItem(`salesNoShow_${soc.id}_${mo}`)||"0");
+    const noShowCal=moEvts.filter(e=>{const st=(e.status||"").toLowerCase();return st.includes("no_show")||st.includes("no-show")||st.includes("cancelled");}).length;
+    const noShow=noShowManual||noShowCal;
+    const wonMonth=opps.filter(o=>o.status==="won"&&(o.updatedAt||o.createdAt||"").startsWith(mo));
+    const wonCount=wonMonth.length;const wonVal=wonMonth.reduce((a,o)=>a+(o.value||0),0);
+    const totalCalls=stratCalls+integCalls;
+    return{mo,spend,leads,totalCalls,stratCalls,integCalls,noShow,wonCount,wonVal,cpl:leads>0?spend/leads:0,cpa:totalCalls>0?spend/totalCalls:0,cpv:wonCount>0?spend/wonCount:0};
+   };
+   const salesData=months6.map(getSalesMonth);
+   const cur=salesData[salesData.length-1];const prev=salesData.length>1?salesData[salesData.length-2]:null;
+   const totalSpend=cur.spend;const totalLeads=cur.leads;const totalCalls=cur.totalCalls;const totalCA=cur.wonVal;
+   const closingRate=cur.stratCalls>0?((cur.wonCount/cur.stratCalls)*100):0;
+   const hasData=salesData.some(d=>d.spend>0||d.leads>0||d.totalCalls>0||d.wonCount>0);
+   if(!hasData)return null;
+   const trendPct=(c,p)=>p>0?Math.round((c-p)/p*100):0;
+   const costTrend=(cur2,prev2)=>prev2>0?(cur2<=prev2?C.g:C.r):C.td;
+   // Chart data
+   const chartImpact=salesData.map(d=>({month:ml(d.mo).split(" ")[0],pub:d.spend,leads:d.leads,ventes:d.wonVal}));
+   const chartAcq=salesData.map(d=>({month:ml(d.mo).split(" ")[0],cpl:Math.round(d.cpl*100)/100,cpa:Math.round(d.cpa*100)/100,cpv:Math.round(d.cpv*100)/100}));
+   const chartCalls=salesData.map(d=>({month:ml(d.mo).split(" ")[0],appels:d.totalCalls,noshow:d.noShow}));
+   // Pie data
+   const pieWon=opps.filter(o=>o.status==="won").length;const pieLost=opps.filter(o=>o.status==="lost").length;const pieOpen=opps.filter(o=>o.status==="open").length;
+   const pieNoShow=calEvts.filter(e=>{const st=(e.status||"").toLowerCase();return st.includes("no_show")||st.includes("no-show");}).length;
+   const pieCancelled=calEvts.filter(e=>(e.status||"").toLowerCase()==="cancelled").length;
+   const pieTotal=pieWon+pieLost+pieOpen+pieNoShow+pieCancelled;
+   const pieData=[{name:"Deal",value:pieWon,color:"#34d399"},{name:"No-show",value:pieNoShow,color:"#f472b6"},{name:"Follow-up",value:pieOpen,color:"#60a5fa"},{name:"No interest",value:pieLost,color:"#fb923c"},{name:"Cancelled",value:pieCancelled,color:"#6b7280"}].filter(d=>d.value>0);
+   // Table averages for color coding
+   const avgCpl=salesData.filter(d=>d.cpl>0).reduce((a,d)=>a+d.cpl,0)/(salesData.filter(d=>d.cpl>0).length||1);
+   const avgCpa=salesData.filter(d=>d.cpa>0).reduce((a,d)=>a+d.cpa,0)/(salesData.filter(d=>d.cpa>0).length||1);
+   const avgCpv=salesData.filter(d=>d.cpv>0).reduce((a,d)=>a+d.cpv,0)/(salesData.filter(d=>d.cpv>0).length||1);
+   const costCellColor=(val,avg)=>!val||!avg?C.td:val<=avg*0.85?C.g:val>=avg*1.15?C.r:C.t;
+   // Bank revenue (Revolut actual)
+   const bankRevMonth=bankData?.monthly?.[cm]?.income||0;
+   return <div style={{marginBottom:20}}>
+    <div style={{fontSize:9,fontWeight:700,color:C.acc,letterSpacing:1.5,marginBottom:16,fontFamily:FONT_TITLE,display:"flex",alignItems:"center",gap:8}}>📊 SALES OVERVIEW — {ml(cm)} <span style={{fontSize:8,color:C.td,fontWeight:500}}>Meta × GHL × Revolut</span></div>
+    {/* KPI Row */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:16}}>
+     {[{label:"Montant Pub Dépensé",value:`${fmt(totalSpend)}€`,icon:"💰",color:"#f472b6",trend:trendPct(cur.spend,prev?.spend)},
+       {label:"Nombre de Leads",value:String(totalLeads),icon:"🎯",color:"#fb923c",trend:trendPct(cur.leads,prev?.leads)},
+       {label:"Nombre d'Appels",value:String(totalCalls),icon:"📞",color:"#60a5fa",trend:trendPct(cur.totalCalls,prev?.totalCalls)},
+       {label:"CA Contracté",value:`${fmt(totalCA)}€`,icon:"💎",color:C.g,trend:trendPct(cur.wonVal,prev?.wonVal)},
+       {label:"Taux de Closing",value:`${closingRate.toFixed(2)}%`,icon:"🏆",color:C.acc}
+     ].map((k,i)=><div key={i} className="glass-card-static" style={{padding:16,textAlign:"center",borderTop:`2px solid ${k.color}`}}>
+      <div style={{fontSize:16,marginBottom:4}}>{k.icon}</div>
+      <div style={{fontWeight:900,fontSize:22,color:k.color,lineHeight:1}}>{k.value}</div>
+      <div style={{fontSize:8,fontWeight:700,color:C.td,marginTop:6,letterSpacing:.5,fontFamily:FONT_TITLE}}>{k.label}</div>
+      {k.trend!==undefined&&k.trend!==0&&<div style={{fontSize:9,fontWeight:700,color:k.trend>0?C.g:C.r,marginTop:3}}>{k.trend>0?"↑":"↓"} {Math.abs(k.trend)}%</div>}
+     </div>)}
+    </div>
+    {/* Charts 2-col grid */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+     {/* Chart 1: Impact budget pub */}
+     <div className="glass-card-static" style={{padding:18}}>
+      <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📈 IMPACT BUDGET PUB SUR LEADS ET VENTES</div>
+      <div style={{height:220}}><ResponsiveContainer><ComposedChart data={chartImpact} margin={{top:5,right:10,left:0,bottom:5}}>
+       <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
+       <XAxis dataKey="month" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
+       <YAxis yAxisId="left" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/>
+       <YAxis yAxisId="right" orientation="right" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
+       <Tooltip content={<CTip/>}/>
+       <Bar yAxisId="left" dataKey="pub" fill="#f472b6" name="Montant pub (€)" radius={[4,4,0,0]} barSize={16}/>
+       <Bar yAxisId="right" dataKey="leads" fill="#fb923c" name="Nb de leads" radius={[4,4,0,0]} barSize={16}/>
+       <Bar yAxisId="left" dataKey="ventes" fill="#60a5fa" name="Montant ventes (€)" radius={[4,4,0,0]} barSize={16}/>
+       <Legend wrapperStyle={{fontSize:9}}/>
+      </ComposedChart></ResponsiveContainer></div>
+     </div>
+     {/* Chart 2: Évolution coûts d'acquisition */}
+     <div className="glass-card-static" style={{padding:18}}>
+      <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📉 ÉVOLUTION COÛTS D'ACQUISITION</div>
+      <div style={{height:220}}><ResponsiveContainer><LineChart data={chartAcq} margin={{top:5,right:10,left:0,bottom:5}}>
+       <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
+       <XAxis dataKey="month" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
+       <YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}€`}/>
+       <Tooltip content={<CTip/>}/>
+       <Line type="monotone" dataKey="cpl" stroke="#60a5fa" strokeWidth={2.5} dot={{r:4}} name="Coût/lead" animationDuration={1000}/>
+       <Line type="monotone" dataKey="cpa" stroke="#22d3ee" strokeWidth={2.5} dot={{r:4}} name="Coût/appel" animationDuration={1000}/>
+       <Line type="monotone" dataKey="cpv" stroke="#eab308" strokeWidth={2.5} dot={{r:4}} name="Coût/vente" animationDuration={1000}/>
+       <Legend wrapperStyle={{fontSize:9}}/>
+      </LineChart></ResponsiveContainer></div>
+     </div>
+     {/* Chart 3: Appels et No-show */}
+     <div className="glass-card-static" style={{padding:18}}>
+      <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📞 APPELS ET NO-SHOW</div>
+      <div style={{height:220}}><ResponsiveContainer><BarChart data={chartCalls} margin={{top:5,right:10,left:0,bottom:5}}>
+       <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
+       <XAxis dataKey="month" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
+       <YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} allowDecimals={false}/>
+       <Tooltip content={<CTip/>}/>
+       <Bar dataKey="appels" fill="#60a5fa" name="Appels réservés" radius={[4,4,0,0]} barSize={20}/>
+       <Bar dataKey="noshow" fill="#f472b6" name="No-show" radius={[4,4,0,0]} barSize={20}/>
+       <Legend wrapperStyle={{fontSize:9}}/>
+      </BarChart></ResponsiveContainer></div>
+     </div>
+     {/* Chart 4: Résultats des appels (Pie) */}
+     <div className="glass-card-static" style={{padding:18}}>
+      <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>🥧 RÉSULTATS DES APPELS</div>
+      {pieData.length>0?<div style={{display:"flex",alignItems:"center",height:220}}>
+       <div style={{width:"55%",height:200}}><ResponsiveContainer><PieChart><Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={3} strokeWidth={0} label={({name,percent})=>`${name} ${(percent*100).toFixed(0)}%`} labelLine={false} animationDuration={1000}>{pieData.map((d,i)=><Cell key={i} fill={d.color}/>)}</Pie><Tooltip/></PieChart></ResponsiveContainer></div>
+       <div style={{flex:1,paddingLeft:8}}>{pieData.map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:5}}><span style={{width:8,height:8,borderRadius:2,background:d.color,flexShrink:0}}/><span style={{fontSize:10,color:C.td}}>{d.name}</span><span style={{fontWeight:700,fontSize:10,color:C.t,marginLeft:"auto"}}>{d.value} ({pieTotal>0?Math.round(d.value/pieTotal*100):0}%)</span></div>)}</div>
+      </div>:<div style={{textAlign:"center",padding:40,color:C.td,fontSize:11}}>Pas de données</div>}
+     </div>
+    </div>
+    {/* Coûts clés croisés */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
+     {[{label:"Coût par Lead",value:cur.cpl,prev:prev?.cpl,icon:"🎯"},
+       {label:"Coût par Appel",value:cur.cpa,prev:prev?.cpa,icon:"📞"},
+       {label:"Coût par Closing",value:cur.cpv,prev:prev?.cpv,icon:"🏆"}
+     ].map((k,i)=>{const tr=k.prev>0?trendPct(k.value,k.prev):0;const col=costTrend(k.value,k.prev);
+      return <div key={i} className="glass-card-static" style={{padding:18,textAlign:"center",borderLeft:`3px solid ${col}`}}>
+       <div style={{fontSize:20,marginBottom:4}}>{k.icon}</div>
+       <div style={{fontWeight:900,fontSize:24,color:col,lineHeight:1}}>{k.value>0?`${k.value.toFixed(2)}€`:"—"}</div>
+       <div style={{fontSize:8,fontWeight:700,color:C.td,marginTop:6,letterSpacing:.5,fontFamily:FONT_TITLE}}>{k.label}</div>
+       {tr!==0&&<div style={{fontSize:9,fontWeight:700,color:tr<0?C.g:C.r,marginTop:3}}>{tr<0?"↓":"↑"} {Math.abs(tr)}% vs N-1</div>}
+      </div>;
+     })}
+    </div>
+    {/* Revolut cross-reference */}
+    {bankRevMonth>0&&<div className="glass-card-static" style={{padding:14,marginBottom:16,borderLeft:`3px solid ${C.v}`,display:"flex",alignItems:"center",gap:12}}>
+     <span style={{fontSize:20}}>🏦</span>
+     <div><div style={{fontWeight:700,fontSize:12,color:C.v}}>Cash réellement encaissé (Revolut): {fmt(bankRevMonth)}€</div>
+     <div style={{fontSize:10,color:C.td}}>Pub: {fmt(totalSpend)}€ → Leads: {totalLeads} → Appels: {totalCalls} → Deals: {cur.wonCount} → CA: {fmt(totalCA)}€ → Encaissé: {fmt(bankRevMonth)}€</div></div>
+    </div>}
+    {/* Data Table */}
+    <div className="glass-card-static" style={{padding:18,overflow:"auto"}}>
+     <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📋 TABLEAU RÉCAPITULATIF</div>
+     <table style={{width:"100%",borderCollapse:"collapse",fontSize:10,minWidth:700}}>
+      <thead><tr style={{borderBottom:`2px solid ${C.brd}`}}>
+       {["Mois","Pub €","Leads","Appels","No-show","Ventes","CA Ventes","Coût/lead","Coût/appel","Coût/vente"].map((h,i)=>
+        <th key={i} style={{padding:"8px 6px",textAlign:i===0?"left":"right",color:C.td,fontWeight:700,fontSize:8,letterSpacing:.5,fontFamily:FONT_TITLE}}>{h}</th>
+       )}
+      </tr></thead>
+      <tbody>{salesData.map((d,i)=>
+       <tr key={d.mo} style={{borderBottom:`1px solid ${C.brd}`,background:i%2===0?"transparent":"rgba(255,255,255,.015)"}}>
+        <td style={{padding:"7px 6px",fontWeight:700,color:C.t}}>{ml(d.mo)}</td>
+        <td style={{padding:"7px 6px",textAlign:"right",color:"#f472b6",fontWeight:600}}>{fmt(d.spend)}€</td>
+        <td style={{padding:"7px 6px",textAlign:"right",fontWeight:600}}>{d.leads}</td>
+        <td style={{padding:"7px 6px",textAlign:"right",fontWeight:600}}>{d.totalCalls}</td>
+        <td style={{padding:"7px 6px",textAlign:"right",color:d.noShow>0?C.r:C.td,fontWeight:600}}>{d.noShow}</td>
+        <td style={{padding:"7px 6px",textAlign:"right",color:C.g,fontWeight:700}}>{d.wonCount}</td>
+        <td style={{padding:"7px 6px",textAlign:"right",color:C.g,fontWeight:700}}>{fmt(d.wonVal)}€</td>
+        <td style={{padding:"7px 6px",textAlign:"right",color:costCellColor(d.cpl,avgCpl),fontWeight:600}}>{d.cpl>0?`${d.cpl.toFixed(2)}€`:"—"}</td>
+        <td style={{padding:"7px 6px",textAlign:"right",color:costCellColor(d.cpa,avgCpa),fontWeight:600}}>{d.cpa>0?`${d.cpa.toFixed(2)}€`:"—"}</td>
+        <td style={{padding:"7px 6px",textAlign:"right",color:costCellColor(d.cpv,avgCpv),fontWeight:600}}>{d.cpv>0?`${d.cpv.toFixed(2)}€`:"—"}</td>
+       </tr>
+      )}</tbody>
+     </table>
     </div>
    </div>;
   })()}
