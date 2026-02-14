@@ -6925,123 +6925,253 @@ function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose}){
  const[now,setNow]=useState(new Date());
  const[refreshing,setRefreshing]=useState(false);
  const[toasts,setToasts]=useState([]);
+ const[view,setView]=useState("global");
+ const[socFilter,setSocFilter]=useState("all");
+ const[timeFilter,setTimeFilter]=useState("30j");
+ const[statusFilter,setStatusFilter]=useState("active");
+ const[soundOn,setSoundOn]=useState(false);
+ const[plusOnes,setPlusOnes]=useState([]);
  const prevDataRef=useRef(null);
+ const prevProspRef=useRef({});
  const feedRef=useRef(null);
+ const audioCtxRef=useRef(null);
+
  useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);
  useEffect(()=>{const h=e=>{if(e.key==="Escape")onClose();if(e.key==="f"||e.key==="F"){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}catch{}}};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[onClose]);
+
+ const getAudioCtx=useCallback(()=>{if(!audioCtxRef.current)audioCtxRef.current=new(window.AudioContext||window.webkitAudioContext)();return audioCtxRef.current;},[]);
+ const playDing=useCallback(()=>{if(!soundOn)return;try{const ctx=getAudioCtx();const o=ctx.createOscillator();const g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=1200;g.gain.value=0.15;o.start();g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.08);o.stop(ctx.currentTime+0.08);}catch{}},[soundOn,getAudioCtx]);
+ const playCash=useCallback(()=>{if(!soundOn)return;try{const ctx=getAudioCtx();[880,1100].forEach(f=>{const o=ctx.createOscillator();const g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=f;g.gain.value=0.12;o.start();g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.1);o.stop(ctx.currentTime+0.1);});}catch{}},[soundOn,getAudioCtx]);
+
  const addToast=useCallback((msg,color)=>{const id=Date.now()+Math.random();setToasts(p=>[{id,msg,color},...p].slice(0,3));setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),8000);},[]);
- const sb=socBank||{};const gd=ghlData||{};const actS=(socs||[]).filter(s=>s.status!=="archived");
+
+ const sb=socBank||{};const gd=ghlData||{};
+ const actS=useMemo(()=>{let s=(socs||[]).filter(s=>s.status!=="archived");if(statusFilter==="active")s=s.filter(x=>x.status==="active");else if(statusFilter==="lancement")s=s.filter(x=>x.status==="lancement");if(socFilter!=="all")s=s.filter(x=>x.id===socFilter);return s;},[socs,statusFilter,socFilter]);
+ const allActS=(socs||[]).filter(s=>s.status!=="archived");
+
  const cM=curM();
  const prevM=useMemo(()=>{const d=new Date();d.setMonth(d.getMonth()-1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;},[]);
- const totalCA=useMemo(()=>actS.reduce((a,s)=>{const r=gr(reps,s.id,cM);return a+pf(r?.ca);},0),[actS,reps,cM]);
- const totalPipeline=useMemo(()=>actS.reduce((a,s)=>a+pf(gd[s.id]?.stats?.pipelineValue),0),[actS,gd]);
- const totalMRR=useMemo(()=>actS.reduce((a,s)=>{const r=gr(reps,s.id,cM);return a+pf(r?.mrr);},0),[actS,reps,cM]);
- const prevCA=useMemo(()=>actS.reduce((a,s)=>{const r=gr(reps,s.id,prevM);return a+pf(r?.ca);},0),[actS,reps,prevM]);
- const socCards=useMemo(()=>{return actS.map(s=>{const r=gr(reps,s.id,cM);const rp=gr(reps,s.id,prevM);const ca=pf(r?.ca);const caP=pf(rp?.ca);const cls=(gd[s.id]?.ghlClients||[]).length;const st=s.status==="active"?"🟢":s.status==="lancement"?"🟡":"🔴";return{id:s.id,name:s.name,porteur:s.porteur||"",status:st,ca,caP,cls,trend:ca>caP?"↑":ca<caP?"↓":"→",bal:pf(sb[s.id]?.balance)};}).sort((a,b)=>b.ca-a.ca);},[actS,reps,cM,prevM,gd,sb]);
+
+ const getProspects=(sid)=>{const g=gd[sid];if(!g)return[];return(g.opportunities||g.ghlClients||[]).filter(o=>o?.status==="open"||!o?.status);};
+ const totalProspects=useMemo(()=>allActS.reduce((a,s)=>a+getProspects(s.id).length,0),[allActS,gd]);
+ const todayStr=now.toISOString().slice(0,10);
+ const yesterdayStr=useMemo(()=>{const d=new Date(now);d.setDate(d.getDate()-1);return d.toISOString().slice(0,10);},[now]);
+ const prospectsToday=useMemo(()=>allActS.reduce((a,s)=>a+getProspects(s.id).filter(p=>(p.dateAdded||p.createdAt||"").slice(0,10)===todayStr).length,0),[allActS,gd,todayStr]);
+ const prospectsYesterday=useMemo(()=>allActS.reduce((a,s)=>a+getProspects(s.id).filter(p=>(p.dateAdded||p.createdAt||"").slice(0,10)===yesterdayStr).length,0),[allActS,gd,yesterdayStr]);
+ const deltaProspects=prospectsToday-prospectsYesterday;
+
+ const totalCA=useMemo(()=>allActS.reduce((a,s)=>{const r=gr(reps,s.id,cM);return a+pf(r?.ca);},0),[allActS,reps,cM]);
+ const prevCA=useMemo(()=>allActS.reduce((a,s)=>{const r=gr(reps,s.id,prevM);return a+pf(r?.ca);},0),[allActS,reps,prevM]);
+ const totalPipeline=useMemo(()=>allActS.reduce((a,s)=>a+pf(gd[s.id]?.stats?.pipelineValue),0),[allActS,gd]);
+ const totalMRR=useMemo(()=>allActS.reduce((a,s)=>{const r=gr(reps,s.id,cM);return a+pf(r?.mrr);},0),[allActS,reps,cM]);
+
+ const totalWon=useMemo(()=>allActS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="won").length,0),[allActS,gd]);
+ const totalOpps=useMemo(()=>allActS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).length,0),[allActS,gd]);
+ const convRate=totalOpps>0?((totalWon/totalOpps)*100).toFixed(1):0;
+ const avgDeal=totalWon>0?allActS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="won").reduce((x,o)=>x+pf(o?.value),0),0)/totalWon:0;
+
+ // Detect new prospects → +1 animation + sound
+ useEffect(()=>{const cur={};allActS.forEach(s=>{cur[s.id]=getProspects(s.id).length;});const prev=prevProspRef.current;if(Object.keys(prev).length>0){allActS.forEach(s=>{const diff=(cur[s.id]||0)-(prev[s.id]||0);if(diff>0){playDing();for(let i=0;i<diff;i++){const pid=Date.now()+Math.random();setPlusOnes(p=>[...p,{id:pid,socId:s.id}]);setTimeout(()=>setPlusOnes(p=>p.filter(x=>x.id!==pid)),1200);}addToast(`👤 +${diff} prospect(s) — ${s?.name||""}`,`#60a5fa`);}});}prevProspRef.current=cur;},[gd]);
+
+ // Detect new payments
+ useEffect(()=>{const snap=JSON.stringify(Object.keys(sb).map(k=>(sb[k]?.transactions||[]).length));if(prevDataRef.current&&prevDataRef.current!==snap){playCash();addToast("💰 Nouveau mouvement bancaire","#34d399");}prevDataRef.current=snap;},[sb]);
+
+ const socCards=useMemo(()=>actS.map(s=>{const r=gr(reps,s.id,cM);const rp=gr(reps,s.id,prevM);const ca=pf(r?.ca);const caP=pf(rp?.ca);const prosp=getProspects(s.id).length;const st=s.status==="active"?"🟢":s.status==="lancement"?"🟡":"🔴";const pipVal=pf(gd[s.id]?.stats?.pipelineValue);const lastAct=(sb[s.id]?.transactions||[])[0]?.createdAt||(gd[s.id]?.ghlClients||[])[0]?.dateAdded||"";return{id:s.id,name:s?.name||"",porteur:s?.porteur||"",status:st,ca,caP,prosp,trend:ca>caP?"↑":ca<caP?"↓":"→",bal:pf(sb[s.id]?.balance),pipVal,lastAct};}).sort((a,b)=>b.ca-a.ca),[actS,reps,cM,prevM,gd,sb]);
+
  const bestId=socCards[0]?.id;
- const feed=useMemo(()=>{const items=[];actS.forEach(s=>{(sb[s.id]?.transactions||[]).slice(0,10).forEach(tx=>{items.push({ts:tx.date||tx.createdAt||"",icon:pf(tx.amount)>0?"💰":"📤",desc:`${s.name}: ${tx.description||tx.reference||"Transaction"}`,amt:pf(tx.amount),color:pf(tx.amount)>0?"#34d399":"#f87171"});});(gd[s.id]?.ghlClients||[]).slice(0,5).forEach(c=>{items.push({ts:c.dateAdded||c.createdAt||"",icon:"👤",desc:`${s.name}: Nouveau lead — ${c.contactName||c.name||"Contact"}`,amt:0,color:"#60a5fa"});});});items.sort((a,b)=>new Date(b.ts)-new Date(a.ts));return items.slice(0,50);},[actS,sb,gd]);
- const ticker=useMemo(()=>feed.slice(0,20).map(f=>`${f.icon} ${f.desc}${f.amt?` ${fmt(f.amt)}€`:""}`).join("   ·   "),[feed]);
- // detect new events
- useEffect(()=>{const snap=JSON.stringify({sbk:Object.keys(sb).map(k=>(sb[k]?.transactions||[]).length),gk:Object.keys(gd).map(k=>(gd[k]?.ghlClients||[]).length)});if(prevDataRef.current&&prevDataRef.current!==snap){addToast("📡 Nouvelles données détectées","#FFAA00");}prevDataRef.current=snap;},[sb,gd]);
+
+ const feed=useMemo(()=>{const items=[];allActS.forEach(s=>{const sn=s?.name||"Société";(sb[s.id]?.transactions||[]).slice(0,10).forEach(tx=>{const leg=tx.legs?.[0];const desc=leg?.description||tx?.reference||"Transaction";const amt=pf(leg?.amount||tx?.amount);items.push({ts:tx.created_at||tx.createdAt||"",icon:amt>0?"💰":"📤",desc:`${sn}: ${desc}`,amt,color:amt>0?"#34d399":"#f87171",socId:s.id,type:amt>0?"payment":"expense"});});(gd[s.id]?.opportunities||gd[s.id]?.ghlClients||[]).slice(0,5).forEach(c=>{const name=c?.contactName||c?.contact?.name||c?.name||c?.email||"Contact";const isWon=c?.status==="won";const isLost=c?.status==="lost";const icon=isWon?"✅":isLost?"❌":"👤";const label=isWon?"Deal gagné":isLost?"Deal perdu":"Nouveau prospect";items.push({ts:c.dateAdded||c.createdAt||c.updatedAt||"",icon,desc:`${sn}: ${label} — ${name}`,amt:isWon?pf(c?.value):0,color:isWon?"#34d399":isLost?"#f87171":"#60a5fa",socId:s.id,type:isWon?"won":isLost?"lost":"lead"});});(gd[s.id]?.calendarEvents||[]).slice(0,3).forEach(e=>{items.push({ts:e?.startTime||"",icon:"📞",desc:`${sn}: Appel planifié — ${e?.title||e?.contactName||"RDV"}`,amt:0,color:"#a78bfa",socId:s.id,type:"call"});});});items.sort((a,b)=>new Date(b.ts)-new Date(a.ts));return items.slice(0,50);},[allActS,sb,gd]);
+
+ const ticker=useMemo(()=>feed.slice(0,20).map(f=>`${f.icon} [${(allActS.find(s=>s.id===f.socId)?.name||"").split(" ")[0]}] ${f.desc?.split(": ")[1]||""}${f.amt?` ${fmt(f.amt)}€`:""}`).join("   •   ")||"⚡ PULSE — En attente de données...",[feed,allActS]);
+
  const clock=(tz)=>{try{return now.toLocaleTimeString("fr-FR",{timeZone:tz,hour:"2-digit",minute:"2-digit",second:"2-digit"});}catch{return"--:--:--";}};
- const pulseAnim=refreshing?"pulse-glow 1.5s ease infinite":"none";
  const sparkline=(vals)=>{if(!vals||vals.length<2)return null;const mx=Math.max(...vals,1);const pts=vals.map((v,i)=>`${i*(60/(vals.length-1))},${28-v/mx*24}`).join(" ");return <svg width="60" height="28" style={{display:"block"}}><polyline points={pts} fill="none" stroke="#FFAA00" strokeWidth="1.5" opacity=".7"/></svg>;};
- const caHist=useMemo(()=>(allM||[]).slice(-6).map(m=>actS.reduce((a,s)=>a+pf(gr(reps,s.id,m)?.ca),0)),[allM,actS,reps]);
- const pipHist=useMemo(()=>[totalPipeline*.7,totalPipeline*.8,totalPipeline*.9,totalPipeline],[totalPipeline]);
- const mrrHist=useMemo(()=>(allM||[]).slice(-6).map(m=>actS.reduce((a,s)=>a+pf(gr(reps,s.id,m)?.mrr),0)),[allM,actS,reps]);
+ const caHist=useMemo(()=>(allM||[]).slice(-7).map(m=>allActS.reduce((a,s)=>a+pf(gr(reps,s.id,m)?.ca),0)),[allM,allActS,reps]);
+ const mrrHist=useMemo(()=>(allM||[]).slice(-7).map(m=>allActS.reduce((a,s)=>a+pf(gr(reps,s.id,m)?.mrr),0)),[allM,allActS,reps]);
+
+ const views=[{k:"global",l:"Vue Globale"},{k:"detail",l:"Vue Détaillée"},{k:"finance",l:"Vue Financière"},{k:"pipeline",l:"Vue Pipeline"},{k:"activity",l:"Vue Activité"}];
+ const timeFilters=[{k:"1j",l:"Aujourd'hui"},{k:"7j",l:"7j"},{k:"30j",l:"30j"},{k:"mois",l:"Ce mois"}];
+ const statusFilters=[{k:"active",l:"Actives"},{k:"lancement",l:"Lancement"},{k:"all",l:"Toutes"}];
+
+ const pill=(active,onClick,label)=><button key={label} onClick={onClick} style={{padding:"5px 14px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",border:active?"1px solid #FFAA00":"1px solid rgba(255,255,255,.1)",background:active?"rgba(255,170,0,.15)":"rgba(255,255,255,.04)",color:active?"#FFAA00":"#71717a",transition:"all .2s"}}>{label}</button>;
+
+ const GC={background:"rgba(255,255,255,.04)",backdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,.08)",borderRadius:16,padding:20};
+ const GCglow={...GC,animation:"card-glow 3s ease infinite"};
+
  const PULSE_CSS=`
   @keyframes pulse-glow{0%,100%{text-shadow:0 0 8px #FFAA00;}50%{text-shadow:0 0 24px #FFAA00,0 0 48px #FFAA0066;}}
   @keyframes slide-in{from{transform:translateX(120%);opacity:0;}to{transform:translateX(0);opacity:1;}}
   @keyframes ticker-scroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
   @keyframes count-up{from{opacity:.3;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
   @keyframes card-glow{0%,100%{box-shadow:0 0 12px #FFAA0022;}50%{box-shadow:0 0 28px #FFAA0044,0 0 56px #FFAA0011;}}
+  @keyframes globeRotate{0%{transform:translate(-50%,-50%) rotate(0deg)}100%{transform:translate(-50%,-50%) rotate(360deg)}}
+  @keyframes plusOne{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-60px) scale(1.5)}}
+  @keyframes activity-glow{0%,100%{border-color:rgba(255,170,0,.08)}50%{border-color:rgba(255,170,0,.3)}}
   .pulse-toast{animation:slide-in .4s ease;}
   .pulse-feed-item{animation:slide-in .3s ease;}
+  .pulse-plus1{animation:plusOne 1.2s ease forwards;position:absolute;top:-10px;right:10px;color:#60a5fa;font-weight:900;font-size:18px;pointer-events:none;z-index:10;}
  `;
- const GC={background:"rgba(255,255,255,.04)",backdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,.08)",borderRadius:16,padding:20};
- const GCglow={...GC,animation:"card-glow 3s ease infinite"};
+
+ const renderKPIs=()=><div style={{display:"flex",flexDirection:"column",gap:12,overflow:"auto"}}>
+  <div style={GC}>
+   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>CA Total</div>
+   <div style={{fontSize:32,fontWeight:900,color:"#FFAA00",fontFamily:FONT_TITLE,animation:"count-up .6s ease"}}>{fmt(totalCA)}€</div>
+   <div style={{fontSize:10,color:totalCA>=prevCA?"#34d399":"#f87171",marginTop:4}}>{totalCA>=prevCA?"↑":"↓"} vs M-1 ({fmt(prevCA)}€)</div>
+   {sparkline(caHist)}
+  </div>
+  <div style={GC}>
+   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Prospects</div>
+   <div style={{fontSize:28,fontWeight:900,color:"#60a5fa",fontFamily:FONT_TITLE,animation:"count-up .6s ease .1s both"}}>{totalProspects}</div>
+   <div style={{fontSize:10,color:deltaProspects>=0?"#34d399":"#f87171",marginTop:4}}>{deltaProspects>=0?"↑":"↓"} {deltaProspects>=0?"+":""}{deltaProspects} aujourd'hui (hier: {prospectsYesterday})</div>
+  </div>
+  <div style={GC}>
+   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Pipeline</div>
+   <div style={{fontSize:24,fontWeight:900,color:"#a78bfa",fontFamily:FONT_TITLE,animation:"count-up .6s ease .2s both"}}>{fmt(totalPipeline)}€</div>
+  </div>
+  <div style={GC}>
+   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Conversion</div>
+   <div style={{fontSize:22,fontWeight:900,color:"#34d399",fontFamily:FONT_TITLE}}>{convRate}%</div>
+   <div style={{fontSize:10,color:"#71717a",marginTop:4}}>Deal moy: {fmt(avgDeal)}€</div>
+  </div>
+  <div style={GC}>
+   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>MRR</div>
+   <div style={{fontSize:22,fontWeight:900,color:"#34d399",fontFamily:FONT_TITLE}}>{fmt(totalMRR)}€</div>
+   {sparkline(mrrHist)}
+  </div>
+  <div style={GC}>
+   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Sociétés</div>
+   <div style={{fontSize:22,fontWeight:900,color:"#e4e4e7",fontFamily:FONT_TITLE}}>{allActS.length}</div>
+  </div>
+ </div>;
+
+ const renderSocCards=()=><div style={{overflow:"auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:12,alignContent:"start"}}>
+  {socCards.map(s=><div key={s.id} style={{...(s.id===bestId?GCglow:GC),position:"relative"}}>
+   {plusOnes.filter(p=>p.socId===s.id).map(p=><span key={p.id} className="pulse-plus1">+1</span>)}
+   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+    <div style={{fontWeight:800,fontSize:13,fontFamily:FONT_TITLE,color:"#e4e4e7"}}>{s.status} {s.name}</div>
+    <span style={{fontSize:16,color:s.trend==="↑"?"#34d399":s.trend==="↓"?"#f87171":"#71717a"}}>{s.trend}</span>
+   </div>
+   {s.porteur&&<div style={{fontSize:10,color:"#71717a",marginBottom:6}}>👤 {s.porteur}</div>}
+   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+    <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>CA</div><div style={{fontSize:15,fontWeight:700,color:"#FFAA00"}}>{fK(s.ca)}€</div></div>
+    <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Prospects</div><div style={{fontSize:15,fontWeight:700,color:"#60a5fa"}}>{s.prosp}</div></div>
+    <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Pipeline</div><div style={{fontSize:13,fontWeight:600,color:"#a78bfa"}}>{fK(s.pipVal)}€</div></div>
+    <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Solde</div><div style={{fontSize:13,fontWeight:600,color:"#34d399"}}>{fK(s.bal)}€</div></div>
+   </div>
+   {s.lastAct&&<div style={{fontSize:9,color:"#71717a",marginTop:6}}>⏱ {ago(s.lastAct)}</div>}
+   {sparkline(caHist)}
+  </div>)}
+ </div>;
+
+ const renderFeed=(full)=><div style={{...GC,overflow:"hidden",display:"flex",flexDirection:"column",padding:0,...(full?{flex:1}:{})}}>
+  <div style={{padding:"14px 16px 8px",borderBottom:"1px solid rgba(255,255,255,.06)",fontSize:11,fontWeight:700,color:"#FFAA00",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE}}>📡 Live Activity</div>
+  <div ref={feedRef} style={{flex:1,overflow:"auto",padding:"8px 12px"}}>
+   {feed.length===0&&<div style={{color:"#71717a",fontSize:11,textAlign:"center",padding:20}}>Aucune activité récente</div>}
+   {feed.map((f,i)=><div key={i} className="pulse-feed-item" style={{padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,.03)",display:"flex",gap:8,alignItems:"flex-start",fontSize:11}}>
+    <span style={{width:6,height:6,borderRadius:"50%",background:f.color,marginTop:4,flexShrink:0}}/>
+    <span>{f.icon}</span>
+    <div style={{flex:1}}>
+     <div style={{color:"#e4e4e7",lineHeight:1.3}}>{f.desc}</div>
+     <div style={{color:"#71717a",fontSize:9,marginTop:2}}>{f.ts?ago(f.ts):""}</div>
+    </div>
+    {f.amt?<span style={{color:f.color,fontWeight:700,whiteSpace:"nowrap"}}>{f.amt>0?"+":""}{fmt(f.amt)}€</span>:null}
+   </div>)}
+  </div>
+ </div>;
+
+ const renderMainContent=()=>{
+  if(view==="activity")return <div style={{flex:1,display:"grid",gridTemplateColumns:"1fr",gap:16,padding:16,overflow:"hidden",minHeight:0}}>{renderFeed(true)}</div>;
+  if(view==="finance")return <div style={{flex:1,display:"grid",gridTemplateColumns:"300px 1fr",gap:16,padding:16,overflow:"hidden",minHeight:0}}>
+   <div style={{display:"flex",flexDirection:"column",gap:12,overflow:"auto"}}>
+    <div style={GC}><div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>CA Total</div><div style={{fontSize:32,fontWeight:900,color:"#FFAA00",fontFamily:FONT_TITLE}}>{fmt(totalCA)}€</div>{sparkline(caHist)}</div>
+    <div style={GC}><div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>MRR</div><div style={{fontSize:26,fontWeight:900,color:"#34d399",fontFamily:FONT_TITLE}}>{fmt(totalMRR)}€</div>{sparkline(mrrHist)}</div>
+    <div style={GC}><div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Trésorerie</div><div style={{fontSize:26,fontWeight:900,color:"#60a5fa",fontFamily:FONT_TITLE}}>{fmt(allActS.reduce((a,s)=>a+pf(sb[s.id]?.balance),0))}€</div></div>
+   </div>
+   <div style={{overflow:"auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:12,alignContent:"start"}}>
+    {socCards.map(s=><div key={s.id} style={GC}>
+     <div style={{fontWeight:800,fontSize:13,fontFamily:FONT_TITLE,color:"#e4e4e7",marginBottom:8}}>{s.status} {s.name}</div>
+     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+      <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>CA</div><div style={{fontSize:15,fontWeight:700,color:"#FFAA00"}}>{fK(s.ca)}€</div></div>
+      <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Solde</div><div style={{fontSize:15,fontWeight:700,color:"#34d399"}}>{fK(s.bal)}€</div></div>
+      <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>CA M-1</div><div style={{fontSize:13,fontWeight:600,color:"#71717a"}}>{fK(s.caP)}€</div></div>
+      <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Pipeline</div><div style={{fontSize:13,fontWeight:600,color:"#a78bfa"}}>{fK(s.pipVal)}€</div></div>
+     </div>
+    </div>)}
+   </div>
+  </div>;
+  if(view==="pipeline")return <div style={{flex:1,display:"grid",gridTemplateColumns:"280px 1fr",gap:16,padding:16,overflow:"hidden",minHeight:0}}>
+   <div style={{display:"flex",flexDirection:"column",gap:12,overflow:"auto"}}>
+    <div style={GC}><div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Total Prospects</div><div style={{fontSize:32,fontWeight:900,color:"#60a5fa",fontFamily:FONT_TITLE}}>{totalProspects}</div><div style={{fontSize:10,color:deltaProspects>=0?"#34d399":"#f87171",marginTop:4}}>{deltaProspects>=0?"+":""}{deltaProspects} aujourd'hui</div></div>
+    <div style={GC}><div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Pipeline</div><div style={{fontSize:26,fontWeight:900,color:"#a78bfa",fontFamily:FONT_TITLE}}>{fmt(totalPipeline)}€</div></div>
+    <div style={GC}><div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Conversion</div><div style={{fontSize:26,fontWeight:900,color:"#34d399",fontFamily:FONT_TITLE}}>{convRate}%</div><div style={{fontSize:10,color:"#71717a",marginTop:4}}>{totalWon} gagnés / {totalOpps} total • Moy: {fmt(avgDeal)}€</div></div>
+   </div>
+   {renderSocCards()}
+  </div>;
+  if(view==="detail"&&socFilter!=="all"){const s=socCards[0];if(!s)return <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:"#71717a"}}>Sélectionnez une société</div>;
+   return <div style={{flex:1,display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,padding:16,overflow:"auto"}}>
+    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+     <div style={{...GC,textAlign:"center"}}><div style={{fontSize:22,fontWeight:900,fontFamily:FONT_TITLE,color:"#FFAA00",marginBottom:8}}>{s.status} {s.name}</div>{s.porteur&&<div style={{fontSize:12,color:"#71717a"}}>👤 {s.porteur}</div>}</div>
+     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+      <div style={GC}><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>CA</div><div style={{fontSize:24,fontWeight:900,color:"#FFAA00"}}>{fmt(s.ca)}€</div></div>
+      <div style={GC}><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Prospects</div><div style={{fontSize:24,fontWeight:900,color:"#60a5fa"}}>{s.prosp}</div></div>
+      <div style={GC}><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Pipeline</div><div style={{fontSize:24,fontWeight:900,color:"#a78bfa"}}>{fmt(s.pipVal)}€</div></div>
+      <div style={GC}><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Solde</div><div style={{fontSize:24,fontWeight:900,color:"#34d399"}}>{fmt(s.bal)}€</div></div>
+     </div>
+    </div>
+    {renderFeed(true)}
+   </div>;
+  }
+  // default: global
+  return <div style={{flex:1,display:"grid",gridTemplateColumns:"280px 1fr 300px",gap:16,padding:16,overflow:"hidden",minHeight:0}}>
+   {renderKPIs()}
+   {renderSocCards()}
+   {renderFeed(false)}
+  </div>;
+ };
+
  return <div style={{position:"fixed",inset:0,zIndex:9999,background:"#030308",fontFamily:FONT,color:"#e4e4e7",overflow:"hidden",display:"flex",flexDirection:"column"}}>
   <style>{PULSE_CSS}</style>
+  {/* GLOBE */}
+  <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle at 30% 30%, rgba(255,170,0,.08), transparent 60%)",border:"1px solid rgba(255,170,0,.05)",animation:"globeRotate 30s linear infinite",zIndex:0,opacity:.4}}/>
+  <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:600,height:600,borderRadius:"50%",border:"1px solid rgba(255,170,0,.03)",animation:"globeRotate 45s linear infinite reverse",zIndex:0}}/>
+  <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:500,height:500,borderRadius:"50%",border:"1px solid rgba(255,170,0,.04)",animation:"globeRotate 25s linear infinite",zIndex:0,clipPath:"ellipse(50% 20% at 50% 50%)"}}/>
+  <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:500,height:500,borderRadius:"50%",border:"1px solid rgba(255,170,0,.04)",animation:"globeRotate 35s linear infinite reverse",zIndex:0,clipPath:"ellipse(20% 50% at 50% 50%)"}}/>
+  <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:460,height:460,borderRadius:"50%",border:"1px solid rgba(255,170,0,.03)",animation:"globeRotate 20s linear infinite",zIndex:0,clipPath:"ellipse(50% 35% at 50% 50%)"}}/>
   {/* TOASTS */}
   <div style={{position:"fixed",top:16,right:16,zIndex:10001,display:"flex",flexDirection:"column",gap:8}}>
    {toasts.map(t=><div key={t.id} className="pulse-toast" style={{padding:"10px 18px",borderRadius:10,background:t.color+"22",border:`1px solid ${t.color}44`,color:t.color,fontSize:12,fontWeight:600,backdropFilter:"blur(12px)"}}>{t.msg}</div>)}
   </div>
   {/* TOP BAR */}
-  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 24px",borderBottom:"1px solid rgba(255,255,255,.06)",flexShrink:0}}>
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 24px",borderBottom:"1px solid rgba(255,255,255,.06)",flexShrink:0,zIndex:1,position:"relative"}}>
    <div style={{display:"flex",alignItems:"center",gap:10}}>
-    <span style={{fontSize:22,animation:pulseAnim,fontFamily:FONT_TITLE,fontWeight:900,color:"#FFAA00",letterSpacing:2}}>⚡ PULSE</span>
-    {refreshing&&<span style={{fontSize:10,color:"#FFAA0088"}}>syncing...</span>}
+    <span style={{fontSize:22,animation:refreshing?"pulse-glow 1.5s ease infinite":"none",fontFamily:FONT_TITLE,fontWeight:900,color:"#FFAA00",letterSpacing:2}}>⚡ PULSE</span>
    </div>
-   <div style={{display:"flex",alignItems:"center",gap:20}}>
-    <div style={{display:"flex",gap:16,fontSize:12,fontFamily:"monospace",color:"#71717a"}}>
-     <span>🇦🇪 {clock("Asia/Dubai")}</span>
-     <span>🇫🇷 {clock("Europe/Paris")}</span>
-     <span>🇹🇭 {clock("Asia/Bangkok")}</span>
+   <div style={{display:"flex",alignItems:"center",gap:12}}>
+    {views.map(v=>pill(view===v.k,()=>setView(v.k),v.l))}
+   </div>
+   <div style={{display:"flex",alignItems:"center",gap:16}}>
+    <button onClick={()=>setSoundOn(p=>!p)} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",color:soundOn?"#FFAA00":"#71717a"}}>{soundOn?"🔊":"🔇"}</button>
+    <div style={{display:"flex",gap:12,fontSize:11,fontFamily:"monospace",color:"#71717a"}}>
+     <span>🇦🇪 {clock("Asia/Dubai")}</span><span>🇫🇷 {clock("Europe/Paris")}</span>
     </div>
     <button onClick={onClose} style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,color:"#71717a",fontSize:16,width:32,height:32,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
    </div>
   </div>
-  {/* MAIN GRID */}
-  <div style={{flex:1,display:"grid",gridTemplateColumns:"280px 1fr 300px",gap:16,padding:16,overflow:"hidden",minHeight:0}}>
-   {/* LEFT — KPIs */}
-   <div style={{display:"flex",flexDirection:"column",gap:12,overflow:"auto"}}>
-    <div style={GC}>
-     <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>CA Total</div>
-     <div style={{fontSize:32,fontWeight:900,color:"#FFAA00",fontFamily:FONT_TITLE,animation:"count-up .6s ease"}}>{fmt(totalCA)}€</div>
-     <div style={{fontSize:10,color:totalCA>=prevCA?"#34d399":"#f87171",marginTop:4}}>{totalCA>=prevCA?"↑":"↓"} vs mois dernier ({fmt(prevCA)}€)</div>
-     {sparkline(caHist)}
-    </div>
-    <div style={GC}>
-     <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Pipeline</div>
-     <div style={{fontSize:26,fontWeight:900,color:"#60a5fa",fontFamily:FONT_TITLE,animation:"count-up .6s ease .1s both"}}>{fmt(totalPipeline)}€</div>
-     {sparkline(pipHist)}
-    </div>
-    <div style={GC}>
-     <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>MRR</div>
-     <div style={{fontSize:26,fontWeight:900,color:"#34d399",fontFamily:FONT_TITLE,animation:"count-up .6s ease .2s both"}}>{fmt(totalMRR)}€</div>
-     {sparkline(mrrHist)}
-    </div>
-    <div style={GC}>
-     <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Sociétés Actives</div>
-     <div style={{fontSize:26,fontWeight:900,color:"#e4e4e7",fontFamily:FONT_TITLE}}>{actS.length}</div>
-     <div style={{fontSize:10,color:"#71717a",marginTop:4}}>Clients: {(clients||[]).filter(c=>c.status==="active").length}</div>
-    </div>
-   </div>
-   {/* CENTER — Society Cards */}
-   <div style={{overflow:"auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12,alignContent:"start"}}>
-    {socCards.map(s=><div key={s.id} style={s.id===bestId?GCglow:GC}>
-     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-      <div style={{fontWeight:800,fontSize:13,fontFamily:FONT_TITLE,color:"#e4e4e7"}}>{s.status} {s.name}</div>
-      <span style={{fontSize:16,color:s.trend==="↑"?"#34d399":s.trend==="↓"?"#f87171":"#71717a"}}>{s.trend}</span>
-     </div>
-     {s.porteur&&<div style={{fontSize:10,color:"#71717a",marginBottom:6}}>👤 {s.porteur}</div>}
-     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-      <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>CA</div><div style={{fontSize:15,fontWeight:700,color:"#FFAA00"}}>{fK(s.ca)}€</div></div>
-      <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Clients</div><div style={{fontSize:15,fontWeight:700,color:"#60a5fa"}}>{s.cls}</div></div>
-      <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Solde</div><div style={{fontSize:13,fontWeight:600,color:"#34d399"}}>{fK(s.bal)}€</div></div>
-      <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>CA M-1</div><div style={{fontSize:13,fontWeight:600,color:"#71717a"}}>{fK(s.caP)}€</div></div>
-     </div>
-    </div>)}
-   </div>
-   {/* RIGHT — Activity Feed */}
-   <div style={{...GC,overflow:"hidden",display:"flex",flexDirection:"column",padding:0}}>
-    <div style={{padding:"14px 16px 8px",borderBottom:"1px solid rgba(255,255,255,.06)",fontSize:11,fontWeight:700,color:"#FFAA00",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE}}>📡 Live Activity</div>
-    <div ref={feedRef} style={{flex:1,overflow:"auto",padding:"8px 12px"}}>
-     {feed.length===0&&<div style={{color:"#71717a",fontSize:11,textAlign:"center",padding:20}}>Aucune activité récente</div>}
-     {feed.map((f,i)=><div key={i} className="pulse-feed-item" style={{padding:"6px 0",borderBottom:"1px solid rgba(255,255,255,.03)",display:"flex",gap:8,alignItems:"flex-start",fontSize:11}}>
-      <span>{f.icon}</span>
-      <div style={{flex:1}}>
-       <div style={{color:"#e4e4e7",lineHeight:1.3}}>{f.desc}</div>
-       <div style={{color:"#71717a",fontSize:9,marginTop:2}}>{f.ts?ago(f.ts):""}</div>
-      </div>
-      {f.amt?<span style={{color:f.color,fontWeight:700,whiteSpace:"nowrap"}}>{f.amt>0?"+":""}{fmt(f.amt)}€</span>:null}
-     </div>)}
-    </div>
-   </div>
+  {/* FILTER BAR */}
+  <div style={{display:"flex",gap:8,padding:"8px 24px",borderBottom:"1px solid rgba(255,255,255,.04)",flexShrink:0,zIndex:1,position:"relative",alignItems:"center",flexWrap:"wrap"}}>
+   <span style={{fontSize:10,color:"#71717a",marginRight:4}}>Société:</span>
+   {pill(socFilter==="all",()=>setSocFilter("all"),"Toutes")}
+   {allActS.slice(0,8).map(s=>pill(socFilter===s.id,()=>setSocFilter(s.id),s?.name||s.id))}
+   <span style={{fontSize:10,color:"#71717a",marginLeft:12,marginRight:4}}>Période:</span>
+   {timeFilters.map(t=>pill(timeFilter===t.k,()=>setTimeFilter(t.k),t.l))}
+   <span style={{fontSize:10,color:"#71717a",marginLeft:12,marginRight:4}}>Statut:</span>
+   {statusFilters.map(s=>pill(statusFilter===s.k,()=>setStatusFilter(s.k),s.l))}
   </div>
+  {/* MAIN CONTENT */}
+  {renderMainContent()}
   {/* BOTTOM TICKER */}
-  <div style={{borderTop:"1px solid rgba(255,255,255,.06)",padding:"8px 0",overflow:"hidden",flexShrink:0,background:"rgba(255,170,0,.03)"}}>
-   <div style={{display:"flex",animation:"ticker-scroll 30s linear infinite",whiteSpace:"nowrap"}}>
+  <div style={{borderTop:"1px solid rgba(255,255,255,.06)",padding:"8px 0",overflow:"hidden",flexShrink:0,background:"rgba(255,170,0,.03)",zIndex:1,position:"relative"}}>
+   <div style={{display:"flex",animation:"ticker-scroll 40s linear infinite",whiteSpace:"nowrap"}}>
     <span style={{fontSize:11,color:"#FFAA00",paddingRight:60}}>{ticker}</span>
     <span style={{fontSize:11,color:"#FFAA00",paddingRight:60}}>{ticker}</span>
    </div>
