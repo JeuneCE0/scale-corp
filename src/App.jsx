@@ -385,23 +385,32 @@ async function syncGHLForSoc(soc){
  const loc=soc.ghlLocationId;
  const pipData=await fetchGHL("pipelines",loc);
  if(!pipData||!pipData.pipelines)return null;
- const pip=pipData.pipelines[0];if(!pip)return null;
- const oppData=await fetchGHL("opportunities",loc,{pipeline_id:pip.id});
- const opps=(oppData?.opportunities||[]).map(o=>({
-  id:o.id,name:o.contact?.name||o.name||"Sans nom",stage:o.pipelineStageId,
-  value:o.monetaryValue||0,email:o.contact?.email||"",phone:o.contact?.phone||"",
-  createdAt:o.createdAt,updatedAt:o.updatedAt,status:o.status||"open",source:o.source||"Inconnu"
- }));
- const stages=pip.stages?.map(s2=>s2.name)||[];
- const stageMap={};pip.stages?.forEach(s2=>{stageMap[s2.id]=s2.name;});
- const mappedOpps=opps.map(o=>({...o,stage:stageMap[o.stage]||o.stage}));
+ const allPipelines=pipData.pipelines||[];
+ if(allPipelines.length===0)return null;
+ // Fetch opportunities for ALL pipelines
+ let allMappedOpps=[];const allPipelinesMeta=[];
+ for(const pip of allPipelines){
+  const oppData2=await fetchGHL("opportunities",loc,{pipeline_id:pip.id});
+  const opps2=(oppData2?.opportunities||[]).map(o=>({
+   id:o.id,name:o.contact?.name||o.name||"Sans nom",stage:o.pipelineStageId,
+   value:o.monetaryValue||0,email:o.contact?.email||"",phone:o.contact?.phone||"",
+   createdAt:o.createdAt,updatedAt:o.updatedAt,status:o.status||"open",source:o.source||"Inconnu",
+   pipelineId:pip.id,contact:o.contact
+  }));
+  const stages2=pip.stages?.map(s2=>s2.name)||[];
+  const stageMap2={};pip.stages?.forEach(s2=>{stageMap2[s2.id]=s2.name;});
+  const mapped2=opps2.map(o=>({...o,stage:stageMap2[o.stage]||o.stage}));
+  allMappedOpps=allMappedOpps.concat(mapped2);
+  allPipelinesMeta.push({id:pip.id,name:pip.name,stages:stages2});
+ }
+ const mappedOpps=allMappedOpps;
  const won=mappedOpps.filter(o=>o.status==="won");const open2=mappedOpps.filter(o=>o.status==="open");
  // Fetch contacts list
  const ctData=await fetchGHL("contacts_list",loc);
  const rawContacts=(ctData?.contacts||[]);
  // Build a map of contactId→opp status from opportunities
  const contactOppStatus={};
- (oppData?.opportunities||[]).forEach(o=>{
+ allMappedOpps.forEach(o=>{
   const cid=o.contact?.id;if(!cid)return;
   if(o.status==="won")contactOppStatus[cid]="active";
   else if(o.status==="lost"&&!contactOppStatus[cid])contactOppStatus[cid]="churned";
@@ -416,7 +425,7 @@ async function syncGHLForSoc(soc){
   notes:(c.tags||[]).join(", "),ghlId:c.id,stripeId:"",at:c.dateAdded||new Date().toISOString()
  }));
  return{
-  pipelines:[{id:pip.id,name:pip.name,stages}],opportunities:mappedOpps,ghlClients,
+  pipelines:allPipelinesMeta,opportunities:mappedOpps,ghlClients,
   stats:{totalLeads:mappedOpps.length,openDeals:open2.length,wonDeals:won.length,
    lostDeals:mappedOpps.filter(o=>o.status==="lost").length,pipelineValue:open2.reduce((a,o)=>a+o.value,0),
    wonValue:won.reduce((a,o)=>a+o.value,0),conversionRate:mappedOpps.length>0?Math.round(won.length/mappedOpps.length*100):0,
@@ -1971,7 +1980,9 @@ function AIWeeklyCoach({soc,reps,allM,actions,pulses,milestones}){
 function ClientsPanelSafe(props){return <ErrorBoundary label="Erreur dans la page Clients"><ClientsPanelInner {...props}/></ErrorBoundary>;}
 function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices}){
  const[editCl,setEditCl]=useState(null);const[filter,setFilter]=useState("all");const[stageFilter,setStageFilter]=useState("all");const[invView,setInvView]=useState(null);
- const[sending,setSending]=useState(null);const[search,setSearch]=useState("");
+ const[sending,setSending]=useState(null);const[search,setSearch]=useState("");const[selPipeline,setSelPipeline]=useState("all");
+ const allPipelines=ghlData?.[soc.id]?.pipelines||[];
+ const selPipelineStages=selPipeline==="all"?(allPipelines[0]?.stages||[]):(allPipelines.find(p=>p.id===selPipeline)?.stages||[]);
  const rawGhl=ghlData?.[soc.id]?.ghlClients||[];
  const manualClients=clients.filter(c=>c.socId===soc.id);
  const manualGhlIds=new Set(manualClients.map(c=>c.ghlId).filter(Boolean));
@@ -1997,7 +2008,8 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
  const totalEncaisse=invPaid.reduce((a,i)=>a+i.amount,0);
  const totalAttente=invSent.concat(invDraft).reduce((a,i)=>a+i.amount,0);
  const endingSoon=myClients.filter(c=>{const r=commitmentRemaining(c);return r!==null&&r<=2&&r>0&&c.status==="active";});
- const allOpps=Object.values(ghlData||{}).flatMap(d=>(d?.opportunities||[]));
+ const allOppsAll=Object.values(ghlData||{}).flatMap(d=>(d?.opportunities||[]));
+ const allOpps=selPipeline==="all"?allOppsAll:allOppsAll.filter(o=>o.pipelineId===selPipeline);
  const uniqueStages=[...new Set(allOpps.map(o=>o.stage).filter(Boolean))];
  const ghlIdsInStage=stageFilter==="all"?null:new Set(allOpps.filter(o=>o.stage===stageFilter).map(o=>o.id));
  const afterType=filter==="all"?myClients:filter.startsWith("stage_")?myClients.filter(c=>{const st=filter.replace("stage_","");return allOpps.some(o=>o.stage===st&&o.contact?.id===c.ghlId);}):filter==="no_stage"?myClients.filter(c=>!allOpps.some(o=>o.contact?.id===c.ghlId)):filter==="type_fixed"?myClients.filter(c=>c.billing?.type==="fixed"):filter==="type_percent"?myClients.filter(c=>c.billing?.type==="percent"):filter==="type_hybrid"?myClients.filter(c=>c.billing?.type==="hybrid"):filter==="type_oneoff"?myClients.filter(c=>c.billing?.type==="oneoff"):myClients;
@@ -2261,9 +2273,13 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un client ou prospect..." style={{width:"100%",padding:"10px 12px 10px 36px",borderRadius:10,border:`1px solid ${search?C.acc+"66":C.brd}`,background:"rgba(14,14,22,0.4)",color:C.t,fontSize:12,fontFamily:FONT,outline:"none",boxSizing:"border-box",transition:"border-color .2s"}}/>
     {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:14}}>✕</button>}
    </div>
+   {allPipelines.length>1&&<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+    <span style={{fontSize:9,color:C.td,fontWeight:700}}>PIPELINE :</span>
+    {[{id:"all",name:"Toutes"},...allPipelines].map(p=><button key={p.id} onClick={()=>{setSelPipeline(p.id);setFilter("all");}} style={{padding:"4px 12px",borderRadius:6,fontSize:9,fontWeight:selPipeline===p.id?700:500,border:`1px solid ${selPipeline===p.id?C.acc:C.brd}`,background:selPipeline===p.id?C.accD:"transparent",color:selPipeline===p.id?C.acc:C.td,cursor:"pointer",fontFamily:FONT}}>{p.name}</button>)}
+   </div>}
    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
    {[{v:"all",l:`Tous (${myClients.length})`},
-    ...((ghlData?.[soc.id]?.pipelines?.[0]?.stages||[]).map((st,i)=>{const count=myClients.filter(c=>{const opps2=allOpps.filter(o=>o.stage===st);return opps2.some(o=>o.contact?.id===c.ghlId);});return{v:`stage_${st}`,l:`${st} (${count.length})`,c:GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]};})),
+    ...(selPipelineStages.map((st,i)=>{const count=myClients.filter(c=>allOpps.some(o=>o.stage===st&&o.contact?.id===c.ghlId));return{v:`stage_${st}`,l:`${st} (${count.length})`,c:GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]};})),
     {v:"no_stage",l:`Sans étape (${myClients.filter(c=>!allOpps.some(o=>o.contact?.id===c.ghlId)).length})`},
     {v:"type_fixed",l:`💰 Fixe (${byType("fixed").length})`},{v:"type_percent",l:`📊 % (${byType("percent").length})`},{v:"type_hybrid",l:`💎 Fixe+% (${byType("hybrid").length})`},{v:"type_oneoff",l:`🎯 One-off (${byType("oneoff").length})`}
    ].map(f2=>{const isStage=f2.v.startsWith("stage_");const stColor=isStage?f2.c:null;
