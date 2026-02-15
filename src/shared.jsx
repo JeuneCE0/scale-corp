@@ -1,5 +1,4 @@
 import React from "react";
-import { cachedFetch, cacheInvalidate } from "./cache.js";
 export const C_DARK={bg:"#06060b",card:"#0e0e16",card2:"#131320",brd:"#1a1a2c",brdL:"#24243a",acc:"#FFAA00",accD:"rgba(255,170,0,.12)",g:"#34d399",gD:"rgba(52,211,153,.1)",r:"#f87171",rD:"rgba(248,113,113,.1)",o:"#fb923c",oD:"rgba(251,146,60,.1)",b:"#60a5fa",bD:"rgba(96,165,250,.1)",t:"#e4e4e7",td:"#71717a",tm:"#3f3f50",v:"#a78bfa",vD:"rgba(167,139,250,.1)"};
 export const C_LIGHT={bg:"#f5f5f5",card:"#ffffff",card2:"#f0f0f0",brd:"#e0e0e0",brdL:"#d0d0d0",acc:"#FFAA00",accD:"#FFF3D6",g:"#22c55e",gD:"#dcfce7",r:"#ef4444",rD:"#fee2e2",b:"#3b82f6",bD:"#dbeafe",o:"#f97316",oD:"#fff7ed",v:"#8b5cf6",vD:"#ede9fe",t:"#1a1a1a",td:"#666666",tm:"#999999"};
 export let C=C_DARK;
@@ -72,9 +71,8 @@ export const CSS=`@import url('https://fonts.googleapis.com/css2?family=Teachers
 @keyframes slideInRight{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
 @keyframes slideInUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
 @keyframes typeReveal{from{max-height:0;opacity:0}to{max-height:600px;opacity:1}}
-@media(max-width:768px){.sidebar-desktop{display:none !important}.main-content{margin-left:0 !important}.mobile-header{display:flex !important}.kpi-grid-responsive{grid-template-columns:1fr 1fr !important}.chart-responsive{min-height:180px}.tx-list-mobile .tx-detail{display:none}}
+@media(max-width:768px){.sidebar-desktop{display:none !important}.main-content{margin-left:0 !important;padding:10px !important;padding-top:48px !important}.mobile-header{display:flex !important}.kpi-grid-responsive{grid-template-columns:1fr 1fr !important}.chart-responsive{min-height:180px}.tx-list-mobile .tx-detail{display:none}.rg4{grid-template-columns:1fr 1fr !important}.rg2{grid-template-columns:1fr !important}.rg3{grid-template-columns:1fr !important}.rg-auto{grid-template-columns:1fr 1fr !important}.glass-card,.glass-card-static{min-width:0 !important;overflow:hidden}.admin-grid{grid-template-columns:1fr !important}.admin-card{min-width:auto !important}.admin-stats-row{grid-template-columns:1fr !important;gap:8px !important}.pulse-grid{grid-template-columns:1fr !important}.pulse-left,.pulse-right{display:none !important}.pulse-center{grid-column:1 !important}.admin-responsive-grid{grid-template-columns:1fr !important}.admin-responsive-2col{grid-template-columns:1fr 1fr !important}table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:11px !important}.admin-soc-grid{grid-template-columns:1fr !important}.admin-soc-selector{left:10px !important;top:50px !important}.modal-wide{width:95vw !important;max-width:95vw !important}.glass-modal{width:95vw !important;max-width:95vw !important;padding:14px !important}.ai-chat-panel{width:92vw !important;right:0 !important;max-width:none !important}.notif-panel{width:88vw !important;right:0 !important}.recharts-wrapper{font-size:10px !important}.page-wrap{padding:12px 10px !important}.rg2k{grid-template-columns:1fr 1fr !important}.ob-sidebar{display:none !important}.ob-content{padding:14px 10px !important}}
 @media(min-width:769px){.mobile-header{display:none !important}}
-@media(max-width:768px){.admin-grid{grid-template-columns:1fr !important}.admin-card{min-width:auto !important}.admin-stats-row{grid-template-columns:1fr !important;gap:8px !important}.pulse-grid{grid-template-columns:1fr !important}.pulse-left,.pulse-right{display:none !important}.pulse-center{grid-column:1 !important}.main-content div[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr !important}.main-content div[style*="grid-template-columns: 1fr 1fr 1fr"]{grid-template-columns:1fr !important}.main-content div[style*="gridTemplateColumns"]{min-width:0 !important}.admin-responsive-grid{grid-template-columns:1fr !important}.admin-responsive-2col{grid-template-columns:1fr 1fr !important}table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:11px !important}.admin-soc-grid{grid-template-columns:1fr !important}.admin-soc-selector{left:10px !important;top:50px !important}.main-content{padding-top:48px !important}.glass-card,.glass-card-static{min-width:0 !important}.modal-wide{width:90vw !important;max-width:90vw !important}.ai-chat-panel{width:90vw !important;right:0 !important;max-width:none !important}.notif-panel{width:85vw !important;right:0 !important}}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:${C.brd};border-radius:3px}
 input[type=range]{-webkit-appearance:none;background:${C.brd};height:3px;border-radius:4px;outline:none}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:${C.acc};cursor:pointer;box-shadow:0 2px 6px rgba(255,170,0,.3)}
@@ -391,7 +389,7 @@ export async function fetchGHL(action,locationId,params={}){
  try{
   const r=await fetch(GHL_BASE,{
    method:"POST",
-   headers:{"Content-Type":"application/json"},
+   headers:sbAuthHeaders(),
    body:JSON.stringify({action,locationId,...params})
   });
   if(!r.ok)throw new Error(`GHL proxy ${r.status}`);return await r.json();
@@ -404,10 +402,14 @@ export async function syncGHLForSoc(soc){
  if(!pipData||!pipData.pipelines)return null;
  const allPipelines=pipData.pipelines||[];
  if(allPipelines.length===0)return null;
- // Fetch opportunities for ALL pipelines
+ // Fetch opportunities, contacts and calendar in parallel
+ const [oppResults,ctData,evData]=await Promise.all([
+  Promise.all(allPipelines.map(pip=>fetchGHL("opportunities",loc,{pipeline_id:pip.id}).then(d=>({pip,d})))),
+  fetchGHL("contacts_list",loc),
+  fetchGHL("calendar_events",loc,{startTime:Date.now()-365*24*60*60*1000,endTime:Date.now()})
+ ]);
  let allMappedOpps=[];const allPipelinesMeta=[];
- for(const pip of allPipelines){
-  const oppData2=await fetchGHL("opportunities",loc,{pipeline_id:pip.id});
+ for(const{pip,d:oppData2} of oppResults){
   const opps2=(oppData2?.opportunities||[]).map(o=>({
    id:o.id,name:o.contact?.name||o.name||"Sans nom",stage:o.pipelineStageId,
    value:o.monetaryValue||0,email:o.contact?.email||"",phone:o.contact?.phone||"",
@@ -422,8 +424,6 @@ export async function syncGHLForSoc(soc){
  }
  const mappedOpps=allMappedOpps;
  const won=mappedOpps.filter(o=>o.status==="won");const open2=mappedOpps.filter(o=>o.status==="open");
- // Fetch contacts list
- const ctData=await fetchGHL("contacts_list",loc);
  const rawContacts=(ctData?.contacts||[]);
  // Build a map of contactId→opp status from opportunities
  const contactOppStatus={};
@@ -442,8 +442,6 @@ export async function syncGHLForSoc(soc){
   domain:((c.tags||[]).find(t=>t.startsWith("domaine:"))||"").replace("domaine:",""),
   source:c.source||"",notes:(c.tags||[]).filter(t=>!t.startsWith("domaine:")).join(", "),ghlId:c.id,stripeId:"",at:c.dateAdded||new Date().toISOString()
  }));
- // Fetch calendar events (calls)
- const evData=await fetchGHL("calendar_events",loc,{startTime:Date.now()-365*24*60*60*1000,endTime:Date.now()});
  const calEvents=evData?.events||[];
  return{
   pipelines:allPipelinesMeta,opportunities:mappedOpps,ghlClients,calendarEvents:calEvents,
@@ -584,7 +582,7 @@ export async function checkAndSendReminders(socs2,reps2,pulses2,slackConfig){
 export const STRIPE_PROXY="/api/stripe";
 export async function fetchStripe(action,params={}){
  try{
-  const r=await fetch(STRIPE_PROXY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,...params})});
+  const r=await fetch(STRIPE_PROXY,{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,...params})});
   if(!r.ok)return null;return await r.json();
  }catch(e){console.warn("Stripe fetch failed:",e.message);return null;}
 }
@@ -625,7 +623,7 @@ export function mkRevolutDemo(){ return null; }
 export async function fetchRevolut(company,endpoint){
  try{
   const action=endpoint.includes("/transactions")?"transactions":"accounts";
-  const r=await fetch("/api/revolut",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,company})});
+  const r=await fetch("/api/revolut",{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,company})});
   if(!r.ok)throw new Error(`Revolut proxy ${r.status}`);return await r.json();
  }catch(e){console.warn("Revolut fetch failed:",e.message);return null;}
 }
@@ -673,8 +671,12 @@ export function revFinancials(socBankData,month){
  return{ca:m.income,charges:m.expense,tresoSoc:socBankData.balance,net:m.income-m.expense};
 }
 export const STORE_URL="/api/store";
-export let _storeToken=null;
-export let _currentSocId=null;
+let _storeToken=null;
+export function getStoreToken(){return _storeToken;}
+export function setStoreToken(v){_storeToken=v;}
+let _currentSocId=null;
+export function getCurrentSocId(){return _currentSocId;}
+export function setCurrentSocId(v){_currentSocId=v;}
 export async function storeCall(action,key,value){
  try{
   if(!_storeToken){const m=localStorage.getItem("sc_store_token");if(m)_storeToken=m;}
@@ -929,167 +931,3 @@ export function calcMilestones(soc,reps,actions,pulses,allM){
  const data=calcMilestoneData(soc,reps,actions,pulses,allM);
  return MILESTONE_DEFS.map(m=>({...m,unlocked:m.check(data)}));
 }
-/* UI COMPONENTS */
-export function calcSmartAlerts(socs,reps,actions,pulses,allM,socBank,ghlData){
- const cM2=curM();const pm=prevM(cM2);const alerts=[];
- socs.filter(s=>s.stat==="active"&&s.id!=="eco").forEach(s=>{
-  const r=gr(reps,s.id,cM2),rp=gr(reps,s.id,pm),rpp=gr(reps,s.id,prevM(pm));
-  const ca=pf(r?.ca),caPrev=pf(rp?.ca),caPP=pf(rpp?.ca);
-  const ch=pf(r?.charges);const rw=runway(reps,s.id,allM);
-  if(caPrev>0&&ca>0&&(ca-caPrev)/caPrev<-.3)alerts.push({soc:s,type:"danger",icon:"📉",title:`${s.nom}: CA en chute`,desc:`${fmt(ca)}€ vs ${fmt(caPrev)}€ (-${Math.abs(Math.round((ca-caPrev)/caPrev*100))}%)`,priority:1});
-  if(caPrev>0&&caPP>0&&ca<caPrev&&caPrev<caPP)alerts.push({soc:s,type:"warning",icon:"⚠️",title:`${s.nom}: tendance baissière`,desc:"2 mois consécutifs de baisse du CA",priority:2});
-  if(rw&&rw.months<3&&rw.months>0)alerts.push({soc:s,type:"danger",icon:"🔥",title:`${s.nom}: runway critique`,desc:`${rw.months} mois restants (${fmt(rw.treso)}€)`,priority:1});
-  if(ca>0&&ch>ca)alerts.push({soc:s,type:"danger",icon:"💸",title:`${s.nom}: marge négative`,desc:`Charges (${fmt(ch)}€) > CA (${fmt(ca)}€)`,priority:1});
-  if(!r)alerts.push({soc:s,type:"warning",icon:"📋",title:`${s.nom}: rapport manquant`,desc:`Aucun rapport soumis pour ${ml(cM2)}`,priority:3});
-  if(ca>0&&s.obj>0&&ca>=s.obj*1.2)alerts.push({soc:s,type:"success",icon:"🎯",title:`${s.nom}: objectif écrasé !`,desc:`${fmt(ca)}€ vs obj ${fmt(s.obj)}€ (+${Math.round((ca/s.obj-1)*100)}%)`,priority:4});
-  if(caPrev>0&&ca>=caPrev*2)alerts.push({soc:s,type:"success",icon:"🚀",title:`${s.nom}: CA doublé !`,desc:`${fmt(ca)}€ vs ${fmt(caPrev)}€ le mois dernier`,priority:4});
-  const lastPulse=Object.entries(pulses).filter(([k])=>k.startsWith(s.id+"_")).pop();
-  if(!lastPulse||!lastPulse[1]?.at||(Date.now()-new Date(lastPulse[1].at).getTime())>14*864e5)alerts.push({soc:s,type:"info",icon:"📡",title:`${s.nom}: silence radio`,desc:"Pas de pulse depuis 2+ semaines",priority:3});
-  const sb=socBank?.[s.id];
-  if(sb&&sb.balance<1000)alerts.push({soc:s,type:"danger",icon:"🏦",title:`${s.nom}: solde bancaire bas`,desc:`Seulement ${fmt(sb.balance)}€ en banque`,priority:1});
-  // payment_received
-  if(sb?.transactions){const recent=sb.transactions.filter(tx=>{const leg=tx.legs?.[0];return leg&&leg.amount>500&&(Date.now()-new Date(tx.created_at).getTime())<48*36e5;});recent.slice(0,1).forEach(tx=>{alerts.push({soc:s,type:"success",icon:"💵",title:`${s.nom}: paiement reçu`,desc:`+${fmt(tx.legs[0].amount)}€ — ${tx.legs[0].description||tx.reference||""}`,priority:4,alertType:"payment_received"});});}
-  // lead_hot
-  const gd=ghlData||{};const opps2=(gd[s.id]?.opportunities||[]).filter(o=>o.status==="open"&&o.value>=1000);
-  if(opps2.length>0)alerts.push({soc:s,type:"info",icon:"🔥",title:`${s.nom}: ${opps2.length} lead${opps2.length>1?"s":""} chaud${opps2.length>1?"s":""}`,desc:`Valeur pipeline: ${fmt(opps2.reduce((a2,o)=>a2+o.value,0))}€`,priority:2,alertType:"lead_hot"});
-  // client_silent
-  const cls4=(gd[s.id]?.ghlClients||[]);const convos4=(gd[s.id]?.conversations||[]);
-  const silentDays=14;cls4.filter(c2=>{const lastConvo=convos4.find(cv=>(cv.contactId||cv.contact?.id)===c2.ghlId);return lastConvo&&(Date.now()-new Date(lastConvo.lastMessageDate||0).getTime())>silentDays*864e5;}).slice(0,1).forEach(c2=>{alerts.push({soc:s,type:"warning",icon:"🤫",title:`${s.nom}: client silencieux`,desc:`${c2.name||"Contact"} sans échange depuis ${silentDays}j+`,priority:3,alertType:"client_silent"});});
-  // goal_reached
-  if(ca>0&&s.obj>0&&ca>=s.obj)alerts.push({soc:s,type:"success",icon:"🎯",title:`${s.nom}: objectif atteint !`,desc:`${fmt(ca)}€ / ${fmt(s.obj)}€ objectif`,priority:4,alertType:"goal_reached"});
- });
- return alerts.sort((a,b)=>a.priority-b.priority);
-}
-export function genInsights(evo,hs,rw,myActions,soc,reps,allM){
- const ins=[];const last=evo.length>0?evo[evo.length-1]:null;const prev=evo.length>1?evo[evo.length-2]:null;
- if(!last)return ins;
- if(prev){
-  const caD=last.ca-prev.ca;const caPct=prev.ca>0?Math.round(caD/prev.ca*100):0;
-  if(caPct<-15)ins.push({type:"danger",icon:"📉",title:`CA en baisse de ${Math.abs(caPct)}%`,desc:`Votre CA est passé de ${fmt(prev.ca)}€ à ${fmt(last.ca)}€. ${last.charges>prev.charges?"Vos charges ont aussi augmenté.":"Vos charges sont stables, c'est le revenu qui baisse."}`,tip:"Analysez quels clients ou canaux ont baissé"});
-  else if(caPct>20)ins.push({type:"success",icon:"🚀",title:`Croissance de +${caPct}% ce mois`,desc:`CA de ${fmt(last.ca)}€ contre ${fmt(prev.ca)}€ le mois dernier. Belle progression !`,tip:"Identifiez ce qui a fonctionné pour reproduire"});
-  const margeDiff=last.margePct-prev.margePct;
-  if(margeDiff<-10)ins.push({type:"warning",icon:"💸",title:`Marge en chute de ${Math.abs(margeDiff)} points`,desc:`Marge à ${last.margePct}% contre ${prev.margePct}%. ${last.salaire>prev.salaire?"Votre rémunération a augmenté.":last.chargesOps>prev.chargesOps?"Charges opérationnelles en hausse.":"Vos charges globales pèsent plus lourd."}`,tip:"Passez en revue vos postes de dépenses"});
-  if(last.leads>0&&prev.leads>0){
-   const closR=last.leadsClos>0?Math.round(last.leadsClos/last.leads*100):0;
-   const prevClosR=prev.leadsClos>0?Math.round(prev.leadsClos/prev.leads*100):0;
-   if(closR<prevClosR-10)ins.push({type:"warning",icon:"🎯",title:`Taux closing en baisse: ${closR}% vs ${prevClosR}%`,desc:"Vos leads convertissent moins bien",tip:"Revoyez votre process commercial ou la qualité des leads"});
-  }
- }
- if(rw&&rw.months<3)ins.push({type:"danger",icon:"⚠",title:`Runway critique: ${rw.months} mois`,desc:`Votre trésorerie de ${fmt(last.treso)}€ ne couvre que ${rw.months} mois de charges.`,tip:"Réduisez les dépenses non-essentielles ou accélérez l'encaissement"});
- else if(rw&&rw.months>=9)ins.push({type:"success",icon:"💪",title:`Runway confortable: ${rw.months} mois`,desc:"Vous avez une marge de manœuvre pour investir",tip:"Envisagez un investissement en croissance (ads, recrutement, outils)"});
- if(last.chargesOps>0&&last.ca>0&&last.chargesOps/last.ca>0.3)ins.push({type:"warning",icon:"⚙",title:"Charges opé élevées ("+pct(last.chargesOps,last.ca)+"%)",desc:`${fmt(last.chargesOps)}€ en logiciels/outils sur ${fmt(last.ca)}€ de CA`,tip:"Auditez vos abonnements, certains sont peut-être sous-utilisés"});
- const lateAct=myActions.filter(a=>!a.done&&a.deadline&&a.deadline<curM());
- if(lateAct.length>=3)ins.push({type:"warning",icon:"📋",title:`${lateAct.length} actions en retard`,desc:"Des actions stratégiques ne sont pas réalisées à temps",tip:"Priorisez ou réévaluez les actions non-pertinentes"});
- if(evo.length>=3){const last3=evo.slice(-3);const allUp=last3.every((d,i)=>i===0||d.ca>=last3[i-1].ca);if(allUp)ins.push({type:"success",icon:"📈",title:"3 mois de croissance consécutive",desc:`CA en hausse depuis ${last3[0].mois}`,tip:"Momentum positif — maintenez votre stratégie actuelle"});}
- return ins.slice(0,4);
-}
-
-/* ANONYMOUS BENCHMARK */
-export function calcBenchmark(soc,reps,socs,cM2){
- const actS=socs.filter(s=>s.stat==="active");if(actS.length<2)return null;
- const vals=actS.map(s=>{const r=gr(reps,s.id,cM2);if(!r)return null;const ca=pf(r.ca),ch=pf(r.charges),marg=ca>0?Math.round((ca-ch)/ca*100):0;const hs2=healthScore(s,reps);return{id:s.id,ca,marge:marg,score:hs2.score,treso:pf(r.tresoSoc)};}).filter(Boolean);
- if(vals.length<2)return null;
- const me=vals.find(v=>v.id===soc.id);if(!me)return null;
- const rank=(arr,val)=>{const sorted=[...arr].sort((a,b)=>a-b);const pos=sorted.indexOf(val);return pos>=0?Math.round((pos+1)/sorted.length*100):50;};
- const metrics=[
-  {label:"CA",value:fmt(me.ca)+"€",pctile:rank(vals.map(v=>v.ca),me.ca),color:C.acc},
-  {label:"Marge",value:me.marge+"%",pctile:rank(vals.map(v=>v.marge),me.marge),color:me.marge>0?C.g:C.r},
-  {label:"Score santé",value:me.score+"/100",pctile:rank(vals.map(v=>v.score),me.score),color:me.score>=70?C.g:me.score>=40?C.o:C.r},
-  {label:"Trésorerie",value:fmt(me.treso)+"€",pctile:rank(vals.map(v=>v.treso),me.treso),color:C.b},
- ];
- const median=(arr)=>{const s=[...arr].sort((a,b)=>a-b);const m=Math.floor(s.length/2);return s.length%2?s[m]:(s[m-1]+s[m])/2;};
- return{metrics,total:actS.length,medianCA:median(vals.map(v=>v.ca)),medianScore:median(vals.map(v=>v.score))};
-}
-
-/* CONTEXTUAL PLAYBOOKS */
-export function getPlaybooks(evo,hs,rw,clients){
- const tips=[];const last=evo.length>0?evo[evo.length-1]:null;if(!last)return tips;
- const prev=evo.length>1?evo[evo.length-2]:null;
- if(hs.margin<10)tips.push({icon:"💰",title:"Optimiser ma rentabilité",items:["Identifiez les 3 postes de charges les plus élevés","Négociez vos tarifs fournisseurs (annuel vs mensuel)","Calculez le coût réel de chaque outil vs sa valeur","Augmentez vos prix si votre marge <20%"],color:C.g});
- if(hs.retention<10)tips.push({icon:"🔒",title:"Améliorer ma rétention client",items:["Contactez chaque client perdu pour comprendre pourquoi","Mettez en place un onboarding client structuré","Créez un check-in trimestriel avec vos top clients","Proposez des engagements annuels à prix avantageux"],color:C.b});
- if(last.leads>0&&last.leadsClos>0&&last.leadsClos/last.leads<0.15)tips.push({icon:"🎯",title:"Améliorer mon taux de closing",items:["Qualifiez mieux vos leads avant le premier contact","Raccourcissez votre cycle de vente (max 2 relances)","Préparez des cas clients / témoignages","Testez l'offre d'essai ou la démo gratuite"],color:C.o});
- if(rw&&rw.months<6)tips.push({icon:"⚡",title:"Sécuriser ma trésorerie",items:["Facturez immédiatement, pas à 30 jours","Proposez un escompte pour paiement anticipé","Reportez les investissements non-urgents","Diversifiez vos sources de revenus"],color:C.r});
- if(hs.growth<10&&prev)tips.push({icon:"📈",title:"Relancer ma croissance",items:["Lancez une campagne de referral avec vos clients actuels","Testez un nouveau canal d'acquisition (pub, partenariats)","Proposez un upsell / cross-sell à vos clients existants","Créez du contenu qui attire vos prospects idéaux"],color:C.v});
- return tips.slice(0,3);
-}
-
-/* PERSONAL GOALS */
-export const DEFAULT_GOALS=[
- {id:"ca",label:"CA mensuel",icon:"💰",unit:"€",field:"ca"},
- {id:"clients",label:"Nouveaux clients",icon:"👥",unit:"",field:"clients"},
- {id:"marge",label:"Marge minimum",icon:"📊",unit:"%",field:null},
- {id:"treso",label:"Trésorerie cible",icon:"🏦",unit:"€",field:"tresoSoc"},
-];
-
-export function calcClientHealthScore(cl,socBankData,ghlData,soc){
- let score=0;
- // Payments on time (+40)
- if(cl.status==="active"&&cl.billing){
-  const cn=(cl.name||"").toLowerCase().trim();const txs=socBankData?.transactions||[];const now45=Date.now()-45*864e5;
-  const hasRecent=txs.some(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;const txDate=new Date(tx.created_at||tx.date||0).getTime();return txDate>now45&&(leg.description||tx.reference||"").toLowerCase().includes(cn);});
-  if(hasRecent)score+=40;
- }
- // Regular calls (+30)
- const evts=ghlData?.[soc.id]?.calendarEvents||[];const cn2=(cl.name||"").toLowerCase();
- const callCount=evts.filter(e=>(e.contactName||e.title||"").toLowerCase().includes(cn2)).length;
- if(callCount>=3)score+=30;else if(callCount>=1)score+=15;
- // Contract active (+20)
- if(cl.status==="active")score+=20;
- // Recent interaction (+10)
- const ghlCl=ghlData?.[soc.id]?.ghlClients||[];const match=ghlCl.find(gc=>(gc.name||"").toLowerCase()===cn2||(gc.ghlId||gc.id)===(cl.ghlId));
- if(match){const lastAct=new Date(match.at||match.dateAdded||0);if(Date.now()-lastAct.getTime()<30*864e5)score+=10;}
- return clamp(score,0,100);
-}
-export function genPorteurNotifications(soc,reps,socBank,ghlData,clients,allM){
- const notifs=[];const cm=curM();const pm=prevM(cm);
- const r=gr(reps,soc.id,cm);const rp=gr(reps,soc.id,pm);
- const bankData=socBank?.[soc.id];
- const ca=pf(r?.ca);const prevCa=pf(rp?.ca);
- const balance=bankData?.balance||0;
- const excluded=EXCLUDED_ACCOUNTS[soc.id]||[];
- // Recent positive transactions > 100€
- if(bankData?.transactions){
-  bankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(excluded.includes(leg.account_id))return false;return leg.amount>100;}).slice(0,3).forEach(t=>{
-   const leg=t.legs?.[0];
-   notifs.push({id:"tx_"+t.id,icon:"💰",msg:`Paiement reçu: +${fmt(leg.amount)}€`,time:t.created_at,type:"success"});
-  });
- }
- // CA trend
- if(prevCa>0&&ca>prevCa){const pctG=Math.round((ca-prevCa)/prevCa*100);notifs.push({id:"ca_trend",icon:"📈",msg:`CA en hausse de ${pctG}% vs mois dernier`,time:new Date().toISOString(),type:"success"});}
- // Low treasury
- if(balance>0&&balance<2000)notifs.push({id:"treso_low",icon:"⚠️",msg:`Trésorerie basse: ${fmt(balance)}€`,time:new Date().toISOString(),type:"warning"});
- // Won deals from GHL
- const gd=ghlData?.[soc.id];
- if(gd?.stats?.wonDeals>0)notifs.push({id:"deals_won",icon:"🎯",msg:`${gd.stats.wonDeals} deal${gd.stats.wonDeals>1?"s":""} gagné${gd.stats.wonDeals>1?"s":""}!`,time:gd.lastSync||new Date().toISOString(),type:"success"});
- // Commitment ending soon
- (clients||[]).filter(c=>c.socId===soc.id&&c.status==="active").forEach(c=>{
-  const rem=commitmentRemaining(c);
-  if(rem!==null&&rem<=2&&rem>0)notifs.push({id:"commit_"+c.id,icon:"📅",msg:`Fin d'engagement proche: ${c.name} (${rem} mois)`,time:new Date().toISOString(),type:"warning"});
- });
- return notifs.sort((a,b)=>new Date(b.time)-new Date(a.time));
-}
-
-// ============================================================
-// Cached API wrappers — TTL-based in-memory cache
-// GHL: 30s (auto-syncs every 30s), Revolut/Stripe: 60s
-// ============================================================
-export async function cachedSyncGHLForSoc(soc) {
-  if (!soc.ghlLocationId) return null;
-  return cachedFetch(`ghl_${soc.id}`, () => syncGHLForSoc(soc), 30000);
-}
-
-export async function cachedSyncRevolut(company) {
-  if (!company) return null;
-  return cachedFetch(`rev_${company}`, () => syncRevolut(company), 60000);
-}
-
-export async function cachedSyncSocRevolut(soc) {
-  if (!soc.revolutCompany) return null;
-  return cachedFetch(`rev_soc_${soc.id}`, () => syncSocRevolut(soc), 60000);
-}
-
-export async function cachedSyncStripeData() {
-  return cachedFetch('stripe_data', () => syncStripeData(), 60000);
-}
-
-export { cacheInvalidate };
