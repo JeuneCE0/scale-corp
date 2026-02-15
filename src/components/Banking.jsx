@@ -206,6 +206,23 @@ export function SocBankWidget({bankData,onSync,soc}){
    {!isCurrentMonth&&<button onClick={()=>setSelectedMonth(cm)} style={{background:C.accD,border:`1px solid ${C.acc}33`,borderRadius:8,color:C.acc,cursor:"pointer",padding:"5px 12px",fontSize:10,fontWeight:600,fontFamily:FONT}}>Mois actuel</button>}
    {!isDemo&&isCurrentMonth&&<Btn small v="secondary" onClick={onSync}>↻ Actualiser</Btn>}
   </div>
+  {/* Cash flow prediction */}
+  {isCurrentMonth&&sortiesMois>0&&<div className="glass-card-static" style={{padding:14,marginBottom:12,borderLeft:`3px solid ${C.b}`}}>
+   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+    <div>
+     <div style={{fontSize:9,fontWeight:700,color:C.b,letterSpacing:.5,fontFamily:FONT_TITLE}}>📊 PRÉVISION CASH FLOW</div>
+     <div style={{fontSize:10,color:C.td,marginTop:2}}>Basé sur les abonnements et charges récurrentes</div>
+    </div>
+    <div style={{textAlign:"right"}}>
+     <div style={{fontWeight:900,fontSize:16,color:balance-sortiesMois>=0?C.g:C.r}}>{fmt(Math.round(balance-sortiesMois))}€</div>
+     <div style={{fontSize:8,color:C.td}}>Solde estimé fin de mois</div>
+    </div>
+   </div>
+   {balance>0&&sortiesMois>0&&<div style={{display:"flex",gap:10,marginTop:8}}>
+    <div style={{fontSize:9,color:C.td}}>Runway: <strong style={{color:Math.floor(balance/sortiesMois)<=2?C.r:C.g}}>{Math.floor(balance/sortiesMois)} mois</strong></div>
+    <div style={{fontSize:9,color:C.td}}>Burn rate: <strong style={{color:C.r}}>{fmt(sortiesMois)}€/mois</strong></div>
+   </div>}
+  </div>}
   {/* 3 KPI cards */}
   <div className="rg3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
    <div className="glass-card-static" style={{padding:20,textAlign:"center"}}>

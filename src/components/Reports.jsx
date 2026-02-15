@@ -184,7 +184,23 @@ const PIE_COLORS = ["#FFAA00", "#34d399", "#f87171", "#60a5fa", "#a78bfa", "#fb9
 export function RapportsPanel({ soc, socBankData, ghlData, clients, reps, allM, hold }) {
   const [expandedMonth, setExpandedMonth] = useState(null);
   const [notesMap, setNotesMap] = useState(() => { try { return JSON.parse(localStorage.getItem(`scRapportNotes_${soc?.id}`) || "{}"); } catch { return {}; } });
-  const saveNote = (month, text) => { const next = { ...notesMap, [month]: text }; setNotesMap(next); try { localStorage.setItem(`scRapportNotes_${soc?.id}`, JSON.stringify(next)); } catch {} };
+  const saveNote = (month, text) => { const next = { ...notesMap, [month]: text }; setNotesMap(next); try { localStorage.setItem(`scRapportNotes_${soc?.id}`, JSON.stringify(next)); sSet(`scRapportNotes_${soc?.id}`, next); } catch {} };
+  const [lockedMonths, setLockedMonths] = useState(() => { try { return JSON.parse(localStorage.getItem(`scRapportLocked_${soc?.id}`) || "[]"); } catch { return []; } });
+  const toggleLock = (month) => { const next = lockedMonths.includes(month) ? lockedMonths.filter(m => m !== month) : [...lockedMonths, month]; setLockedMonths(next); try { localStorage.setItem(`scRapportLocked_${soc?.id}`, JSON.stringify(next)); sSet(`scRapportLocked_${soc?.id}`, next); } catch {} };
+  // Auto-insights generator
+  const genInsights = (d, month) => {
+    const insights = [];
+    if (d.margePct > 50) insights.push({ icon: "🟢", text: `Excellente marge de ${d.margePct}% — continuez ainsi !`, type: "success" });
+    else if (d.margePct < 20 && d.ca > 0) insights.push({ icon: "🔴", text: `Marge faible (${d.margePct}%) — surveillez vos charges`, type: "warning" });
+    if (d.noShowPct > 25) insights.push({ icon: "⚠️", text: `Taux de no-show élevé (${d.noShowPct}%) — considérez des rappels automatiques`, type: "warning" });
+    if (d.closings > 0 && d.conversionRate > 30) insights.push({ icon: "🎯", text: `Taux de conversion excellent (${d.conversionRate}%) — votre processus de vente est efficace`, type: "success" });
+    if (d.closings === 0 && d.callsMonth > 3) insights.push({ icon: "📉", text: `0 closing malgré ${d.callsMonth} appels — revoyez votre script/offre`, type: "warning" });
+    if (d.churnedCl > 0) insights.push({ icon: "❌", text: `${d.churnedCl} client${d.churnedCl > 1 ? 's' : ''} perdu${d.churnedCl > 1 ? 's' : ''} — analysez les raisons du churn`, type: "warning" });
+    if (d.hasAds && d.roas < 1) insights.push({ icon: "💸", text: `ROAS négatif (${d.roas.toFixed(2)}x) — vos pubs ne sont pas rentables`, type: "warning" });
+    if (d.hasAds && d.roas >= 2) insights.push({ icon: "🚀", text: `ROAS de ${d.roas.toFixed(2)}x — envisagez d'augmenter le budget pub`, type: "success" });
+    if (d.treso > 0 && d.charges > 0) { const runway = Math.floor(d.treso / d.charges); if (runway <= 3) insights.push({ icon: "🚨", text: `Seulement ${runway} mois de runway — anticipez`, type: "warning" }); }
+    return insights;
+  };
   const cm = curM();
   const months = useMemo(() => { const ms = []; let m = cm; for (let i = 0; i < 12; i++) { ms.push(m); m = prevM(m); } return ms; }, [cm]);
 
@@ -220,9 +236,9 @@ export function RapportsPanel({ soc, socBankData, ghlData, clients, reps, allM, 
       {d.catData.length > 0 && <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 9, fontWeight: 700, color: C.td, marginBottom: 6 }}>RÉPARTITION DES DÉPENSES</div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <div style={{ width: 100, height: 100, flexShrink: 0 }}>
+          <div style={{ width: 140, height: 140, flexShrink: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart><Pie data={d.catData.map(([n, v]) => ({ name: n, value: v }))} dataKey="value" cx="50%" cy="50%" outerRadius={45} innerRadius={20} strokeWidth={0}>
+              <PieChart><Pie data={d.catData.map(([n, v]) => ({ name: n, value: v }))} dataKey="value" cx="50%" cy="50%" outerRadius={60} innerRadius={28} strokeWidth={0}>
                 {d.catData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
               </Pie></PieChart>
             </ResponsiveContainer>
@@ -453,9 +469,18 @@ ${d.hasAds ? `<h2>📣 Publicité</h2>
         {isExpanded && <>
           {renderMonthReport(month, d, isCurrent)}
 
-          {/* Export PDF + Won/lost summary */}
-          <div style={{ display: "flex", gap: 12, marginTop: 12, alignItems: "center" }}>
+          {/* Auto-insights */}
+          {(()=>{ const insights = genInsights(d, month); return insights.length > 0 ? <div style={{ marginTop: 12, padding: 12, background: "rgba(167,139,250,.05)", border: `1px solid rgba(167,139,250,.15)`, borderRadius: 10 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: C.v, letterSpacing: 1, marginBottom: 8, fontFamily: FONT_TITLE }}>💡 AUTO-INSIGHTS</div>
+            {insights.map((ins, i) => <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, padding: "4px 0", fontSize: 11, color: ins.type === "warning" ? C.o : C.g }}>
+              <span>{ins.icon}</span><span style={{ color: C.t }}>{ins.text}</span>
+            </div>)}
+          </div> : null; })()}
+
+          {/* Export PDF + Won/lost summary + Lock */}
+          <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center", flexWrap: "wrap" }}>
             <button onClick={(e) => { e.stopPropagation(); exportPDF(month); }} style={{ padding: "6px 14px", borderRadius: 8, border: `1px solid ${C.acc}`, background: C.accD, color: C.acc, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: FONT, display: "inline-flex", alignItems: "center", gap: 4 }}>📄 Exporter PDF</button>
+            <button onClick={(e) => { e.stopPropagation(); toggleLock(month); }} style={{ padding: "6px 14px", borderRadius: 8, border: `1px solid ${lockedMonths.includes(month) ? C.g + "44" : C.brd}`, background: lockedMonths.includes(month) ? C.gD : "transparent", color: lockedMonths.includes(month) ? C.g : C.td, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: FONT, display: "inline-flex", alignItems: "center", gap: 4 }}>{lockedMonths.includes(month) ? "🔒 Archivé" : "📂 Archiver"}</button>
             <span style={{ fontSize: 10, color: C.g, fontWeight: 600 }}>✅ {d.closings} closing{d.closings > 1 ? "s" : ""}</span>
             <span style={{ fontSize: 10, color: C.r, fontWeight: 600 }}>❌ {d.lostMonth} perdu{d.lostMonth > 1 ? "s" : ""}</span>
           </div>

@@ -24,15 +24,48 @@ import { AIWeeklyCoach } from "./components/AI.jsx";
 import { RapportsPanel, ReplayMensuel } from "./components/Reports.jsx";
 export { AIWeeklyCoach, RapportsPanel, ReplayMensuel };
 
-export function MobileBottomNav({items,activeTab,setTab}){
- const visibleItems=items.filter(i=>!i.children).slice(0,5);
- return <nav className="mobile-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,zIndex:200,background:"var(--sc-card-a9)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:"1px solid var(--sc-w06)",padding:"6px 0 env(safe-area-inset-bottom,6px)",justifyContent:"space-around",alignItems:"center"}}>
-  {visibleItems.map(item=>{const active=item.tab===activeTab;return <button key={item.id} onClick={()=>setTab(item.tab)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",padding:"4px 8px",cursor:"pointer",fontFamily:FONT,minWidth:0,flex:1}}>
-   <span style={{fontSize:18,opacity:active?1:0.5,transition:"opacity .15s"}}>{item.icon}</span>
-   <span style={{fontSize:9,fontWeight:active?700:500,color:active?C.acc:C.td,transition:"color .15s",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:60}}>{item.label}</span>
-   {active&&<span style={{width:4,height:4,borderRadius:2,background:C.acc,marginTop:1}}/>}
-  </button>;})}
- </nav>;
+export function MobileBottomNav({items,activeTab,setTab,onAIToggle,aiOpen}){
+ const mainItems=[
+  items.find(i=>i.id==="dashboard"),
+  items.find(i=>i.id==="sales"||i.id==="bank"),
+  null, // AI button placeholder
+  items.find(i=>i.id==="clients"),
+  items.find(i=>i.id==="conversations"||i.id==="activite"),
+ ].filter((x,i)=>i===2||x);
+ const[moreOpen,setMoreOpen]=useState(false);
+ const otherItems=items.filter(i=>!i.children&&!mainItems.find(m=>m&&m.id===i.id));
+ return <><nav className="mobile-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,zIndex:200,background:"rgba(6,6,11,.92)",backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",borderTop:"1px solid rgba(255,255,255,.06)",padding:"0 0 env(safe-area-inset-bottom,0px)",justifyContent:"space-around",alignItems:"flex-end"}}>
+  {mainItems.map((item,idx)=>{
+   if(idx===2) return <button key="ai-fab" onClick={onAIToggle} className="mobile-ai-fab" style={{display:"flex",flexDirection:"column",alignItems:"center",gap:0,background:"none",border:"none",cursor:"pointer",fontFamily:FONT,position:"relative",bottom:12,padding:0}}>
+    <div style={{width:52,height:52,borderRadius:26,background:aiOpen?"linear-gradient(135deg,#a78bfa,#FFAA00)":"linear-gradient(135deg,#FFBF00,#FF9D00)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:aiOpen?"0 0 24px rgba(167,139,250,.5)":"0 4px 20px rgba(255,170,0,.35)",transition:"all .3s cubic-bezier(.4,0,.2,1)",transform:aiOpen?"scale(1.05) rotate(15deg)":"scale(1)"}}>
+     <span style={{fontSize:24,filter:"drop-shadow(0 1px 2px rgba(0,0,0,.3))"}}>{aiOpen?"✕":"🤖"}</span>
+    </div>
+    <span style={{fontSize:8,fontWeight:700,color:aiOpen?C.v:C.acc,marginTop:2,letterSpacing:.3}}>IA</span>
+   </button>;
+   const active=item.tab===activeTab;
+   return <button key={item.id} onClick={()=>{setTab(item.tab);setMoreOpen(false);}} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",padding:"10px 6px 8px",cursor:"pointer",fontFamily:FONT,minWidth:0,flex:1,position:"relative",transition:"all .2s"}}>
+    <span style={{fontSize:20,transition:"all .2s",transform:active?"scale(1.15) translateY(-2px)":"scale(1)",filter:active?"brightness(1.2)":"brightness(0.7)"}}>{item.icon}</span>
+    <span style={{fontSize:9,fontWeight:active?800:500,color:active?C.acc:C.td,transition:"all .2s",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:60,letterSpacing:active?.3:0}}>{item.label}</span>
+    {active&&<span style={{position:"absolute",top:4,left:"50%",transform:"translateX(-50%)",width:20,height:3,borderRadius:2,background:C.acc,boxShadow:`0 0 8px ${C.acc}66`}}/>}
+   </button>;
+  })}
+  <button onClick={()=>setMoreOpen(!moreOpen)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",padding:"10px 6px 8px",cursor:"pointer",fontFamily:FONT,minWidth:0,flex:1}}>
+   <span style={{fontSize:20,opacity:moreOpen?1:.6,transition:"all .2s",transform:moreOpen?"rotate(90deg)":"rotate(0)"}}>{moreOpen?"✕":"⋯"}</span>
+   <span style={{fontSize:9,fontWeight:moreOpen?700:500,color:moreOpen?C.acc:C.td}}>Plus</span>
+  </button>
+ </nav>
+ {/* More menu drawer */}
+ {moreOpen&&<div className="fi" onClick={()=>setMoreOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",backdropFilter:"blur(8px)",zIndex:190}}>
+  <div onClick={e=>e.stopPropagation()} style={{position:"fixed",bottom:"calc(60px + env(safe-area-inset-bottom,0px))",left:8,right:8,background:"rgba(14,14,22,.95)",backdropFilter:"blur(30px)",borderRadius:20,border:"1px solid rgba(255,255,255,.08)",padding:"16px 12px",boxShadow:"0 -8px 40px rgba(0,0,0,.5)",animation:"slideInUp .25s cubic-bezier(.22,1,.36,1)"}}>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+    {otherItems.map(item=>{const active=item.tab===activeTab;return <button key={item.id} onClick={()=>{setTab(item.tab);setMoreOpen(false);}} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,background:active?"rgba(255,170,0,.12)":"rgba(255,255,255,.03)",border:active?`1px solid ${C.acc}44`:"1px solid rgba(255,255,255,.04)",borderRadius:14,padding:"14px 6px 10px",cursor:"pointer",fontFamily:FONT,transition:"all .2s"}}>
+     <span style={{fontSize:22}}>{item.icon}</span>
+     <span style={{fontSize:9,fontWeight:active?700:500,color:active?C.acc:C.td,textAlign:"center"}}>{item.label}</span>
+    </button>;})}
+   </div>
+  </div>
+ </div>}
+ </>;
 }
 export function Badge({s}){const m={active:[C.gD,C.g,"Active"],lancement:[C.oD,C.o,"Lancement"],signature:[C.bD,C.b,"Signature"],inactive:[C.rD,C.r,"Inactive"]};const[bg2,c2,l]=m[s]||m.inactive;return <span style={{background:bg2,color:c2,padding:"2px 8px",borderRadius:20,fontSize:9,fontWeight:700,letterSpacing:.5}}>{l}</span>;}
 export function IncubBadge({incub}){if(!incub)return null;const lbl=sinceLbl(incub);return <span style={{background:C.vD,color:C.v,padding:"2px 7px",borderRadius:20,fontSize:9,fontWeight:600}}>📅 {lbl}</span>;}
@@ -2094,6 +2127,32 @@ export function SocSettingsPanel({soc,save,socs,clients}){
     </>;
    })()}
   </Card>
+  {/* Theme Presets */}
+  <Card style={{padding:16,marginBottom:12}}>
+   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}><span style={{fontSize:16}}>🎨</span><div><div style={{fontWeight:800,fontSize:13,color:C.t}}>Presets de couleur</div><div style={{fontSize:10,color:C.td}}>Choisissez un thème pré-défini</div></div></div>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(80px,1fr))",gap:8}}>
+    {[{n:"Doré",c:"#FFAA00"},{n:"Bleu",c:"#3b82f6"},{n:"Vert",c:"#22c55e"},{n:"Violet",c:"#8b5cf6"},{n:"Rose",c:"#ec4899"},{n:"Turquoise",c:"#14b8a6"},{n:"Orange",c:"#f97316"},{n:"Rouge",c:"#ef4444"}].map(p=><button key={p.c} onClick={()=>setForm(f=>({...f,brandColor:p.c}))} style={{padding:"10px 6px",borderRadius:10,border:`2px solid ${form.brandColor===p.c?p.c:C.brd}`,background:form.brandColor===p.c?p.c+"15":"transparent",cursor:"pointer",textAlign:"center",transition:"all .2s"}}>
+     <div style={{width:24,height:24,borderRadius:12,background:p.c,margin:"0 auto 4px",boxShadow:`0 2px 8px ${p.c}44`}}/>
+     <div style={{fontSize:9,fontWeight:form.brandColor===p.c?700:500,color:form.brandColor===p.c?p.c:C.td}}>{p.n}</div>
+    </button>)}
+   </div>
+  </Card>
+  {/* Data Export */}
+  <Card style={{padding:16,marginBottom:12}}>
+   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}><span style={{fontSize:16}}>📤</span><div><div style={{fontWeight:800,fontSize:13,color:C.t}}>Export de données</div><div style={{fontSize:10,color:C.td}}>Téléchargez toutes vos données</div></div></div>
+   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+    <Btn small v="secondary" onClick={()=>{
+     const myCl=(clients||[]).filter(c2=>c2.socId===soc.id);
+     const hdr="Nom,Email,Téléphone,Statut,Type,Montant,Domaine";
+     const rows=myCl.map(c2=>[c2.name||"",c2.email||"",c2.phone||"",c2.status||"",c2.billing?.type||"",c2.billing?.amount||"",c2.domain||""].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(","));
+     const csv=hdr+"\n"+rows.join("\n");const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`clients_${soc.nom}_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);
+    }}>📥 Clients (CSV)</Btn>
+    <Btn small v="secondary" onClick={()=>{
+     const allData={societe:{nom:soc.nom,porteur:soc.porteur,act:soc.act},clients:(clients||[]).filter(c2=>c2.socId===soc.id),tasks:manualTasks||[],exportedAt:new Date().toISOString()};
+     const blob=new Blob([JSON.stringify(allData,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`export_${soc.nom}_${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url);
+    }}>📥 Tout (JSON)</Btn>
+   </div>
+  </Card>
   {/* Client Portal */}
   <Card style={{padding:16,marginTop:12}}>
    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}><span style={{fontSize:16}}>🌐</span><div><div style={{fontWeight:800,fontSize:13,color:C.t}}>Portail Client</div><div style={{fontSize:10,color:C.td}}>Partagez un accès lecture seule à vos clients</div></div></div>
@@ -2190,7 +2249,7 @@ export function NotificationCenter({notifications,open,onClose,onNavigate}){
 }
 /* AI CHAT FOR PORTEUR */
 /* AI CHAT FOR PORTEUR */
-export function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
+export function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients,embedded}){
  const[open,setOpen]=useState(false);const[msgs,setMsgs]=useState([]);const[typing,setTyping]=useState(false);const[revealIdx,setRevealIdx]=useState(-1);const[revealLen,setRevealLen]=useState(0);const[inputVal,setInputVal]=useState("");const ref=useRef(null);const inputRef=useRef(null);
  const cm=curM();const pm=prevM(cm);
  const parseNum=(s)=>{const m2=s.match(/(\d+[\s.,]?\d*)/);return m2?parseFloat(m2[1].replace(/\s/g,"").replace(",",".")):null;};
@@ -2418,7 +2477,39 @@ export function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
  },[revealIdx,revealLen,msgs]);
  useEffect(()=>{ref.current?.scrollTo({top:ref.current.scrollHeight,behavior:"smooth"});},[msgs,revealLen,typing]);
  useEffect(()=>{if(open)setTimeout(()=>inputRef.current?.focus(),300);},[open]);
- if(!open)return <div onClick={()=>setOpen(true)} style={{position:"fixed",bottom:24,right:24,width:56,height:56,borderRadius:28,background:`linear-gradient(135deg,${C.v},${C.acc})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 20px ${C.acc}44`,zIndex:800,fontSize:24,animation:"fl 3s ease-in-out infinite",transition:"transform .2s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>🤖</div>;
+ // Embedded mode = fullscreen mobile AI, no bubble needed
+ if(embedded){
+  return <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
+   <div ref={ref} style={{flex:1,overflowY:"auto",padding:14}}>
+    {msgs.length===0&&<div style={{textAlign:"center",padding:"24px 10px"}}><div style={{fontSize:40,marginBottom:12}}>🤖</div><div style={{fontSize:15,fontWeight:700,color:C.t,marginBottom:4}}>Bienvenue !</div><div style={{fontSize:12,color:C.td,marginBottom:20}}>Pose-moi n'importe quelle question sur tes données.</div>
+     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{SUGGESTIONS.map((q,i)=><button key={i} onClick={()=>ask(q.q)} style={{padding:"12px 10px",borderRadius:14,border:`1px solid ${C.brd}`,background:C.card2,color:C.t,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:6,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.acc;e.currentTarget.style.background=C.accD;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.brd;e.currentTarget.style.background=C.card2;}}><span style={{fontSize:18}}>{q.icon}</span><span style={{textAlign:"left"}}>{q.q}</span></button>)}</div>
+    </div>}
+    {msgs.map((m,i)=>{
+     const isRevealing=i===revealIdx;
+     const displayContent=isRevealing?m.content.slice(0,revealLen):m.content;
+     return <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:10,animation:"fu .25s ease both"}}>
+      <div style={{maxWidth:"88%",padding:"12px 16px",borderRadius:m.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",background:m.role==="user"?`linear-gradient(135deg,${C.acc}22,${C.acc}11)`:C.card2,border:`1px solid ${m.role==="user"?C.acc+"33":C.brd}`,fontSize:13,lineHeight:1.7,color:C.t,whiteSpace:"pre-wrap"}}>
+       {m.role==="assistant"&&<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}><span style={{fontSize:12}}>🤖</span><span style={{fontWeight:700,fontSize:9,color:C.v}}>ASSISTANT</span></div>}
+       {displayContent}{isRevealing&&<span style={{animation:"pulse 1s infinite",color:C.acc}}>▎</span>}
+      </div>
+     </div>;
+    })}
+    {typing&&<div style={{padding:"12px 14px",background:C.card2,borderRadius:"14px 14px 14px 4px",border:`1px solid ${C.brd}`,display:"inline-flex",alignItems:"center",gap:6,animation:"fu .2s ease both"}}>
+     <span style={{fontSize:12}}>🤖</span>
+     <span className="typing-dots"><span></span><span></span><span></span></span>
+    </div>}
+   </div>
+   <div style={{padding:"10px 14px",borderTop:`1px solid ${C.brd}`,background:"rgba(6,6,11,.6)"}}>
+    {msgs.length>0&&<div style={{display:"flex",gap:4,marginBottom:8,flexWrap:"wrap",overflowX:"auto"}}>{SUGGESTIONS.map((q,i)=><button key={i} onClick={()=>ask(q.q)} style={{padding:"4px 10px",borderRadius:14,fontSize:10,fontWeight:600,border:`1px solid ${C.brd}`,background:"transparent",color:C.td,cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap"}}>{q.icon} {q.q}</button>)}</div>}
+    <div style={{display:"flex",gap:8,alignItems:"center"}}>
+     <input ref={inputRef} value={inputVal} onChange={e=>setInputVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();ask(inputVal);}}} placeholder="Posez votre question..." style={{flex:1,padding:"12px 16px",borderRadius:14,border:`1px solid ${C.brd}`,background:"rgba(6,6,11,.6)",color:C.t,fontSize:14,fontFamily:FONT,outline:"none"}}/>
+     <button onClick={()=>ask(inputVal)} disabled={!inputVal.trim()} style={{width:44,height:44,borderRadius:14,border:"none",background:inputVal.trim()?`linear-gradient(135deg,${C.acc},#FF9D00)`:`${C.card2}`,color:inputVal.trim()?"#0a0a0f":C.td,fontSize:18,cursor:inputVal.trim()?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>↑</button>
+    </div>
+   </div>
+  </div>;
+ }
+ // Desktop floating bubble — hidden on mobile via CSS
+ if(!open)return <div className="ai-desktop-bubble" onClick={()=>setOpen(true)} style={{position:"fixed",bottom:24,right:24,width:56,height:56,borderRadius:28,background:`linear-gradient(135deg,${C.v},${C.acc})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 20px ${C.acc}44`,zIndex:800,fontSize:24,animation:"fl 3s ease-in-out infinite",transition:"transform .2s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>🤖</div>;
  return <div className="ai-chat-panel" style={{position:"fixed",bottom:24,right:24,width:420,maxWidth:"95vw",height:550,maxHeight:"80vh",background:"var(--sc-card-a9)",backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",border:"1px solid var(--sc-w08)",borderRadius:20,boxShadow:"0 12px 48px rgba(0,0,0,.5)",zIndex:800,display:"flex",flexDirection:"column",animation:"slideInUp .3s ease",overflow:"hidden"}}>
   <div style={{padding:"14px 18px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",justifyContent:"space-between",background:`linear-gradient(135deg,${C.card2},${C.card})`}}>
    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:20}}>🤖</span><div><div style={{fontWeight:800,fontSize:13,color:C.t}}>Assistant IA</div><div style={{fontSize:9,color:C.td}}>{soc.nom} · Tape "aide" pour les commandes</div></div></div>
@@ -2651,6 +2742,22 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
  },[gd,ghlCl,calEvts,myClients]);
  // Meta Ads data
  const metaAds=useMemo(()=>{try{return JSON.parse(localStorage.getItem(`metaAds_${soc.id}_${cm}`));}catch{return null;}},[soc.id,cm]);
+ // Previous month comparison
+ const prevMonthKey=prevM(cm);const prevReport=gr(reps,soc.id,prevMonthKey);
+ const prevBankFin=useMemo(()=>{
+  if(!bankData?.transactions)return{income:0,expense:0};
+  const pTxs=bankData.transactions.filter(t=>(t.created_at||"").startsWith(prevMonthKey)&&!isExcludedTx(t,excluded));
+  const inc=pTxs.filter(t=>(t.legs?.[0]?.amount||0)>0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0);
+  const exp=Math.abs(pTxs.filter(t=>(t.legs?.[0]?.amount||0)<0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0));
+  return{income:Math.round(inc),expense:Math.round(exp)};
+ },[bankData,prevMonthKey,excluded]);
+ const prevCA=prevBankFin.income||pf(prevReport?.ca);
+ const prevCharges=prevBankFin.expense||pf(prevReport?.charges);
+ const trendCA=prevCA>0?Math.round((ca-prevCA)/prevCA*100):null;
+ const trendCharges=prevCharges>0?Math.round((charges-prevCharges)/prevCharges*100):null;
+ const trendMarge=prevCA>0?(()=>{const pm=prevCA-prevCharges;const pPct=prevCA>0?Math.round(pm/prevCA*100):0;return margePct-pPct;})():null;
+ const TrendArrow=({val})=>{if(val===null||val===undefined||val===0)return null;const up=val>0;return <span style={{fontSize:9,fontWeight:800,color:up?C.g:C.r,marginLeft:4}}>{up?"↑":"↓"}{Math.abs(val)}%</span>;};
+ const TrendArrowInv=({val})=>{if(val===null||val===undefined||val===0)return null;const up=val>0;return <span style={{fontSize:9,fontWeight:800,color:up?C.r:C.g,marginLeft:4}}>{up?"↑":"↓"}{Math.abs(val)}%</span>;};
  // Conseil du jour IA — removed
  // Expand states for mini-lists
  const[showIncome,setShowIncome]=useState(false);
@@ -2677,6 +2784,40 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
    </div>
    {!isCurrentMonth&&<button onClick={()=>setSelectedMonth(cmNow)} style={{background:C.accD,border:`1px solid ${C.acc}33`,borderRadius:8,color:C.acc,cursor:"pointer",padding:"5px 12px",fontSize:10,fontWeight:600,fontFamily:FONT}}>Mois actuel</button>}
   </div>
+  {/* Treasury Alert */}
+  {treso>0&&treso<2000&&isCurrentMonth&&<div className="fu" style={{padding:"12px 16px",marginBottom:12,borderRadius:12,background:treso<500?"rgba(248,113,113,.12)":"rgba(251,146,60,.1)",border:`1px solid ${treso<500?"rgba(248,113,113,.3)":"rgba(251,146,60,.25)"}`,display:"flex",alignItems:"center",gap:10}}>
+   <span style={{fontSize:22}}>{treso<500?"🚨":"⚠️"}</span>
+   <div style={{flex:1}}><div style={{fontWeight:800,fontSize:12,color:treso<500?C.r:C.o}}>Trésorerie basse : {fmt(treso)}€</div><div style={{fontSize:10,color:C.td}}>
+    {charges>0?`Au rythme actuel (${fmt(charges)}€/mois de charges), il vous reste ~${Math.max(1,Math.floor(treso/charges))} mois de runway`:"Pensez à alimenter votre compte"}
+   </div></div>
+  </div>}
+  {/* Unpaid invoices alert */}
+  {(()=>{const myCl2=(clients||[]).filter(c=>c.socId===soc.id&&c.status==="active"&&c.billing&&c.billing.type!=="oneoff");const txs2=socBank?.[soc.id]?.transactions||[];const now45=Date.now()-45*864e5;const unpaid=myCl2.filter(cl=>{const cn=(cl.name||"").toLowerCase().trim();return!txs2.some(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;return new Date(tx.created_at||tx.date||0).getTime()>now45&&(leg.description||tx.reference||"").toLowerCase().includes(cn);});});return unpaid.length>0?<div className="fu" style={{padding:"10px 14px",marginBottom:12,borderRadius:12,background:"rgba(251,146,60,.08)",border:"1px solid rgba(251,146,60,.2)",display:"flex",alignItems:"center",gap:8}}>
+   <span style={{fontSize:18}}>💸</span>
+   <div style={{flex:1}}><span style={{fontWeight:700,fontSize:11,color:C.o}}>{unpaid.length} facture{unpaid.length>1?"s":""} impayée{unpaid.length>1?"s":""}:</span><span style={{fontSize:10,color:C.td,marginLeft:4}}>{unpaid.slice(0,3).map(c=>c.name).join(", ")}{unpaid.length>3?` et ${unpaid.length-3} autres`:""}</span></div>
+   <button onClick={()=>setPTab(9)} style={{padding:"4px 10px",borderRadius:8,border:`1px solid ${C.o}33`,background:C.oD,color:C.o,fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:FONT,flexShrink:0}}>Voir →</button>
+  </div>:null;})()}
+  {/* Monthly objective progress */}
+  {soc.obj>0&&isCurrentMonth&&<div className="glass-card-static fu" style={{padding:16,marginBottom:14}}>
+   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+    <span style={{fontSize:10,fontWeight:700,color:C.td,letterSpacing:.5,fontFamily:FONT_TITLE}}>🎯 OBJECTIF MENSUEL</span>
+    <span style={{fontSize:10,color:C.td}}>{(()=>{const daysInMonth=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate();const daysPassed=new Date().getDate();return`J${daysPassed}/${daysInMonth} (${Math.round(daysPassed/daysInMonth*100)}% du mois)`;})()}</span>
+   </div>
+   <div style={{display:"flex",alignItems:"flex-end",gap:10,marginBottom:8}}>
+    <div style={{flex:1}}>
+     <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+      <span style={{fontWeight:900,fontSize:18,color:ca>=soc.obj?C.g:ca>=soc.obj*0.7?C.acc:C.o}}>{fmt(ca)}€</span>
+      <span style={{fontSize:11,color:C.td,fontWeight:600}}>/ {fmt(soc.obj)}€</span>
+     </div>
+     <div style={{height:8,background:C.brd,borderRadius:4,overflow:"hidden"}}>
+      <div style={{height:"100%",width:`${Math.min(100,Math.round(ca/soc.obj*100))}%`,background:ca>=soc.obj?`linear-gradient(90deg,${C.g},#22d3ee)`:ca>=soc.obj*0.7?`linear-gradient(90deg,${C.acc},#FF9D00)`:C.o,borderRadius:4,transition:"width .8s cubic-bezier(.4,0,.2,1)"}}/>
+     </div>
+    </div>
+    <span style={{fontSize:20,fontWeight:900,color:ca>=soc.obj?C.g:ca>=soc.obj*0.7?C.acc:C.o}}>{Math.round(ca/soc.obj*100)}%</span>
+   </div>
+   {ca<soc.obj&&<div style={{fontSize:10,color:C.td}}>Reste {fmt(soc.obj-ca)}€ pour atteindre l'objectif</div>}
+   {ca>=soc.obj&&<div style={{fontSize:10,color:C.g,fontWeight:700}}>Objectif atteint ! +{fmt(ca-soc.obj)}€ au-dessus</div>}
+  </div>}
   {/* Prévisionnel */}
   {prevu>0&&<div className="glass-card-static" style={{padding:20,marginBottom:16}}>
     <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>📊 PRÉVISIONNEL</div>
@@ -2694,7 +2835,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
    <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:16}}>
     <div className="glass-card-static" style={kpiCard}>
      <div style={{color:C.td,fontSize:8,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:FONT_TITLE}}>CA {ml(cm)}</div>
-     <div style={{fontSize:22,fontWeight:900,color:acc2,lineHeight:1,cursor:"pointer"}} onClick={()=>setShowIncome(!showIncome)}>{fmt(ca)}€</div>
+     <div style={{fontSize:22,fontWeight:900,color:acc2,lineHeight:1,cursor:"pointer"}} onClick={()=>setShowIncome(!showIncome)}>{fmt(ca)}€<TrendArrow val={trendCA}/></div>
      <div style={{fontSize:8,color:C.acc,cursor:"pointer",marginTop:4}} onClick={()=>setShowIncome(!showIncome)}>{showIncome?"▲ masquer":"▼ détails"}</div>
      {showIncome&&<div className="slide-down" style={{marginTop:8,textAlign:"left",maxHeight:140,overflow:"auto"}}>
       {bankFinancials.incomeTxs.slice(0,5).map((tx,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:`1px solid ${C.brd}`,fontSize:9}}>
@@ -2706,7 +2847,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
     </div>
     <div className="glass-card-static" style={kpiCard}>
      <div style={{color:C.td,fontSize:8,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:FONT_TITLE}}>Charges</div>
-     <div style={{fontSize:22,fontWeight:900,color:C.r,lineHeight:1,cursor:"pointer"}} onClick={()=>setShowExpenses(!showExpenses)}>{fmt(charges)}€</div>
+     <div style={{fontSize:22,fontWeight:900,color:C.r,lineHeight:1,cursor:"pointer"}} onClick={()=>setShowExpenses(!showExpenses)}>{fmt(charges)}€<TrendArrowInv val={trendCharges}/></div>
      <div style={{fontSize:8,color:C.r,cursor:"pointer",marginTop:4}} onClick={()=>setShowExpenses(!showExpenses)}>{showExpenses?"▲ masquer":"▼ détails"}</div>
      {showExpenses&&<div className="slide-down" style={{marginTop:8,textAlign:"left",maxHeight:140,overflow:"auto"}}>
       {bankFinancials.expenseTxs.slice(0,5).map((tx,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:`1px solid ${C.brd}`,fontSize:9}}>
@@ -2716,8 +2857,8 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
       {bankFinancials.expenseTxs.length===0&&<div style={{fontSize:9,color:C.td}}>Aucune charge</div>}
      </div>}
     </div>
-    <KPI label="Marge" value={`${fmt(marge)}€`} sub={`${margePct}% de marge`} accent={marge>=0?C.g:C.r}/>
-    <KPI label="Trésorerie" value={`${fmt(treso)}€`} accent={C.b}/>
+    <KPI label="Marge" value={`${fmt(marge)}€`} sub={<>{margePct}% de marge{trendMarge!==null&&trendMarge!==0&&<span style={{color:trendMarge>0?C.g:C.r,fontWeight:800}}> {trendMarge>0?"↑":"↓"}{Math.abs(trendMarge)}pts</span>}</>} accent={marge>=0?C.g:C.r}/>
+    <KPI label="Trésorerie" value={`${fmt(treso)}€`} sub={charges>0?`~${Math.max(1,Math.floor(treso/charges))} mois de runway`:null} accent={treso<1000?C.r:treso<3000?C.o:C.b}/>
    </div>
    {/* Répartition des dépenses - donut */}
    {pieData.length>0&&<div className="glass-card-static" style={{padding:18}}>
@@ -2924,27 +3065,51 @@ export function AgendaPanel({soc,ghlData}){
    <button onClick={()=>nav(1)} style={{background:"none",border:"none",color:C.acc,cursor:"pointer",fontSize:18,padding:4}}>›</button>
   </div>
 
-  {/* Week view */}
-  {viewMode==="week"&&<div className="glass-card-static" style={{padding:0,overflow:"auto"}}>
-   <div style={{display:"grid",gridTemplateColumns:`60px repeat(7,1fr)`,minWidth:700}}>
-    <div style={{padding:8,borderBottom:`1px solid ${C.brd}`,borderRight:`1px solid ${C.brd}`}}/>
-    {weekDays.map((d,i)=><div key={i} style={{padding:"8px 4px",textAlign:"center",borderBottom:`1px solid ${C.brd}`,borderRight:i<6?`1px solid ${C.brd}`:"none",background:isToday(d)?"rgba(255,170,0,.08)":"transparent"}}>
-     <div style={{fontSize:9,fontWeight:700,color:isToday(d)?C.acc:C.td,textTransform:"uppercase"}}>{d.toLocaleDateString("fr-FR",{weekday:"short"})}</div>
-     <div style={{fontSize:14,fontWeight:900,color:isToday(d)?C.acc:C.t}}>{d.getDate()}</div>
-    </div>)}
-    {hours.map(h=><Fragment key={h}>
-     <div style={{padding:"4px 8px",fontSize:9,color:C.td,fontWeight:600,borderRight:`1px solid ${C.brd}`,borderBottom:`1px solid ${C.brd}22`,textAlign:"right"}}>{String(h).padStart(2,"0")}:00</div>
-     {weekDays.map((d,di)=>{const dayEvts=eventsForDay(d).filter(e=>{const eh=new Date(e.startTime).getHours();return eh===h;});
-      return <div key={di} style={{padding:2,borderRight:di<6?`1px solid ${C.brd}`:"none",borderBottom:`1px solid ${C.brd}22`,minHeight:36,background:isToday(d)?"rgba(255,170,0,.03)":"transparent"}}
-       onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(dragEvt){const target=new Date(d);target.setHours(h,0,0,0);moveEvent(dragEvt,target);setDragEvt(null);}}}>
-       {dayEvts.map(ev=><div key={ev.id} draggable onDragStart={()=>setDragEvt(ev.id)} onClick={()=>openEventDetail(ev)} style={{...evtStyle,cursor:"pointer",transition:"all .15s"}} onMouseEnter={e=>e.currentTarget.style.background="linear-gradient(135deg,#14b8a633,#14b8a644)"} onMouseLeave={e=>e.currentTarget.style.background="linear-gradient(135deg,#14b8a622,#14b8a633)"}>
-        <div style={{fontWeight:700,color:"#14b8a6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fmtTime(ev.startTime)} {ev.title||ev.contactName||"RDV"}</div>
-        {ev.contactName&&<div style={{color:C.td,fontSize:8}}>{ev.contactName}</div>}
-       </div>)}
-      </div>;})}
-    </Fragment>)}
+  {/* Week view — responsive: list on mobile, grid on desktop */}
+  {viewMode==="week"&&<>
+   {/* Mobile: day-by-day list */}
+   <div className="agenda-mobile-week" style={{display:"none"}}>
+    {weekDays.map((d,i)=>{const dayEvts=eventsForDay(d);const today=isToday(d);
+     return <div key={i} className="glass-card-static" style={{padding:12,marginBottom:8,borderLeft:today?`3px solid ${C.acc}`:"3px solid transparent"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:dayEvts.length>0?8:0}}>
+       <div><span style={{fontSize:13,fontWeight:900,color:today?C.acc:C.t}}>{d.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"short"})}</span>{today&&<span style={{fontSize:9,color:C.acc,marginLeft:6,fontWeight:700,background:C.accD,padding:"1px 6px",borderRadius:6}}>Aujourd'hui</span>}</div>
+       <span style={{fontSize:10,color:C.td,fontWeight:600}}>{dayEvts.length} RDV</span>
+      </div>
+      {dayEvts.length===0&&<div style={{color:C.td,fontSize:11,fontStyle:"italic"}}>Aucun rendez-vous</div>}
+      {dayEvts.map(ev=><div key={ev.id} onClick={()=>openEventDetail(ev)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:"linear-gradient(135deg,#14b8a612,#14b8a622)",border:"1px solid #14b8a633",borderRadius:10,marginBottom:4,cursor:"pointer"}}>
+       <div style={{fontWeight:800,fontSize:12,color:"#14b8a6",flexShrink:0,minWidth:42}}>{fmtTime(ev.startTime)}</div>
+       <div style={{flex:1,minWidth:0}}>
+        <div style={{fontWeight:700,fontSize:12,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ev.title||ev.contactName||"RDV"}</div>
+        {ev.contactName&&<div style={{fontSize:10,color:C.td}}>{ev.contactName}</div>}
+       </div>
+       {ev.status&&<span style={{fontSize:8,fontWeight:700,padding:"2px 6px",borderRadius:6,background:ev.status.toLowerCase().includes("confirm")?C.gD:C.rD,color:ev.status.toLowerCase().includes("confirm")?C.g:C.r}}>{ev.status.toLowerCase().includes("confirm")?"Confirmé":"Annulé"}</span>}
+      </div>)}
+     </div>;
+    })}
    </div>
-  </div>}
+   {/* Desktop: full week grid */}
+   <div className="agenda-desktop-week glass-card-static" style={{padding:0,overflow:"auto"}}>
+    <div style={{display:"grid",gridTemplateColumns:`60px repeat(7,1fr)`,minWidth:700}}>
+     <div style={{padding:8,borderBottom:`1px solid ${C.brd}`,borderRight:`1px solid ${C.brd}`}}/>
+     {weekDays.map((d,i)=><div key={i} style={{padding:"8px 4px",textAlign:"center",borderBottom:`1px solid ${C.brd}`,borderRight:i<6?`1px solid ${C.brd}`:"none",background:isToday(d)?"rgba(255,170,0,.08)":"transparent"}}>
+      <div style={{fontSize:9,fontWeight:700,color:isToday(d)?C.acc:C.td,textTransform:"uppercase"}}>{d.toLocaleDateString("fr-FR",{weekday:"short"})}</div>
+      <div style={{fontSize:14,fontWeight:900,color:isToday(d)?C.acc:C.t}}>{d.getDate()}</div>
+     </div>)}
+     {hours.map(h=><Fragment key={h}>
+      <div style={{padding:"4px 8px",fontSize:9,color:C.td,fontWeight:600,borderRight:`1px solid ${C.brd}`,borderBottom:`1px solid ${C.brd}22`,textAlign:"right"}}>{String(h).padStart(2,"0")}:00</div>
+      {weekDays.map((d,di)=>{const dayEvts=eventsForDay(d).filter(e=>{const eh=new Date(e.startTime).getHours();return eh===h;});
+       return <div key={di} style={{padding:2,borderRight:di<6?`1px solid ${C.brd}`:"none",borderBottom:`1px solid ${C.brd}22`,minHeight:36,background:isToday(d)?"rgba(255,170,0,.03)":"transparent"}}
+        onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(dragEvt){const target=new Date(d);target.setHours(h,0,0,0);moveEvent(dragEvt,target);setDragEvt(null);}}}>
+        {dayEvts.map(ev=><div key={ev.id} draggable onDragStart={()=>setDragEvt(ev.id)} onClick={()=>openEventDetail(ev)} style={{...evtStyle,cursor:"pointer",transition:"all .15s"}} onMouseEnter={e=>e.currentTarget.style.background="linear-gradient(135deg,#14b8a633,#14b8a644)"} onMouseLeave={e=>e.currentTarget.style.background="linear-gradient(135deg,#14b8a622,#14b8a633)"}>
+         <div style={{fontWeight:700,color:"#14b8a6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fmtTime(ev.startTime)} {ev.title||ev.contactName||"RDV"}</div>
+         {ev.contactName&&<div style={{color:C.td,fontSize:8}}>{ev.contactName}</div>}
+        </div>)}
+       </div>;})}
+     </Fragment>)}
+    </div>
+   </div>
+   <style>{`@media(max-width:768px){.agenda-mobile-week{display:block !important}.agenda-desktop-week{display:none !important}}@media(min-width:769px){.agenda-mobile-week{display:none !important}}`}</style>
+  </>}
 
   {/* Month view */}
   {viewMode==="month"&&<div className="glass-card-static" style={{padding:8}}>
@@ -3055,7 +3220,7 @@ export function ConversationsPanel({soc}){
 
  // Poll messages every 30s
  useEffect(()=>{clearInterval(msgsPollRef.current);if(!selConvo)return;
-  msgsPollRef.current=setInterval(()=>{fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_messages",locationId:socKey,conversationId:selConvo.id})}).then(r=>r.json()).then(d=>{const raw=d.messages;const m=Array.isArray(raw)?raw:Array.isArray(raw?.messages)?raw.messages:Array.isArray(d)?d:[];setMsgs(m.slice().reverse());}).catch(()=>{});},5000);
+  msgsPollRef.current=setInterval(()=>{fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_messages",locationId:socKey,conversationId:selConvo.id})}).then(r=>r.json()).then(d=>{const raw=d.messages;const m=Array.isArray(raw)?raw:Array.isArray(raw?.messages)?raw.messages:Array.isArray(d)?d:[];setMsgs(m.slice().reverse());}).catch(()=>{});},30000);
   return()=>clearInterval(msgsPollRef.current);
  },[selConvo,socKey]);
 
@@ -3316,13 +3481,33 @@ export function ActivitePanel({soc,ghlData,socBankData,clients}){
  const[doneIds,setDoneIds]=useState(()=>{try{return JSON.parse(localStorage.getItem(`todo_done_${soc.id}`)||"[]");}catch{return[];}});
  const[newTask,setNewTask]=useState("");
  const[newDeadline,setNewDeadline]=useState("");
+ const[newPriority,setNewPriority]=useState("normal");
+ const[newRecurrence,setNewRecurrence]=useState("");
+ const[taskFilter,setTaskFilter]=useState("all"); // all|pending|done
  const[readIds,setReadIds]=useState(()=>{try{return JSON.parse(localStorage.getItem(`inbox_read_${soc.id}`)||"[]");}catch{return[];}});
  const[,forceUpdate]=useState(0);
  useEffect(()=>{const iv=setInterval(()=>forceUpdate(x=>x+1),60000);return()=>clearInterval(iv);},[]);
- const saveDone=(ids)=>{setDoneIds(ids);try{localStorage.setItem(`todo_done_${soc.id}`,JSON.stringify(ids));}catch{}};
- const saveManual=(tasks)=>{setManualTasks(tasks);try{localStorage.setItem(`todo_${soc.id}`,JSON.stringify(tasks));}catch{}};
+ const saveDone=(ids)=>{setDoneIds(ids);try{localStorage.setItem(`todo_done_${soc.id}`,JSON.stringify(ids));sSet(`todo_done_${soc.id}`,ids);}catch{}};
+ const saveManual=(tasks)=>{setManualTasks(tasks);try{localStorage.setItem(`todo_${soc.id}`,JSON.stringify(tasks));sSet(`todo_${soc.id}`,tasks);}catch{}};
  const toggleDone=(id)=>{const n=doneIds.includes(id)?doneIds.filter(x=>x!==id):[...doneIds,id];saveDone(n);};
- const addTask=()=>{if(!newTask.trim())return;saveManual([...manualTasks,{id:uid(),text:newTask.trim(),priority:"normal",at:new Date().toISOString(),deadline:newDeadline||null}]);setNewTask("");setNewDeadline("");};
+ const addTask=()=>{if(!newTask.trim())return;saveManual([...manualTasks,{id:uid(),text:newTask.trim(),priority:newPriority,at:new Date().toISOString(),deadline:newDeadline||null,recurrence:newRecurrence||null}]);setNewTask("");setNewDeadline("");setNewPriority("normal");setNewRecurrence("");};
+ // Recurrence check: recreate recurring tasks if completed
+ useEffect(()=>{
+  const now=new Date();const today=now.toISOString().slice(0,10);
+  const updated=[...manualTasks];let changed=false;
+  manualTasks.filter(t=>t.recurrence&&doneIds.includes(t.id)).forEach(t=>{
+   const lastDone=t.lastRecreated||t.at;const last=new Date(lastDone);
+   let shouldRecreate=false;
+   if(t.recurrence==="daily"&&(now-last)>864e5)shouldRecreate=true;
+   if(t.recurrence==="weekly"&&(now-last)>7*864e5)shouldRecreate=true;
+   if(t.recurrence==="monthly"&&(now-last)>28*864e5)shouldRecreate=true;
+   if(shouldRecreate){
+    const newT={...t,id:uid(),at:now.toISOString(),lastRecreated:now.toISOString()};
+    updated.push(newT);changed=true;
+   }
+  });
+  if(changed)saveManual(updated);
+ },[]);
  const deadlineLabel=(dl)=>{if(!dl)return null;const diff=new Date(dl).getTime()-Date.now();if(diff<0)return{text:"Expiré",color:C.r};const mins=Math.floor(diff/60000);if(mins<60)return{text:`${mins}min`,color:C.o};const hrs=Math.floor(mins/60);const rm=mins%60;if(hrs<24)return{text:`${hrs}h${rm>0?String(rm).padStart(2,"0"):""}`,color:hrs<2?C.o:C.g};const days=Math.floor(hrs/24);return{text:`${days}j`,color:C.g};};
  const markRead=(id)=>{const n=[...readIds,id];setReadIds(n);try{localStorage.setItem(`inbox_read_${soc.id}`,JSON.stringify(n));}catch{}};
  // Auto tasks
@@ -3340,7 +3525,18 @@ export function ActivitePanel({soc,ghlData,socBankData,clients}){
  const allTasks=[...autoTasks,...manualTasks.map(t=>({...t,auto:false}))];
  const priorityIcon={urgent:"🔴",important:"🟡",normal:"🟢"};
  const priorityOrder={urgent:0,important:1,normal:2};
- const sorted=[...allTasks].sort((a,b)=>(priorityOrder[a.priority]||2)-(priorityOrder[b.priority]||2));
+ // Sort by: priority first, then by deadline (expired first, then soonest), then by date
+ const sorted=[...allTasks].sort((a,b)=>{
+  const pa=(priorityOrder[a.priority]||2);const pb=(priorityOrder[b.priority]||2);
+  if(pa!==pb)return pa-pb;
+  // Both same priority — sort by deadline
+  const dlA=a.deadline?new Date(a.deadline).getTime():Infinity;
+  const dlB=b.deadline?new Date(b.deadline).getTime():Infinity;
+  if(dlA!==dlB)return dlA-dlB;
+  return new Date(b.at||0)-new Date(a.at||0);
+ });
+ // Filter tasks
+ const filteredTasks=taskFilter==="all"?sorted:taskFilter==="pending"?sorted.filter(t=>!doneIds.includes(t.id)):sorted.filter(t=>doneIds.includes(t.id));
  // Activity feed = completed tasks only
  const feedItems=useMemo(()=>{
   return sorted.filter(t=>doneIds.includes(t.id)).map(t=>({id:t.id,icon:"✅",desc:t.text,date:new Date()})).slice(0,30);
@@ -3350,6 +3546,9 @@ export function ActivitePanel({soc,ghlData,socBankData,clients}){
  const[weekDone,setWeekDone]=useState(()=>{try{return parseInt(localStorage.getItem(weekKey)||"0");}catch{return 0;}});
  useEffect(()=>{const cnt=sorted.filter(t=>doneIds.includes(t.id)).length;setWeekDone(cnt);try{localStorage.setItem(weekKey,String(cnt));}catch{}},[doneIds,sorted]);
  const weekTotal=sorted.length;const weekPct=weekTotal>0?Math.round(weekDone/weekTotal*100):0;
+ const pendingCount=sorted.filter(t=>!doneIds.includes(t.id)).length;
+ const urgentCount=sorted.filter(t=>!doneIds.includes(t.id)&&t.priority==="urgent").length;
+ const expiredCount=sorted.filter(t=>!doneIds.includes(t.id)&&t.deadline&&new Date(t.deadline)<new Date()).length;
  return <Sect title="⚡ Activité" sub="Tâches & feed d'activité">
   {/* Productivité semaine */}
   <div className="glass-card-static" style={{padding:14,marginBottom:12,display:"flex",alignItems:"center",gap:12}}>
@@ -3367,15 +3566,28 @@ export function ActivitePanel({soc,ghlData,socBankData,clients}){
    </div>
    <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
     <input value={newTask} onChange={e=>setNewTask(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();}} placeholder="Ajouter une tâche..." style={{flex:"1 1 140px",padding:"7px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
-    <input type="datetime-local" value={newDeadline} onChange={e=>setNewDeadline(e.target.value)} style={{padding:"7px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none",minWidth:140}}/>
+    <input type="datetime-local" value={newDeadline} onChange={e=>setNewDeadline(e.target.value)} style={{padding:"7px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none",minWidth:130}}/>
+    <select value={newPriority} onChange={e=>setNewPriority(e.target.value)} style={{padding:"7px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none"}}>
+     <option value="normal">🟢 Normal</option><option value="important">🟡 Important</option><option value="urgent">🔴 Urgent</option>
+    </select>
+    <select value={newRecurrence} onChange={e=>setNewRecurrence(e.target.value)} style={{padding:"7px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none"}}>
+     <option value="">Unique</option><option value="daily">Quotidien</option><option value="weekly">Hebdo</option><option value="monthly">Mensuel</option>
+    </select>
     <Btn small onClick={addTask}>+</Btn>
    </div>
-   {sorted.map(t=>{const done=doneIds.includes(t.id);return <div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:done?"transparent":"var(--sc-card-a6)",borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3,opacity:done?.5:1}}>
+   {/* Filters */}
+   <div style={{display:"flex",gap:4,marginBottom:10}}>
+    {[{k:"all",l:`Toutes (${sorted.length})`},{k:"pending",l:`À faire (${pendingCount})`},{k:"done",l:`Faites (${weekDone})`}].map(f=><button key={f.k} onClick={()=>setTaskFilter(f.k)} style={{padding:"4px 10px",borderRadius:8,border:`1px solid ${taskFilter===f.k?C.acc+"44":C.brd}`,background:taskFilter===f.k?C.accD:"transparent",color:taskFilter===f.k?C.acc:C.td,fontSize:9,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>{f.l}</button>)}
+    {urgentCount>0&&<span style={{padding:"4px 8px",borderRadius:8,background:C.rD,color:C.r,fontSize:9,fontWeight:700}}>🔴 {urgentCount} urgente{urgentCount>1?"s":""}</span>}
+    {expiredCount>0&&<span style={{padding:"4px 8px",borderRadius:8,background:C.rD,color:C.r,fontSize:9,fontWeight:700}}>⏰ {expiredCount} expirée{expiredCount>1?"s":""}</span>}
+   </div>
+   {filteredTasks.map(t=>{const done=doneIds.includes(t.id);return <div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:done?"transparent":"var(--sc-card-a6)",borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3,opacity:done?.5:1}}>
     <div onClick={()=>toggleDone(t.id)} style={{width:16,height:16,borderRadius:4,border:`2px solid ${done?C.g:C.brd}`,background:done?C.gD:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{done&&<span style={{color:C.g,fontSize:9}}>✓</span>}</div>
     <span style={{fontSize:11,flexShrink:0}}>{priorityIcon[t.priority]||"🟢"}</span>
     <div style={{flex:1,fontSize:11,fontWeight:done?400:600,color:done?C.td:C.t,textDecoration:done?"line-through":"none"}}>{t.text}</div>
     {(()=>{const dl=deadlineLabel(t.deadline);return dl?<span style={{fontSize:8,fontWeight:800,color:dl.color,background:dl.color+"18",padding:"1px 5px",borderRadius:6,flexShrink:0}}>⏱{dl.text}</span>:null;})()}
     {t.auto&&<span style={{fontSize:8,color:C.td,background:C.card2,padding:"1px 5px",borderRadius:6}}>auto</span>}
+    {t.recurrence&&<span style={{fontSize:8,color:C.b,background:C.bD,padding:"1px 5px",borderRadius:6}}>🔄 {t.recurrence==="daily"?"quotidien":t.recurrence==="weekly"?"hebdo":"mensuel"}</span>}
     {/* Actions 1-clic */}
     {t.auto&&t.id.startsWith("cal_")&&<button onClick={(e)=>{e.stopPropagation();const cName=t.text.replace(/^📞 Appel avec /,"").replace(/ à .*$/,"");const cl2=(clients||[]).find(c=>c.socId===soc.id&&(c.name||"").toLowerCase().includes(cName.toLowerCase()));if(cl2?.phone)window.open(`tel:${cl2.phone}`);else if(soc.ghlLocationId)window.open(`https://app.gohighlevel.com/v2/location/${soc.ghlLocationId}/calendar`);}} style={{padding:"2px 6px",borderRadius:5,border:`1px solid ${C.b}`,background:C.bD,color:C.b,fontSize:8,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>📞</button>}
     {t.auto&&(t.id.startsWith("unpaid_")||t.id.startsWith("newlead_"))&&<button onClick={(e)=>{e.stopPropagation();const clId=t.id.split("_").slice(1).join("_");const cl2=(clients||[]).find(c=>c.id===clId)||(ghlData?.[soc.id]?.ghlClients||[]).find(c=>(c.id||c.ghlId)===clId);if(cl2)showToast(`💬 ${cl2.name||"—"} · ${cl2.email||"—"} · ${cl2.phone||"—"}`, "info");}} style={{padding:"2px 6px",borderRadius:5,border:`1px solid ${C.o}`,background:C.oD,color:C.o,fontSize:8,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>💬</button>}
@@ -3407,7 +3619,31 @@ export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData
  const[viewMode,setViewMode]=useState("list");
  const[selClient,setSelClient]=useState(null);
  const[convos,setConvos]=useState([]);const[convoMsgs,setConvoMsgs]=useState([]);const[convoLoading,setConvoLoading]=useState(false);const[msgInput,setMsgInput]=useState("");
+ const[clientSearch,setClientSearch]=useState("");
+ const[msgTemplates]=useState([
+  {label:"Relance paiement",icon:"💰",text:"Bonjour {{name}}, j'espère que vous allez bien. Je me permets de vous rappeler que le paiement de {{amount}}€ est en attente. Pourriez-vous procéder au règlement ? Merci !"},
+  {label:"Suivi mensuel",icon:"📊",text:"Bonjour {{name}}, voici votre bilan mensuel. N'hésitez pas si vous avez des questions. À bientôt !"},
+  {label:"Rappel RDV",icon:"📅",text:"Bonjour {{name}}, petit rappel pour notre rendez-vous prévu prochainement. Confirmez-vous votre disponibilité ?"},
+  {label:"Bienvenue",icon:"👋",text:"Bienvenue {{name}} ! Ravi de vous compter parmi nos clients. N'hésitez pas à me contacter si vous avez la moindre question."},
+ ]);
  const socKey=soc.ghlLocationId||soc.id;
+ // Client health score
+ const calcClientHealth=(cl)=>{
+  let score=100;const txs2=socBankData?.transactions||[];const cn=(cl.name||"").toLowerCase().trim();
+  // Payment regularity (-30 if no payment in 45 days)
+  const recentPay=txs2.find(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;return new Date(tx.created_at||0)>new Date(Date.now()-45*864e5)&&cn.length>2&&(leg.description||tx.reference||"").toLowerCase().includes(cn);});
+  if(!recentPay&&cl.billing?.type!=="oneoff")score-=30;
+  // Engagement remaining
+  const rem=commitmentRemaining(cl);if(rem!==null&&rem<=1)score-=20;if(rem!==null&&rem<=0)score-=15;
+  // Activity (if churned or no recent interaction)
+  if(cl.status==="churned")score-=50;
+  return Math.max(0,Math.min(100,score));
+ };
+ const HealthBadge=({score:s})=>{const color=s>=80?C.g:s>=50?C.o:C.r;const label=s>=80?"Sain":s>=50?"Attention":"À risque";return <span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:6,background:color+"18",color,border:`1px solid ${color}33`}}>{s>=80?"💚":s>=50?"🟡":"🔴"} {label} ({s}%)</span>;};
+ // Churn alerts
+ const myClients=(clients||[]).filter(c=>c.socId===soc.id);
+ const atRiskClients=myClients.filter(c=>c.status==="active"&&calcClientHealth(c)<50);
+ const recentChurned=myClients.filter(c=>c.status==="churned");
  // Load conversations for selected client
  useEffect(()=>{
   if(!selClient)return;setConvoLoading(true);setConvos([]);setConvoMsgs([]);
@@ -3471,6 +3707,18 @@ export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData
    <div><h2 style={{color:C.t,fontSize:13,fontWeight:800,margin:0,fontFamily:FONT_TITLE}}>👥 CLIENTS</h2><p style={{color:C.td,fontSize:10,margin:"1px 0 0"}}>Portefeuille & conversations</p></div>
    <div style={{display:"flex",gap:4}}><Btn small v={viewMode==="list"?"primary":"ghost"} onClick={()=>setViewMode("list")}>📋 Liste</Btn><Btn small v={viewMode==="kanban"?"primary":"ghost"} onClick={()=>setViewMode("kanban")}>🔄 Kanban</Btn></div>
   </div>
+  {/* Churn alerts */}
+  {atRiskClients.length>0&&<div className="fu" style={{padding:"10px 14px",marginBottom:12,borderRadius:12,background:"rgba(248,113,113,.08)",border:"1px solid rgba(248,113,113,.2)",display:"flex",alignItems:"center",gap:8}}>
+   <span style={{fontSize:18}}>🚨</span>
+   <div style={{flex:1}}>
+    <span style={{fontWeight:700,fontSize:11,color:C.r}}>{atRiskClients.length} client{atRiskClients.length>1?"s":""} à risque de churn</span>
+    <span style={{fontSize:10,color:C.td,marginLeft:4}}>{atRiskClients.slice(0,3).map(c=>c.name).join(", ")}</span>
+   </div>
+  </div>}
+  {/* Client search */}
+  <div style={{marginBottom:12}}>
+   <input value={clientSearch} onChange={e=>setClientSearch(e.target.value)} placeholder="🔍 Rechercher un client..." style={{width:"100%",padding:"8px 14px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/>
+  </div>
   {/* Pipeline summary cards */}
   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
    {Object.entries(simplifiedPipeline).map(([cat,data])=><div key={cat} className="glass-card-static" style={{padding:16,textAlign:"center",borderTop:`3px solid ${data.color}`}}>
@@ -3496,8 +3744,13 @@ export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData
      {ps.value>0&&<div style={{fontSize:10,color:C.t}}>{fmt(ps.value)}€</div>}
     </div>:null;})()}
     <div style={{padding:"6px 10px",borderRadius:8,background:C.card2,marginBottom:10}}>
-     <div style={{fontSize:9,color:C.td,fontWeight:600}}>Status</div>
-     <div style={{fontWeight:600,fontSize:11,color:(CLIENT_STATUS[selClient.status]||{}).c||C.td}}>{(CLIENT_STATUS[selClient.status]||{}).l||selClient.status}</div>
+     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div>
+       <div style={{fontSize:9,color:C.td,fontWeight:600}}>Status</div>
+       <div style={{fontWeight:600,fontSize:11,color:(CLIENT_STATUS[selClient.status]||{}).c||C.td}}>{(CLIENT_STATUS[selClient.status]||{}).l||selClient.status}</div>
+      </div>
+      <HealthBadge score={calcClientHealth(selClient)}/>
+     </div>
      {selClient.billing&&<div style={{fontSize:10,color:C.t,marginTop:2}}>{fmt(clientMonthlyRevenue(selClient))}€/mois</div>}
     </div>
     <div style={{fontSize:10,fontWeight:800,color:C.v,marginBottom:6,fontFamily:FONT_TITLE}}>💬 CONVERSATIONS</div>
@@ -3513,6 +3766,10 @@ export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData
     </div>
     <div style={{display:"flex",gap:4}}>
      <input value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")sendMsg();}} placeholder="Message..." style={{flex:1,padding:"6px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none"}}/>
+    </div>
+    {/* Message templates */}
+    <div style={{display:"flex",gap:3,marginTop:4,flexWrap:"wrap"}}>
+     {msgTemplates.map((t,i)=><button key={i} onClick={()=>setMsgInput(t.text.replace(/\{\{name\}\}/g,selClient.name||"").replace(/\{\{amount\}\}/g,selClient.billing?String(clientMonthlyRevenue(selClient)):""))} style={{padding:"2px 6px",borderRadius:6,border:`1px solid ${C.brd}`,background:"transparent",color:C.td,fontSize:7,fontWeight:600,cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap"}}>{t.icon} {t.label}</button>)}
      <Btn small onClick={sendMsg}>→</Btn>
     </div>
    </div>}
@@ -3639,7 +3896,19 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
   {label:"Panier moyen",value:`${fmt(panierMoyen)}€`,icon:"🛒",color:C.v},
   {label:"Cycle moyen",value:cycleDays>0?`${cycleDays}j`:"—",icon:"⏱️",color:C.o},
  ];
- const SALES_CATS=[{id:"overview",label:"Vue d'ensemble",icon:"📊"},{id:"pipeline",label:"Pipeline",icon:"🎯"},{id:"charts",label:"Graphiques",icon:"📈"},{id:"performance",label:"Performance",icon:"🏅"},{id:"data",label:"Données",icon:"📋"}];
+ // Lost deals analysis
+ const lostDeals=opps.filter(o=>o.status==="lost");
+ const lostValue=lostDeals.reduce((a,o)=>a+(o.value||0),0);
+ // Stagnant leads (no activity in 14 days)
+ const stagnantLeads=ghlCl.filter(c=>{const lastActivity=c.at||c.dateAdded||c.lastActivity;if(!lastActivity)return true;return(Date.now()-new Date(lastActivity).getTime())>14*864e5;});
+ // Closing prediction — average days to close per lead
+ const avgCloseTime=cycleDays||21;
+ const predictedClosings=openOpps.filter(o=>{const created=new Date(o.createdAt||0);const daysSince=Math.round((Date.now()-created)/864e5);return daysSince>=avgCloseTime*0.7;}).length;
+ // Previous month comparison for sales KPIs
+ const prevMonthSales=salesData[salesData.length-2];
+ const curMonthSales=salesData[salesData.length-1];
+ const salesTrend=(cur2,prev2)=>prev2>0?Math.round((cur2-prev2)/prev2*100):null;
+ const SALES_CATS=[{id:"overview",label:"Vue d'ensemble",icon:"📊"},{id:"pipeline",label:"Pipeline",icon:"🎯"},{id:"charts",label:"Graphiques",icon:"📈"},{id:"performance",label:"Performance",icon:"🏅"},{id:"insights",label:"Insights",icon:"💡"},{id:"data",label:"Données",icon:"📋"}];
  return <div className="fu">
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
    <div><div style={{fontSize:9,fontWeight:700,color:C.acc,letterSpacing:1.5,fontFamily:FONT_TITLE}}>📞 SALES — {soc.nom}</div><div style={{fontSize:11,color:C.td,marginTop:2}}>Données GHL × Meta × Revolut</div></div>
@@ -3792,6 +4061,62 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
     </div>)
    }
   </div>}
+  {/* ===== INSIGHTS TAB ===== */}
+  {(salesCat==="overview"||salesCat==="insights")&&<div style={{display:"grid",gridTemplateColumns:"1fr",gap:12,marginBottom:20}}>
+   {/* Stagnant leads alert */}
+   {stagnantLeads.length>0&&<div className="fade-up glass-card-static" style={{padding:16,borderLeft:`3px solid ${C.o}`}}>
+    <div style={{fontSize:9,fontWeight:700,color:C.o,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>⚠️ LEADS STAGNANTS ({stagnantLeads.length})</div>
+    <div style={{fontSize:11,color:C.td,marginBottom:8}}>{stagnantLeads.length} lead{stagnantLeads.length>1?"s":""} sans activité depuis 14+ jours</div>
+    {stagnantLeads.slice(0,5).map((c,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:"var(--sc-card-a6)",borderRadius:8,marginBottom:3}}>
+     <span style={{fontSize:12}}>👤</span>
+     <div style={{flex:1,fontSize:11,fontWeight:600,color:C.t}}>{c.name||c.email||"—"}</div>
+     <span style={{fontSize:9,color:C.o}}>Inactif depuis {Math.round((Date.now()-new Date(c.at||c.dateAdded||0))/864e5)}j</span>
+    </div>)}
+    {stagnantLeads.length>5&&<div style={{fontSize:9,color:C.td,textAlign:"center",marginTop:4}}>… et {stagnantLeads.length-5} autres</div>}
+   </div>}
+   {/* Lost deals analysis */}
+   {lostDeals.length>0&&<div className="fade-up glass-card-static" style={{padding:16,borderLeft:`3px solid ${C.r}`}}>
+    <div style={{fontSize:9,fontWeight:700,color:C.r,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>❌ DEALS PERDUS — ANALYSE</div>
+    <div style={{display:"flex",gap:16,marginBottom:10}}>
+     <div><div style={{fontSize:8,color:C.td}}>Deals perdus</div><div style={{fontWeight:900,fontSize:18,color:C.r}}>{lostDeals.length}</div></div>
+     <div><div style={{fontSize:8,color:C.td}}>Valeur perdue</div><div style={{fontWeight:900,fontSize:18,color:C.r}}>{fmt(lostValue)}€</div></div>
+     <div><div style={{fontSize:8,color:C.td}}>Taux de perte</div><div style={{fontWeight:900,fontSize:18,color:C.o}}>{opps.length>0?Math.round(lostDeals.length/opps.length*100):0}%</div></div>
+    </div>
+    {lostDeals.slice(0,5).map((o,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:"rgba(248,113,113,.05)",borderRadius:8,border:`1px solid ${C.r}15`,marginBottom:3}}>
+     <span style={{fontSize:11}}>❌</span>
+     <div style={{flex:1,fontSize:11,fontWeight:600,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.name||o.contact?.name||"—"}</div>
+     <span style={{fontWeight:700,fontSize:10,color:C.r}}>{o.value>0?`${fmt(o.value)}€`:""}</span>
+     <span style={{fontSize:9,color:C.td}}>{o.updatedAt?ago(o.updatedAt):""}</span>
+    </div>)}
+   </div>}
+   {/* Closing prediction */}
+   <div className="fade-up glass-card-static" style={{padding:16,borderLeft:`3px solid ${C.g}`}}>
+    <div style={{fontSize:9,fontWeight:700,color:C.g,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>🔮 PRÉDICTION DE CLOSING</div>
+    <div style={{display:"flex",gap:16,marginBottom:8}}>
+     <div><div style={{fontSize:8,color:C.td}}>Cycle moyen</div><div style={{fontWeight:900,fontSize:18,color:C.o}}>{avgCloseTime>0?`${avgCloseTime}j`:"—"}</div></div>
+     <div><div style={{fontSize:8,color:C.td}}>Proches du closing</div><div style={{fontWeight:900,fontSize:18,color:C.g}}>{predictedClosings}</div></div>
+     <div><div style={{fontSize:8,color:C.td}}>Valeur estimée</div><div style={{fontWeight:900,fontSize:18,color:C.acc}}>{fmt(openOpps.filter(o=>{const d=Math.round((Date.now()-new Date(o.createdAt||0))/864e5);return d>=avgCloseTime*0.7;}).reduce((a,o)=>a+(o.value||0),0))}€</div></div>
+    </div>
+    <div style={{fontSize:10,color:C.td}}>Basé sur le cycle de vente moyen de {avgCloseTime} jours, {predictedClosings} opportunité{predictedClosings>1?"s":""} devrai{predictedClosings>1?"en":""}t closer prochainement.</div>
+   </div>
+   {/* Monthly trends vs previous */}
+   {prevMonthSales&&<div className="fade-up glass-card-static" style={{padding:16,borderLeft:`3px solid ${C.b}`}}>
+    <div style={{fontSize:9,fontWeight:700,color:C.b,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>📊 TENDANCES VS MOIS PRÉCÉDENT</div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8}}>
+     {[{l:"Leads",c:curMonthSales.leads,p:prevMonthSales.leads},{l:"Appels",c:curMonthSales.totalCalls,p:prevMonthSales.totalCalls},{l:"Deals",c:curMonthSales.wonCount,p:prevMonthSales.wonCount},{l:"CA Ventes",c:curMonthSales.wonVal,p:prevMonthSales.wonVal,isCurrency:true}].map((m,i)=>{
+      const trend=salesTrend(m.c,m.p);const isUp=trend!==null&&trend>0;
+      return <div key={i} style={{padding:10,background:"var(--sc-card-a6)",borderRadius:10,border:`1px solid ${C.brd}`}}>
+       <div style={{fontSize:8,color:C.td,fontWeight:600,marginBottom:4}}>{m.l}</div>
+       <div style={{display:"flex",alignItems:"flex-end",gap:4}}>
+        <span style={{fontWeight:900,fontSize:16,color:C.t}}>{m.isCurrency?`${fmt(m.c)}€`:m.c}</span>
+        {trend!==null&&trend!==0&&<span style={{fontSize:9,fontWeight:800,color:isUp?C.g:C.r}}>{isUp?"↑":"↓"}{Math.abs(trend)}%</span>}
+       </div>
+       <div style={{fontSize:8,color:C.td}}>vs {m.isCurrency?`${fmt(m.p)}€`:m.p} mois dernier</div>
+      </div>;
+     })}
+    </div>
+   </div>}
+  </div>}
   {/* Cross-referencing */}
   {(salesCat==="overview"||salesCat==="data")&&totalAdSpend>0&&<div className="fade-up glass-card-static" style={{padding:16,marginBottom:20,animationDelay:"0.65s",borderLeft:`3px solid ${C.v}`}}>
    <div style={{fontSize:9,fontWeight:700,color:C.v,letterSpacing:1,marginBottom:6,fontFamily:FONT_TITLE}}>🔗 CROISEMENT DONNÉES</div>
@@ -3847,10 +4172,13 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
  const gd=ghlData?.[soc.id];const opps=gd?.opportunities||[];const calEvts=gd?.calendarEvents||[];const ghlCl=gd?.ghlClients||[];
  const myClients=(clients||[]).filter(c=>c.socId===soc.id&&c.status==="active");
  const wonAll=opps.filter(o=>o.status==="won");
+ const[budgetSim,setBudgetSim]=useState(1000);
  // 12 months of meta ads data
  const now12=new Date();const months12=[];for(let i=11;i>=0;i--){const d=new Date(now12.getFullYear(),now12.getMonth()-i,1);months12.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);}
  const getMetaMonth=(mo)=>{
   let raw=null;try{raw=JSON.parse(localStorage.getItem(`metaAds_${soc.id}_${mo}`));}catch{}
+  // Persist to Supabase if not already
+  if(raw&&!raw._synced){try{sSet(`metaAds_${soc.id}_${mo}`,raw);raw._synced=true;}catch{}}
   const spend=raw?.spend||0,imp=raw?.impressions||0,clk=raw?.clicks||0,lds=raw?.leads||0,rev=raw?.revenue||0;
   const moWon=opps.filter(o=>o.status==="won"&&(o.updatedAt||o.createdAt||"").startsWith(mo));
   const wonVal=moWon.reduce((a,o)=>a+(o.value||0),0);const wonCount=moWon.length;
@@ -4053,6 +4381,34 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
     <div style={{fontSize:9,color:C.td,marginTop:8}}>Modifiable dans ⚙️ Paramètres</div>
    </div>
   </div>
+  {/* Budget Simulator */}
+  <div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,borderLeft:`3px solid ${C.v}`}}>
+   <div style={{fontSize:9,fontWeight:700,color:C.v,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>🧮 SIMULATEUR DE BUDGET</div>
+   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+    <span style={{fontSize:12,color:C.td,fontWeight:600}}>Budget :</span>
+    <input type="range" min={100} max={10000} step={100} value={budgetSim} onChange={e=>setBudgetSim(parseInt(e.target.value))} style={{flex:1}}/>
+    <span style={{fontWeight:900,fontSize:16,color:C.v,minWidth:80,textAlign:"right"}}>{fmt(budgetSim)}€</span>
+   </div>
+   {totCpl>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
+    <div style={{padding:12,background:C.card2,borderRadius:10,textAlign:"center"}}>
+     <div style={{fontSize:8,color:C.td,fontWeight:600}}>Leads estimés</div>
+     <div style={{fontWeight:900,fontSize:20,color:"#60a5fa"}}>{Math.round(budgetSim/totCpl)}</div>
+    </div>
+    <div style={{padding:12,background:C.card2,borderRadius:10,textAlign:"center"}}>
+     <div style={{fontSize:8,color:C.td,fontWeight:600}}>Appels estimés</div>
+     <div style={{fontWeight:900,fontSize:20,color:"#14b8a6"}}>{Math.round(budgetSim/totCpl*(stratCallsAll/Math.max(1,totLeads)))}</div>
+    </div>
+    <div style={{padding:12,background:C.card2,borderRadius:10,textAlign:"center"}}>
+     <div style={{fontSize:8,color:C.td,fontWeight:600}}>Clients estimés</div>
+     <div style={{fontWeight:900,fontSize:20,color:C.g}}>{Math.max(1,Math.round(budgetSim/totCpl*(wonAll.length/Math.max(1,totLeads))))}</div>
+    </div>
+    <div style={{padding:12,background:C.card2,borderRadius:10,textAlign:"center"}}>
+     <div style={{fontSize:8,color:C.td,fontWeight:600}}>Revenue estimé</div>
+     <div style={{fontWeight:900,fontSize:20,color:C.acc}}>{fmt(Math.round(budgetSim*totRoas))}€</div>
+    </div>
+   </div>}
+   {totCpl===0&&<div style={{textAlign:"center",padding:10,color:C.td,fontSize:11}}>Pas assez de données pour simuler. Ajoutez vos données Meta dans les Paramètres.</div>}
+  </div>
   {/* Cross-referencing */}
   <div className="fade-up glass-card-static" style={{padding:16,marginBottom:20,animationDelay:"0.65s",borderLeft:`3px solid ${C.v}`}}>
    <div style={{fontSize:9,fontWeight:700,color:C.v,letterSpacing:1,marginBottom:6,fontFamily:FONT_TITLE}}>🔗 CROISEMENT DONNÉES</div>
@@ -4105,6 +4461,7 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
 export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,savePulse,socBankData,syncSocBank,okrs,saveOkrs,kb,saveKb,socs,subs,saveSubs,team,saveTeam,clients,saveClients,ghlData,invoices,saveInvoices,hold,onTour,onThemeToggle,stripeData,adminBack}){
  const cM2=curM();const[pTab,setPTab]=useState(0);const[mo,setMo]=useState(cM2);
  const[f,setF]=useState(()=>gr(reps,soc.id,cM2)||{...BF});const[done,setDone]=useState(false);const[showPub,setShowPub]=useState(false);const[jText,setJText]=useState("");
+ const[mobileAIOpen,setMobileAIOpen]=useState(false);
 
  useEffect(()=>{const ex=gr(reps,soc.id,mo)||{...BF};setF(ex);setShowPub(!!pf(ex.pub));setDone(false);},[mo,soc.id]);
  const ex=gr(reps,soc.id,mo),ca=pf(f.ca),ch=pf(f.charges),marge=ca-ch;
@@ -4180,7 +4537,16 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
   {pTab===3&&<ErrorBoundary label="Publicité"><PublicitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
   </div>
   </div>
-  <MobileBottomNav items={SB_PORTEUR} activeTab={pTab} setTab={setPTab}/>
+  {/* Mobile AI Fullscreen Panel */}
+  {mobileAIOpen&&<div className="mobile-ai-fullscreen fi" style={{position:"fixed",inset:0,zIndex:250,background:"rgba(6,6,11,.97)",backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",display:"flex",flexDirection:"column"}}>
+   <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",gap:10,background:"linear-gradient(135deg,rgba(167,139,250,.08),rgba(255,170,0,.08))"}}>
+    <div style={{width:36,height:36,borderRadius:18,background:"linear-gradient(135deg,#a78bfa,#FFAA00)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:20}}>🤖</span></div>
+    <div style={{flex:1}}><div style={{fontWeight:800,fontSize:14,color:C.t}}>Assistant IA</div><div style={{fontSize:10,color:C.td}}>{soc.nom} · Tape "aide" pour les commandes</div></div>
+    <button onClick={()=>setMobileAIOpen(false)} style={{background:"rgba(255,255,255,.06)",border:`1px solid ${C.brd}`,borderRadius:10,color:C.td,cursor:"pointer",fontSize:14,padding:"6px 12px",fontFamily:FONT}}>✕</button>
+   </div>
+   <div style={{flex:1,overflow:"hidden"}}><PorteurAIChat soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}} ghlData={ghlData} clients={clients} embedded={true}/></div>
+  </div>}
+  <MobileBottomNav items={SB_PORTEUR} activeTab={pTab} setTab={setPTab} onAIToggle={()=>setMobileAIOpen(!mobileAIOpen)} aiOpen={mobileAIOpen}/>
  </div>;
 }
 /* ADMIN VALROW */
