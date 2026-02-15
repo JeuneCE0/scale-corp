@@ -97,6 +97,12 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
  const totalRevenues=useMemo(()=>actS.reduce((a,s)=>{const excl=EXCLUDED_ACCOUNTS[s.id]||[];return a+(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];if(!leg||excl.includes(leg.account_id))return false;return pf(leg.amount)>0&&inRange(tx.created_at||tx.createdAt||"");}).reduce((x,tx)=>x+pf(tx.legs?.[0]?.amount),0);},0),[actS,sb,timeRange]);
  const totalExpenses=useMemo(()=>actS.reduce((a,s)=>{const excl=EXCLUDED_ACCOUNTS[s.id]||[];return a+(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];if(!leg||excl.includes(leg.account_id))return false;return pf(leg.amount)<0&&inRange(tx.created_at||tx.createdAt||"");}).reduce((x,tx)=>x+Math.abs(pf(tx.legs?.[0]?.amount)),0);},0),[actS,sb,timeRange]);
 
+ // New KPIs: Solde actuel, Contrats signés, Contrats en attente, Appels bookés
+ const totalSolde=useMemo(()=>actS.reduce((a,s)=>{const excl=EXCLUDED_ACCOUNTS[s.id]||[];const bal=pf(sb[s.id]?.balance);const pockets=(sb[s.id]?.pockets||[]).filter(p=>excl.includes(p.id)).reduce((x,p)=>x+pf(p.balance),0);return a+bal-pockets;},0),[actS,sb]);
+ const contratsSigned=useMemo(()=>{const opps=actS.flatMap(s=>(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="won"&&inRange(o.updatedAt||o.createdAt||"")));return{count:opps.length,value:opps.reduce((a,o)=>a+pf(o?.value),0)};},[actS,gd,timeRange]);
+ const contratsPending=useMemo(()=>{const opps=actS.flatMap(s=>(gd[s.id]?.opportunities||[]).filter(o=>(o?.status==="open"||!o?.status)&&inRange(o.dateAdded||o.createdAt||o.updatedAt||"")));return{count:opps.length,value:opps.reduce((a,o)=>a+pf(o?.value),0)};},[actS,gd,timeRange]);
+ const totalCallsBooked=useMemo(()=>actS.reduce((a,s)=>a+(gd[s.id]?.calendarEvents||[]).filter(e=>inRange(e?.startTime||"")).length,0),[actS,gd,timeRange]);
+
  // Business weather
  const bizWeather=useMemo(()=>{const score=totalCA>0&&prevCA>0?(totalCA/prevCA)*100:50;if(score>=120)return{emoji:"☀️",label:"Excellent",color:"#34d399"};if(score>=100)return{emoji:"🌤️",label:"Bien",color:"#60a5fa"};if(score>=80)return{emoji:"⛅",label:"Correct",color:"#FFAA00"};if(score>=60)return{emoji:"🌧️",label:"Attention",color:"#f87171"};return{emoji:"⛈️",label:"Critique",color:"#f87171"};},[totalCA,prevCA]);
 
@@ -202,8 +208,30 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
    {sparkline(mrrHist)}
   </div>
   <div style={GC}>
-   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Sociétés</div>
-   <div style={{fontSize:22,fontWeight:900,color:"#e4e4e7",fontFamily:FONT_TITLE}}>{actS.length}</div>
+   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>💰 Solde Actuel</div>
+   <div style={{fontSize:24,fontWeight:900,color:totalSolde>=0?"#34d399":"#f87171",fontFamily:FONT_TITLE}}>{fmt(totalSolde)}€</div>
+   <div style={{fontSize:9,color:"#71717a",marginTop:4}}>Hors cagnottes exclues</div>
+  </div>
+  <div style={GC}>
+   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>✅ Contrats Signés</div>
+   <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+    <div style={{fontSize:24,fontWeight:900,color:"#34d399",fontFamily:FONT_TITLE}}>{contratsSigned.count}</div>
+    <div style={{fontSize:14,fontWeight:700,color:"#34d39988",fontFamily:FONT_TITLE}}>{fmt(contratsSigned.value)}€</div>
+   </div>
+   <div style={{fontSize:9,color:"#71717a",marginTop:4}}>{periodLabel}</div>
+  </div>
+  <div style={GC}>
+   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>⏳ En Attente Signature</div>
+   <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+    <div style={{fontSize:24,fontWeight:900,color:"#FFAA00",fontFamily:FONT_TITLE}}>{contratsPending.count}</div>
+    <div style={{fontSize:14,fontWeight:700,color:"#FFAA0088",fontFamily:FONT_TITLE}}>{fmt(contratsPending.value)}€</div>
+   </div>
+   <div style={{fontSize:9,color:"#71717a",marginTop:4}}>{periodLabel}</div>
+  </div>
+  <div style={GC}>
+   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>📞 Appels Bookés</div>
+   <div style={{fontSize:24,fontWeight:900,color:"#a78bfa",fontFamily:FONT_TITLE}}>{totalCallsBooked}</div>
+   <div style={{fontSize:9,color:"#71717a",marginTop:4}}>{periodLabel}</div>
   </div>
   {/* Revenue vs Expenses bar */}
   <div style={GC}>
