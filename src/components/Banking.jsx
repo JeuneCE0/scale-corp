@@ -8,7 +8,7 @@ import {
   deadline, fK, fetchGHL, fmt, generateInvoices, getAlerts, getStripeChargesForClient, getStripeTotal, getTheme, ghlCreateContact,
   ghlCreateInvoice, ghlSendInvoice, ghlUpdateContact, healthScore, matchSubsToRevolut, ml, nextM, normalizeStr, pct,
   pf, prevM, project, revFinancials, runway, sSet, sbUpsert, simH, sinceLbl, sinceMonths, slackSend, subMonthly, teamMonthly,
-  uid, autoCategorize,
+  uid, autoCategorize, ErrorCard, OfflineBanner, cacheGet,
 } from "../shared.jsx";
 
 import { KPI, Btn, Sect, Card, TX_CATEGORIES } from "../components.jsx";
@@ -30,19 +30,18 @@ export function categorizeTransaction(tx){
  return TX_CATEGORIES[7];
 }
 export function BankingPanel({revData,onSync,compact,clients:allClients2=[]}){
- if(!revData||!revData.accounts){
-  return <Card style={{textAlign:"center",padding:compact?16:30}}>
-   <div style={{fontSize:compact?24:36,marginBottom:6}}>🏦</div>
-   <div style={{fontWeight:700,fontSize:compact?12:14,marginBottom:4}}>Revolut Business</div>
-   <div style={{color:C.td,fontSize:11,marginBottom:10}}>Connecte ton compte dans Paramètres Holding</div>
-   <Btn small onClick={onSync}>Charger données demo</Btn>
-  </Card>;
+ const cachedRev=(!revData||!revData.accounts)?cacheGet("rev_eco"):null;
+ const isOffline=!revData&&!!cachedRev;
+ const effectiveData=revData||(cachedRev?.accounts?cachedRev:null);
+ if(!effectiveData||!effectiveData.accounts){
+  return <ErrorCard source="Revolut" onRetry={onSync} compact={compact}/>;
  }
- const{accounts,transactions,totalEUR,lastSync,isDemo}=revData;
+ const revDataFinal=effectiveData;
+ const{accounts,transactions,totalEUR,lastSync,isDemo}=revDataFinal;
  const inflow=transactions.filter(t=>t.legs?.[0]?.amount>0).reduce((s,t)=>s+t.legs?.[0]?.amount||0,0);
  const outflow=Math.abs(transactions.filter(t=>t.legs?.[0]?.amount<0).reduce((s,t)=>s+t.legs?.[0]?.amount||0,0));
  const cs=v=>CURR_SYMBOLS[v]||v;
- if(compact)return <Card style={{padding:12}} accent={C.g}>
+ if(compact)return <Card style={{padding:12}} accent={C.g}>{isOffline&&<OfflineBanner/>}
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
    <div style={{display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:14}}>🏦</span><span style={{fontWeight:700,fontSize:11,color:C.td}}>REVOLUT</span>{isDemo&&<span style={{fontSize:8,color:C.o,background:C.oD,padding:"1px 5px",borderRadius:6}}>DEMO</span>}</div>
    <span style={{fontSize:9,color:C.tm}}>{ago(lastSync)}</span>
@@ -51,6 +50,7 @@ export function BankingPanel({revData,onSync,compact,clients:allClients2=[]}){
   <div style={{display:"flex",gap:8,marginTop:6}}>{accounts.slice(0,3).map(a=><div key={a.id} style={{fontSize:10,color:C.td}}>{a.name}: <strong style={{color:C.t}}>{fmt(a.balance)}{cs(a.currency)}</strong></div>)}</div>
  </Card>;
  return <>
+  {isOffline&&<OfflineBanner/>}
   {isDemo&&<div className="fu" style={{background:C.oD,border:`1px solid ${C.o}22`,borderRadius:10,padding:"8px 14px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{color:C.o,fontSize:11,fontWeight:600}}>⚠ Données demo — Ajoute ton token Revolut dans Paramètres Holding</span><Btn small v="secondary" onClick={onSync}>↻ Sync</Btn></div>}
   <div className="fu" style={{background:`linear-gradient(135deg,${C.card},${C.card2})`,border:`1px solid ${C.brd}`,borderRadius:14,padding:20,marginBottom:14,textAlign:"center"}}>
    <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:1,marginBottom:4}}>SOLDE TOTAL</div>

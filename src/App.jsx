@@ -6,6 +6,7 @@ import {
   EXCLUDED_ACCOUNTS, ErrorBoundary, FONT, FONT_TITLE, GHL_BASE, GHL_STAGES_COLORS, INV_STATUS, KB_CATS, MILESTONE_CATS,
   MILESTONE_DEFS, MN, MOODS, REV_ENVS, SLACK_MODES, STORE_URL, STRIPE_PROXY, SUB_CATS, SYN_STATUS, SYN_TYPES, TIER_BG,
   TIER_COLORS, getCurrentSocId, getStoreToken, setCurrentSocId, setStoreToken, ago, applyTheme, autoCategorize, autoDetectSubscriptions, autoGenerateReport,
+  ErrorCard, OfflineBanner,
   buildAIContext, buildFeed, buildPulseSlackMsg, buildReminderSlackMsg, buildReportSlackMsg, buildValidationSlackMsg,
   calcH, calcLeaderboard, calcMilestoneData, calcMilestones, checkAndSendReminders, clamp, clientMonthlyRevenue,
   clientTotalValue, commitmentEnd, commitmentRemaining, curM, curQ, curW, deadline, deduplicatedCharges, fK, fetchGHL,
@@ -57,6 +58,8 @@ export default function App(){
  const[deferredPrompt,setDeferredPrompt]=useState(null);
  useEffect(()=>{const h=e=>{e.preventDefault();setDeferredPrompt(e);window.__pwaPrompt=e;};window.addEventListener("beforeinstallprompt",h);return()=>window.removeEventListener("beforeinstallprompt",h);},[]);
  const[saving,setSaving]=useState(false);const[meeting,setMeeting]=useState(false);const[adminSocView,setAdminSocView]=useState(null);
+ const[isOffline,setIsOffline]=useState(!navigator.onLine);
+ useEffect(()=>{const on=()=>setIsOffline(false);const off=()=>setIsOffline(true);window.addEventListener("online",on);window.addEventListener("offline",off);return()=>{window.removeEventListener("online",on);window.removeEventListener("offline",off);};},[]);
  const[newActSoc,setNewActSoc]=useState("");const[newActText,setNewActText]=useState("");const[showPulse,setShowPulse]=useState(false);const[showSearch,setShowSearch]=useState(false);
  useEffect(()=>{if(tab===99){setShowPulse(true);setTab(0);}},[tab]);
  // Global Ctrl+K search
@@ -353,6 +356,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   </div>
   <div style={{padding:"16px 22px 50px",maxWidth:1000,margin:"0 auto"}}>
   {tab===0&&<>
+   {isOffline&&<OfflineBanner/>}
    {smartAlerts.length>0&&<div data-tour="admin-alerts" style={{marginBottom:12}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
     <span style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8}}>🔔 ALERTES INTELLIGENTES</span>
@@ -429,7 +433,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     const ca2=r?pf(r.ca):0;const ms=calcMilestones(s,reps,actions,pulses,allM);const msUnlocked=ms.filter(m=>m.unlocked);
     return <Card key={s.id} accent={s.color} style={{padding:12}} delay={Math.min(i+1,8)}>
     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-    <div style={{width:24,height:24,borderRadius:6,background:s.color+"22",border:`1.5px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:10,color:s.color}}>{s.nom[0]}</div>
+    <div style={{width:24,height:24,borderRadius:6,background:s.color+"22",border:`1.5px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:10,color:s.color,overflow:"hidden"}}>{s.logoUrl?<img src={s.logoUrl} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:s.nom[0]}</div>
     <div style={{flex:1,minWidth:0}}>
     <div style={{fontWeight:700,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.nom}</div>
     <div style={{color:C.td,fontSize:9}}>{s.porteur}</div>
@@ -530,7 +534,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    {socs.map((s,i)=>{const hs2=healthScore(s,reps);const r=gr(reps,s.id,cM2);const ca2=pf(r?.ca);const rp2=gr(reps,s.id,prevM(cM2));const prevCa2=pf(rp2?.ca);const trend2=prevCa2>0?Math.round((ca2-prevCa2)/prevCa2*100):0;const sb=socBank[s.id];const myCl2=(clients||[]).filter(c=>c.socId===s.id&&c.status==="active");
    return <div key={s.id} className={`glass-card fu d${Math.min(i+1,8)}`} style={{padding:16,cursor:"pointer"}} onClick={()=>setESoc({...s})}>
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-     <div style={{width:36,height:36,borderRadius:10,background:s.color+"22",border:`2px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:15,color:s.color}}>{s.nom[0]}</div>
+     <div style={{width:36,height:36,borderRadius:10,background:s.color+"22",border:`2px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:15,color:s.color,overflow:"hidden"}}>{s.logoUrl?<img src={s.logoUrl} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:s.nom[0]}</div>
      <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.nom}</div><div style={{color:C.td,fontSize:10}}>{s.porteur}</div></div>
      <span style={{fontSize:16}}>{hs2.grade==="A"||hs2.grade==="B"?"🟢":hs2.grade==="C"?"🟡":"🔴"}</span>
     </div>
@@ -986,6 +990,11 @@ function AnalytiqueTab({socs,reps,allM}){
  <Sect title="Répartition"><div className="fu d3" style={{height:200,background:C.card,borderRadius:12,border:`1px solid ${C.brd}`,padding:10,display:"flex",alignItems:"center"}}><div style={{width:"45%"}}><ResponsiveContainer><PieChart><Pie data={socs.filter(s=>pf(gr(reps,s.id,cM2)?.ca)>0).map(s=>({name:s.nom,value:pf(gr(reps,s.id,cM2).ca),color:s.color}))} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={58} paddingAngle={3} strokeWidth={0}>{socs.filter(s=>pf(gr(reps,s.id,cM2)?.ca)>0).map((s,i)=><Cell key={i} fill={s.color}/>)}</Pie><Tooltip content={<CTip/>}/></PieChart></ResponsiveContainer></div><div style={{flex:1,paddingLeft:8}}>{socs.filter(s=>pf(gr(reps,s.id,cM2)?.ca)>0).sort((a2,b2)=>pf(gr(reps,b2.id,cM2).ca)-pf(gr(reps,a2.id,cM2).ca)).map(s=>{const ca3=pf(gr(reps,s.id,cM2).ca);const tot=socs.reduce((a2,s2)=>a2+pf(gr(reps,s2.id,cM2)?.ca),0);return <div key={s.id} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:5,height:5,borderRadius:3,background:s.color}}/><span style={{color:C.td,fontSize:10,flex:1}}>{s.nom}</span><span style={{fontWeight:700,fontSize:10}}>{fmt(ca3)}€</span><span style={{color:C.td,fontSize:9,width:28,textAlign:"right"}}>{pct(ca3,tot)}%</span></div>;})}</div></div></Sect>
  <RiskMatrix socs={socs} reps={reps} allM={allM}/>
  <CohortAnalysis socs={socs} reps={reps} allM={allM}/>
+ </>;
+}
+// cache-bust 1771110009
+// v1771111679
+cs} reps={reps} allM={allM}/>
  </>;
 }
 // cache-bust 1771110009

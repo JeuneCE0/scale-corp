@@ -130,7 +130,7 @@ export function MeetingMode({socs,reps,hold,actions,pulses,allM,onExit}){
     const sActs=actions.filter(a=>a.socId===s.id&&!a.done);
     return <div className="si">
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-    <div style={{width:40,height:40,borderRadius:10,background:`${s.color}22`,border:`2px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:s.color}}>{s.nom[0]}</div>
+    <div style={{width:40,height:40,borderRadius:10,background:`${s.color}22`,border:`2px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:s.color,overflow:"hidden"}}>{s.logoUrl?<img src={s.logoUrl} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:s.nom[0]}</div>
     <div style={{flex:1}}><div style={{fontWeight:900,fontSize:18}}>{s.nom}</div><div style={{color:C.td,fontSize:11,display:"flex",gap:6,alignItems:"center"}}><span>{s.porteur} — {s.act}</span>{s.incub&&<span style={{color:C.v,fontSize:9,background:C.vD,padding:"1px 6px",borderRadius:8}}>📅 {sinceLbl(s.incub)}</span>}</div></div>
     <GradeBadge grade={hs.grade} color={hs.color} size="lg"/>
     </div>
