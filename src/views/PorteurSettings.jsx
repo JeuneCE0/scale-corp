@@ -33,7 +33,7 @@ export function SocSettingsPanel({soc,save,socs,clients}){
   <Card style={{padding:16,marginBottom:12}}>
    <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
     <div style={{width:56,height:56,borderRadius:28,background:accent+"22",border:`2px solid ${accent}44`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
-     {form.logoUrl?<img loading="lazy" src={form.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:form.logo?<img loading="lazy" src={form.logo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:24,fontWeight:900,color:accent}}>{(form.nom||"?")[0]}</span>}
+     {form.logoUrl?<img loading="lazy" src={form.logoUrl} alt={form.nom||"Logo société"} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:form.logo?<img loading="lazy" src={form.logo} alt={form.nom||"Logo société"} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:24,fontWeight:900,color:accent}}>{(form.nom||"?")[0]}</span>}
     </div>
     <div style={{flex:1}}>
      <div style={{fontWeight:800,fontSize:16,color:C.t}}>{form.nom||"Sans nom"}</div>
@@ -57,7 +57,7 @@ export function SocSettingsPanel({soc,save,socs,clients}){
     <label style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:6,letterSpacing:.3}}>Logo / Photo de profil</label>
     <div style={{display:"flex",alignItems:"center",gap:12}}>
      <div style={{width:64,height:64,borderRadius:32,background:accent+"15",border:`2px dashed ${accent}44`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0,cursor:"pointer",transition:"border-color .2s"}} onClick={()=>fileRef.current?.click()} onMouseEnter={e=>e.currentTarget.style.borderColor=accent} onMouseLeave={e=>e.currentTarget.style.borderColor=accent+"44"}>
-      {form.logoUrl?<img loading="lazy" src={form.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:10,color:C.td,textAlign:"center",lineHeight:1.2}}>📷<br/>Cliquer</span>}
+      {form.logoUrl?<img loading="lazy" src={form.logoUrl} alt={form.nom||"Logo société"} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:10,color:C.td,textAlign:"center",lineHeight:1.2}}>📷<br/>Cliquer</span>}
      </div>
      <div style={{flex:1}}>
       <input ref={fileRef} type="file" accept="image/jpeg,image/png" onChange={handleLogoUpload} style={{display:"none"}}/>
@@ -92,7 +92,7 @@ export function SocSettingsPanel({soc,save,socs,clients}){
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>APERÇU</div>
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
      <div style={{width:36,height:36,borderRadius:18,background:accent+"22",border:`2px solid ${accent}44`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
-      {form.logoUrl?<img loading="lazy" src={form.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:14,fontWeight:900,color:accent}}>{(form.nom||"?")[0]}</span>}
+      {form.logoUrl?<img loading="lazy" src={form.logoUrl} alt={form.nom||"Logo société"} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:14,fontWeight:900,color:accent}}>{(form.nom||"?")[0]}</span>}
      </div>
      <div><div style={{fontWeight:800,fontSize:13,color:accent}}>{form.nom||"Ma société"}</div><div style={{fontSize:9,color:C.td}}>{form.porteur}</div></div>
     </div>
