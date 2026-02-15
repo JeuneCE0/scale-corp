@@ -1,1 +1,1 @@
-export { BankingPanel, BankingTransactions, categorizeTransaction } from '../components.jsx';
+export { BankingPanel, BankingTransactions, categorizeTransaction } from './Banking.jsx';

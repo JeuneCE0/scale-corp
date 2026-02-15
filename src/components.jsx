@@ -13,8 +13,10 @@ import {
 
 
 // Import + re-export from chunk files
-import { PredictionsCard, LiveFeed } from "./components/PulseScreen.jsx";
-import { categorizeTransaction, BankingTransactions, SocBankWidget } from "./components/Banking.jsx";
+import { PredictionsCard } from "./components/PredictionsCard.jsx";
+import { LiveFeed } from "./components/LiveFeed.jsx";
+import { categorizeTransaction, BankingTransactions } from "./components/BankingPanel.jsx";
+import { SocBankWidget } from "./components/SocBankWidget.jsx";
 export { PredictionsCard, LiveFeed, categorizeTransaction, BankingTransactions, SocBankWidget };
 // TabCRM is lazy-loaded directly; AICoPilot is lazy-loaded directly; PulseScreen is lazy-loaded directly; BankingPanel is lazy-loaded directly
 import { AIWeeklyCoach } from "./components/AI.jsx";

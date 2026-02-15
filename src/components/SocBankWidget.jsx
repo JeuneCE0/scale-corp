@@ -1,1 +1,1 @@
-export { SocBankWidget } from '../components.jsx';
+export { SocBankWidget } from './Banking.jsx';
