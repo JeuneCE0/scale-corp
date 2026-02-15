@@ -1,4 +1,6 @@
 // Vercel Serverless — Supabase REST API Proxy (Hardened)
+import { verifyAuth, canAccessSociety, unauthorized, forbidden } from './_middleware.js';
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -61,7 +63,16 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Supabase not configured" });
   }
 
+  // Auth check
+  const auth = await verifyAuth(req);
+  if (!auth) return unauthorized(res);
+
   const { action, table, society_id, id, filters } = req.query || {};
+
+  // Society isolation: non-admin users can only access their own society's data
+  if (society_id && !canAccessSociety(auth, society_id)) {
+    return forbidden(res, "Access denied to this society's data");
+  }
 
   // Validate action
   if (!action) return res.status(400).json({ error: "Missing action param" });
