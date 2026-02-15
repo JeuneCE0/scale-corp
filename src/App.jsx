@@ -994,8 +994,3 @@ function AnalytiqueTab({socs,reps,allM}){
 }
 // cache-bust 1771110009
 // v1771111679
-cs} reps={reps} allM={allM}/>
- </>;
-}
-// cache-bust 1771110009
-// v1771111679
