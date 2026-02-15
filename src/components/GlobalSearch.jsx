@@ -1,8 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { C, FONT, FONT_TITLE, normalizeStr } from "../shared.jsx";
 
+function useDebounce(value, delay) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => { const t = setTimeout(() => setDebounced(value), delay); return () => clearTimeout(t); }, [value, delay]);
+  return debounced;
+}
+
 export function GlobalSearch({ open, onClose, clients, socs, socBank, ghlData, onNavigate }) {
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query, 300);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -23,8 +30,8 @@ export function GlobalSearch({ open, onClose, clients, socs, socBank, ghlData, o
   }, [open, onClose]);
 
   const results = useMemo(() => {
-    if (!query || query.length < 2) return [];
-    const q = normalizeStr(query);
+    if (!debouncedQuery || debouncedQuery.length < 2) return [];
+    const q = normalizeStr(debouncedQuery);
     const out = [];
     const MAX = 20;
 
@@ -106,7 +113,7 @@ export function GlobalSearch({ open, onClose, clients, socs, socBank, ghlData, o
     }
 
     return out;
-  }, [query, clients, socs, socBank, ghlData, onNavigate]);
+  }, [debouncedQuery, clients, socs, socBank, ghlData, onNavigate]);
 
   if (!open) return null;
 

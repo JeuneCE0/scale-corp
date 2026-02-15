@@ -247,7 +247,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   <button onClick={toggleTheme} style={{position:"fixed",top:16,right:16,width:36,height:36,borderRadius:18,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}}>{getTheme()==="light"?"🌙":"☀️"}</button>
   <div className="si glass-modal" style={{borderRadius:20,padding:28,width:340,maxWidth:"100%"}}>
    <div style={{textAlign:"center",marginBottom:24}}>
-    <div className="fl glow-accent-strong" style={{width:64,height:64,background:"transparent",borderRadius:12,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:10,overflow:"hidden"}}>{hold.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}}/>:(hold.brand?.logoLetter||"E")}</div>
+    <div className="fl glow-accent-strong" style={{width:64,height:64,background:"transparent",borderRadius:12,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:10,overflow:"hidden"}}>{hold.brand?.logoUrl?<img loading="lazy" src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}}/>:(hold.brand?.logoLetter||"E")}</div>
     <h1 style={{margin:0,fontSize:18,fontWeight:900,letterSpacing:.5,fontFamily:FONT_TITLE,color:"#fff"}}>{hold.brand?.name||"L'INCUBATEUR ECS"}</h1>
     <p style={{color:C.td,fontSize:11,margin:"4px 0 0"}}>{hold.brand?.sub||"Plateforme de pilotage"}</p>
    </div>
@@ -430,7 +430,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     const ca2=r?pf(r.ca):0;const ms=calcMilestones(s,reps,actions,pulses,allM);const msUnlocked=ms.filter(m=>m.unlocked);
     return <Card key={s.id} accent={s.color} style={{padding:12}} delay={Math.min(i+1,8)}>
     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-    <div style={{width:24,height:24,borderRadius:6,background:s.color+"22",border:`1.5px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:10,color:s.color,overflow:"hidden"}}>{s.logoUrl?<img src={s.logoUrl} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:s.nom[0]}</div>
+    <div style={{width:24,height:24,borderRadius:6,background:s.color+"22",border:`1.5px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:10,color:s.color,overflow:"hidden"}}>{s.logoUrl?<img loading="lazy" src={s.logoUrl} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:s.nom[0]}</div>
     <div style={{flex:1,minWidth:0}}>
     <div style={{fontWeight:700,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.nom}</div>
     <div style={{color:C.td,fontSize:9}}>{s.porteur}</div>
@@ -522,7 +522,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    {socs.map((s,i)=>{const hs2=healthScore(s,reps);const r=gr(reps,s.id,cM2);const ca2=pf(r?.ca);const rp2=gr(reps,s.id,prevM(cM2));const prevCa2=pf(rp2?.ca);const trend2=prevCa2>0?Math.round((ca2-prevCa2)/prevCa2*100):0;const sb=socBank[s.id];const myCl2=(clients||[]).filter(c=>c.socId===s.id&&c.status==="active");
    return <div key={s.id} className={`glass-card fu d${Math.min(i+1,8)}`} style={{padding:16,cursor:"pointer"}} onClick={()=>setESoc({...s})}>
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-     <div style={{width:36,height:36,borderRadius:10,background:s.color+"22",border:`2px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:15,color:s.color,overflow:"hidden"}}>{s.logoUrl?<img src={s.logoUrl} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:s.nom[0]}</div>
+     <div style={{width:36,height:36,borderRadius:10,background:s.color+"22",border:`2px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:15,color:s.color,overflow:"hidden"}}>{s.logoUrl?<img loading="lazy" src={s.logoUrl} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:s.nom[0]}</div>
      <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.nom}</div><div style={{color:C.td,fontSize:10}}>{s.porteur}</div></div>
      <span style={{fontSize:16}}>{hs2.grade==="A"||hs2.grade==="B"?"🟢":hs2.grade==="C"?"🟡":"🔴"}</span>
     </div>
@@ -732,7 +732,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
      <input type="color" value={hold.brand?.accentColor||"#FFAA00"} onChange={e=>setHold({...hold,brand:{...(hold.brand||DH.brand),accentColor:e.target.value}})} style={{width:32,height:24,border:`1px solid ${C.brd}`,borderRadius:6,background:C.bg,cursor:"pointer"}}/>
      <span style={{fontSize:10,color:C.td}}>{hold.brand?.accentColor||"#FFAA00"}</span>
     </div>
-    {hold.brand?.logoUrl&&<div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:9,color:C.td}}>Aperçu:</span><div style={{width:36,height:36,borderRadius:8,overflow:"hidden",border:`1px solid ${C.brd}`}}><img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/></div></div>}
+    {hold.brand?.logoUrl&&<div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:9,color:C.td}}>Aperçu:</span><div style={{width:36,height:36,borderRadius:8,overflow:"hidden",border:`1px solid ${C.brd}`}}><img loading="lazy" src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/></div></div>}
    </div>
    <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={()=>{save(null,null,hold);setEHold(false);}}>Sauver</Btn><Btn v="secondary" onClick={()=>setEHold(false)}>Annuler</Btn></div></Modal>
    <Sect title="🔄 Charges récurrentes holding" right={<Btn small v="ghost" onClick={()=>setTab(13)}>Tout gérer →</Btn>}>

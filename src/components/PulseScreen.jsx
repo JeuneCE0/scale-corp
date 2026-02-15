@@ -234,7 +234,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
     <div style={{display:"flex",alignItems:"center",gap:8}}>
      {/* Status pulsing dot */}
      <div style={{width:8,height:8,borderRadius:"50%",background:s.statusRaw==="active"?"#34d399":s.statusRaw==="lancement"?"#FFAA00":"#f87171",animation:"status-pulse 2s ease infinite",color:s.statusRaw==="active"?"#34d39944":s.statusRaw==="lancement"?"#FFAA0044":"#f8717144",flexShrink:0}}/>
-     {s.logoUrl?<img src={s.logoUrl} alt="" style={{width:24,height:24,borderRadius:8,objectFit:"contain"}}/>:<div style={{width:24,height:24,borderRadius:8,background:(s.brandColor||s.color||"#FFAA00")+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:s.brandColor||s.color||"#FFAA00"}}>{(s.name||"?")[0]}</div>}
+     {s.logoUrl?<img loading="lazy" src={s.logoUrl} alt="" style={{width:24,height:24,borderRadius:8,objectFit:"contain"}}/>:<div style={{width:24,height:24,borderRadius:8,background:(s.brandColor||s.color||"#FFAA00")+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:s.brandColor||s.color||"#FFAA00"}}>{(s.name||"?")[0]}</div>}
      <div style={{fontWeight:800,fontSize:13,fontFamily:FONT_TITLE,color:"#e4e4e7"}}>{s.name}</div>
     </div>
     <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -265,7 +265,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
   <div ref={feedRef} style={{flex:1,overflow:"auto",padding:"8px 12px"}}>
    {filteredFeed.length===0&&<div style={{color:"#71717a",fontSize:11,textAlign:"center",padding:20}}>Aucune activité récente</div>}
    {filteredFeed.map((f,i)=><div key={i} className={`pulse-feed-item${i===0?" pulse-feed-new":""}`} style={{padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,.03)",display:"flex",gap:8,alignItems:"flex-start",fontSize:11}}>
-    {(()=>{const fs=allActS.find(x=>x.id===f.socId);return fs?.logoUrl?<img src={fs.logoUrl} alt="" style={{width:16,height:16,borderRadius:5,objectFit:"contain",flexShrink:0,marginTop:1}}/>:<div style={{width:16,height:16,borderRadius:5,background:(fs?.brandColor||fs?.color||f.color)+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:900,color:fs?.brandColor||fs?.color||f.color,flexShrink:0,marginTop:1}}>{(fs?.nom||"?")[0]}</div>;})()}
+    {(()=>{const fs=allActS.find(x=>x.id===f.socId);return fs?.logoUrl?<img loading="lazy" src={fs.logoUrl} alt="" style={{width:16,height:16,borderRadius:5,objectFit:"contain",flexShrink:0,marginTop:1}}/>:<div style={{width:16,height:16,borderRadius:5,background:(fs?.brandColor||fs?.color||f.color)+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:900,color:fs?.brandColor||fs?.color||f.color,flexShrink:0,marginTop:1}}>{(fs?.nom||"?")[0]}</div>;})()}
     <span>{f.icon}</span>
     <div style={{flex:1}}>
      <div style={{color:"#e4e4e7",lineHeight:1.3}}>{f.desc}</div>
@@ -382,7 +382,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
   {meteorActive&&<div style={{position:"fixed",top:0,left:0,width:200,height:2,background:"linear-gradient(90deg,transparent,#FFAA00,#fff,transparent)",animation:"meteor-streak 1.5s ease forwards",zIndex:10000,pointerEvents:"none",filter:"blur(1px)"}}/>}
   {/* TOASTS */}
   <div style={{position:"fixed",top:16,right:16,zIndex:10001,display:"flex",flexDirection:"column",gap:8}}>
-   {toasts.map(t=><div key={t.id} className="pulse-toast" style={{padding:"10px 18px",borderRadius:10,background:t.color+"22",border:`1px solid ${t.color}44`,color:t.color,fontSize:12,fontWeight:600,backdropFilter:"blur(12px)",display:"flex",alignItems:"center",gap:8}}>{t.soc?(t.soc.logoUrl?<img src={t.soc.logoUrl} alt="" style={{width:18,height:18,borderRadius:6,objectFit:"contain"}}/>:<div style={{width:18,height:18,borderRadius:6,background:(t.soc.brandColor||t.soc.color||t.color)+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:t.soc.brandColor||t.soc.color||t.color}}>{(t.soc.nom||t.soc.name||"?")[0]}</div>):null}{t.msg}</div>)}
+   {toasts.map(t=><div key={t.id} className="pulse-toast" style={{padding:"10px 18px",borderRadius:10,background:t.color+"22",border:`1px solid ${t.color}44`,color:t.color,fontSize:12,fontWeight:600,backdropFilter:"blur(12px)",display:"flex",alignItems:"center",gap:8}}>{t.soc?(t.soc.logoUrl?<img loading="lazy" src={t.soc.logoUrl} alt="" style={{width:18,height:18,borderRadius:6,objectFit:"contain"}}/>:<div style={{width:18,height:18,borderRadius:6,background:(t.soc.brandColor||t.soc.color||t.color)+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:t.soc.brandColor||t.soc.color||t.color}}>{(t.soc.nom||t.soc.name||"?")[0]}</div>):null}{t.msg}</div>)}
   </div>
   {/* TOP BAR */}
   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 24px",borderBottom:"1px solid rgba(255,255,255,.06)",flexShrink:0,zIndex:1,position:"relative"}}>
@@ -419,7 +419,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
   <div style={{borderTop:"1px solid rgba(255,255,255,.06)",padding:"6px 0",overflow:"hidden",flexShrink:0,background:"rgba(255,170,0,.03)",zIndex:1,position:"relative",minHeight:28}}>
    {aiTickerItems.length>0?<div style={{display:"flex",animation:"ticker-scroll 35s linear infinite",whiteSpace:"nowrap",alignItems:"center"}}>
     {[0,1].map(dup=><Fragment key={dup}>{aiTickerItems.map((t,i)=><span key={`${dup}-${i}`} style={{display:"inline-flex",alignItems:"center",gap:5,marginRight:32,fontSize:11,fontFamily:FONT,color:"#FFAA00"}}>
-     {t.logo?<img src={t.logo} style={{width:14,height:14,borderRadius:3,objectFit:"cover",flexShrink:0}}/>:<span style={{width:14,height:14,borderRadius:3,background:t.color+"33",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7,fontWeight:900,color:t.color,flexShrink:0}}>{(t.sn||"?")[0]}</span>}
+     {t.logo?<img loading="lazy" src={t.logo} style={{width:14,height:14,borderRadius:3,objectFit:"cover",flexShrink:0}}/>:<span style={{width:14,height:14,borderRadius:3,background:t.color+"33",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7,fontWeight:900,color:t.color,flexShrink:0}}>{(t.sn||"?")[0]}</span>}
      <span style={{fontWeight:700,color:"#e4e4e7"}}>{t.sn}</span>
      <span>{t.text}</span>
     </span>)}</Fragment>)}

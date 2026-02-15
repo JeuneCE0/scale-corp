@@ -367,7 +367,7 @@ export function KnowledgeBase({socs,kb,saveKb,isPorteur,socId}){
     </div>;
    })}
   </div>
-  {filtered.length===0&&<div className="fu" style={{textAlign:"center",padding:40,color:C.td}}>Aucun résultat</div>}
+  {filtered.length===0&&<div className="fu" style={{textAlign:"center",padding:40,color:C.td}}><div style={{fontSize:28,marginBottom:6}}>🔍</div><div style={{fontSize:12}}>Aucun résultat trouvé</div><div style={{fontSize:10,marginTop:4,opacity:.7}}>Essayez avec d'autres mots-clés</div></div>}
   {filtered.sort((a,b)=>(b.likes||0)-(a.likes||0)).map((entry,i)=>{
    const s=socs.find(x=>x.id===entry.author);const catInfo=KB_CATS[entry.cat]||KB_CATS.tip;const isOpen=expanded===entry.id;
    return <Card key={entry.id} accent={catInfo.color} style={{marginBottom:6,padding:12,cursor:"pointer"}} delay={Math.min(i+1,8)} onClick={()=>setExpanded(isOpen?null:entry.id)}>
@@ -763,7 +763,7 @@ export function SubsTeamPanel({socs,subs,saveSubs,team,saveTeam,socId,reps,isCom
    {mergedAutoSubs.length>0&&<div style={{padding:"6px 8px",background:C.bD,borderRadius:6,marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
     <span style={{fontSize:10}}>🤖</span><span style={{fontSize:9,color:C.b,fontWeight:600}}>{mergedAutoSubs.length} abonnement{mergedAutoSubs.length>1?"s":""} auto-détecté{mergedAutoSubs.length>1?"s":""} depuis Revolut</span>
    </div>}
-   {mySubs.length===0&&<div style={{color:C.td,fontSize:11,padding:12,textAlign:"center"}}>Aucun abonnement</div>}
+   {mySubs.length===0&&<div style={{color:C.td,fontSize:11,padding:20,textAlign:"center"}}><div style={{fontSize:24,marginBottom:4}}>💻</div>Aucun abonnement détecté<div style={{fontSize:9,marginTop:4,opacity:.7}}>Ajoutez vos abonnements ou lancez la détection automatique</div></div>}
    {Object.entries(SUB_CATS).map(([cat,info])=>{
     const catSubs=mySubs.filter(s=>s.cat===cat);
     if(catSubs.length===0)return null;
@@ -804,7 +804,7 @@ export function SubsTeamPanel({socs,subs,saveSubs,team,saveTeam,socId,reps,isCom
    })}
   </Sect>
   <Sect title="👥 Équipe & Prestataires" right={<Btn small onClick={addTm}>+ Membre</Btn>} sub={`${myTeam.length} · ${fmt(totalTeamMonthly)}€/mois`}>
-   {myTeam.length===0&&<div style={{color:C.td,fontSize:11,padding:12,textAlign:"center"}}>Aucun membre</div>}
+   {myTeam.length===0&&<div style={{color:C.td,fontSize:11,padding:20,textAlign:"center"}}><div style={{fontSize:24,marginBottom:4}}>👥</div>Aucun membre dans l'équipe<div style={{fontSize:9,marginTop:4,opacity:.7}}>Ajoutez vos collaborateurs et prestataires</div></div>}
    {myTeam.map((t,i)=>{
     const soc=socs.find(x=>x.id===t.socId);
     const ca=t.socId!=="holding"?pf(gr(reps,t.socId,cM2)?.ca):0;
@@ -921,6 +921,11 @@ export function SubsTeamBadge({subs,team,socId,reps}){
  return <span style={{fontSize:8,color:C.r,background:C.rD,padding:"1px 5px",borderRadius:8,fontWeight:600}}>🔄 {fmt(total)}€/m</span>;
 }
 export function ClientsPanelSafe(props){return <ErrorBoundary label="Erreur dans la page Clients"><ClientsPanelInner {...props}/></ErrorBoundary>;}
+export function ConversationsPanelSafe(props){return <ErrorBoundary label="Erreur dans les conversations"><ConversationsPanel {...props}/></ErrorBoundary>;}
+export function SubsTeamPanelSafe(props){return <ErrorBoundary label="Erreur dans Abonnements & Équipe"><SubsTeamPanel {...props}/></ErrorBoundary>;}
+export function MeetingModeSafe(props){return <ErrorBoundary label="Erreur dans le mode réunion"><MeetingMode {...props}/></ErrorBoundary>;}
+export function PulseFormSafe(props){return <ErrorBoundary label="Erreur dans le formulaire Pulse"><PulseForm {...props}/></ErrorBoundary>;}
+export function DealFlowSafe(props){return <ErrorBoundary label="Erreur dans le Deal Flow"><DealFlow {...props}/></ErrorBoundary>;}
 export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices,stripeData,onSelectClient}){
  const[editCl,setEditCl]=useState(null);const[cl360Tab,setCl360Tab]=useState("infos");const[filter,setFilter]=useState("all");const[stageFilter,setStageFilter]=useState("all");const[invView,setInvView]=useState(null);
  const[sending,setSending]=useState(null);const[search,setSearch]=useState("");const[selPipeline,setSelPipeline]=useState("all");const[sort,setSort]=useState("recent");
@@ -3548,7 +3553,7 @@ export function ConversationsPanel({soc}){
   {/* Contact list */}
   <div style={{flex:1,overflow:"auto"}}>
    {loading&&<div style={{padding:20,textAlign:"center",color:C.td,fontSize:11}}>Chargement...</div>}
-   {!loading&&sorted.length===0&&!error&&<div style={{padding:20,textAlign:"center",color:C.td,fontSize:11}}>Aucune conversation</div>}
+   {!loading&&sorted.length===0&&!error&&<div style={{padding:30,textAlign:"center",color:C.td}}><div style={{fontSize:28,marginBottom:6}}>💬</div><div style={{fontSize:11}}>Aucune conversation pour le moment</div><div style={{fontSize:10,marginTop:4,opacity:.7}}>Les nouvelles conversations apparaîtront ici</div></div>}
    {sorted.map((c,i)=>{const unread=c.unreadCount||0;const name=c.contactName||c.fullName||c.email||"Contact";const typeIcon=MSG_TYPE_LABEL(c.type||c.lastMessageType);const active=selConvo?.id===c.id;const bgCol=avatarColor(name);return <div key={c.id||i} className="conv-contact-item" onClick={()=>loadMsgs(c)} style={{padding:"10px 12px",borderBottom:`1px solid rgba(255,255,255,.04)`,cursor:"pointer",background:"transparent",borderLeft:active?`3px solid ${C.acc}`:"3px solid transparent",transition:"all .15s",display:"flex",alignItems:"center",gap:10}}>
     {/* Avatar */}
     <div style={{position:"relative",flexShrink:0}}>
@@ -3596,7 +3601,7 @@ export function ConversationsPanel({soc}){
    {/* Messages */}
    <div style={{flex:1,overflow:"auto",padding:14}}>
     {msgsLoading&&<div style={{textAlign:"center",padding:20}} className="conv-typing"><span/><span/><span/></div>}
-    {!msgsLoading&&msgs.length===0&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Aucun message</div>}
+    {!msgsLoading&&msgs.length===0&&<div style={{textAlign:"center",padding:30,color:C.td}}><div style={{fontSize:28,marginBottom:6}}>📭</div><div style={{fontSize:11}}>Aucun message dans cette conversation</div><div style={{fontSize:10,marginTop:4,opacity:.7}}>Envoyez le premier message ci-dessous !</div></div>}
     {msgs.map((m,i)=>{const out=(m.direction||m.meta?.email?.direction||m.source)==="outbound"||m.source==="workflow"||m.source==="app";const mType=m.type||m.messageType||"";const sys=isSystemMsg(m);const channelIcon=MSG_TYPE_LABEL(m.messageType||mType);const channelName=MSG_TYPE_NAME[m.messageType||mType]||"";const channelColors={SMS:"#3b82f6",Email:"#8b5cf6",WhatsApp:"#22c55e",Instagram:"#ec4899",Messenger:"#3b82f6","Live Chat":"#06b6d4",Appel:"#f59e0b",Système:"#6b7280"};const pillBg=(channelColors[channelName]||"#6b7280")+"22";const pillColor=channelColors[channelName]||"#6b7280";
      if(sys)return <div key={m.id||i} style={{display:"flex",justifyContent:"center",marginBottom:10,animation:"convFadeIn .3s ease"}}>
       <div style={{maxWidth:"70%",padding:"4px 14px",borderRadius:20,background:"rgba(113,113,122,.08)",fontSize:10,color:C.td,textAlign:"center",fontStyle:"italic"}}>
