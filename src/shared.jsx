@@ -693,7 +693,10 @@ export function sbAuthHeaders(){
 }
 // Supabase helper — fire-and-forget upsert
 export function sbUpsert(table, data){
- fetch('/api/supabase?action=upsert',{method:'POST',headers:sbAuthHeaders(),body:JSON.stringify({table,data})}).catch(()=>{});
+ // Wrap in {id, data} JSONB format for tables that use it
+ const jsonbTables=['societies','holding'];
+ const payload=jsonbTables.includes(table)?{id:data.id||'main',data:JSON.parse(JSON.stringify(data)),updated_at:new Date().toISOString()}:data;
+ return fetch('/api/supabase?action=upsert',{method:'POST',headers:sbAuthHeaders(),body:JSON.stringify({table,data:payload})}).catch(()=>{});
 }
 // Supabase helper — get rows
 export async function sbGet(table, societyId, filters){
@@ -747,11 +750,11 @@ export async function syncFromSupabase(socId){
 }
 // Fetch holding config from Supabase
 export async function fetchHoldingFromSB(){
- try{const data=await sbGet('holding',null,{id:'main'});return Array.isArray(data)&&data[0]?data[0].config:null;}catch{return null;}
+ try{const data=await sbGet('holding',null,{id:'main'});if(!Array.isArray(data)||!data[0])return null;return data[0].data||data[0].config||null;}catch{return null;}
 }
 // Fetch societies from Supabase
 export async function fetchSocietiesFromSB(){
- try{const data=await sbList('societies');return Array.isArray(data)?data:null;}catch{return null;}
+ try{const data=await sbList('societies');if(!Array.isArray(data))return null;return data.map(row=>row.data||row).filter(Boolean);}catch{return null;}
 }
 export function calcH(socs,reps,hold,month){
  let rem=0,cn=0;socs.forEach(s=>{if(s.id==="eco")return;if(["active","lancement"].includes(s.stat))cn++;const r=gr(reps,s.id,month);if(!r)return;const ca=pf(r.ca),presta=pf(r.prestataireAmount||0);rem+=(s.pT==="ca"?ca:Math.max(0,ca-presta))*s.pP/100;});
