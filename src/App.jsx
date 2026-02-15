@@ -74,6 +74,7 @@ const CSS=`@import url('https://fonts.googleapis.com/css2?family=Teachers:wght@4
 @keyframes typeReveal{from{max-height:0;opacity:0}to{max-height:600px;opacity:1}}
 @media(max-width:768px){.sidebar-desktop{display:none !important}.main-content{margin-left:0 !important}.mobile-header{display:flex !important}.kpi-grid-responsive{grid-template-columns:1fr 1fr !important}.chart-responsive{min-height:180px}.tx-list-mobile .tx-detail{display:none}}
 @media(min-width:769px){.mobile-header{display:none !important}}
+@media(max-width:768px){.admin-grid{grid-template-columns:1fr !important}.admin-card{min-width:auto !important}.admin-stats-row{grid-template-columns:1fr !important;gap:8px !important}.pulse-grid{grid-template-columns:1fr !important}.pulse-left,.pulse-right{display:none !important}.pulse-center{grid-column:1 !important}}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:${C.brd};border-radius:3px}
 input[type=range]{-webkit-appearance:none;background:${C.brd};height:3px;border-radius:4px;outline:none}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:${C.acc};cursor:pointer;box-shadow:0 2px 6px rgba(255,170,0,.3)}
@@ -6980,7 +6981,7 @@ function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose}){
 
  const bestId=socCards[0]?.id;
 
- const feed=useMemo(()=>{const items=[];allActS.forEach(s=>{const sn=s?.name||"Société";(sb[s.id]?.transactions||[]).slice(0,10).forEach(tx=>{const leg=tx.legs?.[0];const desc=leg?.description||tx?.reference||"Transaction";const amt=pf(leg?.amount||tx?.amount);items.push({ts:tx.created_at||tx.createdAt||"",icon:amt>0?"💰":"📤",desc:`${sn}: ${desc}`,amt,color:amt>0?"#34d399":"#f87171",socId:s.id,type:amt>0?"payment":"expense"});});(gd[s.id]?.opportunities||gd[s.id]?.ghlClients||[]).slice(0,5).forEach(c=>{const name=c?.contactName||c?.contact?.name||c?.name||c?.email||"Contact";const isWon=c?.status==="won";const isLost=c?.status==="lost";const icon=isWon?"✅":isLost?"❌":"👤";const label=isWon?"Deal gagné":isLost?"Deal perdu":"Nouveau prospect";items.push({ts:c.dateAdded||c.createdAt||c.updatedAt||"",icon,desc:`${sn}: ${label} — ${name}`,amt:isWon?pf(c?.value):0,color:isWon?"#34d399":isLost?"#f87171":"#60a5fa",socId:s.id,type:isWon?"won":isLost?"lost":"lead"});});(gd[s.id]?.calendarEvents||[]).slice(0,3).forEach(e=>{items.push({ts:e?.startTime||"",icon:"📞",desc:`${sn}: Appel planifié — ${e?.title||e?.contactName||"RDV"}`,amt:0,color:"#a78bfa",socId:s.id,type:"call"});});});items.sort((a,b)=>new Date(b.ts)-new Date(a.ts));return items.slice(0,50);},[allActS,sb,gd]);
+ const feed=useMemo(()=>{const items=[];allActS.forEach(s=>{const sn=s?.name||"Société";(sb[s.id]?.transactions||[]).slice(0,10).forEach(tx=>{const leg=tx.legs?.[0];const desc=leg?.description||tx?.reference||"Transaction";const amt=pf(leg?.amount||tx?.amount);items.push({ts:tx.created_at||tx.createdAt||"",icon:amt>0?"💰":"📤",desc:`${sn} : ${desc}`,amt,color:amt>0?"#34d399":"#f87171",socId:s.id,type:amt>0?"payment":"expense"});});(gd[s.id]?.opportunities||gd[s.id]?.ghlClients||[]).slice(0,5).forEach(c=>{const name=c?.contactName||c?.contact?.name||c?.name||c?.email||"Contact";const isWon=c?.status==="won";const isLost=c?.status==="lost";const icon=isWon?"✅":isLost?"❌":"👤";const label=isWon?"Deal gagné":isLost?"Deal perdu":"Nouveau prospect";items.push({ts:c.dateAdded||c.createdAt||c.updatedAt||"",icon,desc:`${sn} : ${label} - ${name}`,amt:isWon?pf(c?.value):0,color:isWon?"#34d399":isLost?"#f87171":"#60a5fa",socId:s.id,type:isWon?"won":isLost?"lost":"lead"});});(gd[s.id]?.calendarEvents||[]).slice(0,3).forEach(e=>{items.push({ts:e?.startTime||"",icon:"📞",desc:`${sn} : Appel planifié - ${e?.title||e?.contactName||"RDV"}`,amt:0,color:"#a78bfa",socId:s.id,type:"call"});});});items.sort((a,b)=>new Date(b.ts)-new Date(a.ts));return items.slice(0,50);},[allActS,sb,gd]);
 
  const ticker=useMemo(()=>feed.slice(0,20).map(f=>`${f.icon} [${(allActS.find(s=>s.id===f.socId)?.name||"").split(" ")[0]}] ${f.desc?.split(": ")[1]||""}${f.amt?` ${fmt(f.amt)}€`:""}`).join("   •   ")||"⚡ PULSE — En attente de données...",[feed,allActS]);
 
@@ -7084,7 +7085,7 @@ function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose}){
 
  const renderMainContent=()=>{
   if(view==="activity")return <div style={{flex:1,display:"grid",gridTemplateColumns:"1fr",gap:16,padding:16,overflow:"hidden",minHeight:0}}>{renderFeed(true)}</div>;
-  if(view==="finance")return <div style={{flex:1,display:"grid",gridTemplateColumns:"300px 1fr",gap:16,padding:16,overflow:"hidden",minHeight:0}}>
+  if(view==="finance")return <div className="admin-grid" style={{flex:1,display:"grid",gridTemplateColumns:"300px 1fr",gap:16,padding:16,overflow:"hidden",minHeight:0}}>
    <div style={{display:"flex",flexDirection:"column",gap:12,overflow:"auto"}}>
     <div style={GC}><div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>CA Total</div><div style={{fontSize:32,fontWeight:900,color:"#FFAA00",fontFamily:FONT_TITLE}}>{fmt(totalCA)}€</div>{sparkline(caHist)}</div>
     <div style={GC}><div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>MRR</div><div style={{fontSize:26,fontWeight:900,color:"#34d399",fontFamily:FONT_TITLE}}>{fmt(totalMRR)}€</div>{sparkline(mrrHist)}</div>
@@ -7125,10 +7126,10 @@ function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose}){
    </div>;
   }
   // default: global
-  return <div style={{flex:1,display:"grid",gridTemplateColumns:"280px 1fr 300px",gap:16,padding:16,overflow:"hidden",minHeight:0}}>
-   {renderKPIs()}
-   {renderSocCards()}
-   {renderFeed(false)}
+  return <div className="pulse-grid" style={{flex:1,display:"grid",gridTemplateColumns:"280px 1fr 300px",gap:16,padding:16,overflow:"hidden",minHeight:0}}>
+   <div className="pulse-left">{renderKPIs()}</div>
+   <div className="pulse-center">{renderSocCards()}</div>
+   <div className="pulse-right">{renderFeed(false)}</div>
   </div>;
  };
 
@@ -7421,10 +7422,10 @@ function InvestorBoard({socs,reps,allM,hold,pin:inputPin}){
     <div style={{fontSize:28,fontWeight:900,color:C.t,fontFamily:FONT_TITLE}}>{hold?.name||"L'Incubateur ECS"}</div>
     <div style={{fontSize:12,color:C.td,marginTop:4}}>{ml(cm)}</div>
    </div>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,marginBottom:32}}>
-    {[{l:"Sociétés",v:actS.length,c:C.b},{l:"CA Total",v:fmt(totalCA)+"€",c:C.g},{l:"Croissance",v:`${growthPct>=0?"+":""}${growthPct}%`,c:growthPct>=0?C.g:C.r}].map((k,i)=><div key={i} className="glass-card-static" style={{padding:24,textAlign:"center"}}><div style={{fontSize:32,fontWeight:900,color:k.c,fontFamily:FONT_TITLE}}>{k.v}</div><div style={{fontSize:11,color:C.td,marginTop:6}}>{k.l}</div></div>)}
+   <div className="admin-stats-row" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,marginBottom:32}}>
+    {[{l:"Sociétés",v:actS.length,c:C.b},{l:"CA Total",v:fmt(totalCA)+"€",c:C.g},{l:"Croissance",v:`${growthPct>=0?"+":""}${growthPct}%`,c:growthPct>=0?C.g:C.r}].map((k,i)=><div key={i} className="glass-card-static admin-card" style={{padding:24,textAlign:"center"}}><div style={{fontSize:32,fontWeight:900,color:k.c,fontFamily:FONT_TITLE}}>{k.v}</div><div style={{fontSize:11,color:C.td,marginTop:6}}>{k.l}</div></div>)}
    </div>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:16}}>
+   <div className="admin-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:16}}>
     {actS.map(s=>{const sCa=pf(gr(reps,s.id,cm)?.ca);const sPrev=pf(gr(reps,s.id,pm)?.ca);const sTrend=sPrev>0?Math.round((sCa-sPrev)/sPrev*100):0;const hs=healthScore(s,reps);
      return <div key={s.id} className="glass-card" style={{padding:20}}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
