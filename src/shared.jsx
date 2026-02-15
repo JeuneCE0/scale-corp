@@ -986,3 +986,25 @@ export const TX_CATEGORIES=[
  {id:"dividendes",label:"🏛 Dividendes Holding",icon:"🏛"},
 ];
 
+export function categorizeTransaction(tx){
+ const leg=tx.legs?.[0];if(!leg)return{id:"autres",label:"📦 Autres dépenses",icon:"📦"};
+ const amt=leg.amount;const ref=((leg.description||"")+" "+(tx.reference||"")).toLowerCase();
+ const legDesc=((tx.legs?.[0]?.description||"")+"").toLowerCase();
+ const hasCounterparty=!!tx.legs?.[0]?.counterparty;const isSingleLeg=(tx.legs||[]).length===1;
+ const isRealDividend=(/dividend/i.test(tx.reference||"")&&hasCounterparty&&isSingleLeg)||(/scale\s*corp/i.test(legDesc)&&hasCounterparty&&isSingleLeg)||(/scale\s*corp/i.test(ref));
+ const findCat=(id)=>TX_CATEGORIES.find(c=>c.id===id)||{id,label:id,icon:"📦"};
+ if(isRealDividend)return findCat("dividendes");
+ if(tx.type==="transfer"&&/to eur (sol|publicit|prestataire|abonnement|anthony|jimmy|principal)/i.test(ref))return findCat("transfert");
+ if(tx.type==="transfer"&&/echange to eur|exchange to eur/i.test(ref))return findCat("transfert");
+ if(amt>0)return findCat("revenus");
+ if(/loyer|rent/.test(ref))return findCat("loyer");
+ if(/facebook|google ads|meta ads|meta|tiktok|pub/.test(ref))return findCat("pub");
+ if(/lecosysteme|l.{0,2}ecosyst[eè]me/i.test(ref))return findCat("abonnements");
+ if(/company.*pro.*plan|plan.*fee/i.test(ref))return findCat("abonnements");
+ if(/stripe|notion|slack|ghl|zapier|skool|adobe|figma|revolut|gohighlevel|highlevel|canva|chatgpt|openai|anthropic|vercel|github|zoom|brevo|make\.com|clickup|airtable/.test(ref))return findCat("abonnements");
+ if(/lucien|salaire|salary|freelance|prestataire|prestation/.test(ref))return findCat("equipe");
+ if(/fynovates|fiscalit|tax|tva|impot|imposition|urssaf|cfe|cotisation/i.test(ref))return findCat("fiscalite");
+ if(tx.type==="transfer")return findCat("transfert");
+ return findCat("autres");
+}
+
