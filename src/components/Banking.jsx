@@ -11,7 +11,7 @@ import {
   uid, autoCategorize,
 } from "../shared.jsx";
 
-import { KPI, Btn, Sect, Card } from "../components.jsx";
+import { KPI, Btn, Sect, Card, TX_CATEGORIES } from "../components.jsx";
 
 export function categorizeTransaction(tx){
  const leg=tx.legs?.[0];if(!leg)return{id:"autres",label:"📦 Autres dépenses",icon:"📦"};

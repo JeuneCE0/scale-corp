@@ -180,7 +180,7 @@ export function DealFlow({deals,saveDeals}){
  </>;
 }
 /* BANKING - REVOLUT */
-const TX_CATEGORIES=[
+export const TX_CATEGORIES=[
  {id:"all",label:"Toutes",icon:""},
  {id:"revenus",label:"💰 Revenus",icon:"💰"},
  {id:"loyer",label:"🏠 Loyer",icon:"🏠"},
