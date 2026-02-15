@@ -24,6 +24,16 @@ import { AIWeeklyCoach } from "./components/AI.jsx";
 import { RapportsPanel, ReplayMensuel } from "./components/Reports.jsx";
 export { AIWeeklyCoach, RapportsPanel, ReplayMensuel };
 
+export function MobileBottomNav({items,activeTab,setTab}){
+ const visibleItems=items.filter(i=>!i.children).slice(0,5);
+ return <nav className="mobile-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,zIndex:200,background:"var(--sc-card-a9)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:"1px solid var(--sc-w06)",padding:"6px 0 env(safe-area-inset-bottom,6px)",justifyContent:"space-around",alignItems:"center"}}>
+  {visibleItems.map(item=>{const active=item.tab===activeTab;return <button key={item.id} onClick={()=>setTab(item.tab)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",padding:"4px 8px",cursor:"pointer",fontFamily:FONT,minWidth:0,flex:1}}>
+   <span style={{fontSize:18,opacity:active?1:0.5,transition:"opacity .15s"}}>{item.icon}</span>
+   <span style={{fontSize:9,fontWeight:active?700:500,color:active?C.acc:C.td,transition:"color .15s",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:60}}>{item.label}</span>
+   {active&&<span style={{width:4,height:4,borderRadius:2,background:C.acc,marginTop:1}}/>}
+  </button>;})}
+ </nav>;
+}
 export function Badge({s}){const m={active:[C.gD,C.g,"Active"],lancement:[C.oD,C.o,"Lancement"],signature:[C.bD,C.b,"Signature"],inactive:[C.rD,C.r,"Inactive"]};const[bg2,c2,l]=m[s]||m.inactive;return <span style={{background:bg2,color:c2,padding:"2px 8px",borderRadius:20,fontSize:9,fontWeight:700,letterSpacing:.5}}>{l}</span>;}
 export function IncubBadge({incub}){if(!incub)return null;const lbl=sinceLbl(incub);return <span style={{background:C.vD,color:C.v,padding:"2px 7px",borderRadius:20,fontSize:9,fontWeight:600}}>📅 {lbl}</span>;}
 export function GradeBadge({grade,color,size="sm"}){const s=size==="lg"?{w:32,h:32,fs:16,r:9,bw:2}:{w:22,h:22,fs:11,r:6,bw:1.5};return <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:s.w,height:s.h,borderRadius:s.r,background:color+"15",color,fontWeight:900,fontSize:s.fs,border:`${s.bw}px solid ${color}33`,flexShrink:0}}>{grade}</span>;}
@@ -135,7 +145,7 @@ export function MeetingMode({socs,reps,hold,actions,pulses,allM,clients=[],onExi
     const sActs=actions.filter(a=>a.socId===s.id&&!a.done);
     return <div className="si">
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-    <div style={{width:40,height:40,borderRadius:10,background:`${s.color}22`,border:`2px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:s.color,overflow:"hidden"}}>{s.logoUrl?<img src={s.logoUrl} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:s.nom[0]}</div>
+    <div style={{width:40,height:40,borderRadius:10,background:`${s.color}22`,border:`2px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:s.color,overflow:"hidden"}}>{s.logoUrl?<img src={s.logoUrl} alt={s.nom} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:s.nom[0]}</div>
     <div style={{flex:1}}><div style={{fontWeight:900,fontSize:18}}>{s.nom}</div><div style={{color:C.td,fontSize:11,display:"flex",gap:6,alignItems:"center"}}><span>{s.porteur} — {s.act}</span>{s.incub&&<span style={{color:C.v,fontSize:9,background:C.vD,padding:"1px 6px",borderRadius:8}}>📅 {sinceLbl(s.incub)}</span>}</div></div>
     <GradeBadge grade={hs.grade} color={hs.color} size="lg"/>
     </div>
@@ -1988,7 +1998,7 @@ export function SocSettingsPanel({soc,save,socs,clients}){
     <label style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:6,letterSpacing:.3}}>Logo / Photo de profil</label>
     <div style={{display:"flex",alignItems:"center",gap:12}}>
      <div style={{width:64,height:64,borderRadius:32,background:accent+"15",border:`2px dashed ${accent}44`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0,cursor:"pointer",transition:"border-color .2s"}} onClick={()=>fileRef.current?.click()} onMouseEnter={e=>e.currentTarget.style.borderColor=accent} onMouseLeave={e=>e.currentTarget.style.borderColor=accent+"44"}>
-      {form.logoUrl?<img src={form.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:10,color:C.td,textAlign:"center",lineHeight:1.2}}>📷<br/>Cliquer</span>}
+      {form.logoUrl?<img src={form.logoUrl} alt={form.nom||"Logo société"} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:10,color:C.td,textAlign:"center",lineHeight:1.2}}>📷<br/>Cliquer</span>}
      </div>
      <div style={{flex:1}}>
       <input ref={fileRef} type="file" accept="image/jpeg,image/png" onChange={handleLogoUpload} style={{display:"none"}}/>
@@ -2023,7 +2033,7 @@ export function SocSettingsPanel({soc,save,socs,clients}){
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>APERÇU</div>
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
      <div style={{width:36,height:36,borderRadius:18,background:accent+"22",border:`2px solid ${accent}44`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
-      {form.logoUrl?<img src={form.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:14,fontWeight:900,color:accent}}>{(form.nom||"?")[0]}</span>}
+      {form.logoUrl?<img src={form.logoUrl} alt={form.nom||"Logo société"} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:14,fontWeight:900,color:accent}}>{(form.nom||"?")[0]}</span>}
      </div>
      <div><div style={{fontWeight:800,fontSize:13,color:accent}}>{form.nom||"Ma société"}</div><div style={{fontSize:9,color:C.td}}>{form.porteur}</div></div>
     </div>
@@ -3292,7 +3302,7 @@ export function RessourcesPanel({soc,clients}){
      <a href={r.url} target="_blank" rel="noopener noreferrer" style={{fontWeight:600,fontSize:11,color:C.b,textDecoration:"none"}}>{r.title}</a>
      <div style={{fontSize:8,color:C.td}}>{r.type} · {r.at?ago(r.at):""}</div>
     </div>
-    <button onClick={()=>delRes(r.id)} style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:10}}>✕</button>
+    <button onClick={()=>delRes(r.id)} aria-label="Supprimer la ressource" style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:10}}>✕</button>
    </div>)}
   </div>;})}
   {resources.length===0&&<Card><div style={{textAlign:"center",padding:20,color:C.td,fontSize:12}}>Aucune ressource ajoutée</div></Card>}
@@ -3478,7 +3488,7 @@ export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData
    {selClient&&<div className="si" style={{width:340,maxWidth:"95vw",flexShrink:0,background:"var(--sc-card-a6)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid var(--sc-w08)",borderRadius:16,padding:16,maxHeight:"80vh",overflowY:"auto",position:"sticky",top:20}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
      <div style={{fontWeight:800,fontSize:14,color:C.t}}>{selClient.name||"Client"}</div>
-     <button onClick={()=>setSelClient(null)} style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:14}}>✕</button>
+     <button onClick={()=>setSelClient(null)} aria-label="Fermer" style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:14}}>✕</button>
     </div>
     {(()=>{const ps=clientStage(selClient);return ps?<div style={{padding:"6px 10px",borderRadius:8,background:C.accD,border:`1px solid ${C.acc}33`,marginBottom:10}}>
      <div style={{fontSize:9,color:C.td,fontWeight:600}}>Pipeline</div>
@@ -4446,7 +4456,7 @@ export function OnboardingWizard({onComplete,onSkip,hold}){
   {/* Sidebar stepper */}
   <div className="ob-sidebar" style={{width:220,minHeight:"100vh",background:C.card,borderRight:`1px solid ${C.brd}`,padding:"28px 16px",display:"flex",flexDirection:"column"}}>
    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:28}}>
-    <div style={{width:32,height:32,background:hold?.brand?.logoUrl?"transparent":`linear-gradient(135deg,${hold?.brand?.accentColor||C.acc},#FF9D00)`,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:"#0a0a0f",overflow:"hidden"}}>{hold?.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(hold?.brand?.logoLetter||"S")}</div>
+    <div style={{width:32,height:32,background:hold?.brand?.logoUrl?"transparent":`linear-gradient(135deg,${hold?.brand?.accentColor||C.acc},#FF9D00)`,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:"#0a0a0f",overflow:"hidden"}}>{hold?.brand?.logoUrl?<img src={hold.brand.logoUrl} alt={hold?.brand?.name||"Logo"} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(hold?.brand?.logoLetter||"S")}</div>
     <div><div style={{fontWeight:800,fontSize:13,letterSpacing:.5}}>{hold?.brand?.name||"L'INCUBATEUR ECS"}</div><div style={{color:C.td,fontSize:9}}>Onboarding</div></div>
    </div>
    <div style={{flex:1}}>
@@ -4913,7 +4923,7 @@ export function InvestorBoard({socs,reps,allM,hold,pin:inputPin}){
  useEffect(()=>{if(inputPin===boardPin)setAuthed(true);},[inputPin,boardPin]);
  if(!authed)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}>
   <style>{CSS}</style>
-  <div className="glass-card-static" style={{padding:32,textAlign:"center",width:340}}>
+  <div className="glass-card-static" style={{padding:32,textAlign:"center",width:340,maxWidth:"95vw"}}>
    <div style={{fontSize:40,marginBottom:12}}>🔒</div>
    <div style={{fontWeight:800,fontSize:16,color:C.t,marginBottom:4}}>Investor Board</div>
    <div style={{fontSize:11,color:C.td,marginBottom:16}}>Entrez le code d'accès</div>
