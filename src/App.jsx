@@ -229,7 +229,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   <style>{CSS}{POLISH_CSS}</style>
   {/* TUTORIAL OVERLAY ON LOGIN */}
   {false&&<div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(0,0,0,.6)",backdropFilter:"blur(3px)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}>
-   <div className="si glass-modal" style={{borderRadius:20,padding:0,width:500,maxWidth:"92vw",overflow:"hidden"}}>
+   <div className="si glass-modal" style={{borderRadius:20,padding:0,width:500,maxWidth:"95vw",overflow:"hidden"}}>
     <div style={{padding:"24px 28px",background:`linear-gradient(135deg,${C.accD},transparent)`,borderBottom:`1px solid ${C.brd}`,textAlign:"center"}}>
      <div style={{width:64,height:64,borderRadius:16,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:30,marginBottom:12,boxShadow:`0 8px 32px ${C.accD}`}}>🎓</div>
      <h2 style={{margin:0,fontSize:22,fontWeight:800,color:C.t,fontFamily:FONT_TITLE}}>Bienvenue  !</h2>
@@ -246,7 +246,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </div>
   </div>}
   <div style={{position:"fixed",top:16,right:16,zIndex:100}}><AnimatedThemeToggle onToggle={toggleTheme}/></div>
-  <div className="si glass-modal" style={{borderRadius:20,padding:28,width:340,maxWidth:"100%"}}>
+  <div className="si glass-modal" style={{borderRadius:20,padding:28,width:340,maxWidth:"95vw"}}>
    <div style={{textAlign:"center",marginBottom:24}}>
     <div className="fl glow-accent-strong" style={{width:64,height:64,background:"transparent",borderRadius:12,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:10,overflow:"hidden"}}>{hold.brand?.logoUrl?<img loading="lazy" src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}}/>:(hold.brand?.logoLetter||"E")}</div>
     <h1 style={{margin:0,fontSize:18,fontWeight:900,letterSpacing:.5,fontFamily:FONT_TITLE,color:"#fff"}}>{hold.brand?.name||"L'INCUBATEUR ECS"}</h1>
@@ -267,7 +267,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  if(role!=="admin"){const soc=socs.find(s=>s.id===role);if(!soc)return null;
   const porteurSetTab=(t)=>{const btn=document.querySelector(`[data-tour="porteur-tab-${t}"]`);if(btn)btn.click();};
   return <ErrorBoundary label="Vue Porteur"><>{missedRecap&&<div className="fi" style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)"}} onClick={()=>setMissedRecap(null)}>
-   <div onClick={e=>e.stopPropagation()} style={{width:420,maxHeight:"80vh",background:C.card,border:`1px solid ${C.brd}`,borderRadius:20,overflow:"hidden",backdropFilter:"blur(20px)"}}>
+   <div onClick={e=>e.stopPropagation()} style={{width:420,maxWidth:"95vw",maxHeight:"80vh",background:C.card,border:`1px solid ${C.brd}`,borderRadius:20,overflow:"hidden",backdropFilter:"blur(20px)"}}>
     <div style={{padding:"20px 24px",borderBottom:`1px solid ${C.brd}`,background:`linear-gradient(135deg,${C.acc}11,transparent)`}}>
      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
       <div><div style={{fontSize:18,fontWeight:900,fontFamily:FONT_TITLE,color:C.acc}}>👋 Bon retour !</div>
@@ -299,7 +299,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   <SkeletonStyles/>
   <GlobalSearch open={showSearch} onClose={()=>setShowSearch(false)} clients={clients} socs={socs} socBank={socBank} ghlData={ghlData} onNavigate={handleSearchNav}/>
   {missedRecap&&<div className="fi" style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)"}} onClick={()=>setMissedRecap(null)}>
-   <div onClick={e=>e.stopPropagation()} style={{width:460,maxHeight:"80vh",background:C.card,border:`1px solid ${C.brd}`,borderRadius:20,overflow:"hidden",backdropFilter:"blur(20px)"}}>
+   <div onClick={e=>e.stopPropagation()} style={{width:460,maxWidth:"95vw",maxHeight:"80vh",background:C.card,border:`1px solid ${C.brd}`,borderRadius:20,overflow:"hidden",backdropFilter:"blur(20px)"}}>
     <div style={{padding:"20px 24px",borderBottom:`1px solid ${C.brd}`,background:`linear-gradient(135deg,${C.acc}11,transparent)`}}>
      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
       <div><div style={{fontSize:18,fontWeight:900,fontFamily:FONT_TITLE,color:C.acc}}>👋 Bon retour !</div>
