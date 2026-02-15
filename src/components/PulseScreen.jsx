@@ -408,14 +408,14 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
   {/* MAIN CONTENT */}
   {renderMainContent()}
   {/* BOTTOM AI TICKER */}
-  <div style={{borderTop:"1px solid rgba(255,255,255,.06)",padding:"6px 0",overflow:"hidden",flexShrink:0,background:"rgba(255,170,0,.03)",zIndex:1,position:"relative"}}>
-   <div style={{display:"flex",animation:"ticker-scroll 35s linear infinite",whiteSpace:"nowrap",alignItems:"center"}}>
+  <div style={{borderTop:"1px solid rgba(255,255,255,.06)",padding:"6px 0",overflow:"hidden",flexShrink:0,background:"rgba(255,170,0,.03)",zIndex:1,position:"relative",minHeight:28}}>
+   {aiTickerItems.length>0?<div style={{display:"flex",animation:"ticker-scroll 35s linear infinite",whiteSpace:"nowrap",alignItems:"center"}}>
     {[0,1].map(dup=><Fragment key={dup}>{aiTickerItems.map((t,i)=><span key={`${dup}-${i}`} style={{display:"inline-flex",alignItems:"center",gap:5,marginRight:32,fontSize:11,fontFamily:FONT,color:"#FFAA00"}}>
      {t.logo?<img src={t.logo} style={{width:14,height:14,borderRadius:3,objectFit:"cover",flexShrink:0}}/>:<span style={{width:14,height:14,borderRadius:3,background:t.color+"33",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7,fontWeight:900,color:t.color,flexShrink:0}}>{(t.sn||"?")[0]}</span>}
      <span style={{fontWeight:700,color:"#e4e4e7"}}>{t.sn}</span>
      <span>{t.text}</span>
     </span>)}</Fragment>)}
-   </div>
+   </div>:<div style={{display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#71717a",fontFamily:FONT,height:"100%"}}>🤖 Aucune activité encore aujourd'hui — les données arrivent au fil de la journée</div>}
   </div>
  </div>;
 }
