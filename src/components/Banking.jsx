@@ -18,8 +18,11 @@ export function categorizeTransaction(tx){
  const amt=leg.amount;const ref=((leg.description||"")+" "+(tx.reference||"")).toLowerCase();
  const legDesc=((tx.legs?.[0]?.description||"")+"").toLowerCase();
  const hasCounterparty=!!tx.legs?.[0]?.counterparty;const isSingleLeg=(tx.legs||[]).length===1;
- const isRealDividend=(/dividend/i.test(tx.reference||"")&&hasCounterparty&&isSingleLeg)||(/scale\s*corp/i.test(legDesc)&&hasCounterparty&&isSingleLeg);
+ const isRealDividend=(/dividend/i.test(tx.reference||"")&&hasCounterparty&&isSingleLeg)||(/scale\s*corp/i.test(legDesc)&&hasCounterparty&&isSingleLeg)||(/scale\s*corp/i.test(ref));
  if(isRealDividend)return TX_CATEGORIES[8];
+ // Internal pocket transfers (not real expenses) — treat as internal transfers
+ if(tx.type==="transfer"&&/to eur (sol|publicit|prestataire|abonnement|anthony|jimmy|principal)/i.test(ref))return TX_CATEGORIES[6];
+ if(tx.type==="transfer"&&/echange to eur|exchange to eur/i.test(ref))return TX_CATEGORIES[6];
  if(amt>0)return TX_CATEGORIES[1];
  if(/loyer|rent/.test(ref))return TX_CATEGORIES[2];
  if(/facebook|google ads|meta ads|meta|tiktok|pub/.test(ref))return TX_CATEGORIES[3];

@@ -652,7 +652,7 @@ export function mkSocRevDemo(){ return null; }
 // Accounts to exclude from treasury per company (personal pockets, dividend transit, etc.)
 export const EXCLUDED_ACCOUNTS={
  leadx:["5c008ba9-b9a7-4141-97dc-6a53ef3d6646","5fce1497-811e-4266-9889-2da74aa27733"], // Dayyaan + SCALE CORP
- copy:["a1edf694-6f10-4b88-bfc1-7f2447f0fd8d","a86df684-33a0-413b-b56b-1e4fc2b13886"], // Sol + Anthony & Rudy (soc.id="copy" for BCS)
+ copy:["a1edf694-ba2d-e22e-0400-127be91fc216","a86df684-89e0-e227-0400-12caeed463bb","bd0ed66e-8c45-e2ea-0400-12f5f3c26431","50235dfb-45de-e28e-0400-12838affb4e8","fd2034e4-5573-e212-0400-12fc5150f4bb","247e7259-d80f-e2c2-0400-12f2c5aec474"], // BCS: Sol, Anthony&Rudy, Publicité, Abonnements, Prestataires, Jimmy
  eco:["a418f8cb-7001-40e8-acd3-e52f092294d4","39786a9f-7dd8-46e3-aba8-d8acca9e4bd7","fa4578d8-5d7f-4b9c-b2eb-afa01061d28e","88fb482e-26b3-494e-9234-5cded1b76799","d45a5ba7-cefa-4e21-85f9-cdafa6c60648","12440858-679f-4781-8db1-eb0ebbb986b3","f893a7c1-64b4-4247-9625-9f640d768b96","9f8f33c4-112f-44ad-81ea-a8acbca1efb7"], // Anthony, Dettes, Loyer, A-Loyer, Courses, Rudy, A-Courses, A-Loisirs
 };
 export async function syncSocRevolut(soc){
