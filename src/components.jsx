@@ -3614,9 +3614,9 @@ export function ConversationsPanel({soc}){
   </>}
  </div>;
 
- return <div style={{height:"calc(100vh - 120px)",minHeight:500,display:"flex",flexDirection:"column"}}>
-  {error&&<div style={{padding:"8px 12px",background:C.rD,border:`1px solid ${C.r}33`,borderRadius:8,marginBottom:0,fontSize:11,color:C.r}}>{error}</div>}
-  <div className="conv-layout" style={{display:"flex",flex:1,overflow:"hidden",borderRadius:12,border:`1px solid ${C.brd}`,background:"rgba(14,14,22,.4)"}}>
+ return <div style={{margin:"-16px -16px 0",maxWidth:"none",width:"calc(100% + 32px)",height:"calc(100vh - 0px)",display:"flex",flexDirection:"column"}}>
+  {error&&<div style={{padding:"8px 12px",background:C.rD,border:`1px solid ${C.r}33`,fontSize:11,color:C.r}}>{error}</div>}
+  <div className="conv-layout" style={{display:"flex",flex:1,overflow:"hidden",background:"rgba(10,10,15,.6)"}}>
    <div className="conv-list-wrap">{listPanel}</div>
    <div className="conv-thread-wrap" style={{flex:1,display:"flex",minWidth:0}}>{threadPanel}</div>
   </div>
