@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Area, AreaChart, Legend, Line, LineChart, ComposedChart, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
 import {
-  BF, BILL_TYPES, C, CLIENT_STATUS, CSS, CURR_SYMBOLS, DEAL_STAGES, EXCLUDED_ACCOUNTS, ErrorBoundary, FONT, FONT_TITLE,
+  BF, BILL_TYPES, C, CLIENT_STATUS, CSS, CURR_SYMBOLS, DEAL_STAGES, EXCLUDED_ACCOUNTS, ErrorBoundary, FONT, FONT_TITLE, isExcludedTx,
   GHL_STAGES_COLORS, INV_STATUS, KB_CATS, MILESTONE_CATS, MN, MOODS, SLACK_MODES, SUB_CATS, SYN_STATUS, SYN_TYPES, gr,
   TIER_BG, TIER_COLORS, ago, autoDetectSubscriptions, buildAIContext, buildPulseSlackMsg, buildReportSlackMsg, buildValidationSlackMsg,
   calcH, calcMilestones, clamp, clientMonthlyRevenue, clientTotalValue, commitmentEnd, commitmentRemaining, curM, curW,
@@ -159,11 +159,11 @@ export function SocBankWidget({bankData,onSync,soc}){
  </Card>;
  const{accounts:allAccounts,transactions:allTransactions,balance,monthly,lastSync,isDemo}=bankData;
  const excl=EXCLUDED_ACCOUNTS[soc?.id]||[];
- const transactions=allTransactions.filter(t=>{const leg=t.legs?.[0];return!leg||!excl.includes(leg.account_id);});
+ const transactions=allTransactions.filter(t=>!isExcludedTx(t,excl));
  const cm=curM(),pm2=prevM(cm);
  const cmData=monthly?.[cm],pmData=monthly?.[pm2];
  const now2=new Date();const mStart=new Date(now2.getFullYear(),now2.getMonth(),1);
- const monthTx=transactions.filter(tx=>{const leg=tx.legs?.[0];if(!leg)return false;if(excl.includes(leg.account_id))return false;return new Date(tx.created_at)>=mStart;});
+ const monthTx=transactions.filter(tx=>{const leg=tx.legs?.[0];if(!leg)return false;return new Date(tx.created_at)>=mStart;});
  const entriesMois=cmData?.income||0;
  const sortiesMois=cmData?.expense||0;
  // Filter logic

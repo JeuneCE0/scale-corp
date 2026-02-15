@@ -650,6 +650,8 @@ export async function syncRevolut(company){
 }
 export function mkSocRevDemo(){ return null; }
 // Accounts to exclude from treasury per company (personal pockets, dividend transit, etc.)
+// Check if a transaction involves any excluded pocket account (any leg)
+export function isExcludedTx(tx,excl){if(!excl||excl.length===0)return false;const leg=tx.legs?.[0];if(!leg)return true;if(excl.includes(leg.account_id))return true;if(tx.type==="transfer"&&(tx.legs||[]).some(l=>excl.includes(l.account_id)))return true;if(tx.type==="exchange")return true;return false;}
 export const EXCLUDED_ACCOUNTS={
  leadx:["5c008ba9-b9a7-4141-97dc-6a53ef3d6646","5fce1497-811e-4266-9889-2da74aa27733"], // Dayyaan + SCALE CORP
  copy:["a1edf694-ba2d-e22e-0400-127be91fc216","a86df684-89e0-e227-0400-12caeed463bb","bd0ed66e-8c45-e2ea-0400-12f5f3c26431","50235dfb-45de-e28e-0400-12838affb4e8","fd2034e4-5573-e212-0400-12fc5150f4bb","247e7259-d80f-e2c2-0400-12f2c5aec474"], // BCS: Sol, Anthony&Rudy, Publicité, Abonnements, Prestataires, Jimmy
@@ -671,7 +673,7 @@ export async function syncSocRevolut(soc){
  const accs=(Array.isArray(accounts)?accounts:[]).map(a=>({id:a.id,name:a.name||"Compte",balance:a.balance,currency:a.currency,state:a.state,excluded:excluded.includes(a.id)}));
  const balance=accs.filter(a=>!a.excluded).reduce((s,a)=>s+(a.currency==="EUR"?a.balance:a.balance*0.92),0);
  const monthly={};
- txns.forEach(tx=>{const m=tx.month;const leg=tx.legs?.[0];if(!leg)return;if(excluded.includes(leg.account_id))return;const amt=leg.amount;if(!monthly[m])monthly[m]={income:0,expense:0};if(amt>0)monthly[m].income+=amt;else monthly[m].expense+=Math.abs(amt);});
+ txns.forEach(tx=>{const m=tx.month;const leg=tx.legs?.[0];if(!leg)return;if(isExcludedTx(tx,excluded))return;const amt=leg.amount;if(!monthly[m])monthly[m]={income:0,expense:0};if(amt>0)monthly[m].income+=amt;else monthly[m].expense+=Math.abs(amt);});
  Object.keys(monthly).forEach(m=>{monthly[m].income=Math.round(monthly[m].income);monthly[m].expense=Math.round(monthly[m].expense);});
  const result={accounts:accs,transactions:txns.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)),balance:Math.round(balance),monthly,lastSync:new Date().toISOString(),isDemo:false};
  cacheSet(ck,result);return result;
