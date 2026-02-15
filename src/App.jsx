@@ -61,6 +61,8 @@ export default function App(){
    try{const tk=localStorage.getItem("sc_auth_token");if(tk){fetch("/api/auth?action=me",{headers:{Authorization:"Bearer "+tk}}).then(r2=>r2.ok?r2.json():null).then(u=>{if(u&&u.id){setAuthUser(u);const meta=u.user_metadata||{};if(meta.role==="admin"){setRole("admin");setStoreToken("auth");setCurrentSocId("admin");syncFromSupabase("admin").catch(()=>{});}else if(meta.society_id){setRole(meta.society_id);setStoreToken("auth");setCurrentSocId(meta.society_id);syncFromSupabase(meta.society_id).catch(()=>{});}}}).catch(()=>{});}}catch{}
    })();},[]);
  const save=useCallback(async(ns,nr,nh)=>{setSaving(true);try{if(ns!=null){setSocs(ns);await sSet("scAs",ns);(ns||[]).forEach(s=>sbUpsert('societies',{id:s.id,...s}));}if(nr!=null){setReps(nr);await sSet("scAr",nr);}if(nh!=null){setHold(nh);await sSet("scAh",nh);sbUpsert('holding',{id:'main',config:nh});}}catch{}setSaving(false);},[]);
+ // Periodic refresh from Supabase (every 60s) to sync changes across sessions
+ useEffect(()=>{if(!loaded)return;const iv=setInterval(async()=>{try{const sbSocs=await fetchSocietiesFromSB();if(sbSocs&&sbSocs.length>0){setSocs(prev=>{const sbMap=Object.fromEntries(sbSocs.map(x=>[x.id,x]));return prev.map(sc=>sbMap[sc.id]?{...sc,...sbMap[sc.id]}:sc);});}const sbHold=await fetchHoldingFromSB();if(sbHold)setHold(sbHold);}catch{}},60000);return()=>clearInterval(iv);},[loaded]);
  const saveAJ=useCallback(async(na,nj)=>{try{if(na!=null){setActions(na);await sSet("scAa",na);}if(nj!=null){setJournal(nj);await sSet("scAj",nj);}}catch{}},[]);
  const savePulse=useCallback(async(k,v)=>{const np={...pulses,[k]:v};setPulses(np);await sSet("scAp",np);},[pulses]);
  const saveDeals=useCallback(async(nd)=>{setDeals(nd);await sSet("scAd",nd);},[]);
