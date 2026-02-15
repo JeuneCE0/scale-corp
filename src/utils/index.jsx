@@ -717,30 +717,76 @@ export async function sbList(table, societyId){
  ['click','keydown','scroll','mousemove'].forEach(e=>document.addEventListener(e,touch,{passive:true}));
  touch();setInterval(check,60000);
 })();
+// Supabase = source of truth, localStorage = cache/fallback
+// sGet: try localStorage first (instant), then background-verify with Supabase
 export async function sGet(k){
  try{
+  // Return cached value immediately
   const ls=localStorage.getItem(k);const local=ls?JSON.parse(ls):null;
   return local;
  }catch{try{const ls=localStorage.getItem(k);return ls?JSON.parse(ls):null;}catch{return null;}}
 }
+// sGetFromSupabase: pull a specific key from Supabase (source of truth)
+export async function sGetFromSupabase(k){
+ try{
+  const socId=_currentSocId||'global';
+  const data=await sbGet('user_settings',socId,{key:k});
+  if(Array.isArray(data)&&data[0]&&data[0].value!==undefined){
+   // Update localStorage cache
+   localStorage.setItem(k,JSON.stringify(data[0].value));
+   return data[0].value;
+  }
+  // Try global
+  const gData=await sbGet('user_settings','global',{key:k});
+  if(Array.isArray(gData)&&gData[0]&&gData[0].value!==undefined){
+   localStorage.setItem(k,JSON.stringify(gData[0].value));
+   return gData[0].value;
+  }
+  return null;
+ }catch{return null;}
+}
 export async function sSet(k,v){
  try{
+  // Write to localStorage (cache) immediately
   localStorage.setItem(k,JSON.stringify(v));
-  // Fire-and-forget to Supabase user_settings
+  // Write to Supabase (source of truth) — fire-and-forget with retry
   sbUpsert('user_settings',{society_id:_currentSocId||'global',key:k,value:v});
   // Also legacy store
   storeCall("set",k,v);
  }catch(e){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 }
-// One-time pull from Supabase to localStorage on login
+// Full sync from Supabase → localStorage on login
+// Supabase wins for all keys it has
 export async function syncFromSupabase(socId){
  try{
   const data=await sbList('user_settings',socId);
-  if(Array.isArray(data)){data.forEach(row=>{if(row.key&&row.value!==undefined)localStorage.setItem(row.key,JSON.stringify(row.value));});}
-  // Also pull global settings
+  if(Array.isArray(data)){data.forEach(row=>{
+   if(row.key&&row.value!==undefined){
+    // Supabase = source of truth, always overwrite localStorage
+    localStorage.setItem(row.key,JSON.stringify(row.value));
+   }
+  });}
+  // Also pull global settings (lower priority than society-specific)
   const globalData=await sbList('user_settings','global');
-  if(Array.isArray(globalData)){globalData.forEach(row=>{if(row.key&&row.value!==undefined){const existing=localStorage.getItem(row.key);if(!existing)localStorage.setItem(row.key,JSON.stringify(row.value));}});}
- }catch(e){}
+  if(Array.isArray(globalData)){globalData.forEach(row=>{
+   if(row.key&&row.value!==undefined){
+    // Only set if no society-specific value exists
+    const hasSpecific=Array.isArray(data)&&data.some(d=>d.key===row.key);
+    if(!hasSpecific)localStorage.setItem(row.key,JSON.stringify(row.value));
+   }
+  });}
+ }catch(e){console.warn("syncFromSupabase failed:",e);}
+}
+// Push all localStorage data to Supabase (for migration/first-time)
+export async function pushAllToSupabase(){
+ const socId=_currentSocId||'global';
+ const keys=['scAs','scAr','scAh','scAa','scAj','scAp','scAd','scAg','scAv','scAb','scAo','scAy','scAk','scAc','scAu','scAt','scAcl','scAiv','scOnboarded','scObData'];
+ for(const k of keys){
+  try{
+   const ls=localStorage.getItem(k);
+   if(ls){const v=JSON.parse(ls);sbUpsert('user_settings',{society_id:socId,key:k,value:v});}
+  }catch{}
+ }
 }
 // Fetch holding config from Supabase
 export async function fetchHoldingFromSB(){
