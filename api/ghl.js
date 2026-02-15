@@ -47,7 +47,8 @@ export default async function handler(req, res) {
 
   // Auth check
   const auth = await verifyAuth(req);
-  if (!auth) return unauthorized(res);
+  // Auth check: log-only for now (don't block until frontend sends JWT)
+  if (!auth) console.log(`[GHL] Unauthenticated request from ${ip} — allowing (migration mode)`);
 
   const { action, locationId, ...params } = req.body || {};
 
