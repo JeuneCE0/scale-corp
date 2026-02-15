@@ -3488,18 +3488,18 @@ export function ConversationsPanel({soc}){
  const msgsEndRef=useRef(null);const listPollRef=useRef(null);const msgsPollRef=useRef(null);
 
  const fetchConvos=useCallback((quiet)=>{if(!socKey)return;if(!quiet){setLoading(true);setError(null);}
-  fetch(`/api/ghl?action=conversations_list&loc=${socKey}`,{method:"POST"}).then(r=>{if(!r.ok)throw new Error("API error");return r.json();}).then(d=>{setConvos(Array.isArray(d.conversations)?d.conversations:Array.isArray(d)?d:[]);}).catch(()=>{if(!quiet)setError("Impossible de charger les conversations");}).finally(()=>{if(!quiet)setLoading(false);});
+  fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_list",locationId:socKey})}).then(r=>{if(!r.ok)throw new Error("API error");return r.json();}).then(d=>{setConvos(Array.isArray(d.conversations)?d.conversations:Array.isArray(d)?d:[]);}).catch(()=>{if(!quiet)setError("Impossible de charger les conversations");}).finally(()=>{if(!quiet)setLoading(false);});
  },[socKey]);
 
  useEffect(()=>{fetchConvos(false);listPollRef.current=setInterval(()=>fetchConvos(true),60000);return()=>clearInterval(listPollRef.current);},[fetchConvos]);
 
  const loadMsgs=useCallback((c)=>{setSelConvo(c);setMsgs([]);setMsgsLoading(true);setMobileShowThread(true);setSendType(c.type||c.lastMessageType||"SMS");
-  fetch(`/api/ghl?action=conversations_messages&loc=${socKey}&conversationId=${c.id}`,{method:"POST"}).then(r=>r.json()).then(d=>{const m=Array.isArray(d.messages)?d.messages:Array.isArray(d)?d:[];setMsgs(m.slice().reverse());}).catch(()=>setMsgs([])).finally(()=>setMsgsLoading(false));
+  fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_messages",locationId:socKey,conversationId:c.id})}).then(r=>r.json()).then(d=>{const m=Array.isArray(d.messages)?d.messages:Array.isArray(d)?d:[];setMsgs(m.slice().reverse());}).catch(()=>setMsgs([])).finally(()=>setMsgsLoading(false));
  },[socKey]);
 
  // Poll messages every 30s
  useEffect(()=>{clearInterval(msgsPollRef.current);if(!selConvo)return;
-  msgsPollRef.current=setInterval(()=>{fetch(`/api/ghl?action=conversations_messages&loc=${socKey}&conversationId=${selConvo.id}`,{method:"POST"}).then(r=>r.json()).then(d=>{const m=Array.isArray(d.messages)?d.messages:Array.isArray(d)?d:[];setMsgs(m.slice().reverse());}).catch(()=>{});},30000);
+  msgsPollRef.current=setInterval(()=>{fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_messages",locationId:socKey,conversationId:selConvo.id})}).then(r=>r.json()).then(d=>{const m=Array.isArray(d.messages)?d.messages:Array.isArray(d)?d:[];setMsgs(m.slice().reverse());}).catch(()=>{});},30000);
   return()=>clearInterval(msgsPollRef.current);
  },[selConvo,socKey]);
 
@@ -3507,7 +3507,7 @@ export function ConversationsPanel({soc}){
  useEffect(()=>{msgsEndRef.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
 
  const sendMsg=()=>{if(!msgInput.trim()||!selConvo||sending)return;setSending(true);setSentOk(false);
-  fetch(`/api/ghl?action=conversation_send&loc=${socKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:sendType,contactId:selConvo.contactId||selConvo.id,message:msgInput})}).then(r=>{if(!r.ok)throw new Error();setMsgs(p=>[...p,{body:msgInput,direction:"outbound",type:sendType,dateAdded:new Date().toISOString()}]);setMsgInput("");setSentOk(true);setTimeout(()=>setSentOk(false),2000);}).catch(()=>{}).finally(()=>setSending(false));
+  fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversation_send",locationId:socKey,type:sendType,contactId:selConvo.contactId||selConvo.id,message:msgInput})}).then(r=>{if(!r.ok)throw new Error();setMsgs(p=>[...p,{body:msgInput,direction:"outbound",type:sendType,dateAdded:new Date().toISOString()}]);setMsgInput("");setSentOk(true);setTimeout(()=>setSentOk(false),2000);}).catch(()=>{}).finally(()=>setSending(false));
  };
 
  const filtered=useMemo(()=>{let f=convos;if(channelFilter!=="all")f=f.filter(c=>(c.type||c.lastMessageType||"").toLowerCase().includes(channelFilter.toLowerCase()));const s=search.toLowerCase().trim();if(s)f=f.filter(c=>(c.contactName||c.fullName||c.email||"").toLowerCase().includes(s));return f;},[convos,search,channelFilter]);
@@ -3814,13 +3814,13 @@ export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData
  useEffect(()=>{
   if(!selClient)return;setConvoLoading(true);setConvos([]);setConvoMsgs([]);
   const contactId=selClient.ghlId||selClient.id;
-  fetch(`/api/ghl?action=conversations_list&loc=${socKey}&contactId=${contactId}`,{method:"POST"}).then(r=>r.json()).then(d=>{setConvos(d.conversations||d||[]);
+  fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_list",locationId:socKey,contactId})}).then(r=>r.json()).then(d=>{setConvos(d.conversations||d||[]);
    if((d.conversations||d||[]).length>0){const c=(d.conversations||d)[0];
-    fetch(`/api/ghl?action=conversations_messages&loc=${socKey}&conversationId=${c.id}`,{method:"POST"}).then(r2=>r2.json()).then(d2=>setConvoMsgs(d2.messages||d2||[])).catch(()=>{});}
+    fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_messages",locationId:socKey,conversationId:c.id})}).then(r2=>r2.json()).then(d2=>setConvoMsgs(d2.messages||d2||[])).catch(()=>{});}
   }).catch(()=>{}).finally(()=>setConvoLoading(false));
  },[selClient,socKey]);
  const sendMsg=()=>{if(!msgInput.trim()||!selClient||convos.length===0)return;
-  fetch(`/api/ghl?action=conversation_send&loc=${socKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"Email",contactId:selClient.ghlId||selClient.id,message:msgInput})}).then(()=>{setConvoMsgs(p=>[...p,{body:msgInput,direction:"outbound",dateAdded:new Date().toISOString()}]);setMsgInput("");}).catch(()=>{});
+  fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversation_send",locationId:socKey,type:"Email",contactId:selClient.ghlId||selClient.id,message:msgInput})}).then(()=>{setConvoMsgs(p=>[...p,{body:msgInput,direction:"outbound",dateAdded:new Date().toISOString()}]);setMsgInput("");}).catch(()=>{});
  };
  // Pipeline data
  const gd=ghlData?.[soc.id];const opps=gd?.opportunities||[];const stages=gd?.pipelines?.[0]?.stages||[];
