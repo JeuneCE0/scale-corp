@@ -11,7 +11,7 @@ import {
   uid, autoCategorize,
 } from "../shared.jsx";
 import { categorizeTransaction } from "./BankingPanel.jsx";
-import { TX_CATEGORIES } from "../components.jsx";
+import { TX_CATEGORIES } from "../shared.jsx";
 
 
 /* ============ HELPER: compute all report data for a given month ============ */

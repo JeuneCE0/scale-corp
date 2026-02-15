@@ -3206,6 +3206,7 @@ export function ActivitePanel({soc,ghlData,socBankData,clients}){
  const[doneIds,setDoneIds]=useState(()=>{try{return JSON.parse(localStorage.getItem(`todo_done_${soc.id}`)||"[]");}catch{return[];}});
  const[newTask,setNewTask]=useState("");
  const[newDeadline,setNewDeadline]=useState("");
+ const[editingTask,setEditingTask]=useState(null);
  const[readIds,setReadIds]=useState(()=>{try{return JSON.parse(localStorage.getItem(`inbox_read_${soc.id}`)||"[]");}catch{return[];}});
  const[,forceUpdate]=useState(0);
  useEffect(()=>{const iv=setInterval(()=>forceUpdate(x=>x+1),60000);return()=>clearInterval(iv);},[]);
@@ -3213,6 +3214,7 @@ export function ActivitePanel({soc,ghlData,socBankData,clients}){
  const saveManual=(tasks)=>{setManualTasks(tasks);try{localStorage.setItem(`todo_${soc.id}`,JSON.stringify(tasks));}catch{}};
  const toggleDone=(id)=>{const n=doneIds.includes(id)?doneIds.filter(x=>x!==id):[...doneIds,id];saveDone(n);};
  const addTask=()=>{if(!newTask.trim())return;saveManual([...manualTasks,{id:uid(),text:newTask.trim(),priority:"normal",at:new Date().toISOString(),deadline:newDeadline||null}]);setNewTask("");setNewDeadline("");};
+ const saveEditTask=()=>{if(!editingTask)return;saveManual(manualTasks.map(t=>t.id===editingTask.id?editingTask:t));setEditingTask(null);};
  const deadlineLabel=(dl)=>{if(!dl)return null;const diff=new Date(dl).getTime()-Date.now();if(diff<0)return{text:"Expiré",color:C.r};const mins=Math.floor(diff/60000);if(mins<60)return{text:`${mins}min`,color:C.o};const hrs=Math.floor(mins/60);const rm=mins%60;if(hrs<24)return{text:`${hrs}h${rm>0?String(rm).padStart(2,"0"):""}`,color:hrs<2?C.o:C.g};const days=Math.floor(hrs/24);return{text:`${days}j`,color:C.g};};
  const markRead=(id)=>{const n=[...readIds,id];setReadIds(n);try{localStorage.setItem(`inbox_read_${soc.id}`,JSON.stringify(n));}catch{}};
  // Auto tasks
@@ -3252,18 +3254,18 @@ export function ActivitePanel({soc,ghlData,socBankData,clients}){
   {/* Tasks section */}
   <div className="glass-card-static" style={{padding:16,marginBottom:16}}>
    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-    <span style={{fontSize:11,fontWeight:800,color:C.acc,fontFamily:FONT_TITLE}}>📋 TÂCHES DU JOUR</span>
+    <span style={{fontSize:11,fontWeight:800,color:C.acc,fontFamily:FONT_TITLE}}>☑️ Tâches</span>
     <span style={{fontSize:9,color:C.td}}>{sorted.filter(t=>!doneIds.includes(t.id)).length} restantes</span>
    </div>
    <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
     <input value={newTask} onChange={e=>setNewTask(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();}} placeholder="Ajouter une tâche..." style={{flex:"1 1 140px",padding:"7px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
-    <input type="datetime-local" value={newDeadline} onChange={e=>setNewDeadline(e.target.value)} style={{padding:"7px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none",minWidth:140}}/>
+    <input type="date" value={(newDeadline||"").slice(0,10)} onChange={e=>setNewDeadline(e.target.value?(e.target.value+"T12:00"):"")} title="Deadline" style={{padding:"7px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none",width:120}}/>
     <Btn small onClick={addTask}>+</Btn>
    </div>
    {sorted.map(t=>{const done=doneIds.includes(t.id);return <div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:done?"transparent":"rgba(14,14,22,.6)",borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3,opacity:done?.5:1}}>
     <div onClick={()=>toggleDone(t.id)} style={{width:16,height:16,borderRadius:4,border:`2px solid ${done?C.g:C.brd}`,background:done?C.gD:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{done&&<span style={{color:C.g,fontSize:9}}>✓</span>}</div>
     <span style={{fontSize:11,flexShrink:0}}>{priorityIcon[t.priority]||"🟢"}</span>
-    <div style={{flex:1,fontSize:11,fontWeight:done?400:600,color:done?C.td:C.t,textDecoration:done?"line-through":"none"}}>{t.text}</div>
+    <div onClick={()=>{if(!t.auto){const mt=manualTasks.find(m=>m.id===t.id);if(mt)setEditingTask({...mt});}}} style={{flex:1,fontSize:11,fontWeight:done?400:600,color:done?C.td:C.t,textDecoration:done?"line-through":"none",cursor:t.auto?"default":"pointer"}}>{t.text}</div>
     {(()=>{const dl=deadlineLabel(t.deadline);return dl?<span style={{fontSize:8,fontWeight:800,color:dl.color,background:dl.color+"18",padding:"1px 5px",borderRadius:6,flexShrink:0}}>⏱{dl.text}</span>:null;})()}
     {t.auto&&<span style={{fontSize:8,color:C.td,background:C.card2,padding:"1px 5px",borderRadius:6}}>auto</span>}
     {/* Actions 1-clic */}
@@ -3272,6 +3274,26 @@ export function ActivitePanel({soc,ghlData,socBankData,clients}){
     {!t.auto&&<button onClick={()=>saveManual(manualTasks.filter(m=>m.id!==t.id))} style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:10}}>✕</button>}
    </div>;})}
    {sorted.length===0&&<div style={{textAlign:"center",padding:12,color:C.td,fontSize:11}}>✅ Aucune tâche</div>}
+   {editingTask&&<div className="slide-down" style={{marginTop:8,padding:12,background:C.card2,borderRadius:10,border:`1px solid ${C.acc}33`}}>
+    <div style={{fontSize:9,fontWeight:700,color:C.acc,marginBottom:6}}>✏️ Modifier la tâche</div>
+    <input value={editingTask.text} onChange={e=>setEditingTask({...editingTask,text:e.target.value})} style={{width:"100%",padding:"7px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none",marginBottom:6}}/>
+    <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+     <input type="date" value={(editingTask.deadline||"").slice(0,10)} onChange={e=>{const d=e.target.value;const time=(editingTask.deadline||"").slice(11,16)||"12:00";setEditingTask({...editingTask,deadline:d?`${d}T${time}`:null});}} style={{padding:"5px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none"}}/>
+     <select value={(editingTask.deadline||"").slice(11,13)||""} onChange={e=>{const d=(editingTask.deadline||"").slice(0,10)||new Date().toISOString().slice(0,10);const m=(editingTask.deadline||"").slice(14,16)||"00";setEditingTask({...editingTask,deadline:`${d}T${e.target.value}:${m}`});}} style={{padding:"5px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT}}>
+      <option value="">Heure</option>
+      {Array.from({length:24},(_,i)=>String(i).padStart(2,"0")).map(h=><option key={h} value={h}>{h}h</option>)}
+     </select>
+     <select value={(editingTask.deadline||"").slice(14,16)||""} onChange={e=>{const d=(editingTask.deadline||"").slice(0,10)||new Date().toISOString().slice(0,10);const h=(editingTask.deadline||"").slice(11,13)||"12";setEditingTask({...editingTask,deadline:`${d}T${h}:${e.target.value}`});}} style={{padding:"5px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT}}>
+      <option value="">Min</option>
+      {["00","15","30","45"].map(m=><option key={m} value={m}>{m}</option>)}
+     </select>
+     <select value={editingTask.priority} onChange={e=>setEditingTask({...editingTask,priority:e.target.value})} style={{padding:"5px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT}}>
+      <option value="urgent">🔴 Urgent</option><option value="important">🟡 Important</option><option value="normal">🟢 Normal</option>
+     </select>
+     <button onClick={saveEditTask} style={{padding:"5px 12px",borderRadius:8,background:C.acc,color:"#0a0a0f",fontSize:10,fontWeight:700,border:"none",cursor:"pointer",fontFamily:FONT}}>Sauver</button>
+     <button onClick={()=>setEditingTask(null)} style={{padding:"5px 8px",borderRadius:8,background:"transparent",color:C.td,fontSize:10,border:`1px solid ${C.brd}`,cursor:"pointer",fontFamily:FONT}}>Annuler</button>
+    </div>
+   </div>}
   </div>
   {/* Activity feed */}
   <div className="glass-card-static" style={{padding:16}}>
