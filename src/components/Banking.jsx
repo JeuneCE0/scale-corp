@@ -10,7 +10,8 @@ import {
   pf, prevM, project, revFinancials, runway, sSet, sbUpsert, simH, sinceLbl, sinceMonths, slackSend, subMonthly, teamMonthly,
   uid, autoCategorize,
 } from "../shared.jsx";
-import { KPI, Btn, Sect, Card } from "./UI.jsx";
+
+import { KPI, Btn, Sect, Card } from "../components.jsx";
 
 export function categorizeTransaction(tx){
  const leg=tx.legs?.[0];if(!leg)return{id:"autres",label:"📦 Autres dépenses",icon:"📦"};
@@ -136,7 +137,7 @@ export function BankingTransactions({transactions,cs,allClients2=[]}){
  </>;
 }
 /* GHL CRM TAB */
-
+/* PER-SOCIÉTÉ BANKING WIDGET — REDESIGNED */
 export function SocBankWidget({bankData,onSync,soc}){
  const[txFilter,setTxFilter]=useState("all");
  const[searchTx,setSearchTx]=useState("");

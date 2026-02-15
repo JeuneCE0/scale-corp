@@ -11,6 +11,8 @@ import {
   uid, autoCategorize,
 } from "../shared.jsx";
 
+
+/* RAPPORTS PANEL */
 export function RapportsPanel({soc,socBankData,ghlData,clients,reps,allM}){
  const[expandedMonth,setExpandedMonth]=useState(null);
  const[notesMap,setNotesMap]=useState(()=>{try{return JSON.parse(localStorage.getItem(`scRapportNotes_${soc?.id}`)||"{}");}catch{return{};}});
@@ -166,7 +168,7 @@ ${(soc.obj||0)>0?`<h2>Objectif</h2><p>${d.ca>=(soc.obj||0)?"✅ Atteint":"❌ No
  </div>;
 }
 /* SYNERGIES MAP */
-
+/* ============ REPLAY MENSUEL ============ */
 export function ReplayMensuel({soc,reps,allM,socBank,clients,ghlData}){
  const[open,setOpen]=useState(false);
  const[slide,setSlide]=useState(0);

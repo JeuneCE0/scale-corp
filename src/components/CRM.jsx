@@ -10,8 +10,10 @@ import {
   pf, prevM, project, revFinancials, runway, sSet, sbUpsert, simH, sinceLbl, sinceMonths, slackSend, subMonthly, teamMonthly,
   uid, autoCategorize,
 } from "../shared.jsx";
-import { KPI, PBar, Btn, Sect } from "./UI.jsx";
 
+import { KPI, PBar, Btn, Sect } from "../components.jsx";
+
+/* GHL CRM TAB */
 export function TabCRM({socs,ghlData,onSync}){
  const[selSoc,setSelSoc]=useState("all");
  const actS=socs.filter(s=>s.stat==="active"&&s.id!=="eco");

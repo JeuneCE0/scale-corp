@@ -10,8 +10,10 @@ import {
   pf, prevM, project, revFinancials, runway, sSet, sbUpsert, simH, sinceLbl, sinceMonths, slackSend, subMonthly, teamMonthly,
   uid, autoCategorize,
 } from "../shared.jsx";
-import { Btn, Card } from "./UI.jsx";
 
+import { Btn, Card } from "../components.jsx";
+
+/* AI CO-PILOT */
 export function AICoPilot({socs,reps,hold,actions,pulses,allM,revData,socBank,okrs,synergies,clients}){
  const[msgs,setMsgs]=useState([{role:"assistant",content:"Salut ! Je suis ton co-pilote IA. Je connais toutes les données de ton portfolio. Pose-moi n'importe quelle question — analyse, recommandation, récap pour une réunion, comparaison entre sociétés…"}]);
  const[input,setInput]=useState("");const[loading,setLoading]=useState(false);const ref=useRef(null);
@@ -49,7 +51,7 @@ export function AICoPilot({socs,reps,hold,actions,pulses,allM,revData,socBank,ok
  </div>;
 }
 /* PULSE SYSTEM */
-
+/* 5. AI WEEKLY COACH */
 export function AIWeeklyCoach({soc,reps,allM,actions,pulses,milestones}){
  const cM2=curM();const pm=prevM(cM2);
  const r=gr(reps,soc.id,cM2),rp=gr(reps,soc.id,pm);

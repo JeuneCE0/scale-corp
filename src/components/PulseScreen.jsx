@@ -11,6 +11,8 @@ import {
   uid, autoCategorize,
 } from "../shared.jsx";
 
+
+/* ═══════════════════════════ PULSE — Live Monitoring Dashboard ═══════════════════════════ */
 export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose}){
  const[now,setNow]=useState(new Date());
  const[refreshing,setRefreshing]=useState(false);
@@ -416,7 +418,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
 }
 
 /* ============ LIVE ACTIVITY FEED ============ */
-
+/* ============ LIVE ACTIVITY FEED ============ */
 export function LiveFeed({socs,reps,allM,ghlData,socBank,clients,maxEvents=50}){
  const events=useMemo(()=>{
   const evts=[];const now=Date.now();
@@ -455,7 +457,7 @@ export function LiveFeed({socs,reps,allM,ghlData,socBank,clients,maxEvents=50}){
 }
 
 /* ============ REPLAY MENSUEL ============ */
-
+/* ============ PREDICTIONS & SCORING ============ */
 export function PredictionsCard({soc,reps,allM,clients,ghlData,socBank}){
  const[expanded,setExpanded]=useState(false);
  const cm=curM();

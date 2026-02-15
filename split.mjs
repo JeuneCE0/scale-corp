@@ -1,198 +1,134 @@
-// Script to split components.jsx into chunks
 import fs from 'fs';
 
 const src = fs.readFileSync('src/components.jsx', 'utf8');
 const lines = src.split('\n');
 
-// Common imports header - each chunk file gets these
-const REACT_IMPORT = `import React, { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";`;
-const RECHARTS_IMPORT = `import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Area, AreaChart, Legend, Line, LineChart, ComposedChart, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";`;
+// Find export boundaries using the grep data (1-indexed line numbers)
+const exports = [
+  [14, 'Badge'], [15, 'IncubBadge'], [16, 'GradeBadge'], [17, 'KPI'],
+  [24, 'PBar'], [25, 'Btn'], [29, 'Inp'], [38, 'Sel'], [39, 'Sect'],
+  [40, 'Card'], [41, 'Modal'], [42, 'CTip'], [43, 'Toggle'], [44, 'ActionItem'],
+  [46, 'AICoPilot'], [83, 'PulseForm'], [107, 'PulseOverview'],
+  [117, 'MeetingMode'], [184, 'DealFlow'], [218, 'categorizeTransaction'],
+  [234, 'BankingPanel'], [278, 'BankingTransactions'], [342, 'TabCRM'],
+  [421, 'MilestonesWall'], [487, 'MilestonesCompact'], [496, 'MilestoneCount'],
+  [502, 'SocBankWidget'], [592, 'RapportsPanel'], [747, 'SynergiesPanel'],
+  [815, 'KnowledgeBase'], [876, 'RiskMatrix'], [930, 'GamificationPanel'],
+  [1001, 'InboxUnifiee'], [1028, 'ParcoursClientVisuel'], [1061, 'BenchmarkRadar'],
+  [1101, 'calcSmartAlerts'], [1131, 'SmartAlertsPanel'], [1154, 'CohortAnalysis'],
+  [1215, 'CHALLENGE_TEMPLATES'], [1224, 'SubsTeamPanel'], [1456, 'SubsTeamBadge'],
+  [1466, 'ChallengesPanel'], [1538, 'AIWeeklyCoach'], [1579, 'ClientsPanelSafe'],
+  [1580, 'ClientsPanelInner'], [2430, 'genInsights'], [2455, 'calcBenchmark'],
+  [2472, 'getPlaybooks'], [2491, 'GoalEditor'], [2528, 'CelebrationOverlay'],
+  [2550, 'MeetingPrepView'], [2611, 'CollapsibleSection'], [2625, 'SocSettingsPanel'],
+  [2777, 'genPorteurNotifications'], [2805, 'NotificationCenter'],
+  [2841, 'PorteurAIChat'], [3096, 'LeaderboardCard'], [3133, 'PulseDashWidget'],
+  [3177, 'PorteurDashboard'], [4090, 'InboxPanel'], [4129, 'AgendaPanel'],
+  [4164, 'ConversationsPanel'], [4211, 'TodoPanel'], [4255, 'PipelineKanbanPanel'],
+  [4283, 'RessourcesPanel'], [4322, 'ActivitePanel'], [4412, 'ClientsUnifiedPanel'],
+  [4498, 'calcClientHealthScore'], [4517, 'HealthBadge'], [4528, 'SalesPanel'],
+  [4811, 'PublicitePanel'], [5071, 'SocieteView'], [5154, 'ValRow'],
+  [5189, 'TabSimulateur'], [5218, 'ObInp'], [5230, 'ObTextArea'],
+  [5241, 'ObSelect'], [5253, 'ObCheck'], [5262, 'ObTag'],
+  [5267, 'OnboardingWizard'], [5467, 'TOUR_ADMIN'], [5484, 'TOUR_PORTEUR'],
+  [5495, 'TutorialOverlay'], [5601, 'SB_ADMIN'], [5614, 'SB_PORTEUR'],
+  [5625, 'Sidebar'], [5685, 'AdminClientsTab'], [5714, 'WarRoom'],
+  [5815, 'AutoPilotSection'], [5905, 'SynergiesAutoPanel'],
+  [5962, 'WidgetEmbed'], [5988, 'WidgetCard'], [6008, 'WidgetRenderer'],
+  [6018, 'PulseScreen'], [6423, 'LiveFeed'], [6461, 'ReplayMensuel'],
+  [6526, 'PredictionsCard'], [6586, 'ClientPortal'], [6633, 'InvestorBoard'],
+  [6682, 'WarRoomReadOnly'],
+];
 
-// Get the shared imports (lines 3-12 in 0-indexed = lines 2-11)
-const sharedImportLines = lines.slice(2, 12);
-// Fix path for files in components/ subdirectory
-const sharedImportChunk = sharedImportLines.join('\n').replace('./shared.jsx', '../shared.jsx');
-const sharedImportRoot = sharedImportLines.join('\n');
+// Calculate end lines
+for (let i = 0; i < exports.length; i++) {
+  const nextStart = i < exports.length - 1 ? exports[i + 1][0] : lines.length + 1;
+  exports[i].push(nextStart - 1); // end line
+}
 
-// Define chunks with line ranges (1-indexed from grep output)
-// Format: [startLine, endLine] inclusive
-const chunks = {
-  'UI': {
-    file: 'src/components/UI.jsx',
-    ranges: [[14, 44]], // Badge through ActionItem
-    desc: 'UI primitives'
-  },
-  'AI': {
-    file: 'src/components/AI.jsx',
-    ranges: [[46, 82], [1538, 1578]], // AICoPilot + AIWeeklyCoach
-    desc: 'AI components'
-  },
-  'PulseScreen': {
-    file: 'src/components/PulseScreen.jsx',
-    ranges: [[6018, 6422], [6423, 6460], [6526, 6585]], // PulseScreen + LiveFeed + PredictionsCard
-    desc: 'Pulse fullscreen dashboard',
-    internalImports: ['Card', 'KPI', 'PBar', 'Btn', 'Sect', 'Modal', 'Inp', 'Sel', 'CTip', 'Badge', 'GradeBadge', 'Toggle']
-  },
-  'Banking': {
-    file: 'src/components/Banking.jsx',
-    ranges: [[218, 341], [502, 591]], // categorizeTransaction, BankingPanel, BankingTransactions, SocBankWidget
-    desc: 'Banking components'
-  },
-  'CRM': {
-    file: 'src/components/CRM.jsx',
-    ranges: [[342, 420]], // TabCRM
-    desc: 'CRM components'
-  },
-  'Reports': {
-    file: 'src/components/Reports.jsx',
-    ranges: [[592, 746], [6461, 6525]], // RapportsPanel + ReplayMensuel
-    desc: 'Reports'
-  },
-  'PorteurView': {
-    file: 'src/components/PorteurView.jsx',
-    ranges: [
-      [2777, 2840], // genPorteurNotifications, NotificationCenter
-      [2841, 3095], // PorteurAIChat
-      [3096, 3132], // LeaderboardCard
-      [3133, 3176], // PulseDashWidget
-      [3177, 4089], // PorteurDashboard
-      [4090, 4163], // InboxPanel
-      [4164, 4210], // ConversationsPanel (AgendaPanel is 4129-4163)
-      [4211, 4254], // TodoPanel
-      [4255, 4282], // PipelineKanbanPanel
-      [4283, 4321], // RessourcesPanel
-      [4322, 4411], // ActivitePanel
-      [4412, 4527], // ClientsUnifiedPanel, calcClientHealthScore, HealthBadge
-      [4528, 4810], // SalesPanel
-      [4811, 5070], // PublicitePanel
-    ],
-    desc: 'Porteur view'
-  },
-  'AdminDashboard': {
-    file: 'src/components/AdminDashboard.jsx',
-    ranges: [
-      [5154, 5188], // ValRow
-      [5685, 5713], // AdminClientsTab
-      [184, 217], // DealFlow
-      [117, 183], // MeetingMode
-      [1101, 1153], // calcSmartAlerts, SmartAlertsPanel
-      [1154, 1214], // CohortAnalysis
-      [1061, 1100], // BenchmarkRadar
-      [876, 929], // RiskMatrix
-    ],
-    desc: 'Admin dashboard'
-  },
-  'Misc': {
-    file: 'src/components/Misc.jsx',
-    ranges: [
-      [83, 116], // PulseForm, PulseOverview
-      [421, 501], // MilestonesWall, MilestonesCompact, MilestoneCount
-      [747, 814], // SynergiesPanel
-      [815, 875], // KnowledgeBase
-      [930, 1000], // GamificationPanel
-      [1001, 1060], // InboxUnifiee, ParcoursClientVisuel
-      [1215, 1223], // CHALLENGE_TEMPLATES
-      [1224, 1465], // SubsTeamPanel, SubsTeamBadge
-      [1466, 1537], // ChallengesPanel
-      [1579, 2429], // ClientsPanelSafe, ClientsPanelInner
-      [2430, 2527], // genInsights, calcBenchmark, getPlaybooks, GoalEditor
-      [2528, 2624], // CelebrationOverlay, MeetingPrepView, CollapsibleSection
-      [2625, 2776], // SocSettingsPanel
-      [5071, 5153], // SocieteView
-      [5189, 5466], // TabSimulateur, Ob*, OnboardingWizard
-      [5467, 5600], // TOUR_*, TutorialOverlay
-      [5601, 5684], // SB_*, Sidebar
-      [5714, 5961], // WarRoom, AutoPilotSection, SynergiesAutoPanel
-      [5962, 6017], // Widget*
-      [6586, 6688], // ClientPortal, InvestorBoard, WarRoomReadOnly
-    ],
-    desc: 'Remaining components'
+// Extract code for a set of export names
+function extract(names) {
+  const parts = [];
+  for (const name of names) {
+    const exp = exports.find(e => e[1] === name);
+    if (!exp) { console.error(`NOT FOUND: ${name}`); continue; }
+    const [start, , end] = exp;
+    // Also grab any comments/blank lines before (up to 2 lines)
+    let actualStart = start;
+    for (let i = start - 2; i < start - 1; i++) {
+      if (i >= 0 && lines[i] && (lines[i].startsWith('/*') || lines[i].startsWith('//'))) {
+        actualStart = i + 1;
+      }
+    }
+    parts.push(lines.slice(actualStart - 1, end).join('\n'));
   }
+  return parts.join('\n');
+}
+
+// Chunk definitions
+const CHUNKS = {
+  PulseScreen: ['PulseScreen', 'LiveFeed', 'PredictionsCard'],
+  Banking: ['categorizeTransaction', 'BankingPanel', 'BankingTransactions', 'SocBankWidget'],
+  CRM: ['TabCRM'],
+  AI: ['AICoPilot', 'AIWeeklyCoach'],
+  Reports: ['RapportsPanel', 'ReplayMensuel'],
 };
 
-// Extract line ranges from source
-function extractLines(ranges) {
-  let result = [];
-  for (const [start, end] of ranges) {
-    // Convert from 1-indexed to 0-indexed
-    result.push(lines.slice(start - 1, end).join('\n'));
+// All names that go into separate chunks
+const splitNames = new Set(Object.values(CHUNKS).flat());
+
+// Everything else stays in components.jsx
+const remainingNames = exports.map(e => e[1]).filter(n => !splitNames.has(n));
+
+// Shared imports block (lines 1-13)
+const headerLines = lines.slice(0, 13);
+const reactImport = headerLines[0];
+const rechartsImport = headerLines[1];
+const sharedBlock = headerLines.slice(2).join('\n');
+const sharedBlockSub = sharedBlock.replace('"./shared.jsx"', '"../shared.jsx"');
+
+// For each chunk, find which other components from remaining it uses as JSX
+function findJSXDeps(code, available) {
+  const used = new Set();
+  for (const name of available) {
+    // Check for <Name or <Name> or <Name/ usage
+    const re = new RegExp(`<${name}[\\s/>]`);
+    if (re.test(code)) used.add(name);
+    // Also check function calls like name(
+    const re2 = new RegExp(`\\b${name}\\(`);
+    if (re2.test(code) && name[0] === name[0].toLowerCase()) used.add(name); // only for funcs like calcSmartAlerts
   }
-  return result.join('\n\n');
+  return [...used];
 }
 
-// Scan code to find which shared imports are actually used
-function findUsedSharedImports(code, allSharedExports) {
-  return allSharedExports.filter(name => {
-    // Check if the name is used in the code (not just in import statement)
-    const regex = new RegExp(`\\b${name}\\b`);
-    return regex.test(code);
-  });
-}
-
-// Parse all shared exports from the import statement
-const sharedImportStr = sharedImportLines.join(' ');
-const sharedExports = [...sharedImportStr.matchAll(/\b([A-Za-z_]\w*)\b/g)]
-  .map(m => m[1])
-  .filter(n => !['import', 'from', 'shared', 'jsx'].includes(n));
-
-// Also need to know which UI components each chunk uses from UI.jsx
-const uiExports = ['Badge', 'IncubBadge', 'GradeBadge', 'KPI', 'PBar', 'Btn', 'Inp', 'Sel', 'Sect', 'Card', 'Modal', 'CTip', 'Toggle', 'ActionItem'];
-
-// Generate each chunk file
-for (const [name, chunk] of Object.entries(chunks)) {
-  const code = extractLines(chunk.ranges);
+// Write chunk files
+for (const [chunkName, names] of Object.entries(CHUNKS)) {
+  const code = extract(names);
+  const jsxDeps = findJSXDeps(code, remainingNames);
   
-  // For UI.jsx, no internal component imports needed
-  let header = REACT_IMPORT + '\n' + RECHARTS_IMPORT + '\n';
-  
-  if (name === 'UI') {
-    header += sharedImportRoot + '\n\n';
-  } else {
-    header += sharedImportChunk + '\n';
-    // Find which UI components this chunk uses
-    const usedUI = uiExports.filter(ui => {
-      // Check usage but not in export declarations of the same name
-      const regex = new RegExp(`<${ui}[\\s/>]|\\b${ui}\\(`);
-      return regex.test(code);
-    });
-    if (usedUI.length > 0) {
-      header += `import { ${usedUI.join(', ')} } from "./UI.jsx";\n`;
-    }
-    header += '\n';
+  let file = reactImport + '\n' + rechartsImport + '\n' + sharedBlockSub + '\n';
+  if (jsxDeps.length > 0) {
+    file += `import { ${jsxDeps.join(', ')} } from "../components.jsx";\n`;
   }
+  file += '\n' + code + '\n';
   
-  // For chunks that reference other chunk components, add cross-imports
-  // PorteurView uses components from Misc (ClientsPanelSafe, etc.)
-  if (name === 'PorteurView') {
-    header += `import { ClientsPanelSafe, PulseForm, SubsTeamPanel, SubsTeamBadge, GamificationPanel, MilestonesCompact, CollapsibleSection, GoalEditor, CelebrationOverlay, MeetingPrepView, genInsights, calcBenchmark, getPlaybooks, SocSettingsPanel, OnboardingWizard, TutorialOverlay, Sidebar, SocieteView, WarRoom } from "./Misc.jsx";\n`;
-    header += `import { SocBankWidget, BankingTransactions, categorizeTransaction } from "./Banking.jsx";\n`;
-    header += `import { RapportsPanel } from "./Reports.jsx";\n`;
-    header += `import { AIWeeklyCoach } from "./AI.jsx";\n`;
-    header += `import { calcSmartAlerts, SmartAlertsPanel, BenchmarkRadar } from "./AdminDashboard.jsx";\n`;
-    header += `import { SubsTeamPanel as _STP } from "./Misc.jsx";\n`;
-  }
-  
-  const content = header + code + '\n';
-  fs.writeFileSync(chunk.file, content);
-  console.log(`Written ${chunk.file} (${content.split('\n').length} lines)`);
+  const path = `src/components/${chunkName}.jsx`;
+  fs.writeFileSync(path, file);
+  console.log(`${path}: ${names.join(', ')} (${code.split('\n').length} lines, deps: ${jsxDeps.join(', ') || 'none'})`);
 }
 
-// Now find ALL exports from the original file
-const allExports = [];
-const exportRegex = /^export\s+(function|const)\s+(\w+)/gm;
-let match;
-while ((match = exportRegex.exec(src)) !== null) {
-  allExports.push(match[2]);
-}
-console.log(`\nTotal exports: ${allExports.length}`);
-console.log(allExports.join(', '));
+// Write trimmed components.jsx (remaining components + re-exports from chunks)
+let newComponents = headerLines.join('\n') + '\n\n';
 
-// Generate barrel components.jsx
-let barrel = `// Barrel file - re-exports all components from split files\n`;
-for (const [name, chunk] of Object.entries(chunks)) {
-  const chunkPath = chunk.file.replace('src/', './');
-  barrel += `export * from "${chunkPath}";\n`;
+// Re-export chunks
+for (const chunkName of Object.keys(CHUNKS)) {
+  newComponents += `export * from "./components/${chunkName}.jsx";\n`;
 }
+newComponents += '\n';
 
-fs.writeFileSync('src/components_barrel.jsx', barrel);
-console.log('\nBarrel file written to src/components_barrel.jsx');
+// Remaining components code
+newComponents += extract(remainingNames) + '\n';
+
+fs.writeFileSync('src/components.jsx.new', newComponents);
+console.log(`\nsrc/components.jsx.new: ${remainingNames.length} exports (${newComponents.split('\n').length} lines)`);
+console.log('Remaining:', remainingNames.join(', '));
