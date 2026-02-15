@@ -8024,6 +8024,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     <div style={{color:C.td,fontSize:9}}>{s.porteur}</div>
     </div>
     <GradeBadge grade={hs2.grade} color={hs2.color}/>
+    {(s.obj||0)>0&&(()=>{const pctO=Math.min(100,Math.round(ca2/(s.obj)*100));const r2=16;const circ=2*Math.PI*r2;const off=circ-(pctO/100)*circ;return <svg width="38" height="38" style={{flexShrink:0}}><circle cx="19" cy="19" r={r2} fill="none" stroke={C.brd} strokeWidth="3"/><circle cx="19" cy="19" r={r2} fill="none" stroke={pctO>=100?C.g:C.acc} strokeWidth="3" strokeDasharray={circ} strokeDashoffset={off} strokeLinecap="round" transform="rotate(-90 19 19)"/><text x="19" y="21" textAnchor="middle" fontSize="9" fontWeight="800" fill={pctO>=100?C.g:C.acc}>{pctO}%</text></svg>;})()}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,marginBottom:6}}>
     <div style={{background:C.bg,borderRadius:6,padding:"5px 7px"}}><div style={{color:C.td,fontSize:8,fontWeight:600}}>CA</div><div style={{fontWeight:800,fontSize:12,color:C.t}}>{ca2>0?`${fmt(ca2)}€`:"—"}</div></div>
