@@ -27,6 +27,8 @@ import {
   WarRoomReadOnly, WidgetEmbed, WidgetRenderer, calcSmartAlerts,
   SB_ADMIN, SB_PORTEUR, TOUR_ADMIN, TOUR_PORTEUR, CHALLENGE_TEMPLATES,
 } from "./components.jsx";
+import { GlobalSearch } from "./components/GlobalSearch.jsx";
+import { SkeletonDashboard, SkeletonKPI, SkeletonCard, SkeletonTable, SkeletonStyles } from "./components/Skeletons.jsx";
 
 /* LAZY-LOADED HEAVY VIEWS */
 const PulseScreen = lazy(() => import("./components/PulseScreen.jsx").then(m => ({ default: m.PulseScreen })));
@@ -60,8 +62,11 @@ export default function App(){
  const[deferredPrompt,setDeferredPrompt]=useState(null);
  useEffect(()=>{const h=e=>{e.preventDefault();setDeferredPrompt(e);window.__pwaPrompt=e;};window.addEventListener("beforeinstallprompt",h);return()=>window.removeEventListener("beforeinstallprompt",h);},[]);
  const[saving,setSaving]=useState(false);const[meeting,setMeeting]=useState(false);const[adminSocView,setAdminSocView]=useState(null);
- const[newActSoc,setNewActSoc]=useState("");const[newActText,setNewActText]=useState("");const[showPulse,setShowPulse]=useState(false);
+ const[newActSoc,setNewActSoc]=useState("");const[newActText,setNewActText]=useState("");const[showPulse,setShowPulse]=useState(false);const[showSearch,setShowSearch]=useState(false);
  useEffect(()=>{if(tab===99){setShowPulse(true);setTab(0);}},[tab]);
+ // Global Ctrl+K search
+ useEffect(()=>{const h=e=>{if((e.metaKey||e.ctrlKey)&&e.key==="k"){e.preventDefault();setShowSearch(s=>!s);}};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[]);
+ const handleSearchNav=useCallback((type,item)=>{if(type==='clients')setTab(3);else if(type==='crm')setTab(7);else if(type==='banking')setTab(8);else if(type==='societe'&&item){setAdminSocView(item.id);}},[]);
  // Admin keyboard shortcuts
  useEffect(()=>{const h=e=>{if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT"||e.target.isContentEditable)return;const tabMap={"1":0,"2":1,"3":2,"4":3,"5":15,"6":16,"7":17,"8":14};if(tabMap[e.key]!==undefined)setTab(tabMap[e.key]);if(e.key==="p"||e.key==="P")setShowPulse(true);};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[]);
  const[onboarded,setOnboarded]=useState(true);const[showTour,setShowTour]=useState(false);const[obData,setObData]=useState(null);const[showOnboarding,setShowOnboarding]=useState(false);

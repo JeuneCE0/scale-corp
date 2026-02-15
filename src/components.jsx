@@ -13,6 +13,7 @@ import {
 
 
 export * from "./components/PulseScreen.jsx";
+import { PredictionsCard } from "./components/PulseScreen.jsx";
 export * from "./components/Banking.jsx";
 export * from "./components/CRM.jsx";
 export * from "./components/AI.jsx";
