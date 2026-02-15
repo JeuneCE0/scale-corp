@@ -3549,7 +3549,7 @@ export function ConversationsPanel({soc}){
   <div style={{flex:1,overflow:"auto"}}>
    {loading&&<div style={{padding:20,textAlign:"center",color:C.td,fontSize:11}}>Chargement...</div>}
    {!loading&&sorted.length===0&&!error&&<div style={{padding:20,textAlign:"center",color:C.td,fontSize:11}}>Aucune conversation</div>}
-   {sorted.map((c,i)=>{const unread=c.unreadCount||0;const name=c.contactName||c.fullName||c.email||"Contact";const typeIcon=MSG_TYPE_LABEL(c.type||c.lastMessageType);const active=selConvo?.id===c.id;const bgCol=avatarColor(name);return <div key={c.id||i} onClick={()=>loadMsgs(c)} style={{padding:"10px 12px",borderBottom:`1px solid rgba(255,255,255,.04)`,cursor:"pointer",background:"transparent",borderLeft:active?`3px solid ${C.acc}`:"3px solid transparent",transition:"border-color .15s",display:"flex",alignItems:"center",gap:10}}>
+   {sorted.map((c,i)=>{const unread=c.unreadCount||0;const name=c.contactName||c.fullName||c.email||"Contact";const typeIcon=MSG_TYPE_LABEL(c.type||c.lastMessageType);const active=selConvo?.id===c.id;const bgCol=avatarColor(name);return <div key={c.id||i} className="conv-contact-item" onClick={()=>loadMsgs(c)} style={{padding:"10px 12px",borderBottom:`1px solid rgba(255,255,255,.04)`,cursor:"pointer",background:"transparent",borderLeft:active?`3px solid ${C.acc}`:"3px solid transparent",transition:"all .15s",display:"flex",alignItems:"center",gap:10}}>
     {/* Avatar */}
     <div style={{position:"relative",flexShrink:0}}>
      <div style={{width:38,height:38,borderRadius:19,background:bgCol,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:700,color:"#fff"}}>{avatarLetter(name)}</div>
@@ -3595,7 +3595,7 @@ export function ConversationsPanel({soc}){
    </div>
    {/* Messages */}
    <div style={{flex:1,overflow:"auto",padding:14}}>
-    {msgsLoading&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>⏳ Chargement des messages...</div>}
+    {msgsLoading&&<div style={{textAlign:"center",padding:20}} className="conv-typing"><span/><span/><span/></div>}
     {!msgsLoading&&msgs.length===0&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Aucun message</div>}
     {msgs.map((m,i)=>{const out=(m.direction||m.meta?.email?.direction||m.source)==="outbound"||m.source==="workflow"||m.source==="app";const mType=m.type||m.messageType||"";const sys=isSystemMsg(m);const channelIcon=MSG_TYPE_LABEL(m.messageType||mType);const channelName=MSG_TYPE_NAME[m.messageType||mType]||"";const channelColors={SMS:"#3b82f6",Email:"#8b5cf6",WhatsApp:"#22c55e",Instagram:"#ec4899",Messenger:"#3b82f6","Live Chat":"#06b6d4",Appel:"#f59e0b",Système:"#6b7280"};const pillBg=(channelColors[channelName]||"#6b7280")+"22";const pillColor=channelColors[channelName]||"#6b7280";
      if(sys)return <div key={m.id||i} style={{display:"flex",justifyContent:"center",marginBottom:10,animation:"convFadeIn .3s ease"}}>
@@ -3619,7 +3619,7 @@ export function ConversationsPanel({soc}){
      {SEND_CHANNELS.map(ch=><button key={ch.k} onClick={()=>setSendType(ch.k)} style={{width:28,height:28,borderRadius:8,border:sendType===ch.k?`2px solid ${C.acc}`:`1px solid ${C.brd}`,background:sendType===ch.k?"rgba(255,170,0,.12)":"transparent",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,transition:"all .15s"}}>{ch.icon}</button>)}
     </div>
     <textarea value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}} placeholder="Message..." rows={2} style={{flex:1,padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:"rgba(255,255,255,.04)",color:C.t,fontSize:12,fontFamily:FONT,outline:"none",resize:"none",minHeight:44,maxHeight:120,lineHeight:"1.5"}}/>
-    <button onClick={sendMsg} disabled={sending||!msgInput.trim()} style={{width:38,height:38,borderRadius:10,border:"none",background:(!msgInput.trim()||sending)?"rgba(255,255,255,.06)":"linear-gradient(135deg,#FFBF00,#FF9D00)",color:(!msgInput.trim()||sending)?"rgba(255,255,255,.2)":"#0a0a0f",fontSize:16,cursor:(!msgInput.trim()||sending)?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .2s"}}>{sending?"⏳":"➤"}</button>
+    <button className="conv-send-btn" onClick={sendMsg} disabled={sending||!msgInput.trim()} style={{width:38,height:38,borderRadius:10,border:"none",background:(!msgInput.trim()||sending)?"rgba(255,255,255,.06)":"linear-gradient(135deg,#FFBF00,#FF9D00)",color:(!msgInput.trim()||sending)?"rgba(255,255,255,.2)":"#0a0a0f",fontSize:16,cursor:(!msgInput.trim()||sending)?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .2s"}}>{sending?"⏳":"➤"}</button>
    </div>
    {sentOk&&<div style={{padding:"4px 8px",textAlign:"center",fontSize:10,color:C.g,background:C.gD}}>✓ Message envoyé</div>}
   </>}
@@ -3633,13 +3633,18 @@ export function ConversationsPanel({soc}){
   </div>
   <style>{`
    @keyframes convFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+   @keyframes convBounce{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}
+   .conv-contact-item:hover{background:rgba(255,255,255,.04)!important}
+   .conv-typing span{display:inline-block;width:6px;height:6px;border-radius:50%;background:${C.td};margin:0 2px;animation:convBounce 1.4s infinite ease-in-out both}.conv-typing span:nth-child(1){animation-delay:-.32s}.conv-typing span:nth-child(2){animation-delay:-.16s}
+   .conv-root *::-webkit-scrollbar{width:4px}.conv-root *::-webkit-scrollbar-track{background:transparent}.conv-root *::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
+   .conv-send-btn:active{transform:scale(.92)}
    .conv-root{box-sizing:border-box;}
    .conv-list-wrap>div{height:100%!important;max-height:100%!important;}
    .conv-thread-wrap>div{height:100%!important;max-height:100%!important;}
    @media(max-width:640px){
     .conv-layout{flex-direction:column;height:auto!important;}
-    .conv-list-wrap{display:${mobileShowThread&&selConvo?"none":"flex"}!important;width:100%!important;height:50vh!important;}
-    .conv-thread-wrap{display:${!mobileShowThread||!selConvo?"none":"flex"}!important;height:50vh!important;}
+    .conv-list-wrap{display:${mobileShowThread&&selConvo?"none":"flex"}!important;width:100%!important;height:100vh!important;}
+    .conv-thread-wrap{display:${!mobileShowThread||!selConvo?"none":"flex"}!important;height:100vh!important;}
     .conv-back-btn{display:block!important;}
    }
   `}</style>
