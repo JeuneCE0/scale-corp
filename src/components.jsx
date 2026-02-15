@@ -2659,20 +2659,6 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
    </div>)}
   </div>;
  }
- // Streak tracking
- const streak=useMemo(()=>{
-  const key=`streak_${soc.id}`;
-  try{
-   const raw=JSON.parse(localStorage.getItem(key)||"null");
-   const today=new Date().toISOString().slice(0,10);
-   const yesterday=new Date(Date.now()-864e5).toISOString().slice(0,10);
-   if(!raw){const v={lastLogin:today,count:1};localStorage.setItem(key,JSON.stringify(v));return v;}
-   if(raw.lastLogin===today)return raw;
-   if(raw.lastLogin===yesterday){const v={lastLogin:today,count:raw.count+1};localStorage.setItem(key,JSON.stringify(v));return v;}
-   const v={lastLogin:today,count:1};localStorage.setItem(key,JSON.stringify(v));return v;
-  }catch{return{lastLogin:"",count:1};}
- },[soc.id]);
- // Météo Business
  const meteo=useMemo(()=>{
   const critAlerts=smartAlerts.filter(a=>a.priority===1).length;
   const allAlertCount=smartAlerts.length;
@@ -2726,10 +2712,6 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
       <div style={{fontSize:9,color:C.td,marginTop:4}}>Score: {perfScore}/100 · {smartAlerts.length} alerte{smartAlerts.length>1?"s":""}</div>
      </div>
     </div>
-   </div>
-   <div className="glass-card-static" style={{padding:"16px 20px",display:"flex",alignItems:"center",gap:8,minWidth:80}}>
-    <span style={{fontSize:28}}>🔥</span>
-    <div><div style={{fontWeight:900,fontSize:20,color:C.acc}}>{streak.count}j</div>{streak.count>=7&&<div style={{fontSize:9,color:C.acc,fontWeight:600}}>semaine !</div>}</div>
    </div>
   </div>
   {/* Conseil du jour IA */}
