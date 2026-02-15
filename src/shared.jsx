@@ -397,11 +397,12 @@ export async function fetchGHL(action,locationId,params={}){
 }
 export async function syncGHLForSoc(soc){
  if(!soc.ghlLocationId)return null;
+ const cacheKey="ghl_"+soc.id;
  const loc=soc.ghlLocationId;
  const pipData=await fetchGHL("pipelines",loc);
- if(!pipData||!pipData.pipelines)return null;
+ if(!pipData||!pipData.pipelines){const cached=cacheGet(cacheKey);return cached||null;}
  const allPipelines=pipData.pipelines||[];
- if(allPipelines.length===0)return null;
+ if(allPipelines.length===0){const cached=cacheGet(cacheKey);return cached||null;}
  // Fetch opportunities, contacts and calendar in parallel
  const [oppResults,ctData,evData]=await Promise.all([
   Promise.all(allPipelines.map(pip=>fetchGHL("opportunities",loc,{pipeline_id:pip.id}).then(d=>({pip,d})))),
@@ -443,7 +444,7 @@ export async function syncGHLForSoc(soc){
   source:c.source||"",notes:(c.tags||[]).filter(t=>!t.startsWith("domaine:")).join(", "),ghlId:c.id,stripeId:"",at:c.dateAdded||new Date().toISOString()
  }));
  const calEvents=evData?.events||[];
- return{
+ const result={
   pipelines:allPipelinesMeta,opportunities:mappedOpps,ghlClients,calendarEvents:calEvents,
   stats:{totalLeads:mappedOpps.length,openDeals:open2.length,wonDeals:won.length,
    lostDeals:mappedOpps.filter(o=>o.status==="lost").length,pipelineValue:open2.reduce((a,o)=>a+o.value,0),
@@ -453,6 +454,8 @@ export async function syncGHLForSoc(soc){
    callsByType:calEvents.reduce((acc,e)=>{const n=e.calendarName||"Autre";acc[n]=(acc[n]||0)+1;return acc;},{}),
    sourceBreakdown:[]},lastSync:new Date().toISOString(),isDemo:false
  };
+ cacheSet(cacheKey,result);
+ return result;
 }
 export const SLACK_MODES={
  webhook:{l:"Webhook",desc:"Incoming Webhook URL — simple, pas besoin d'app",icon:"🔗"},
@@ -593,13 +596,16 @@ export async function syncStripeData(){
    fetchStripe("charges_list"),
    fetchStripe("subscriptions_list"),
   ]);
-  return{
+  if(!custRes&&!chargesRes&&!subsRes){return cacheGet("stripe")||null;}
+  const result={
    customers:custRes?.data||[],
    charges:chargesRes?.data||[],
    subscriptions:subsRes?.data||[],
    lastSync:new Date().toISOString(),
   };
- }catch(e){console.warn("Stripe sync failed:",e.message);return null;}
+  cacheSet("stripe",result);
+  return result;
+ }catch(e){console.warn("Stripe sync failed:",e.message);return cacheGet("stripe")||null;}
 }
 export function getStripeChargesForClient(stripeData,client){
  if(!stripeData?.charges)return[];
@@ -629,14 +635,16 @@ export async function fetchRevolut(company,endpoint){
 }
 export async function syncRevolut(company){
  if(!company)return null;
+ const ck="rev_"+company;
  const accounts=await fetchRevolut(company,"/accounts");
- if(!accounts)return null;
+ if(!accounts){const cached=cacheGet(ck);return cached||null;}
  const txns=await fetchRevolut(company,"/transactions?count=25");
  const accs=(Array.isArray(accounts)?accounts:[]).map(a=>({
   id:a.id,name:a.name||"Compte",balance:a.balance,currency:a.currency,state:a.state,updated_at:a.updated_at
  }));
  const totalEUR=accs.reduce((s,a)=>s+(a.currency==="EUR"?a.balance:a.balance*0.92),0);
- return{accounts:accs,transactions:Array.isArray(txns)?txns:[],totalEUR,lastSync:new Date().toISOString(),isDemo:false};
+ const result={accounts:accs,transactions:Array.isArray(txns)?txns:[],totalEUR,lastSync:new Date().toISOString(),isDemo:false};
+ cacheSet(ck,result);return result;
 }
 export function mkSocRevDemo(){ return null; }
 // Accounts to exclude from treasury per company (personal pockets, dividend transit, etc.)
@@ -647,8 +655,9 @@ export const EXCLUDED_ACCOUNTS={
 };
 export async function syncSocRevolut(soc){
  if(!soc.revolutCompany)return null;
+ const ck="socrev_"+soc.id;
  const accounts=await fetchRevolut(soc.revolutCompany,"/accounts");
- if(!accounts)return null;
+ if(!accounts){const cached=cacheGet(ck);return cached||null;}
  const now=new Date();const cm=curM();const pm=prevM(cm);
  const from1=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString();
  const txnsRaw=await fetchRevolut(soc.revolutCompany,`/transactions?from=${from1}&count=500`);
@@ -662,7 +671,8 @@ export async function syncSocRevolut(soc){
  const monthly={};
  txns.forEach(tx=>{const m=tx.month;const leg=tx.legs?.[0];if(!leg)return;if(excluded.includes(leg.account_id))return;const amt=leg.amount;if(!monthly[m])monthly[m]={income:0,expense:0};if(amt>0)monthly[m].income+=amt;else monthly[m].expense+=Math.abs(amt);});
  Object.keys(monthly).forEach(m=>{monthly[m].income=Math.round(monthly[m].income);monthly[m].expense=Math.round(monthly[m].expense);});
- return{accounts:accs,transactions:txns.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)),balance:Math.round(balance),monthly,lastSync:new Date().toISOString(),isDemo:false};
+ const result={accounts:accs,transactions:txns.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)),balance:Math.round(balance),monthly,lastSync:new Date().toISOString(),isDemo:false};
+ cacheSet(ck,result);return result;
 }
 export function revFinancials(socBankData,month){
  if(!socBankData||!socBankData.monthly)return null;
@@ -934,3 +944,27 @@ export function calcMilestones(soc,reps,actions,pulses,allM){
  const data=calcMilestoneData(soc,reps,actions,pulses,allM);
  return MILESTONE_DEFS.map(m=>({...m,unlocked:m.check(data)}));
 }
+
+/* ============ ERROR CARD ============ */
+export function ErrorCard({source,onRetry,compact}){
+ return <div style={{padding:compact?12:20,background:C.rD,border:`1px solid ${C.r}22`,borderRadius:12,textAlign:"center"}}>
+  <div style={{fontSize:compact?18:28,marginBottom:compact?4:8}}>⚠️</div>
+  <div style={{fontWeight:700,fontSize:compact?11:13,color:C.t,marginBottom:4}}>Impossible de charger les données {source||""}</div>
+  <div style={{color:C.td,fontSize:compact?9:11,marginBottom:compact?8:12}}>Vérifiez votre connexion ou réessayez</div>
+  {onRetry&&<button onClick={onRetry} style={{padding:compact?"4px 12px":"8px 18px",borderRadius:8,border:`1px solid ${C.r}44`,background:"transparent",color:C.r,fontSize:compact?10:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>🔄 Réessayer</button>}
+ </div>;
+}
+
+/* ============ OFFLINE BANNER ============ */
+export function OfflineBanner(){
+ return <div style={{padding:"6px 12px",background:"rgba(251,146,60,.12)",border:`1px solid rgba(251,146,60,.25)`,borderRadius:8,display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+  <span style={{fontSize:12}}>📡</span>
+  <span style={{fontSize:10,fontWeight:600,color:C.o}}>Mode hors-ligne — dernières données</span>
+ </div>;
+}
+
+/* ============ OFFLINE CACHE HELPERS ============ */
+const CACHE_PREFIX="sc_cache_";
+export function cacheSet(key,data){try{localStorage.setItem(CACHE_PREFIX+key,JSON.stringify({data,ts:Date.now()}));}catch{}}
+export function cacheGet(key,maxAgeMs=86400000){try{const raw=localStorage.getItem(CACHE_PREFIX+key);if(!raw)return null;const{data,ts}=JSON.parse(raw);if(Date.now()-ts>maxAgeMs)return null;return data;}catch{return null;}}
+
