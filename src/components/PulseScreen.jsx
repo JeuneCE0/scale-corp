@@ -203,11 +203,6 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
    <div style={{fontSize:10,color:"#71717a",marginTop:4}}>Deal moy: {fmt(avgDeal)}€</div>
   </div>
   <div style={GC}>
-   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>MRR</div>
-   <div style={{fontSize:22,fontWeight:900,color:"#34d399",fontFamily:FONT_TITLE}}>{fmt(animatedVals.mrr)}€</div>
-   {sparkline(mrrHist)}
-  </div>
-  <div style={GC}>
    <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>💰 Solde Actuel</div>
    <div style={{fontSize:24,fontWeight:900,color:totalSolde>=0?"#34d399":"#f87171",fontFamily:FONT_TITLE}}>{fmt(totalSolde)}€</div>
    <div style={{fontSize:9,color:"#71717a",marginTop:4}}>Hors cagnottes exclues</div>
