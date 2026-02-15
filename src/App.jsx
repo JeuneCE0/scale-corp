@@ -7714,14 +7714,14 @@ export default function App(){
    });
   }
  },[socs]);
- // Auto-sync GHL every 30s + on mount
+ // Auto-sync GHL every 30s + on mount (only when authenticated)
  useEffect(()=>{
-  if(!loaded)return;
+  if(!loaded||!role)return;
   const doSync=()=>{syncGHL().catch(e=>console.warn("Auto-sync GHL failed:",e));};
   doSync();
   const id=setInterval(doSync,30000);
   return()=>clearInterval(id);
- },[loaded,syncGHL]);
+ },[loaded,role,syncGHL]);
  const syncRev=useCallback(async()=>{
   let data=null;
   data=await syncRevolut("eco");
@@ -7746,12 +7746,12 @@ export default function App(){
   setSocBank(nb);await sSet("scAb",nb);
  },[socs]);
  useEffect(()=>{
-  if(!loaded)return;
+  if(!loaded||!role)return;
   const doSync=async()=>{try{await Promise.all([syncRev(),syncAllSocBanks(),syncStripeData().then(sd=>{if(sd)setStripeData(sd);})]);} catch(e){console.warn("Auto-sync failed:",e);}};
   doSync();
   const id=setInterval(doSync,60000);
   return()=>clearInterval(id);
- },[loaded,syncRev,syncAllSocBanks]);
+ },[loaded,role,syncRev,syncAllSocBanks]);
  // Auto-generate reports for current month when socBank/ghlData change
  useEffect(()=>{
   if(!loaded||!socs.length)return;
