@@ -1,6 +1,5 @@
 // Vercel Serverless Function - Revolut Business API Proxy
 // Access tokens are stored server-side only (Vercel env vars)
-import { verifyAuth, getAllowedRevolutCompany, cors as setCors, unauthorized, forbidden } from './_middleware.js';
 
 const COMPANY_TOKEN_MAP = {
   eco: "REVOLUT_ECO_TOKEN",
@@ -42,19 +41,11 @@ export default async function handler(req, res) {
   const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
   if (!checkRateLimit(ip)) return res.status(429).json({ error: "Too many requests" });
 
-  // Auth check
-  const auth = await verifyAuth(req);
-  if (!auth) console.log(`[Revolut] Unauthenticated request — allowing (migration mode)`);
-
   const { action, company } = req.body || {};
 
   if (!action || !company) {
     return res.status(400).json({ error: "Missing action or company" });
   }
-
-  // Society isolation: porteur can only access their own company
-  const allowedCompany = getAllowedRevolutCompany(auth, company);
-  if (!allowedCompany) return forbidden(res, "Access denied to this company's data");
 
   // Validate action
   if (!VALID_ACTIONS.includes(action)) {

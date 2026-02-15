@@ -1,5 +1,4 @@
 // Vercel Serverless Function - Stripe API Proxy
-import { verifyAuth, unauthorized } from './_middleware.js';
 
 const STRIPE_BASE = "https://api.stripe.com";
 
@@ -27,12 +26,6 @@ export default async function handler(req, res) {
 
   const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
   if (!checkRateLimit(ip)) return res.status(429).json({ error: "Too many requests" });
-
-  // Auth check — Stripe is admin-only for now
-  const auth = await verifyAuth(req);
-  if (!auth) console.log(`[Stripe] Unauthenticated request — allowing (migration mode)`);
-  // Admin-only check disabled during migration
-  // if (auth && !auth.isAdmin) return res.status(403).json({ error: "Stripe access is admin-only" });
 
   const { action, customer } = req.body || {};
   if (!action) return res.status(400).json({ error: "Missing action" });

@@ -2,7 +2,6 @@
 // API keys are stored server-side only (Vercel env vars)
 
 import { readFileSync, existsSync } from 'fs';
-import { verifyAuth, canAccessGHLLocation, cors as setCors, unauthorized, forbidden } from './_middleware.js';
 
 const LOCATION_KEY_MAP = {
   "NsV7HI2MbE6qHtRp410y": "GHL_ECO_KEY",
@@ -45,11 +44,6 @@ export default async function handler(req, res) {
   const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
   if (!checkRateLimit(ip)) return res.status(429).json({ error: "Too many requests" });
 
-  // Auth check
-  const auth = await verifyAuth(req);
-  // Auth check: log-only for now (don't block until frontend sends JWT)
-  if (!auth) console.log(`[GHL] Unauthenticated request from ${ip} — allowing (migration mode)`);
-
   const { action, locationId, ...params } = req.body || {};
 
   // Validate action
@@ -71,11 +65,6 @@ export default async function handler(req, res) {
 
   if (!action || !locationId) {
     return res.status(400).json({ error: "Missing action or locationId" });
-  }
-
-  // Society isolation: porteur can only access their own GHL location
-  if (!canAccessGHLLocation(auth, locationId)) {
-    return forbidden(res, "Access denied to this location's data");
   }
 
   // Validate locationId

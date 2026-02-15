@@ -1,6 +1,4 @@
 // Vercel Serverless — Supabase REST API Proxy (Hardened)
-import { verifyAuth, canAccessSociety, unauthorized, forbidden } from './_middleware.js';
-
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -21,7 +19,7 @@ function checkRate(ip) {
 }
 
 // --- Whitelists ---
-const TABLES = ['users','societies','client_data','meta_ads','sales_data','reports','tx_categories','user_settings','holding','society_info'];
+const TABLES = ['users','societies','client_data','meta_ads','sales_data','reports','tx_categories','user_settings','holding'];
 const ACTIONS = ['get','list','upsert','delete'];
 
 // --- Sanitize: reject suspicious PostgREST filter values ---
@@ -63,16 +61,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Supabase not configured" });
   }
 
-  // Auth check
-  const auth = await verifyAuth(req);
-  if (!auth) console.log(`[Supabase] Unauthenticated request — allowing (migration mode)`);
-
   const { action, table, society_id, id, filters } = req.query || {};
-
-  // Society isolation: non-admin users can only access their own society's data
-  if (society_id && !canAccessSociety(auth, society_id)) {
-    return forbidden(res, "Access denied to this society's data");
-  }
 
   // Validate action
   if (!action) return res.status(400).json({ error: "Missing action param" });
