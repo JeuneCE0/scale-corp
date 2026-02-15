@@ -1,7 +1,5 @@
 import React from "react";
 import { cachedFetch, cacheInvalidate } from "./cache.js";
-import { fetchWithRetry, ApiError, getApiErrorMessage } from "./apiRetry.js";
-export { ApiError, getApiErrorMessage };
 export const C_DARK={bg:"#06060b",card:"#0e0e16",card2:"#131320",brd:"#1a1a2c",brdL:"#24243a",acc:"#FFAA00",accD:"rgba(255,170,0,.12)",g:"#34d399",gD:"rgba(52,211,153,.1)",r:"#f87171",rD:"rgba(248,113,113,.1)",o:"#fb923c",oD:"rgba(251,146,60,.1)",b:"#60a5fa",bD:"rgba(96,165,250,.1)",t:"#e4e4e7",td:"#71717a",tm:"#3f3f50",v:"#a78bfa",vD:"rgba(167,139,250,.1)"};
 export const C_LIGHT={bg:"#f5f5f5",card:"#ffffff",card2:"#f0f0f0",brd:"#e0e0e0",brdL:"#d0d0d0",acc:"#FFAA00",accD:"#FFF3D6",g:"#22c55e",gD:"#dcfce7",r:"#ef4444",rD:"#fee2e2",b:"#3b82f6",bD:"#dbeafe",o:"#f97316",oD:"#fff7ed",v:"#8b5cf6",vD:"#ede9fe",t:"#1a1a1a",td:"#666666",tm:"#999999"};
 export let C=C_DARK;
@@ -76,37 +74,7 @@ export const CSS=`@import url('https://fonts.googleapis.com/css2?family=Teachers
 @keyframes typeReveal{from{max-height:0;opacity:0}to{max-height:600px;opacity:1}}
 @media(max-width:768px){.sidebar-desktop{display:none !important}.main-content{margin-left:0 !important}.mobile-header{display:flex !important}.kpi-grid-responsive{grid-template-columns:1fr 1fr !important}.chart-responsive{min-height:180px}.tx-list-mobile .tx-detail{display:none}}
 @media(min-width:769px){.mobile-header{display:none !important}}
-@media(max-width:768px){.admin-grid{grid-template-columns:1fr !important}.admin-card{min-width:auto !important}.admin-stats-row{grid-template-columns:1fr !important;gap:8px !important}.pulse-grid{grid-template-columns:1fr !important}.pulse-left,.pulse-right{display:none !important}.pulse-center{grid-column:1 !important}.main-content div[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr !important}.main-content div[style*="grid-template-columns: 1fr 1fr 1fr"]{grid-template-columns:1fr !important}.main-content div[style*="gridTemplateColumns"]{min-width:0 !important}.admin-responsive-grid{grid-template-columns:1fr !important}.admin-responsive-2col{grid-template-columns:1fr 1fr !important}table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:11px !important}.admin-soc-grid{grid-template-columns:1fr !important}.admin-soc-selector{left:10px !important;top:50px !important}.main-content{padding-top:48px !important}.glass-card,.glass-card-static{min-width:0 !important}.modal-wide{width:90vw !important;max-width:90vw !important}.ai-chat-panel{width:90vw !important;right:0 !important;max-width:none !important}.notif-panel{width:85vw !important;right:0 !important}
-/* === PORTEUR MOBILE POLISH === */
-.main-content>div{padding-left:12px !important;padding-right:12px !important;max-width:100% !important}
-/* KPI grids: 2 columns on mobile */
-.main-content div[style*="gridTemplateColumns: repeat(auto-fit"]{grid-template-columns:1fr 1fr !important;gap:6px !important}
-.main-content div[style*="gridTemplateColumns: repeat(4"]{grid-template-columns:1fr 1fr !important;gap:6px !important}
-.main-content div[style*="gridTemplateColumns: 1fr 1fr 1fr 1fr"]{grid-template-columns:1fr 1fr !important}
-/* Charts: reduce height */
-.main-content .recharts-wrapper{min-height:160px !important}
-/* Pipeline kanban: vertical on mobile */
-.main-content div[style*="overflowX: auto"]{overflow-x:auto;-webkit-overflow-scrolling:touch}
-/* Inbox items: compact */
-.main-content div[style*="maxHeight:300"]{max-height:200px !important}
-/* Prevent horizontal scroll anywhere */
-html,body{overflow-x:hidden !important}
-.glass-bg{overflow-x:hidden !important}
-/* Modal: full width */
-.glass-modal{width:95vw !important;max-width:95vw !important;margin:8px !important;padding:14px !important}
-/* Hamburger menu: smooth */
-.mobile-header button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-/* Fix KPI font sizes */
-.glass-card-static div[style*="fontSize: 28"]{font-size:20px !important}
-.glass-card-static div[style*="fontSize: 26"]{font-size:18px !important}
-.glass-card-static div[style*="fontSize: 34"]{font-size:22px !important}
-/* Fix flex wrapping on small screens */
-.main-content div[style*="display: flex"]{flex-wrap:wrap}
-.main-content div[style*="display:flex"]{flex-wrap:wrap}
-/* Tables: scrollable */
-.main-content table{min-width:500px}
-.main-content div:has(>table){overflow-x:auto;-webkit-overflow-scrolling:touch}
-}
+@media(max-width:768px){.admin-grid{grid-template-columns:1fr !important}.admin-card{min-width:auto !important}.admin-stats-row{grid-template-columns:1fr !important;gap:8px !important}.pulse-grid{grid-template-columns:1fr !important}.pulse-left,.pulse-right{display:none !important}.pulse-center{grid-column:1 !important}.main-content div[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr !important}.main-content div[style*="grid-template-columns: 1fr 1fr 1fr"]{grid-template-columns:1fr !important}.main-content div[style*="gridTemplateColumns"]{min-width:0 !important}.admin-responsive-grid{grid-template-columns:1fr !important}.admin-responsive-2col{grid-template-columns:1fr 1fr !important}table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:11px !important}.admin-soc-grid{grid-template-columns:1fr !important}.admin-soc-selector{left:10px !important;top:50px !important}.main-content{padding-top:48px !important}.glass-card,.glass-card-static{min-width:0 !important}.modal-wide{width:90vw !important;max-width:90vw !important}.ai-chat-panel{width:90vw !important;right:0 !important;max-width:none !important}.notif-panel{width:85vw !important;right:0 !important}}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:${C.brd};border-radius:3px}
 input[type=range]{-webkit-appearance:none;background:${C.brd};height:3px;border-radius:4px;outline:none}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:${C.acc};cursor:pointer;box-shadow:0 2px 6px rgba(255,170,0,.3)}
@@ -123,129 +91,7 @@ button:focus-visible{outline:2px solid ${C.acc}44;outline-offset:2px}
 .glow-accent{box-shadow:0 0 20px rgba(255,170,0,.15)}
 .glow-accent-strong{box-shadow:0 0 30px rgba(255,170,0,.25),0 4px 16px rgba(0,0,0,.3)}
 .glass-btn-ghost{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-.glass-btn-ghost:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12)}
-/* ═══════════════════════════════════════════════════════════
-   2025/2026 DESIGN UPGRADE — Animations & Tendances
-   ═══════════════════════════════════════════════════════════ */
-
-/* === SMOOTH SCROLL === */
-html{scroll-behavior:smooth}
-
-/* === NOISE TEXTURE OVERLAY (premium feel) === */
-.glass-bg::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.025;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-
-/* === GRADIENT MESH BACKGROUND ENHANCEMENT === */
-.glass-bg{background:#06060b;background-image:
- radial-gradient(ellipse at 15% 20%,rgba(255,170,0,.04) 0%,transparent 50%),
- radial-gradient(ellipse at 85% 15%,rgba(167,139,250,.03) 0%,transparent 45%),
- radial-gradient(ellipse at 50% 80%,rgba(96,165,250,.025) 0%,transparent 50%),
- radial-gradient(ellipse at 75% 50%,rgba(255,157,0,.02) 0%,transparent 40%),
- radial-gradient(ellipse at 25% 65%,rgba(52,211,153,.015) 0%,transparent 45%) !important}
-
-/* === STAGGER FADE-IN + SLIDE-UP (cards/panels) === */
-@keyframes staggerIn{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
-.stagger-in,.fu{animation:staggerIn .5s cubic-bezier(.22,1,.36,1) both}
-.d1{animation-delay:40ms}.d2{animation-delay:80ms}.d3{animation-delay:120ms}.d4{animation-delay:160ms}
-.d5{animation-delay:200ms}.d6{animation-delay:240ms}.d7{animation-delay:280ms}.d8{animation-delay:320ms}
-.d9{animation-delay:360ms}.d10{animation-delay:400ms}.d11{animation-delay:440ms}.d12{animation-delay:480ms}
-
-/* === PREMIUM HOVER EFFECTS (cards) === */
-.glass-card{transition:all .35s cubic-bezier(.4,0,.2,1);will-change:transform,box-shadow}
-.glass-card:hover{transform:translateY(-4px) scale(1.005);border-color:rgba(255,170,0,.2);box-shadow:0 16px 48px rgba(0,0,0,.45),0 0 30px rgba(255,170,0,.06)}
-.glass-card-static{transition:all .3s cubic-bezier(.4,0,.2,1)}
-.glass-card-static:hover{box-shadow:0 12px 40px rgba(0,0,0,.35),0 0 20px rgba(255,170,0,.04)}
-
-/* === GLOW BORDERS (pulse glow on important elements) === */
-@keyframes glowPulse{0%,100%{box-shadow:0 0 8px rgba(255,170,0,.1),inset 0 0 8px rgba(255,170,0,.02)}50%{box-shadow:0 0 20px rgba(255,170,0,.2),inset 0 0 12px rgba(255,170,0,.04)}}
-.glow-pulse{animation:glowPulse 3s ease-in-out infinite}
-@keyframes borderGlow{0%,100%{border-color:rgba(255,170,0,.08)}50%{border-color:rgba(255,170,0,.3)}}
-.border-glow{animation:borderGlow 2.5s ease-in-out infinite}
-
-/* === PAGE / TAB TRANSITIONS === */
-@keyframes viewFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.tab-fade,.view-transition{animation:viewFadeIn .3s cubic-bezier(.22,1,.36,1) both}
-
-/* === ANIMATED COUNTERS (count-up) === */
-@keyframes countReveal{from{opacity:0;transform:translateY(10px) scale(.95);filter:blur(4px)}to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
-.count-up{animation:countReveal .6s cubic-bezier(.22,1,.36,1) both}
-
-/* === SKELETON / SHIMMER LOADER === */
-@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-.skeleton{background:linear-gradient(90deg,rgba(255,255,255,.03) 25%,rgba(255,255,255,.06) 50%,rgba(255,255,255,.03) 75%);background-size:200% 100%;animation:shimmer 1.5s ease infinite;border-radius:8px}
-.skeleton-text{height:12px;margin-bottom:6px;border-radius:4px}
-.skeleton-circle{border-radius:50%}
-.skeleton-card{height:120px;border-radius:16px}
-
-/* === RIPPLE EFFECT ON BUTTONS === */
-.ba{position:relative;overflow:hidden}
-.ba .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.2);transform:scale(0);animation:rippleAnim .6s ease-out forwards;pointer-events:none}
-@keyframes rippleAnim{to{transform:scale(4);opacity:0}}
-
-/* === SMOOTH TOGGLE === */
-.toggle-track{transition:background .3s cubic-bezier(.4,0,.2,1),border-color .3s ease}
-.toggle-thumb{transition:left .3s cubic-bezier(.68,-.55,.27,1.55),background .2s ease}
-
-/* === ANIMATED CHECKBOXES === */
-@keyframes checkPop{0%{transform:scale(0)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
-.check-animated{transition:all .2s ease}
-.check-animated.checked{animation:checkPop .3s cubic-bezier(.22,1,.36,1)}
-
-/* === PROGRESS BARS (gradient flow) === */
-@keyframes gradientFlow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-.pg{background-size:200% 200% !important;animation:bg .5s cubic-bezier(.4,0,.2,1) both,gradientFlow 3s ease infinite !important}
-
-/* === FLOATING / PARALLAX decorative elements === */
-@keyframes floatSlow{0%,100%{transform:translateY(0) rotate(0deg)}33%{transform:translateY(-6px) rotate(1deg)}66%{transform:translateY(3px) rotate(-0.5deg)}}
-.float-slow{animation:floatSlow 6s ease-in-out infinite}
-@keyframes floatMedium{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-.float-medium{animation:floatMedium 4s ease-in-out infinite}
-
-/* === TYPOGRAPHY: letter-spacing dynamique sur titres === */
-h1,h2,h3,.section-title{letter-spacing:.5px;transition:letter-spacing .3s ease}
-
-/* === COLOR TRANSITIONS (smooth theme switch) === */
-*{transition-property:background-color,border-color,color;transition-duration:0s}
-.glass-bg,.glass-card,.glass-card-static,.glass-modal,.glass-input,.glass-sidebar,.glass-btn-ghost{transition:background .5s ease,border-color .5s ease,color .4s ease,box-shadow .4s ease,transform .35s cubic-bezier(.4,0,.2,1)}
-
-/* === BACKDROP BLUR DEPTH LAYERS === */
-.blur-layer-1{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.blur-layer-2{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
-.blur-layer-3{backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px)}
-
-/* === MODAL ENTRANCE ENHANCED === */
-@keyframes modalIn{from{opacity:0;transform:scale(.92) translateY(16px);filter:blur(4px)}to{opacity:1;transform:scale(1) translateY(0);filter:blur(0)}}
-.mi{animation:modalIn .35s cubic-bezier(.22,1,.36,1) both}
-
-/* === BENTO GRID (dashboard asymmetric layout) === */
-.bento-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:minmax(100px,auto);gap:10px}
-.bento-span-2{grid-column:span 2}
-.bento-span-3{grid-column:span 3}
-.bento-tall{grid-row:span 2}
-@media(max-width:768px){.bento-grid{grid-template-columns:1fr 1fr !important}.bento-span-2,.bento-span-3{grid-column:span 1}}
-
-/* === SIDEBAR NAV ITEM TRANSITIONS === */
-.glass-sidebar button,.glass-sidebar a{transition:all .2s cubic-bezier(.4,0,.2,1)}
-
-/* === ANIMATED KPI SHIMMER ON HOVER === */
-.glass-card-static{position:relative;overflow:hidden}
-.glass-card-static::after{content:'';position:absolute;inset:0;border-radius:inherit;background:linear-gradient(105deg,transparent 40%,rgba(255,170,0,.04) 50%,transparent 60%);background-size:200% 100%;opacity:0;transition:opacity .3s ease;pointer-events:none}
-.glass-card-static:hover::after{opacity:1;animation:shimmer 2s ease infinite}
-
-/* === GPU PERF HINTS === */
-.fu,.fi,.si,.mi,.fl,.gl,.pg,.ba,.glass-card,.glass-card-static{will-change:transform,opacity}
-
-/* === ACCESSIBILITY: prefers-reduced-motion === */
-@media(prefers-reduced-motion:reduce){
- *,.fu,.fi,.si,.mi,.fl,.gl,.pg,.ba,.glass-card,.glass-card-static,.glass-card-static::after,
- .skeleton,.glow-pulse,.border-glow,.float-slow,.float-medium,.toggle-thumb,.check-animated{
-  animation-duration:0.01ms !important;animation-iteration-count:1 !important;
-  transition-duration:0.01ms !important;scroll-behavior:auto !important}
- html{scroll-behavior:auto}
-}
-
-/* === LIGHT THEME OVERRIDES === */
-.light .glass-bg::before{opacity:.015}
-`;
+.glass-btn-ghost:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12)}`;
 export const DS=[
  {id:"leadx",nom:"LEADX",porteur:"Dayyaan",act:"Media Buying",pT:"benefices",pP:30,stat:"active",color:"#FFAA00",pin:"1001",rec:true,obj:10000,objQ:28000,ghlKey:"",ghlLocationId:"BjQ4DxmWrLl3nCNcjmhE",revToken:"",revEnv:"sandbox",revolutCompany:"leadx",incub:"2025-06-01",slackId:""},
  {id:"copy",nom:"Copywriting",porteur:"Sol",act:"Copywriting",pT:"benefices",pP:20,stat:"active",color:"#60a5fa",pin:"1002",rec:false,obj:15000,objQ:42000,ghlKey:"",ghlLocationId:"2lB0paK192CFU1cLz5eT",revToken:"",revEnv:"sandbox",revolutCompany:"bcs",incub:"2025-03-15",slackId:""},
@@ -543,11 +389,12 @@ export async function ghlUpdateContact(locationId,contactId,data){return fetchGH
 export async function ghlCreateContact(locationId,data){return fetchGHL("contact_create",locationId,{data});}
 export async function fetchGHL(action,locationId,params={}){
  try{
-  return await fetchWithRetry(GHL_BASE,{
+  const r=await fetch(GHL_BASE,{
    method:"POST",
-   headers:sbAuthHeaders(),
+   headers:{"Content-Type":"application/json"},
    body:JSON.stringify({action,locationId,...params})
   });
+  if(!r.ok)throw new Error(`GHL proxy ${r.status}`);return await r.json();
  }catch(e){console.warn("GHL fetch failed:",e.message);return null;}
 }
 export async function syncGHLForSoc(soc){
@@ -737,7 +584,8 @@ export async function checkAndSendReminders(socs2,reps2,pulses2,slackConfig){
 export const STRIPE_PROXY="/api/stripe";
 export async function fetchStripe(action,params={}){
  try{
-  return await fetchWithRetry(STRIPE_PROXY,{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,...params})});
+  const r=await fetch(STRIPE_PROXY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,...params})});
+  if(!r.ok)return null;return await r.json();
  }catch(e){console.warn("Stripe fetch failed:",e.message);return null;}
 }
 export async function syncStripeData(){
@@ -777,7 +625,8 @@ export function mkRevolutDemo(){ return null; }
 export async function fetchRevolut(company,endpoint){
  try{
   const action=endpoint.includes("/transactions")?"transactions":"accounts";
-  return await fetchWithRetry("/api/revolut",{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,company})});
+  const r=await fetch("/api/revolut",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,company})});
+  if(!r.ok)throw new Error(`Revolut proxy ${r.status}`);return await r.json();
  }catch(e){console.warn("Revolut fetch failed:",e.message);return null;}
 }
 export async function syncRevolut(company){
@@ -869,76 +718,30 @@ export async function sbList(table, societyId){
  ['click','keydown','scroll','mousemove'].forEach(e=>document.addEventListener(e,touch,{passive:true}));
  touch();setInterval(check,60000);
 })();
-// Supabase = source of truth, localStorage = cache/fallback
-// sGet: try localStorage first (instant), then background-verify with Supabase
 export async function sGet(k){
  try{
-  // Return cached value immediately
   const ls=localStorage.getItem(k);const local=ls?JSON.parse(ls):null;
   return local;
  }catch{try{const ls=localStorage.getItem(k);return ls?JSON.parse(ls):null;}catch{return null;}}
 }
-// sGetFromSupabase: pull a specific key from Supabase (source of truth)
-export async function sGetFromSupabase(k){
- try{
-  const socId=_currentSocId||'global';
-  const data=await sbGet('user_settings',socId,{key:k});
-  if(Array.isArray(data)&&data[0]&&data[0].value!==undefined){
-   // Update localStorage cache
-   localStorage.setItem(k,JSON.stringify(data[0].value));
-   return data[0].value;
-  }
-  // Try global
-  const gData=await sbGet('user_settings','global',{key:k});
-  if(Array.isArray(gData)&&gData[0]&&gData[0].value!==undefined){
-   localStorage.setItem(k,JSON.stringify(gData[0].value));
-   return gData[0].value;
-  }
-  return null;
- }catch{return null;}
-}
 export async function sSet(k,v){
  try{
-  // Write to localStorage (cache) immediately
   localStorage.setItem(k,JSON.stringify(v));
-  // Write to Supabase (source of truth) — fire-and-forget with retry
+  // Fire-and-forget to Supabase user_settings
   sbUpsert('user_settings',{society_id:_currentSocId||'global',key:k,value:v});
   // Also legacy store
   storeCall("set",k,v);
  }catch(e){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 }
-// Full sync from Supabase → localStorage on login
-// Supabase wins for all keys it has
+// One-time pull from Supabase to localStorage on login
 export async function syncFromSupabase(socId){
  try{
   const data=await sbList('user_settings',socId);
-  if(Array.isArray(data)){data.forEach(row=>{
-   if(row.key&&row.value!==undefined){
-    // Supabase = source of truth, always overwrite localStorage
-    localStorage.setItem(row.key,JSON.stringify(row.value));
-   }
-  });}
-  // Also pull global settings (lower priority than society-specific)
+  if(Array.isArray(data)){data.forEach(row=>{if(row.key&&row.value!==undefined)localStorage.setItem(row.key,JSON.stringify(row.value));});}
+  // Also pull global settings
   const globalData=await sbList('user_settings','global');
-  if(Array.isArray(globalData)){globalData.forEach(row=>{
-   if(row.key&&row.value!==undefined){
-    // Only set if no society-specific value exists
-    const hasSpecific=Array.isArray(data)&&data.some(d=>d.key===row.key);
-    if(!hasSpecific)localStorage.setItem(row.key,JSON.stringify(row.value));
-   }
-  });}
- }catch(e){console.warn("syncFromSupabase failed:",e);}
-}
-// Push all localStorage data to Supabase (for migration/first-time)
-export async function pushAllToSupabase(){
- const socId=_currentSocId||'global';
- const keys=['scAs','scAr','scAh','scAa','scAj','scAp','scAd','scAg','scAv','scAb','scAo','scAy','scAk','scAc','scAu','scAt','scAcl','scAiv','scOnboarded','scObData'];
- for(const k of keys){
-  try{
-   const ls=localStorage.getItem(k);
-   if(ls){const v=JSON.parse(ls);sbUpsert('user_settings',{society_id:socId,key:k,value:v});}
-  }catch{}
- }
+  if(Array.isArray(globalData)){globalData.forEach(row=>{if(row.key&&row.value!==undefined){const existing=localStorage.getItem(row.key);if(!existing)localStorage.setItem(row.key,JSON.stringify(row.value));}});}
+ }catch(e){}
 }
 // Fetch holding config from Supabase
 export async function fetchHoldingFromSB(){
