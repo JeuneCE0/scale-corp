@@ -3495,7 +3495,7 @@ export function ConversationsPanel({soc}){
 
  useEffect(()=>{fetchConvos(false);listPollRef.current=setInterval(()=>fetchConvos(true),60000);return()=>clearInterval(listPollRef.current);},[fetchConvos]);
 
- const loadMsgs=useCallback((c)=>{setSelConvo(c);setMsgs([]);setMsgsLoading(true);setMobileShowThread(true);setSendType(c.type||c.lastMessageType||"SMS");
+ const loadMsgs=useCallback((c)=>{setSelConvo(c);setMsgs([]);setMsgsLoading(true);setMobileShowThread(true);setSendType(c.type||c.lastMessageType||"SMS");shouldScrollRef.current=true;
   fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_messages",locationId:socKey,conversationId:c.id})}).then(r=>r.json()).then(d=>{const raw=d.messages;const m=Array.isArray(raw)?raw:Array.isArray(raw?.messages)?raw.messages:Array.isArray(d)?d:[];setMsgs(m.slice().reverse());}).catch(()=>setMsgs([])).finally(()=>setMsgsLoading(false));
  },[socKey]);
 
@@ -3505,11 +3505,12 @@ export function ConversationsPanel({soc}){
   return()=>clearInterval(msgsPollRef.current);
  },[selConvo,socKey]);
 
- // Auto-scroll
- useEffect(()=>{msgsEndRef.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
+ // Scroll to bottom only on first load or send (not poll)
+ const shouldScrollRef=useRef(false);
+ useEffect(()=>{if(shouldScrollRef.current){msgsEndRef.current?.scrollIntoView({behavior:"smooth"});shouldScrollRef.current=false;}},[msgs]);
 
  const sendMsg=()=>{if(!msgInput.trim()||!selConvo||sending)return;setSending(true);setSentOk(false);
-  fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversation_send",locationId:socKey,type:sendType,contactId:selConvo.contactId||selConvo.id,message:msgInput})}).then(r=>{if(!r.ok)throw new Error();setMsgs(p=>[...p,{body:msgInput,direction:"outbound",type:sendType,dateAdded:new Date().toISOString()}]);setMsgInput("");setSentOk(true);setTimeout(()=>setSentOk(false),2000);}).catch(()=>{}).finally(()=>setSending(false));
+  fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversation_send",locationId:socKey,type:sendType,contactId:selConvo.contactId||selConvo.id,message:msgInput})}).then(r=>{if(!r.ok)throw new Error();shouldScrollRef.current=true;setMsgs(p=>[...p,{body:msgInput,direction:"outbound",type:sendType,dateAdded:new Date().toISOString()}]);setMsgInput("");setSentOk(true);setTimeout(()=>setSentOk(false),2000);}).catch(()=>{}).finally(()=>setSending(false));
  };
 
  const filtered=useMemo(()=>{let f=convos;if(channelFilter!=="all")f=f.filter(c=>(c.type||c.lastMessageType||"").toUpperCase().includes(channelFilter));const s=search.toLowerCase().trim();if(s)f=f.filter(c=>(c.contactName||c.fullName||c.email||"").toLowerCase().includes(s));return f;},[convos,search,channelFilter]);
