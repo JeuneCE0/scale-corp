@@ -460,6 +460,80 @@ export function RiskMatrix({socs,reps,allM}){
  </Sect>;
 }
 /* 2. ALERTES INTELLIGENTES */
+/* ===== GAMIFICATION XP & BADGES ===== */
+/* ===== GAMIFICATION XP & BADGES ===== */
+export function GamificationPanel({soc,ca,myClients,streak,reps,allM,ghlData}){
+ const BADGES=[
+  {id:"first_client",label:"Premier Client 🎉",desc:"Signe ton premier client",check:(ctx)=>ctx.activeClients>=1},
+  {id:"10k_club",label:"10K€ Club 💰",desc:"Atteins 10 000€ de CA mensuel",check:(ctx)=>ctx.ca>=10000},
+  {id:"streak_7",label:"Streak 7j 🔥",desc:"7 jours de connexion consécutifs",check:(ctx)=>ctx.streakCount>=7},
+  {id:"retention_100",label:"100% Rétention 🏆",desc:"Zéro churn ce mois",check:(ctx)=>ctx.activeClients>0&&ctx.churnedClients===0},
+  {id:"pipeline_king",label:"Pipeline King 👑",desc:"5+ opportunités ouvertes",check:(ctx)=>ctx.openOpps>=5},
+  {id:"zero_churn",label:"Zero Churn 🛡️",desc:"Aucun client perdu en 3 mois",check:(ctx)=>ctx.churn3m===0&&ctx.activeClients>0},
+  {id:"early_bird",label:"Early Bird ☀️",desc:"Connecté avant 8h",check:(ctx)=>ctx.earlyLogin},
+ ];
+ const ctx=useMemo(()=>{
+  const activeClients=(myClients||[]).filter(c=>c.status==="active").length;
+  const churnedClients=(myClients||[]).filter(c=>c.status==="churned").length;
+  const gd=ghlData?.[soc.id]||{};
+  const openOpps=(gd.opportunities||[]).filter(o=>o.status==="open").length;
+  const churn3m=0; // simplified
+  const earlyLogin=new Date().getHours()<8;
+  const streakCount=streak?.count||0;
+  return{ca:ca||0,activeClients,churnedClients,openOpps,churn3m,earlyLogin,streakCount};
+ },[ca,myClients,ghlData,soc.id,streak]);
+
+ const[unlockedBadges,setUnlockedBadges]=useState(()=>{try{return JSON.parse(localStorage.getItem(`scBadges_${soc.id}`)||"[]");}catch{return[];}});
+ const[celebBadge,setCelebBadge]=useState(null);
+
+ useEffect(()=>{
+  const newUnlocked=[...unlockedBadges];let changed=false;
+  BADGES.forEach(b=>{if(!newUnlocked.includes(b.id)&&b.check(ctx)){newUnlocked.push(b.id);changed=true;setCelebBadge(b);}});
+  if(changed){setUnlockedBadges(newUnlocked);try{localStorage.setItem(`scBadges_${soc.id}`,JSON.stringify(newUnlocked));sSet(`scBadges_${soc.id}`,JSON.stringify(newUnlocked));}catch{}}
+ },[ctx]);
+
+ useEffect(()=>{if(celebBadge){const t=setTimeout(()=>setCelebBadge(null),3000);return()=>clearTimeout(t);}},[celebBadge]);
+
+ // XP calculation
+ const xp=useMemo(()=>{
+  let pts=0;pts+=Math.min(400,Math.round((ctx.ca||0)/25));pts+=ctx.activeClients*50;pts+=(ctx.streakCount||0)*10;pts+=unlockedBadges.length*100;
+  const level=Math.floor(pts/500)+1;const xpInLevel=pts%500;
+  return{pts,level,xpInLevel,nextLevel:500};
+ },[ctx,unlockedBadges]);
+
+ return <div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.33s"}}>
+  <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>🎮 GAMIFICATION — NIVEAU {xp.level}</div>
+  {/* XP Bar */}
+  <div style={{marginBottom:14}}>
+   <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+    <span style={{fontSize:10,fontWeight:700,color:C.acc}}>⭐ {xp.pts} XP</span>
+    <span style={{fontSize:9,color:C.td}}>Niveau {xp.level} → {xp.level+1}</span>
+   </div>
+   <div style={{height:8,background:C.brd,borderRadius:4,overflow:"hidden"}}>
+    <div style={{height:"100%",width:`${Math.round(xp.xpInLevel/xp.nextLevel*100)}%`,background:`linear-gradient(90deg,${C.acc},#FF9D00)`,borderRadius:4,transition:"width .5s ease"}}/>
+   </div>
+  </div>
+  {/* Badge Grid */}
+  <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(100px,1fr))",gap:6}}>
+   {BADGES.map(b=>{const unlocked=unlockedBadges.includes(b.id);return <div key={b.id} style={{padding:"10px 6px",borderRadius:10,border:`1px solid ${unlocked?C.acc+"44":C.brd}`,background:unlocked?C.accD:"transparent",textAlign:"center",opacity:unlocked?1:0.4,transition:"all .3s"}}>
+    <div style={{fontSize:20,marginBottom:2,filter:unlocked?"none":"grayscale(1)"}}>{b.label.split(" ").pop()}</div>
+    <div style={{fontSize:8,fontWeight:700,color:unlocked?C.acc:C.td}}>{b.label.replace(/\s*[^\w\s]+$/,"").trim()}</div>
+    {!unlocked&&<div style={{fontSize:7,color:C.tm,marginTop:2}}>🔒</div>}
+   </div>;})}
+  </div>
+  {/* Celebration overlay */}
+  {celebBadge&&<div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.6)",animation:"fi .3s ease"}}>
+   <div style={{textAlign:"center",animation:"celebIn .5s cubic-bezier(.16,1,.3,1)",padding:40}}>
+    <div style={{fontSize:64,marginBottom:8}}>{celebBadge.label.split(" ").pop()}</div>
+    <div style={{fontWeight:900,fontSize:18,color:C.acc,marginBottom:4}}>Badge Débloqué !</div>
+    <div style={{fontSize:14,color:C.t,fontWeight:600}}>{celebBadge.label}</div>
+    <div style={{fontSize:11,color:C.td,marginTop:4}}>{celebBadge.desc}</div>
+   </div>
+  </div>}
+ </div>;
+}
+/* ===== INBOX UNIFIÉE ===== */
+/* ===== INBOX UNIFIÉE ===== */
 export function InboxUnifiee({socs,ghlData}){
  const items=useMemo(()=>{
   const all=[];
@@ -678,6 +752,16 @@ export function CohortAnalysis({socs,reps,allM}){
 }
 /* 4. CHALLENGES INTER-SOCIÉTÉS */
 /* 4. CHALLENGES INTER-SOCIÉTÉS */
+export const CHALLENGE_TEMPLATES=[
+ {id:"c_double",title:"🔥 Doublé",desc:"Doubler son CA vs mois dernier",metric:"ca_growth",target:100,unit:"%",icon:"🔥"},
+ {id:"c_margin",title:"💎 Marge d'or",desc:"Atteindre 60%+ de marge",metric:"margin",target:60,unit:"%",icon:"💎"},
+ {id:"c_pipeline",title:"🎯 Pipeline monstre",desc:"Pipeline > 2× CA",metric:"pipeline_ratio",target:200,unit:"%",icon:"🎯"},
+ {id:"c_streak",title:"📈 Série verte",desc:"3 mois consécutifs de hausse",metric:"growth_streak",target:3,unit:"mois",icon:"📈"},
+ {id:"c_reports",title:"📊 Exemplaire",desc:"Rapport soumis avant le 5 du mois",metric:"early_report",target:1,unit:"",icon:"📊"},
+ {id:"c_pulse",title:"⚡ Ultra-connecté",desc:"Pulse envoyé chaque semaine ce mois",metric:"pulse_count",target:4,unit:"",icon:"⚡"},
+];
+/* ABONNEMENTS & ÉQUIPE PANEL */
+/* ABONNEMENTS & ÉQUIPE PANEL */
 export function SubsTeamPanel({socs,subs,saveSubs,team,saveTeam,socId,reps,isCompact,socBankData,revData}){
  const[editSub,setEditSub]=useState(null);const[editTm,setEditTm]=useState(null);const[showRecon,setShowRecon]=useState(false);
  const[catFilter,setCatFilter]=useState("all");const[autoSubs,setAutoSubs]=useState([]);
@@ -920,6 +1004,79 @@ export function SubsTeamBadge({subs,team,socId,reps}){
  if(total===0)return null;
  return <span style={{fontSize:8,color:C.r,background:C.rD,padding:"1px 5px",borderRadius:8,fontWeight:600}}>🔄 {fmt(total)}€/m</span>;
 }
+export function ChallengesPanel({socs,reps,allM,pulses,challenges,saveChallenges}){
+ const cM2=curM();const pm=prevM(cM2);const actS=socs.filter(s=>s.stat==="active"&&s.id!=="eco");
+ const[editing,setEditing]=useState(false);
+ const scored=useMemo(()=>{
+  return(challenges||[]).filter(c=>c.month===cM2||c.month===pm).map(ch=>{
+   const tmpl=CHALLENGE_TEMPLATES.find(t=>t.id===ch.templateId)||{};
+   const scores=actS.map(s=>{
+    const r=gr(reps,s.id,ch.month),rp=gr(reps,s.id,prevM(ch.month));
+    const ca=pf(r?.ca),caPrev=pf(rp?.ca),ch2=pf(r?.charges);
+    let val=0;
+    if(tmpl.metric==="ca_growth")val=caPrev>0?Math.round((ca-caPrev)/caPrev*100):0;
+    else if(tmpl.metric==="margin")val=ca>0?Math.round((ca-ch2)/ca*100):0;
+    else if(tmpl.metric==="pipeline_ratio")val=ca>0?Math.round(pf(r?.pipeline)/ca*100):0;
+    else if(tmpl.metric==="pulse_count")val=Object.keys(pulses).filter(k=>k.startsWith(s.id+"_")&&k.includes(ch.month.replace("-",""))).length;
+    else if(tmpl.metric==="growth_streak"){let str=0;const mi=allM.indexOf(ch.month);if(mi>0)for(let i=mi;i>0;i--){const rc=pf(gr(reps,s.id,allM[i])?.ca),rcc=pf(gr(reps,s.id,allM[i-1])?.ca);if(rc>rcc)str++;else break;}val=str;}
+    return{soc:s,value:val,achieved:val>=(tmpl.target||0)};
+   }).sort((a,b)=>b.value-a.value);
+   return{...ch,...tmpl,scores,winner:scores[0]};
+  });
+ },[challenges,reps,pulses,actS,allM,cM2,pm]);
+ const launchChallenge=(tmplId)=>{
+  const nc={id:uid(),templateId:tmplId,month:cM2,createdAt:new Date().toISOString()};
+  saveChallenges([...(challenges||[]),nc]);
+ };
+ return <>
+  {scored.filter(c=>c.month===cM2).length>0&&<Sect title={`Challenges — ${ml(cM2)}`}>
+   {scored.filter(c=>c.month===cM2).map((ch,i)=>
+    <Card key={ch.id} accent={C.acc} style={{marginBottom:8,padding:14}} delay={Math.min(i+1,6)}>
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+    <span style={{fontSize:24}}>{ch.icon}</span>
+    <div style={{flex:1}}>
+    <div style={{fontWeight:800,fontSize:14}}>{ch.title}</div>
+    <div style={{color:C.td,fontSize:10}}>{ch.desc} — cible: {ch.target}{ch.unit}</div>
+    </div>
+    </div>
+    {ch.scores.map((sc,si)=>
+    <div key={sc.soc.id} className={`fu d${Math.min(si+1,8)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 8px",background:si===0?C.accD:C.card,borderRadius:6,border:`1px solid ${si===0?C.acc+"44":C.brd}`,marginBottom:2}}>
+    <span style={{fontWeight:800,fontSize:12,color:si===0?C.acc:si===1?"#C0C0C0":si===2?"#CD7F32":C.td,width:16}}>{si+1}</span>
+    <span style={{width:5,height:5,borderRadius:3,background:sc.soc.color}}/>
+    <span style={{flex:1,fontWeight:600,fontSize:11}}>{sc.soc.nom}</span>
+    <span style={{fontWeight:800,fontSize:12,color:sc.achieved?C.g:C.td}}>{sc.value}{ch.unit}</span>
+    {sc.achieved&&<span style={{fontSize:8,color:C.g,background:C.gD,padding:"1px 5px",borderRadius:6,fontWeight:600}}>✓</span>}
+    </div>
+    )}
+    </Card>
+   )}
+  </Sect>}
+  {scored.filter(c=>c.month!==cM2).length>0&&<Sect title="Historique">
+   {scored.filter(c=>c.month!==cM2).map((ch,i)=>
+    <div key={ch.id} className={`fu d${Math.min(i+1,6)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:C.card,borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3}}>
+    <span style={{fontSize:14}}>{ch.icon}</span>
+    <div style={{flex:1}}><span style={{fontWeight:600,fontSize:11}}>{ch.title}</span><span style={{color:C.td,fontSize:9,marginLeft:6}}>{ml(ch.month)}</span></div>
+    {ch.winner&&<><span style={{width:4,height:4,borderRadius:2,background:ch.winner.soc.color}}/><span style={{fontWeight:700,fontSize:10,color:C.acc}}>🏆 {ch.winner.soc.nom}</span></>}
+    </div>
+   )}
+  </Sect>}
+  <Sect title="Lancer un challenge" sub="Choisir un défi pour ce mois">
+   <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:6}}>
+    {CHALLENGE_TEMPLATES.map(tmpl=>{
+    const active=(challenges||[]).some(c=>c.templateId===tmpl.id&&c.month===cM2);
+    return <div key={tmpl.id} className="fu ba" onClick={active?undefined:()=>launchChallenge(tmpl.id)} style={{padding:12,background:active?C.gD:C.card,border:`1px solid ${active?C.g+"44":C.brd}`,borderRadius:10,cursor:active?"default":"pointer",textAlign:"center",opacity:active?0.6:1}}>
+    <div style={{fontSize:20,marginBottom:4}}>{tmpl.icon}</div>
+    <div style={{fontWeight:700,fontSize:10,color:active?C.g:C.t}}>{tmpl.title.replace(/^. /,"")}</div>
+    <div style={{fontSize:8,color:C.td,marginTop:2}}>{tmpl.desc}</div>
+    {active&&<div style={{fontSize:7,color:C.g,marginTop:3,fontWeight:700}}>ACTIF</div>}
+    </div>;
+    })}
+   </div>
+  </Sect>
+ </>;
+}
+/* 5. AI WEEKLY COACH */
+/* CLIENTS PANEL (per-société CRM) */
 export function ClientsPanelSafe(props){return <ErrorBoundary label="Erreur dans la page Clients"><ClientsPanelInner {...props}/></ErrorBoundary>;}
 export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices,stripeData,onSelectClient}){
  const[editCl,setEditCl]=useState(null);const[cl360Tab,setCl360Tab]=useState("infos");const[filter,setFilter]=useState("all");const[stageFilter,setStageFilter]=useState("all");const[invView,setInvView]=useState(null);
@@ -2865,6 +3022,8 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
   </div>}
   {/* Parcours Client Visuel */}
   <ParcoursClientVisuel ghlData={ghlData} socId={soc.id} myClients={myClients}/>
+  {/* Gamification XP & Badges */}
+  <GamificationPanel soc={soc} ca={ca} myClients={myClients} streak={streak} reps={reps} allM={allM} ghlData={ghlData}/>
   {/* Quick nav to Sales & Pub tabs */}
   <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
    <div className="fade-up glass-card" onClick={()=>setPTab(2)} style={{padding:18,cursor:"pointer",textAlign:"center",animationDelay:"0.32s",borderTop:`2px solid #34d399`}}>

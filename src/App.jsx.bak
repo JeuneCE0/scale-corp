@@ -21,12 +21,12 @@ import {
 
 /* UI COMPONENTS */
 import {
-  ActionItem, AdminClientsTab, Badge, BenchmarkRadar, Btn, CTip, Card, ClientPortal,
+  ActionItem, AdminClientsTab, Badge, BenchmarkRadar, Btn, CTip, Card, ChallengesPanel, ClientPortal,
   CohortAnalysis, DealFlow, GradeBadge, InboxUnifiee, Inp, InvestorBoard, KPI, KnowledgeBase, LeaderboardCard, MeetingMode,
-  MilestonesCompact, Modal, PBar, PulseOverview, RiskMatrix, Sect, Sel, Sidebar, SmartAlertsPanel,
+  MilestonesCompact, Modal, OnboardingWizard, PBar, PulseOverview, RiskMatrix, Sect, Sel, Sidebar, SmartAlertsPanel,
   SocieteView, SubsTeamBadge, SubsTeamPanel, SynergiesAutoPanel, SynergiesPanel, Toggle, TutorialOverlay, ValRow,
   WarRoomReadOnly, WidgetEmbed, WidgetRenderer, calcSmartAlerts,
-  SB_ADMIN, SB_PORTEUR, TOUR_ADMIN, TOUR_PORTEUR,
+  SB_ADMIN, SB_PORTEUR, TOUR_ADMIN, TOUR_PORTEUR, CHALLENGE_TEMPLATES,
 } from "./components.jsx";
 import { GlobalSearch } from "./components/GlobalSearch.jsx";
 import { SkeletonDashboard, SkeletonKPI, SkeletonCard, SkeletonTable, SkeletonStyles } from "./components/Skeletons.jsx";
@@ -50,7 +50,7 @@ export default function App(){
  const[socs,setSocs]=useState([]);const[reps,setReps]=useState({});const[hold,setHold]=useState(DH);
  const[actions,setActions]=useState([]);const[journal,setJournal]=useState({});
  const[pulses,setPulses]=useState({});const[deals,setDeals]=useState([]);const[ghlData,setGhlData]=useState({});const[revData,setRevData]=useState(null);const[socBank,setSocBank]=useState({});const[stripeData,setStripeData]=useState(null);
- const[okrs,setOkrs]=useState([]);const[synergies,setSynergies]=useState([]);const[kb,setKb]=useState([]);
+ const[okrs,setOkrs]=useState([]);const[synergies,setSynergies]=useState([]);const[kb,setKb]=useState([]);const[challenges,setChallenges]=useState([]);
  const[subs,setSubs]=useState([]);const[team,setTeam]=useState([]);const[clients,setClients]=useState([]);const[invoices,setInvoices]=useState([]);
  const[pin,setPin]=useState("");const[lErr,setLErr]=useState("");const[shake,setShake]=useState(false);
  const[loginMode,setLoginMode]=useState("email");const[loginEmail,setLoginEmail]=useState("");const[loginPass,setLoginPass]=useState("");const[authUser,setAuthUser]=useState(null);const[authLoading,setAuthLoading]=useState(false);
@@ -67,15 +67,15 @@ export default function App(){
  const handleSearchNav=useCallback((type,item)=>{if(type==='clients')setTab(3);else if(type==='crm')setTab(7);else if(type==='banking')setTab(8);else if(type==='societe'&&item){setAdminSocView(item.id);}},[]);
  // Admin keyboard shortcuts
  useEffect(()=>{const h=e=>{if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT"||e.target.isContentEditable)return;const tabMap={"1":0,"2":1,"3":2,"4":3,"5":15,"6":16,"7":17,"8":14};if(tabMap[e.key]!==undefined)setTab(tabMap[e.key]);if(e.key==="p"||e.key==="P")setShowPulse(true);};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[]);
- const[showTour,setShowTour]=useState(false);
+ const[onboarded,setOnboarded]=useState(true);const[showTour,setShowTour]=useState(false);const[obData,setObData]=useState(null);const[showOnboarding,setShowOnboarding]=useState(false);
  useEffect(()=>{(async()=>{try{const[s,r,h,a,j,p,d,g,rv,sb,ok,sy,kk,ch,su,tm,cl,iv]=await Promise.all([sGet("scAs"),sGet("scAr"),sGet("scAh"),sGet("scAa"),sGet("scAj"),sGet("scAp"),sGet("scAd"),sGet("scAg"),sGet("scAv"),sGet("scAb"),sGet("scAo"),sGet("scAy"),sGet("scAk"),sGet("scAc"),sGet("scAu"),sGet("scAt"),sGet("scAcl"),sGet("scAiv")]);
    // Try Supabase for holding & societies (override localStorage if available)
    let finalSocs=s||DS,finalHold=h||DH;
    try{const[sbHold,sbSocs]=await Promise.all([fetchHoldingFromSB(),fetchSocietiesFromSB()]);
    if(sbHold){finalHold=sbHold;localStorage.setItem("scAh",JSON.stringify(sbHold));}
    if(sbSocs&&sbSocs.length>0){const sbMap=Object.fromEntries(sbSocs.map(x=>[x.id,x]));finalSocs=(s||DS).map(sc=>sbMap[sc.id]?{...sc,...sbMap[sc.id]}:sc);const newIds=sbSocs.filter(x=>!(s||DS).find(d=>d.id===x.id));if(newIds.length)finalSocs=[...finalSocs,...newIds];localStorage.setItem("scAs",JSON.stringify(finalSocs));}}catch{}
-   setSocs(finalSocs);setReps(r||mkPrefill());setHold(finalHold);setActions(a||DEMO_ACTIONS);setJournal(j||DEMO_JOURNAL);setPulses(p||DEMO_PULSES);setDeals(d||DEMO_DEALS);setGhlData(g||{});setRevData(rv||null);setSocBank(sb||{});setOkrs(ok||DEMO_OKRS);setSynergies(sy||DEMO_SYNERGIES);setKb(kk||DEMO_KB);setSubs(su||DEMO_SUBS);setTeam(tm||DEMO_TEAM);setClients(cl||DEMO_CLIENTS);setInvoices(iv||mkDemoInvoices(cl||DEMO_CLIENTS,finalSocs));}catch{setSocs(DS);setReps(mkPrefill());setHold(DH);setActions(DEMO_ACTIONS);setJournal(DEMO_JOURNAL);setPulses(DEMO_PULSES);setDeals(DEMO_DEALS);setOkrs(DEMO_OKRS);setSynergies(DEMO_SYNERGIES);setKb(DEMO_KB);setSubs(DEMO_SUBS);setTeam(DEMO_TEAM);setClients(DEMO_CLIENTS);setInvoices(mkDemoInvoices(DEMO_CLIENTS,DS));}
-   /* onboarding removed */
+   setSocs(finalSocs);setReps(r||mkPrefill());setHold(finalHold);setActions(a||DEMO_ACTIONS);setJournal(j||DEMO_JOURNAL);setPulses(p||DEMO_PULSES);setDeals(d||DEMO_DEALS);setGhlData(g||{});setRevData(rv||null);setSocBank(sb||{});setOkrs(ok||DEMO_OKRS);setSynergies(sy||DEMO_SYNERGIES);setKb(kk||DEMO_KB);setChallenges(ch||[]);setSubs(su||DEMO_SUBS);setTeam(tm||DEMO_TEAM);setClients(cl||DEMO_CLIENTS);setInvoices(iv||mkDemoInvoices(cl||DEMO_CLIENTS,finalSocs));}catch{setSocs(DS);setReps(mkPrefill());setHold(DH);setActions(DEMO_ACTIONS);setJournal(DEMO_JOURNAL);setPulses(DEMO_PULSES);setDeals(DEMO_DEALS);setOkrs(DEMO_OKRS);setSynergies(DEMO_SYNERGIES);setKb(DEMO_KB);setSubs(DEMO_SUBS);setTeam(DEMO_TEAM);setClients(DEMO_CLIENTS);setInvoices(mkDemoInvoices(DEMO_CLIENTS,DS));}
+   try{const obStatus=await sGet("scOnboarded");const obD=await sGet("scObData");setOnboarded(!!obStatus);setObData(obD||null);if(!obStatus)setShowOnboarding(true);}catch{setOnboarded(false);setShowOnboarding(true);}
    setLoaded(true);
    // Session persistence: check stored auth token
    try{const tk=localStorage.getItem("sc_auth_token");if(tk){fetch("/api/auth?action=me",{headers:{Authorization:"Bearer "+tk}}).then(r2=>r2.ok?r2.json():null).then(u=>{if(u&&u.id){setAuthUser(u);const meta=u.user_metadata||{};if(meta.role==="admin"){setRole("admin");setStoreToken("auth");setCurrentSocId("admin");syncFromSupabase("admin").catch(()=>{});}else if(meta.society_id){setRole(meta.society_id);setStoreToken("auth");setCurrentSocId(meta.society_id);syncFromSupabase(meta.society_id).catch(()=>{});}}}).catch(()=>{});}}catch{}
@@ -91,6 +91,7 @@ export default function App(){
  const saveOkrs=useCallback(async(no)=>{setOkrs(no);await sSet("scAo",no);},[]);
  const saveSynergies=useCallback(async(ns)=>{setSynergies(ns);await sSet("scAy",ns);},[]);
  const saveKb=useCallback(async(nk)=>{setKb(nk);await sSet("scAk",nk);},[]);
+ const saveChallenges=useCallback(async(nc)=>{setChallenges(nc);await sSet("scAc",nc);},[]);
  const saveSubs=useCallback(async(ns)=>{setSubs(ns);await sSet("scAu",ns);},[]);
  const saveTeam=useCallback(async(nt)=>{setTeam(nt);await sSet("scAt",nt);},[]);
  const saveClients=useCallback(async(nc)=>{setClients(nc);await sSet("scAcl",nc);},[]);
@@ -200,16 +201,16 @@ export default function App(){
   const absentLabel=hrs>=24?`${Math.round(hrs/24)}j`:hrs>=1?`${hrs}h`:`${mins}min`;
   if(events.length>0)setMissedRecap({events:events.slice(0,20),total:events.length,absent:absentLabel});
  },[role]);
- const loginEmail2=useCallback(async()=>{if(!loginEmail.trim()||!loginPass.trim()){setLErr("Email et mot de passe requis");return;}setAuthLoading(true);setLErr("");try{const r=await fetch("/api/auth?action=login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:loginEmail.trim(),password:loginPass})});const d=await r.json();if(!r.ok){setLErr(d.error_description||d.msg||d.error||"Identifiants incorrects");setShake(true);setTimeout(()=>setShake(false),500);return;}localStorage.setItem("sc_auth_token",d.access_token);if(d.refresh_token)localStorage.setItem("sc_auth_refresh",d.refresh_token);setAuthUser(d.user);const meta=d.user?.user_metadata||{};const rid=meta.role==="admin"?"admin":(meta.society_id||"admin");setRole(rid);setLErr("");setStoreToken("auth");setCurrentSocId(rid);localStorage.setItem("sc_store_token","auth");syncFromSupabase(rid).then(()=>{}).catch(()=>{});}catch(e){setLErr("Erreur de connexion");setShake(true);setTimeout(()=>setShake(false),500);}finally{setAuthLoading(false);}},[loginEmail,loginPass]);
+ const loginEmail2=useCallback(async()=>{if(!loginEmail.trim()||!loginPass.trim()){setLErr("Email et mot de passe requis");return;}setAuthLoading(true);setLErr("");try{const r=await fetch("/api/auth?action=login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:loginEmail.trim(),password:loginPass})});const d=await r.json();if(!r.ok){setLErr(d.error_description||d.msg||d.error||"Identifiants incorrects");setShake(true);setTimeout(()=>setShake(false),500);return;}localStorage.setItem("sc_auth_token",d.access_token);if(d.refresh_token)localStorage.setItem("sc_auth_refresh",d.refresh_token);setAuthUser(d.user);const meta=d.user?.user_metadata||{};const rid=meta.role==="admin"?"admin":(meta.society_id||"admin");setRole(rid);setLErr("");setStoreToken("auth");setCurrentSocId(rid);localStorage.setItem("sc_store_token","auth");if(!onboarded)setShowTour(true);syncFromSupabase(rid).then(()=>{}).catch(()=>{});}catch(e){setLErr("Erreur de connexion");setShake(true);setTimeout(()=>setShake(false),500);}finally{setAuthLoading(false);}},[loginEmail,loginPass,onboarded]);
  const login=useCallback(async()=>{async function hashPin(p){const e=new TextEncoder().encode(p);const h=await crypto.subtle.digest('SHA-256',e);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');}
-const doLogin=(rid)=>{setRole(rid);setLErr("");setStoreToken(pin);setCurrentSocId(rid);localStorage.setItem("sc_store_token",pin);syncFromSupabase(rid).then(()=>{}).catch(()=>{});};
+const doLogin=(rid)=>{setRole(rid);setLErr("");setStoreToken(pin);setCurrentSocId(rid);localStorage.setItem("sc_store_token",pin);if(!onboarded)setShowTour(true);syncFromSupabase(rid).then(()=>{}).catch(()=>{});};
 // Admin check
 if(pin==="0000"||pin==="admin"){const hk="sc_pin_hash_admin";const stored=localStorage.getItem(hk);if(!stored){localStorage.setItem(hk,await hashPin(pin));}doLogin("admin");return;}
 // Check stored hashes first
 const inputHash=await hashPin(pin);for(const s of socs){const hk=`sc_pin_hash_${s.id}`;const stored=localStorage.getItem(hk);if(stored&&stored===inputHash){doLogin(s.id);return;}}
 // Backward compat: raw PIN match, then store hash
 const s=socs.find(x=>x.pin===pin);if(s){localStorage.setItem(`sc_pin_hash_${s.id}`,await hashPin(pin));doLogin(s.id);return;}
-setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[pin,socs]);
+setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[pin,socs,onboarded]);
  const addAction=(socId,text,dl)=>{saveAJ([...actions,{id:uid(),socId,text,deadline:dl||nextM(cM2),done:false,by:"admin",at:new Date().toISOString()}],null);};
  const toggleAction=(id)=>{saveAJ(actions.map(a=>a.id===id?{...a,done:!a.done}:a),null);};
  const[adminMobileMenu,setAdminMobileMenu]=useState(false);
@@ -223,7 +224,8 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  if(hash.startsWith("#portal/")){const parts=hash.replace("#portal/","").split("/");return <><style>{CSS}</style><ClientPortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients} ghlData={ghlData}/></>;}
  if(hash.startsWith("#board/")){const bPin=hash.replace("#board/","");return <><style>{CSS}</style><InvestorBoard socs={socs} reps={reps} allM={allM} hold={hold} pin={bPin}/></>;}
 
- /* Onboarding removed */;
+ /* ONBOARDING (optional, non-blocking) */
+ if(showOnboarding)return <OnboardingWizard hold={hold} onSkip={()=>setShowOnboarding(false)} onComplete={async(formData)=>{try{await sSet("scOnboarded",true);await sSet("scObData",formData);sbUpsert("society_info",{id:formData.companyName?.toLowerCase().replace(/\s+/g,"-")||"default",company_name:formData.companyName,sector:formData.sector,website:formData.website,description:formData.description,city:formData.city,country:formData.country,founder_name:formData.founderName,founder_role:formData.founderRole,founder_email:formData.founderEmail,founder_phone:formData.founderPhone,cofounder_name:formData.cofounderName,cofounder_role:formData.cofounderRole,current_mrr:formData.currentMRR,team_size:formData.teamSize,funding_stage:formData.fundingStage,goals:formData.goals,timeline:formData.timeline,created_at:new Date().toISOString()});}catch{}setObData(formData);setOnboarded(true);setShowOnboarding(false);setShowTour(true);}}/>;
  if(!role)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT,padding:16}}>
   <style>{CSS}</style>
   {/* TUTORIAL OVERLAY ON LOGIN */}
@@ -231,7 +233,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    <div className="si glass-modal" style={{borderRadius:20,padding:0,width:500,maxWidth:"92vw",overflow:"hidden"}}>
     <div style={{padding:"24px 28px",background:`linear-gradient(135deg,${C.accD},transparent)`,borderBottom:`1px solid ${C.brd}`,textAlign:"center"}}>
      <div style={{width:64,height:64,borderRadius:16,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:30,marginBottom:12,boxShadow:`0 8px 32px ${C.accD}`}}>🎓</div>
-     <h2 style={{margin:0,fontSize:22,fontWeight:800,color:C.t,fontFamily:FONT_TITLE}}>Bienvenue  !</h2>
+     <h2 style={{margin:0,fontSize:22,fontWeight:800,color:C.t,fontFamily:FONT_TITLE}}>Bienvenue {obData?.founderName||""} !</h2>
      <p style={{color:C.td,fontSize:13,margin:"8px 0 0",lineHeight:1.5}}>Votre espace est configuré. Connectez-vous puis découvrez la plateforme avec un tutoriel guidé de chaque onglet.</p>
     </div>
     <div style={{padding:"20px 28px"}}>
@@ -259,6 +261,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    <Btn onClick={loginEmail2} full disabled={authLoading}>{authLoading?"Connexion...":"Connexion"}</Btn>
 
 
+   {obData&&<div style={{marginTop:10,padding:"8px 12px",background:C.gD,borderRadius:8,border:`1px solid ${C.g}33`,fontSize:10,color:C.g,textAlign:"center"}}>✅ Onboarding complété{obData.companyName?` — ${obData.companyName}`:""}</div>}
 
 
   </div>
@@ -509,6 +512,15 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    <Sect title="Projection T+3">{actS.map((s,i)=>{const proj=project(reps,s.id,allM);if(!proj)return null;const n=[nextM(cM2),nextM(nextM(cM2)),nextM(nextM(nextM(cM2)))];return <div key={s.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",background:C.card,borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:2}}><span style={{width:4,height:4,borderRadius:2,background:s.color}}/><span style={{flex:1,fontSize:11,fontWeight:600}}>{s.nom}</span>{proj.map((v,j)=><span key={j} style={{fontSize:9,color:C.td}}>{ml(n[j]).split(" ")[0]}: <strong style={{color:C.t}}>{fmt(v)}€</strong></span>)}</div>;})}
    </Sect>
    <RiskMatrix socs={socs} reps={reps} allM={allM}/>
+   {(challenges||[]).filter(c=>c.month===cM2).length>0&&<Card style={{padding:12,marginTop:12,cursor:"pointer"}} onClick={()=>setTab(12)}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+    <span style={{fontSize:11,fontWeight:700}}>⚡ Challenges ce mois</span>
+    <span style={{fontSize:8,color:C.acc}}>Voir →</span>
+    </div>
+    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+    {(challenges||[]).filter(c=>c.month===cM2).map(ch=>{const tmpl=CHALLENGE_TEMPLATES.find(t=>t.id===ch.templateId);return tmpl?<span key={ch.id} style={{padding:"3px 8px",background:C.accD,borderRadius:6,fontSize:10,fontWeight:600}}>{tmpl.icon} {tmpl.title.replace(/^. /,"")}</span>:null;})}
+    </div>
+   </Card>}
   </>}
   {tab===1&&<>
    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6,marginBottom:14}}>
@@ -768,6 +780,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   {tab===8&&<Suspense fallback={<LazyFallback/>}><BankingPanel revData={revData} onSync={syncRev} clients={clients}/></Suspense>}
   {tab===10&&<SynergiesPanel socs={socs} synergies={synergies} saveSynergies={saveSynergies}/>}
   {tab===11&&<KnowledgeBase socs={socs} kb={kb} saveKb={saveKb}/>}
+  {tab===12&&<ChallengesPanel socs={socs} reps={reps} allM={allM} pulses={pulses} challenges={challenges} saveChallenges={saveChallenges}/>}
   {tab===13&&<SubsTeamPanel socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId="all" reps={reps} revData={revData}/>}
   {tab===14&&<UserAccessPanel socs={socs}/>}
   {tab===15&&<>
