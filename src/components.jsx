@@ -91,7 +91,7 @@ export function PulseOverview({socs,pulses}){
 }
 /* MEETING MODE */
 /* MEETING MODE */
-export function MeetingMode({socs,reps,hold,actions,pulses,allM,onExit}){
+export function MeetingMode({socs,reps,hold,actions,pulses,allM,clients=[],onExit}){
  const cM2=curM();const actS=socs.filter(s=>s.stat==="active");const hc=calcH(socs,reps,hold,cM2);
  const[step,setStep]=useState(0);const[timer,setTimer]=useState(0);const[running,setRunning]=useState(false);const[notes,setNotes]=useState("");
  const steps=[{title:"Vue d'ensemble",icon:"📊"},{title:"Alertes & Actions",icon:"⚠"},...actS.map(s=>({title:s.nom,icon:"🏢",soc:s})),{title:"Décisions & Prochaines étapes",icon:"✅"}];
@@ -116,6 +116,7 @@ export function MeetingMode({socs,reps,hold,actions,pulses,allM,onExit}){
     </div>
     <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:16}}>{actS.map(s=>{const hs=healthScore(s,reps);const r=gr(reps,s.id,cM2);
      const myCl=(clients||[]).filter(c=>c.socId===s.id&&c.status==="active");const chCl=(clients||[]).filter(c=>c.socId===s.id&&c.status==="churned").length;const totCl=myCl.length+chCl;
+     const prevCa=pf(gr(reps,s.id,prevM(cM2))?.ca);
      const ecsQuick=(()=>{let sc=0;sc+=100;const g2=prevCa>0?(pf(r?.ca)-prevCa)/prevCa*100:0;sc+=g2>10?200:g2>5?150:g2>=0?100:50;sc+=Math.round((1-(totCl>0?chCl/totCl:0))*200);sc+=myCl.length>10?100:myCl.length>=5?70:40;return clamp(sc,0,1000);})();
      const ecsC=ecsQuick>800?"#34d399":ecsQuick>600?"#eab308":ecsQuick>400?"#fb923c":"#f87171";
      const ecsB=ecsQuick>800?"🏆":ecsQuick>600?"⭐":ecsQuick>400?"📈":"⚠️";
