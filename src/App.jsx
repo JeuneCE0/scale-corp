@@ -172,8 +172,9 @@ export default function App(){
    const hasGhlData=ghlData?.[s.id];
    if(!hasBankData&&!hasGhlData)return;
    const auto=autoGenerateReport(s.id,cM,socBank,ghlData,subs);
-   if(existing){// preserve manual edits on non-empty fields, but update auto fields
-    nr[key]={...auto,...Object.fromEntries(Object.entries(existing).filter(([k,v])=>v!==""&&v!==0&&v!=="0"&&k!=="notes"&&k!=="_auto"&&k!=="at")),_auto:true,at:new Date().toISOString()};
+   if(existing){// preserve manual edits on non-empty fields, but bank-derived fields always from auto
+    const bankFields=new Set(["ca","charges","chargesOps","salaire","pub","formation","tresoSoc","dividendesHolding","prestataireAmount"]);
+    nr[key]={...auto,...Object.fromEntries(Object.entries(existing).filter(([k,v])=>v!==""&&v!==0&&v!=="0"&&k!=="notes"&&k!=="_auto"&&k!=="at"&&!bankFields.has(k))),_auto:true,at:new Date().toISOString()};
    }else{nr[key]=auto;}
    updated=true;
   });
