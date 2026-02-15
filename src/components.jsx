@@ -3482,11 +3482,11 @@ export function ConversationsPanel({soc}){
  const socKey=soc.ghlLocationId||soc.id;
  const[convos,setConvos]=useState([]);const[selConvo,setSelConvo]=useState(null);const[msgs,setMsgs]=useState([]);const[msgInput,setMsgInput]=useState("");const[loading,setLoading]=useState(false);
  useEffect(()=>{let cancel=false;setLoading(true);
-  fetch(`/api/ghl?action=conversations_list&loc=${socKey}`).then(r=>r.json()).then(d=>{if(!cancel)setConvos(d.conversations||d||[]);}).catch(()=>{}).finally(()=>{if(!cancel)setLoading(false);});
+  fetch(`/api/ghl?action=conversations_list&loc=${socKey}`).then(r=>r.json()).then(d=>{if(!cancel)setConvos(Array.isArray(d.conversations)?d.conversations:Array.isArray(d)?d:[]);}).catch(()=>{}).finally(()=>{if(!cancel)setLoading(false);});
   return()=>{cancel=true;};
  },[socKey]);
  const loadMsgs=(c)=>{setSelConvo(c);setMsgs([]);
-  fetch(`/api/ghl?action=conversations_messages&loc=${socKey}&conversationId=${c.id}`).then(r=>r.json()).then(d=>setMsgs(d.messages||d||[])).catch(()=>{});
+  fetch(`/api/ghl?action=conversations_messages&loc=${socKey}&conversationId=${c.id}`).then(r=>r.json()).then(d=>setMsgs(Array.isArray(d.messages)?d.messages:Array.isArray(d)?d:[])).catch(()=>{});
  };
  const sendMsg=()=>{if(!msgInput.trim()||!selConvo)return;
   fetch(`/api/ghl?action=conversation_send&loc=${socKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"Email",contactId:selConvo.contactId||selConvo.id,message:msgInput})}).then(()=>{setMsgs(p=>[...p,{body:msgInput,direction:"outbound",dateAdded:new Date().toISOString()}]);setMsgInput("");}).catch(()=>{});
