@@ -2585,16 +2585,20 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
  // Avg client value
  const avgClientVal=myClients.length>0?Math.round(ca/myClients.length):0;
  // Expense breakdown (pie data)
+ const[catVersion,setCatVersion]=useState(0);
+ useEffect(()=>{const key=`scTxCat_${soc.id}`;const h=()=>setCatVersion(v=>v+1);window.addEventListener("storage",h);const orig=localStorage.setItem;const wrapped=function(k,v){orig.call(localStorage,k,v);if(k===key)setCatVersion(c=>c+1);};localStorage.setItem=wrapped;return()=>{window.removeEventListener("storage",h);localStorage.setItem=orig;};},[soc.id]);
+ const txCatOverrides=useMemo(()=>{try{return JSON.parse(localStorage.getItem(`scTxCat_${soc.id}`)||"{}");}catch{return {};}},[soc.id,catVersion]);
+ const getCatForTx=useCallback((tx)=>{if(txCatOverrides[tx.id]){const found=TX_CATEGORIES.find(c=>c.id===txCatOverrides[tx.id]);if(found)return found;}return categorizeTransaction(tx);},[txCatOverrides]);
  const pieData=useMemo(()=>{
   const catTotals={};
   if(bankData?.transactions){
    bankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg)return false;if(isExcludedTx(t,excluded))return false;return(t.created_at||"").startsWith(cm)&&leg.amount<0;}).forEach(t=>{
-    const cat=categorizeTransaction(t);const amt=Math.abs(t.legs?.[0]?.amount||0);
+    const cat=getCatForTx(t);const amt=Math.abs(t.legs?.[0]?.amount||0);
     if(cat.id!=="revenus"&&cat.id!=="transfert")catTotals[cat.label]=(catTotals[cat.label]||0)+amt;
    });
   }
   return Object.entries(catTotals).map(([name,value])=>({name,value:Math.round(value)})).sort((a,b)=>b.value-a.value);
- },[bankData,cm,excluded]);
+ },[bankData,cm,excluded,getCatForTx]);
  const PIE_COLORS=[C.r,C.o,C.b,C.v,"#ec4899","#14b8a6",C.acc,"#8b5cf6"];
  // Top 5 clients
  const top5Clients=useMemo(()=>{
@@ -2701,7 +2705,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>📊 RÉPARTITION DES DÉPENSES</div>
     <div style={{display:"flex",alignItems:"center",height:180}}>
      <div style={{width:"45%",height:180}}><ResponsiveContainer><PieChart><Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={3} strokeWidth={0}>{pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip content={<CTip/>}/></PieChart></ResponsiveContainer></div>
-     <div style={{flex:1,paddingLeft:8}}>{pieData.slice(0,6).map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/><span style={{flex:1,fontSize:10,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span><span style={{fontWeight:700,fontSize:10,color:C.t}}>{fmt(d.value)}€</span></div>)}</div>
+     <div style={{flex:1,paddingLeft:8}}>{(()=>{const total=pieData.reduce((a,d)=>a+d.value,0);return pieData.slice(0,6).map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/><span style={{flex:1,fontSize:10,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span><span style={{fontSize:9,color:C.tm,marginRight:4}}>{total>0?Math.round(d.value/total*100):0}%</span><span style={{fontWeight:700,fontSize:10,color:C.t}}>{fmt(d.value)}€</span></div>);})()}</div>
     </div>
    </div>}
   </div>
