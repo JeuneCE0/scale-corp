@@ -27,17 +27,25 @@ export { AIWeeklyCoach, RapportsPanel, ReplayMensuel };
 export function Badge({s}){const m={active:[C.gD,C.g,"Active"],lancement:[C.oD,C.o,"Lancement"],signature:[C.bD,C.b,"Signature"],inactive:[C.rD,C.r,"Inactive"]};const[bg2,c2,l]=m[s]||m.inactive;return <span style={{background:bg2,color:c2,padding:"2px 8px",borderRadius:20,fontSize:9,fontWeight:700,letterSpacing:.5}}>{l}</span>;}
 export function IncubBadge({incub}){if(!incub)return null;const lbl=sinceLbl(incub);return <span style={{background:C.vD,color:C.v,padding:"2px 7px",borderRadius:20,fontSize:9,fontWeight:600}}>📅 {lbl}</span>;}
 export function GradeBadge({grade,color,size="sm"}){const s=size==="lg"?{w:32,h:32,fs:16,r:9,bw:2}:{w:22,h:22,fs:11,r:6,bw:1.5};return <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:s.w,height:s.h,borderRadius:s.r,background:color+"15",color,fontWeight:900,fontSize:s.fs,border:`${s.bw}px solid ${color}33`,flexShrink:0}}>{grade}</span>;}
-export function KPI({label,value,sub,accent,small,delay=0,icon}){
- return <div className={`fu d${delay} glass-card-static`} style={{padding:small?"10px 12px":"16px 18px",flex:"1 1 130px",minWidth:small?90:120,transition:"all .3s cubic-bezier(.4,0,.2,1)"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${accent||C.acc}33`;e.currentTarget.style.boxShadow=`0 0 20px ${(accent||C.acc)}15`;e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--sc-w06)";e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,.3)";e.currentTarget.style.transform="translateY(0)";}}>
-  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}>{icon&&<span style={{fontSize:11}}>{icon}</span>}<span style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,textTransform:"uppercase",fontFamily:FONT_TITLE}}>{label}</span></div>
-  <div style={{fontSize:small?16:28,fontWeight:900,color:accent||C.t,lineHeight:1.1}}>{value}</div>
-  {sub&&<div style={{color:C.td,fontSize:9,marginTop:3}}>{sub}</div>}
+export function KPI({label,value,sub,accent,small,delay=0,icon,trend}){
+ const ac=accent||C.acc;
+ return <div className={`fu d${delay} glass-card-static`} style={{padding:small?"12px 14px":"18px 20px",flex:"1 1 140px",minWidth:small?100:130,transition:"all .25s ease",position:"relative",overflow:"hidden"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${ac}22`;e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="";e.currentTarget.style.transform="translateY(0)";}}>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+   <span style={{color:C.td,fontSize:10,fontWeight:600,letterSpacing:.5}}>{label}</span>
+   {icon&&<span style={{width:28,height:28,borderRadius:8,background:`${ac}12`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>{icon}</span>}
+  </div>
+  <div style={{fontSize:small?18:26,fontWeight:800,color:C.t,lineHeight:1.1,letterSpacing:-.5}}>{value}</div>
+  <div style={{display:"flex",alignItems:"center",gap:6,marginTop:6}}>
+   {trend&&<span style={{fontSize:10,fontWeight:700,color:trend.startsWith("+")?C.g:trend.startsWith("-")?C.r:C.td,display:"flex",alignItems:"center",gap:2}}>{trend.startsWith("+")?<svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 2L8 6H2Z" fill="currentColor"/></svg>:trend.startsWith("-")?<svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 8L2 4H8Z" fill="currentColor"/></svg>:null}{trend}</span>}
+   {sub&&<span style={{color:C.td,fontSize:10}}>{sub}</span>}
+  </div>
+  <div style={{position:"absolute",bottom:0,left:0,right:0,height:2,background:`linear-gradient(90deg,${ac},transparent)`,opacity:.3}}/>
  </div>;
 }
 export function PBar({value,max,color,h=5}){const w=clamp(pct(value,max),0,100);return <div style={{background:C.brd,borderRadius:h,height:h,overflow:"hidden"}}><div className="pg" style={{background:color||C.acc,height:"100%",width:`${w}%`,"--w":`${w}%`,borderRadius:h}}/></div>;}
 export function Btn({children,onClick,v="primary",small,style:sx,disabled,full}){
- const t={primary:{background:`linear-gradient(135deg,#FFBF00,#FF9D00)`,color:"#0a0a0f",boxShadow:"0 0 20px rgba(255,170,0,.2)"},secondary:{background:"rgba(255,255,255,.03)",color:C.t,border:"1px solid rgba(255,255,255,.08)",backdropFilter:"blur(10px)"},ghost:{background:"transparent",color:C.td,border:"1px solid rgba(255,255,255,.04)"},danger:{background:"rgba(248,113,113,.1)",color:C.r,border:"1px solid rgba(248,113,113,.15)"},success:{background:"rgba(52,211,153,.1)",color:C.g,border:"1px solid rgba(52,211,153,.15)"},ai:{background:`linear-gradient(135deg,${C.v},${C.acc})`,color:"#0a0a0f",boxShadow:`0 0 20px rgba(167,139,250,.2)`}};
- return <button className="ba" disabled={disabled} onClick={onClick} style={{border:"none",borderRadius:10,fontWeight:600,cursor:disabled?"not-allowed":"pointer",fontFamily:FONT,opacity:disabled?0.35:1,padding:small?"5px 10px":"9px 18px",fontSize:small?10:12,width:full?"100%":"auto",letterSpacing:.3,...t[v],...sx}}>{children}</button>;
+ const t={primary:{background:`linear-gradient(135deg,#FFBF00,#FF9D00)`,color:"#0a0a0f",boxShadow:"0 2px 8px rgba(255,170,0,.25)"},secondary:{background:C.card2,color:C.t,border:`1px solid ${C.brd}`},ghost:{background:"transparent",color:C.td,border:`1px solid ${C.brd}`},danger:{background:C.rD,color:C.r,border:`1px solid ${C.r}22`},success:{background:C.gD,color:C.g,border:`1px solid ${C.g}22`},ai:{background:`linear-gradient(135deg,${C.v},${C.acc})`,color:"#0a0a0f",boxShadow:`0 2px 8px rgba(167,139,250,.2)`}};
+ return <button className="ba" disabled={disabled} onClick={onClick} style={{border:"none",borderRadius:8,fontWeight:600,cursor:disabled?"not-allowed":"pointer",fontFamily:FONT,opacity:disabled?0.35:1,padding:small?"5px 12px":"8px 18px",fontSize:small?10:12,width:full?"100%":"auto",letterSpacing:.3,transition:"all .15s ease",...t[v],...sx}}>{children}</button>;
 }
 export function Inp({label,value,onChange,type="text",placeholder,suffix,textarea,small,note,onKeyDown}){
  return <div style={{marginBottom:small?6:10}}>
@@ -49,7 +57,7 @@ export function Inp({label,value,onChange,type="text",placeholder,suffix,textare
   </div>{note&&<div style={{color:C.tm,fontSize:9,marginTop:2}}>{note}</div>}</div>;
 }
 export function Sel({label,value,onChange,options}){return <div style={{marginBottom:10}}>{label&&<label style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:3,letterSpacing:.3}}>{label}</label>}<select value={value} onChange={e=>onChange(e.target.value)} style={{width:"100%",background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,color:C.t,padding:"8px 10px",fontSize:12,fontFamily:FONT,outline:"none"}}>{options.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}</select></div>;}
-export function Sect({children,title,sub,right}){return <div className="fu" style={{marginTop:16}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:8,flexWrap:"wrap",gap:4}}><div>{title&&<h2 style={{color:C.t,fontSize:13,fontWeight:800,margin:0,letterSpacing:1,textTransform:"uppercase",fontFamily:FONT_TITLE}}>{title}</h2>}{sub&&<p style={{color:C.td,fontSize:10,margin:"1px 0 0"}}>{sub}</p>}</div>{right}</div>{children}</div>;}
+export function Sect({children,title,sub,right}){return <div className="fu" style={{marginTop:20}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:12,flexWrap:"wrap",gap:6}}><div>{title&&<h2 style={{color:C.t,fontSize:14,fontWeight:700,margin:0,letterSpacing:.3}}>{title}</h2>}{sub&&<p style={{color:C.td,fontSize:11,margin:"2px 0 0"}}>{sub}</p>}</div>{right}</div>{children}</div>;}
 export function Card({children,style:sx,onClick,accent,delay=0}){return <div className={`fu d${Math.min(delay,8)} ${onClick?"glass-card":"glass-card-static"}`} onClick={onClick} style={{padding:14,cursor:onClick?"pointer":"default",...(accent?{borderLeft:`3px solid ${accent}`}:{}),...sx}} >{children}</div>;}
 export function Modal({open,onClose,title,children,wide}){if(!open)return null;return <div className="fi" onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:1000,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"28px 14px",overflowY:"auto",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)"}}><div className="mi glass-modal" onClick={e=>e.stopPropagation()} style={{borderRadius:18,padding:22,width:wide?700:440,maxWidth:"100%"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t}}>{title}</h3><Btn v="ghost" small onClick={onClose} aria-label="Fermer">✕</Btn></div>{children}</div></div>;}
 export function CTip({active,payload,label}){if(!active||!payload)return null;return <div style={{background:"rgba(14,14,22,.85)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,.08)",borderRadius:12,padding:"8px 12px",boxShadow:"0 8px 32px rgba(0,0,0,.5)"}}><div style={{color:C.t,fontWeight:700,fontSize:9,marginBottom:3}}>{label}</div>{payload.map((p,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:4,marginBottom:1}}><span style={{width:4,height:4,borderRadius:2,background:p.color}}/><span style={{color:C.td,fontSize:9}}>{p.name}:</span><span style={{color:C.t,fontSize:9,fontWeight:600}}>{fmt(p.value)}€</span></div>)}</div>;}
@@ -2514,7 +2522,7 @@ export function PulseDashWidget({soc,existing,savePulse,hold}){
   <span style={{fontSize:28}}>✅</span><div style={{fontWeight:700,fontSize:13,color:C.g,marginTop:4}}>Pulse envoyé !</div>
  </div>;
  return <div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.35s"}}>
-  <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>⚡ COMMENT ÇA VA CETTE SEMAINE ?</div>
+  <div style={{color:C.td,fontSize:12,fontWeight:600,marginBottom:10}}>⚡ COMMENT ÇA VA CETTE SEMAINE ?</div>
   <div style={{display:"flex",gap:6,marginBottom:10}}>{MOODS.map((e,i)=><button key={i} onClick={()=>setMood(i)} style={{fontSize:20,padding:"4px 7px",borderRadius:8,border:`2px solid ${mood===i?C.acc:C.brd}`,background:mood===i?C.accD:"transparent",cursor:"pointer",transition:"all .15s"}}>{e}</button>)}</div>
   <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
    <div><label style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:3}}>🏆 Victoire</label><input value={win} onChange={e=>setWin(e.target.value)} placeholder="Ta win de la semaine" style={{width:"100%",padding:"7px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/></div>
@@ -2645,13 +2653,15 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
  const[showIncome,setShowIncome]=useState(false);
  const[showExpenses,setShowExpenses]=useState(false);
  // Section style
- const secTitle={fontSize:11,fontWeight:900,letterSpacing:2,marginBottom:16,fontFamily:FONT_TITLE,display:"flex",alignItems:"center",gap:8};
- const kpiCard={padding:"16px 14px",textAlign:"center"};
+ const secTitle={fontSize:13,fontWeight:700,letterSpacing:.3,marginBottom:18,display:"flex",alignItems:"center",gap:8,color:C.t};
+ const kpiCard={padding:"18px 16px"};
  const KPI=({label,value,sub,accent,icon})=><div className="glass-card-static" style={kpiCard}>
-  {icon&&<div style={{fontSize:16,marginBottom:4}}>{icon}</div>}
-  <div style={{color:C.td,fontSize:8,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:FONT_TITLE}}>{label}</div>
-  <div style={{fontSize:22,fontWeight:900,color:accent||C.t,lineHeight:1}}>{value}</div>
-  {sub&&<div style={{marginTop:4,fontSize:9,fontWeight:600,color:C.td}}>{sub}</div>}
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+   <span style={{color:C.td,fontSize:10,fontWeight:600,letterSpacing:.3}}>{label}</span>
+   {icon&&<span style={{width:28,height:28,borderRadius:8,background:`${accent||C.acc}12`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>{icon}</span>}
+  </div>
+  <div style={{fontSize:24,fontWeight:800,color:C.t,lineHeight:1,letterSpacing:-.5}}>{value}</div>
+  {sub&&<div style={{marginTop:6,fontSize:10,color:C.td}}>{sub}</div>}
  </div>;
  const selS2={background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,color:C.t,padding:"6px 10px",fontSize:11,fontFamily:FONT,outline:"none",cursor:"pointer"};
  return <div className="fu">
@@ -2668,7 +2678,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
   </div>
   {/* Prévisionnel */}
   {prevu>0&&<div className="glass-card-static" style={{padding:20,marginBottom:16}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>📊 PRÉVISIONNEL</div>
+    <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:8}}>📊 PRÉVISIONNEL</div>
     <div style={{display:"flex",gap:16,marginBottom:8}}>
      <div><div style={{fontSize:8,color:C.td}}>Prévu</div><div style={{fontWeight:900,fontSize:18,color:C.acc}}>{fmt(prevu)}€</div></div>
      <div><div style={{fontSize:8,color:C.td}}>Réalisé</div><div style={{fontWeight:900,fontSize:18,color:prevuColor}}>{fmt(ca)}€</div></div>
@@ -2679,12 +2689,15 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
 
   {/* ===== BANDEAU 1 — FINANCES ===== */}
   <div style={{marginBottom:28}}>
-   <div style={secTitle}><span style={{color:acc2}}>💰</span><span style={{color:C.t}}>FINANCES</span></div>
+   <div style={secTitle}><span style={{color:acc2}}>💰</span><span>Finances</span></div>
    <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:16}}>
     <div className="glass-card-static" style={kpiCard}>
-     <div style={{color:C.td,fontSize:8,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:FONT_TITLE}}>CA {ml(cm)}</div>
-     <div style={{fontSize:22,fontWeight:900,color:acc2,lineHeight:1,cursor:"pointer"}} onClick={()=>setShowIncome(!showIncome)}>{fmt(ca)}€</div>
-     <div style={{fontSize:8,color:C.acc,cursor:"pointer",marginTop:4}} onClick={()=>setShowIncome(!showIncome)}>{showIncome?"▲ masquer":"▼ détails"}</div>
+     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+      <span style={{color:C.td,fontSize:10,fontWeight:600}}>CA {ml(cm)}</span>
+      <span style={{width:28,height:28,borderRadius:8,background:`${acc2}12`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>💰</span>
+     </div>
+     <div style={{fontSize:24,fontWeight:800,color:C.t,lineHeight:1,letterSpacing:-.5,cursor:"pointer"}} onClick={()=>setShowIncome(!showIncome)}>{fmt(ca)}€</div>
+     <div style={{fontSize:10,color:C.acc,cursor:"pointer",marginTop:6,fontWeight:500}} onClick={()=>setShowIncome(!showIncome)}>{showIncome?"Masquer ↑":"Voir détails ↓"}</div>
      {showIncome&&<div className="slide-down" style={{marginTop:8,textAlign:"left",maxHeight:140,overflow:"auto"}}>
       {bankFinancials.incomeTxs.slice(0,5).map((tx,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:`1px solid ${C.brd}`,fontSize:9}}>
        <span style={{color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"65%"}}>{tx.legs?.[0]?.description||tx.reference||"—"}</span>
@@ -2694,9 +2707,12 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
      </div>}
     </div>
     <div className="glass-card-static" style={kpiCard}>
-     <div style={{color:C.td,fontSize:8,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:FONT_TITLE}}>Charges</div>
-     <div style={{fontSize:22,fontWeight:900,color:C.r,lineHeight:1,cursor:"pointer"}} onClick={()=>setShowExpenses(!showExpenses)}>{fmt(charges)}€</div>
-     <div style={{fontSize:8,color:C.r,cursor:"pointer",marginTop:4}} onClick={()=>setShowExpenses(!showExpenses)}>{showExpenses?"▲ masquer":"▼ détails"}</div>
+     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+      <span style={{color:C.td,fontSize:10,fontWeight:600}}>Charges</span>
+      <span style={{width:28,height:28,borderRadius:8,background:C.rD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>📉</span>
+     </div>
+     <div style={{fontSize:24,fontWeight:800,color:C.t,lineHeight:1,letterSpacing:-.5,cursor:"pointer"}} onClick={()=>setShowExpenses(!showExpenses)}>{fmt(charges)}€</div>
+     <div style={{fontSize:10,color:C.r,cursor:"pointer",marginTop:6,fontWeight:500}} onClick={()=>setShowExpenses(!showExpenses)}>{showExpenses?"Masquer ↑":"Voir détails ↓"}</div>
      {showExpenses&&<div className="slide-down" style={{marginTop:8,textAlign:"left",maxHeight:140,overflow:"auto"}}>
       {bankFinancials.expenseTxs.slice(0,5).map((tx,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:`1px solid ${C.brd}`,fontSize:9}}>
        <span style={{color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"65%"}}>{tx.legs?.[0]?.description||tx.reference||"—"}</span>
@@ -2710,7 +2726,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
    </div>
    {/* Répartition des dépenses - donut */}
    {pieData.length>0&&<div className="glass-card-static" style={{padding:18}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>📊 RÉPARTITION DES DÉPENSES</div>
+    <div style={{color:C.td,fontSize:12,fontWeight:600,marginBottom:10}}>📊 RÉPARTITION DES DÉPENSES</div>
     <div style={{display:"flex",alignItems:"center",height:180}}>
      <div style={{width:"45%",height:180}}><ResponsiveContainer><PieChart><Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={3} strokeWidth={0}>{pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip content={<CTip/>}/></PieChart></ResponsiveContainer></div>
      <div style={{flex:1,paddingLeft:8}}>{(()=>{const total=pieData.reduce((a,d)=>a+d.value,0);return pieData.slice(0,6).map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/><span style={{flex:1,fontSize:10,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span><span style={{fontSize:9,color:C.tm,marginRight:4}}>{total>0?Math.round(d.value/total*100):0}%</span><span style={{fontWeight:700,fontSize:10,color:C.t}}>{fmt(d.value)}€</span></div>);})()}</div>
@@ -2720,7 +2736,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
 
   {/* ===== BANDEAU 2 — SALES ===== */}
   <div style={{marginBottom:28}}>
-   <div style={secTitle}><span style={{color:"#34d399"}}>📞</span><span style={{color:C.t}}>SALES</span></div>
+   <div style={secTitle}><span style={{color:C.acc}}>📞</span><span>Sales</span></div>
    <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:16}}>
     <KPI label="Prospects total" value={String(ghlCl.length)} accent="#60a5fa" icon="👥"/>
     <KPI label="Valorisation pipeline" value={`${fmt(pipelineValue)}€`} accent={C.acc} icon="🎯"/>
@@ -2753,21 +2769,23 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
     </div>
    </div>
    {/* Top 5 clients */}
-   {top5Clients.length>0&&<div className="glass-card-static" style={{padding:18}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>🏅 TOP 5 CLIENTS</div>
-    {top5Clients.map((c,i)=><div key={c.id||i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<top5Clients.length-1?`1px solid ${C.brd}`:"none"}}>
-     <span style={{width:24,height:24,borderRadius:8,background:i===0?"linear-gradient(135deg,#FFBF00,#FF9D00)":i===1?"linear-gradient(135deg,#c0c0c0,#a0a0a0)":i===2?"linear-gradient(135deg,#cd7f32,#a0622e)":C.card2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:i<3?"#0a0a0f":C.td,flexShrink:0}}>{i+1}</span>
+   {top5Clients.length>0&&<div className="glass-card-static" style={{padding:20}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+     <span style={{color:C.t,fontSize:13,fontWeight:700}}>Top clients</span>
+     <span style={{fontSize:10,color:C.td}}>{top5Clients.length} meilleur{top5Clients.length>1?"s":""}</span>
+    </div>
+    {top5Clients.map((c,i)=><div key={c.id||i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:i<top5Clients.length-1?`1px solid ${C.brd}`:"none"}}>
+     <span style={{width:28,height:28,borderRadius:10,background:i===0?`linear-gradient(135deg,${C.acc},#FF9D00)`:i===1?"linear-gradient(135deg,#c0c0c0,#a0a0a0)":i===2?"linear-gradient(135deg,#cd7f32,#a0622e)":C.card2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:i<3?"#0a0a0f":C.td,flexShrink:0}}>{i+1}</span>
      <div style={{flex:1,minWidth:0}}>
-      <div style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name||"—"}</div>
-      <div style={{fontSize:9,color:C.td,display:"flex",gap:6,flexWrap:"wrap"}}>
-       {c.durationMonths!==null&&<span>📅 {c.durationMonths} mois</span>}
-       {c.domain&&<span>🏢 {c.domain}</span>}
+      <div style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:C.t}}>{c.name||"—"}</div>
+      <div style={{fontSize:10,color:C.td,marginTop:2}}>
+       {c.durationMonths!==null&&<span>{c.durationMonths} mois · </span>}
        <span>~{fmt(c.avgMonthly)}€/mois</span>
       </div>
      </div>
-     <div style={{textAlign:"right"}}>
-      <div style={{fontWeight:800,fontSize:13,color:acc2}}>{fmt(c.cumul)}€</div>
-      <div style={{fontSize:8,color:C.td}}>cumulé</div>
+     <div style={{textAlign:"right",flexShrink:0}}>
+      <div style={{fontWeight:700,fontSize:14,color:C.t}}>{fmt(c.cumul)}€</div>
+      <div style={{fontSize:9,color:C.td}}>cumulé</div>
      </div>
     </div>)}
    </div>}
@@ -2775,7 +2793,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
 
   {/* ===== BANDEAU 3 — PUBLICITÉ ===== */}
   <div style={{marginBottom:20}}>
-   <div style={secTitle}><span style={{color:"#f472b6"}}>📣</span><span style={{color:C.t}}>PUBLICITÉ</span></div>
+   <div style={secTitle}><span style={{color:C.acc}}>📣</span><span>Publicité</span></div>
    {metaAds?<>
     <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:16}}>
      <KPI label="Prospects Ads" value={String(metaAds.leads||0)} accent="#60a5fa" icon="🎯"/>
@@ -2795,7 +2813,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
     </div>}
     {/* Meilleures créatives */}
     {metaAds.creatives&&metaAds.creatives.length>0&&<div className="glass-card-static" style={{padding:18}}>
-     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>🎨 MEILLEURES CRÉATIVES</div>
+     <div style={{color:C.td,fontSize:12,fontWeight:600,marginBottom:10}}>🎨 MEILLEURES CRÉATIVES</div>
      <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:10}}>
       {metaAds.creatives.slice(0,4).map((cr,i)=><div key={i} className="glass-card-static" style={{padding:12}}>
        <div style={{fontWeight:700,fontSize:11,color:C.t,marginBottom:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cr.name||`Créative ${i+1}`}</div>
@@ -3631,22 +3649,24 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
  const SALES_CATS=[{id:"overview",label:"Vue d'ensemble",icon:"📊"},{id:"pipeline",label:"Pipeline",icon:"🎯"},{id:"charts",label:"Graphiques",icon:"📈"},{id:"performance",label:"Performance",icon:"🏅"},{id:"data",label:"Données",icon:"📋"}];
  return <div className="fu">
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
-   <div><div style={{fontSize:9,fontWeight:700,color:C.acc,letterSpacing:1.5,fontFamily:FONT_TITLE}}>📞 SALES — {soc.nom}</div><div style={{fontSize:11,color:C.td,marginTop:2}}>Données GHL × Meta × Revolut</div></div>
+   <div><div style={{fontSize:15,fontWeight:700,color:C.t}}>Sales — {soc.nom}</div><div style={{fontSize:11,color:C.td,marginTop:2}}>Données GHL × Meta × Revolut</div></div>
    <select value={salesCat} onChange={e=>setSalesCat(e.target.value)} style={{padding:"8px 14px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.card,color:C.t,fontSize:12,fontWeight:600,fontFamily:FONT,cursor:"pointer",outline:"none",minWidth:160}}>
     {SALES_CATS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
    </select>
   </div>
   {/* KPIs - always visible */}
-  <div className="kpi-grid-responsive" style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:16}}>
-   {kpis.map((k,i)=><div key={i} className="fade-up glass-card-static" style={{padding:"10px 6px",textAlign:"center",animationDelay:`${i*0.03}s`}}>
-    <div style={{fontSize:14,marginBottom:2}}>{k.icon}</div>
-    <div style={{fontWeight:900,fontSize:16,color:k.color,lineHeight:1.1}}>{k.value}</div>
-    <div style={{fontSize:7,fontWeight:700,color:C.td,marginTop:4,letterSpacing:.3,fontFamily:FONT_TITLE}}>{k.label}</div>
+  <div className="kpi-grid-responsive" style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20}}>
+   {kpis.map((k,i)=><div key={i} className="fade-up glass-card-static" style={{padding:"14px 12px",animationDelay:`${i*0.03}s`}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+     <span style={{fontSize:10,color:C.td,fontWeight:500}}>{k.label}</span>
+     <span style={{width:24,height:24,borderRadius:7,background:`${k.color}12`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11}}>{k.icon}</span>
+    </div>
+    <div style={{fontWeight:800,fontSize:18,color:C.t,lineHeight:1.1,letterSpacing:-.3}}>{k.value}</div>
    </div>)}
   </div>
   {/* Pipeline Kanban */}
   {(salesCat==="overview"||salesCat==="pipeline")&&stages.length>0&&<div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.2s",overflow:"auto"}}>
-   <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>📊 PIPELINE KANBAN</div>
+   <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:14}}>📊 PIPELINE KANBAN</div>
    <div style={{display:"flex",gap:10,minWidth:stages.length*180}}>
     {stages.map((stage,si)=>{const stageOpps=openOpps.filter(o=>o.stage===stage);const stageVal=stageOpps.reduce((a,o)=>a+(o.value||0),0);
      return <div key={si} style={{flex:1,minWidth:160}}>
@@ -3672,7 +3692,7 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
   {(salesCat==="overview"||salesCat==="charts")&&<div style={{display:"grid",gridTemplateColumns:"1fr",gap:12,marginBottom:20}}>
    {/* Evolution leads/appels/ventes */}
    <div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.25s"}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📈 LEADS / APPELS / VENTES — 6 MOIS</div>
+    <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>📈 LEADS / APPELS / VENTES — 6 MOIS</div>
     <div style={{height:220}}><ResponsiveContainer><ComposedChart data={chartEvol} margin={{top:5,right:10,left:0,bottom:5}}>
      <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
      <XAxis dataKey="month" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
@@ -3687,7 +3707,7 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    </div>
    {/* Coûts d'acquisition */}
    <div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.3s"}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📉 COÛTS D'ACQUISITION</div>
+    <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>📉 COÛTS D'ACQUISITION</div>
     <div style={{height:220}}><ResponsiveContainer><LineChart data={chartAcq} margin={{top:5,right:10,left:0,bottom:5}}>
      <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
      <XAxis dataKey="month" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
@@ -3701,7 +3721,7 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    </div>
    {/* Appels vs No-show */}
    <div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.35s"}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📊 APPELS VS NO-SHOW</div>
+    <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>📊 APPELS VS NO-SHOW</div>
     <div style={{height:220}}><ResponsiveContainer><BarChart data={chartCalls} margin={{top:5,right:10,left:0,bottom:5}}>
      <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
      <XAxis dataKey="month" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
@@ -3714,7 +3734,7 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    </div>
    {/* Résultats appels Pie */}
    <div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.4s"}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>🍩 RÉSULTATS DES APPELS</div>
+    <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>🍩 RÉSULTATS DES APPELS</div>
     {pieData.length>0?<div style={{display:"flex",alignItems:"center",height:220}}>
      <div style={{width:"55%",height:200}}><ResponsiveContainer><PieChart><Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={3} strokeWidth={0} animationDuration={1000}>{pieData.map((d,i)=><Cell key={i} fill={d.color}/>)}</Pie><Tooltip/></PieChart></ResponsiveContainer></div>
      <div style={{flex:1,paddingLeft:8}}>{pieData.map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:5}}><span style={{width:8,height:8,borderRadius:2,background:d.color,flexShrink:0}}/><span style={{fontSize:10,color:C.td}}>{d.name}</span><span style={{fontWeight:700,fontSize:10,color:C.t,marginLeft:"auto"}}>{d.value} ({pieTotal>0?Math.round(d.value/pieTotal*100):0}%)</span></div>)}</div>
@@ -3722,7 +3742,7 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    </div>
    {/* Sources des leads */}
    {sources.length>0&&<div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.45s"}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📊 SOURCES DES LEADS</div>
+    <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>📊 SOURCES DES LEADS</div>
     <div style={{height:220}}><ResponsiveContainer><BarChart data={sources.slice(0,8).map(([s,c])=>({source:s,count:c}))} layout="vertical" margin={{top:5,right:10,left:60,bottom:5}}>
      <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
      <XAxis type="number" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} allowDecimals={false}/>
@@ -3733,7 +3753,7 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    </div>}
    {/* Funnel conversion par étape */}
    {funnelStages.length>0&&<div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.5s"}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📈 CONVERSION PAR ÉTAPE</div>
+    <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>📈 CONVERSION PAR ÉTAPE</div>
     <div style={{display:"flex",flexDirection:"column",gap:0}}>
      {funnelStages.map((st,i)=>{const count=i<funnelCounts.length?funnelCounts[i]:0;const maxC=Math.max(1,...funnelCounts);const w=Math.max(20,Math.round(count/maxC*100));const conv=i>0&&funnelCounts[i-1]>0?Math.round(count/funnelCounts[i-1]*100):null;
       return <Fragment key={i}>
@@ -3749,7 +3769,7 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
   </div>}
   {/* Performance Closer */}
   {(salesCat==="overview"||salesCat==="performance")&&closers.length>0&&<div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.55s"}}>
-   <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>🏅 PERFORMANCE CLOSER{closers.length>1?"S":""}</div>
+   <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>🏅 PERFORMANCE CLOSER{closers.length>1?"S":""}</div>
    {closers.length>1?<table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
     <thead><tr style={{borderBottom:`2px solid ${C.brd}`}}>
      {["Closer","Appels","Deals","Taux conv.","CA généré"].map((h,i)=><th key={i} style={{padding:"6px",textAlign:i===0?"left":"right",color:C.td,fontWeight:700,fontSize:8,fontFamily:FONT_TITLE}}>{h}</th>)}
@@ -3772,7 +3792,7 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
   </div>}
   {/* Dernières activités */}
   {(salesCat==="overview"||salesCat==="performance")&&<div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.6s"}}>
-   <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📜 DERNIÈRES ACTIVITÉS SALES</div>
+   <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>📜 DERNIÈRES ACTIVITÉS SALES</div>
    {activities.length===0?<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Aucune activité récente</div>:
     activities.map((a,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i<activities.length-1?`1px solid ${C.brd}`:"none"}}>
      <span style={{fontSize:14}}>{a.icon}</span>
@@ -3783,12 +3803,12 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
   </div>}
   {/* Cross-referencing */}
   {(salesCat==="overview"||salesCat==="data")&&totalAdSpend>0&&<div className="fade-up glass-card-static" style={{padding:16,marginBottom:20,animationDelay:"0.65s",borderLeft:`3px solid ${C.v}`}}>
-   <div style={{fontSize:9,fontWeight:700,color:C.v,letterSpacing:1,marginBottom:6,fontFamily:FONT_TITLE}}>🔗 CROISEMENT DONNÉES</div>
+   <div style={{fontSize:12,fontWeight:600,color:C.v,marginBottom:6}}>🔗 CROISEMENT DONNÉES</div>
    <div style={{fontSize:11,color:C.t,fontWeight:600}}>Budget pub: {fmt(totalAdSpend)}€ → {totalLeads} leads → {totalCallsAll} appels → {wonAll.length} clients = CPL {totalLeads>0?(totalAdSpend/totalLeads).toFixed(2):"-"}€, CPA {wonAll.length>0?(totalAdSpend/wonAll.length).toFixed(2):"-"}€</div>
   </div>}
   {/* Data Table */}
   {(salesCat==="overview"||salesCat==="data")&&<div className="fade-up glass-card-static" style={{padding:18,overflow:"auto",animationDelay:"0.7s"}}>
-   <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📋 TABLEAU RÉCAPITULATIF — 12 MOIS</div>
+   <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>📋 TABLEAU RÉCAPITULATIF — 12 MOIS</div>
    <table style={{width:"100%",borderCollapse:"collapse",fontSize:10,minWidth:900}}>
     <thead><tr style={{borderBottom:`2px solid ${C.brd}`}}>
      {["Mois","Leads","Appels","No-show","Tx NS","Deals","CA","Panier moy","CPL","Coût/appel","Coût/closing","Tx closing"].map((h,i)=>
@@ -3921,7 +3941,7 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
   <div style={{display:"grid",gridTemplateColumns:"1fr",gap:12,marginBottom:20}}>
    {/* Budget vs Leads vs Revenue */}
    <div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.2s"}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📈 BUDGET VS LEADS VS REVENUE</div>
+    <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>📈 BUDGET VS LEADS VS REVENUE</div>
     <div style={{height:220}}><ResponsiveContainer><ComposedChart data={chartBudget} margin={{top:5,right:10,left:0,bottom:5}}>
      <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
      <XAxis dataKey="month" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
@@ -3936,7 +3956,7 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    </div>
    {/* Evolution CPL/CPC/CPM */}
    <div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.25s"}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📉 ÉVOLUTION CPL / CPC / CPM</div>
+    <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>📉 ÉVOLUTION CPL / CPC / CPM</div>
     <div style={{height:220}}><ResponsiveContainer><LineChart data={chartCosts} margin={{top:5,right:10,left:0,bottom:5}}>
      <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
      <XAxis dataKey="month" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
@@ -3950,7 +3970,7 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    </div>
    {/* Impressions vs Clics vs Leads (Area) */}
    <div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.3s"}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📊 IMPRESSIONS / CLICS / LEADS</div>
+    <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>📊 IMPRESSIONS / CLICS / LEADS</div>
     <div style={{height:220}}><ResponsiveContainer><AreaChart data={chartArea} margin={{top:5,right:10,left:0,bottom:5}}>
      <defs>
       <linearGradient id="gImp" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#60a5fa" stopOpacity={0.3}/><stop offset="100%" stopColor="#60a5fa" stopOpacity={0.02}/></linearGradient>
@@ -3968,7 +3988,7 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    </div>
    {/* Budget répartition Pie */}
    <div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.35s"}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>🍩 RÉPARTITION BUDGET PAR MOIS</div>
+    <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>🍩 RÉPARTITION BUDGET PAR MOIS</div>
     {pieMonths.length>0?<div style={{display:"flex",alignItems:"center",height:220}}>
      <div style={{width:"55%",height:200}}><ResponsiveContainer><PieChart><Pie data={pieMonths} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={3} strokeWidth={0} animationDuration={1000}>{pieMonths.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip/></PieChart></ResponsiveContainer></div>
      <div style={{flex:1,paddingLeft:8}}>{pieMonths.map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/><span style={{flex:1,fontSize:9,color:C.td}}>{d.name}</span><span style={{fontWeight:700,fontSize:9,color:C.t}}>{fmt(d.value)}€</span></div>)}</div>
@@ -3976,7 +3996,7 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    </div>
    {/* ROAS evolution */}
    <div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.4s"}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📈 ÉVOLUTION ROAS</div>
+    <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>📈 ÉVOLUTION ROAS</div>
     <div style={{height:220}}><ResponsiveContainer><LineChart data={chartRoas} margin={{top:5,right:10,left:0,bottom:5}}>
      <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
      <XAxis dataKey="month" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
@@ -3989,7 +4009,7 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    </div>
    {/* CTR evolution */}
    <div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.45s"}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📊 ÉVOLUTION CTR</div>
+    <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>📊 ÉVOLUTION CTR</div>
     <div style={{height:220}}><ResponsiveContainer><BarChart data={chartCtr} margin={{top:5,right:10,left:0,bottom:5}}>
      <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
      <XAxis dataKey="month" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
@@ -4002,7 +4022,7 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
   </div>
   {/* Funnel publicitaire */}
   <div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,animationDelay:"0.5s"}}>
-   <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>🔄 FUNNEL PUBLICITAIRE</div>
+   <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:14}}>🔄 FUNNEL PUBLICITAIRE</div>
    <div style={{display:"flex",flexDirection:"column",gap:0}}>
     {funnelSteps.map((f,i)=>{const maxCount=Math.max(1,...funnelSteps.map(s=>s.count));const w=Math.max(15,Math.round(f.count/maxCount*100));const conv=i>0&&funnelSteps[i-1].count>0?((f.count/funnelSteps[i-1].count)*100).toFixed(1):null;const costPer=totSpend>0&&f.count>0?(totSpend/f.count).toFixed(2):null;
      return <Fragment key={i}>
@@ -4018,7 +4038,7 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
   {/* ROI Calculator + Benchmarks */}
   <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
    <div className="fade-up glass-card-static" style={{padding:22,animationDelay:"0.55s",borderLeft:`3px solid ${totRoas>=1?C.g:C.r}`}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>💰 ROI CALCULATOR</div>
+    <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>💰 ROI CALCULATOR</div>
     <div style={{textAlign:"center",marginBottom:12}}>
      <div style={{fontSize:12,color:C.td,marginBottom:4}}>Pour 1€ dépensé →</div>
      <div style={{fontWeight:900,fontSize:40,color:totRoas>=2?C.g:totRoas>=1?C.o:C.r,lineHeight:1}}>{roasDisplay.toFixed(2)}€</div>
@@ -4032,7 +4052,7 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
     </div>}
    </div>
    <div className="fade-up glass-card-static" style={{padding:22,animationDelay:"0.6s"}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📊 BENCHMARKS SECTEUR</div>
+    <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>📊 BENCHMARKS SECTEUR</div>
     {[{l:"CPL moyen",v:`${benchmarks.cpl}€`,yours:`${totCpl.toFixed(2)}€`,ok:totCpl<=benchmarks.cpl},{l:"CPC moyen",v:`${benchmarks.cpc}€`,yours:`${totCpc.toFixed(2)}€`,ok:totCpc<=benchmarks.cpc},{l:"CTR moyen",v:`${benchmarks.ctr}%`,yours:`${totCtr.toFixed(2)}%`,ok:totCtr>=benchmarks.ctr}].map((b,i)=>
      <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:i<2?`1px solid ${C.brd}`:"none"}}>
       <span style={{fontSize:11,color:C.td}}>{b.l}: <strong style={{color:C.t}}>{b.v}</strong></span>
@@ -4044,12 +4064,12 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
   </div>
   {/* Cross-referencing */}
   <div className="fade-up glass-card-static" style={{padding:16,marginBottom:20,animationDelay:"0.65s",borderLeft:`3px solid ${C.v}`}}>
-   <div style={{fontSize:9,fontWeight:700,color:C.v,letterSpacing:1,marginBottom:6,fontFamily:FONT_TITLE}}>🔗 CROISEMENT DONNÉES</div>
+   <div style={{fontSize:12,fontWeight:600,color:C.v,marginBottom:6}}>🔗 CROISEMENT DONNÉES</div>
    <div style={{fontSize:11,color:C.t,fontWeight:600}}>{totLeads} leads générés → {stratCallsAll} appels bookés → {wonAll.length} deals → {fmt(totRev)}€ CA = ROAS {totRoas.toFixed(2)}x</div>
   </div>
   {/* Data Table */}
   <div className="fade-up glass-card-static" style={{padding:18,overflow:"auto",animationDelay:"0.7s"}}>
-   <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📋 TABLEAU RÉCAPITULATIF — 12 MOIS</div>
+   <div style={{fontSize:12,fontWeight:600,color:C.td,marginBottom:12}}>📋 TABLEAU RÉCAPITULATIF — 12 MOIS</div>
    <table style={{width:"100%",borderCollapse:"collapse",fontSize:10,minWidth:900}}>
     <thead><tr style={{borderBottom:`2px solid ${C.brd}`}}>
      {["Mois","Budget","Impressions","Clics","CTR","CPM","CPC","Leads","CPL","Revenue","ROAS","CPA"].map((h,i)=>
@@ -4146,11 +4166,11 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
   <div className="sidebar-desktop"><Sidebar items={SB_PORTEUR} activeTab={pTab} setTab={setPTab} brandTitle={soc.nom} brandSub={`${soc.porteur}${soc.incub?" · "+sinceLbl(soc.incub):""}`} onLogout={onLogout} onTour={onTour||(() => {})} onThemeToggle={onThemeToggle} adminBack={adminBack} dataTourPrefix="porteur" brand={{logoUrl:soc.logoUrl||"",logoLetter:(soc.nom||"?")[0],accentColor:soc.brandColor||soc.color}} extra={<div style={{display:"flex",alignItems:"center",gap:6}}>
    <button onClick={()=>setNotifOpen(true)} style={{background:"none",border:"none",cursor:"pointer",position:"relative",fontSize:16,padding:"2px 4px"}}>🔔{porteurNotifs.length>0&&<span style={{position:"absolute",top:-2,right:-2,width:14,height:14,borderRadius:7,background:C.r,color:"#fff",fontSize:8,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{porteurNotifs.length}</span>}</button>
   </div>}/></div>
-  <div className="main-content" style={{flex:1,minWidth:0,height:"100vh",overflow:"auto"}}>
+  <div className="main-content" style={{flex:1,minWidth:0,height:"100vh",overflow:"auto",background:C.bg}}>
   {/* AI Chat Bubble */}
   <PorteurAIChat soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}} ghlData={ghlData} clients={clients}/>
   {celebMs&&<CelebrationOverlay milestone={celebMs} onClose={()=>setCelebMs(null)}/>}
-  <div style={{padding:"16px 16px 16px",maxWidth:680,margin:"0 auto"}}>
+  <div style={{padding:"24px 28px",maxWidth:780,margin:"0 auto"}}>
   {/* === PORTEUR DASHBOARD (pTab 0) === */}
   {pTab===0&&<><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
   </div>
@@ -4636,17 +4656,30 @@ export const SB_ADMIN=[
  {id:"pulse",icon:"⚡",label:"PULSE",tab:99,accent:"#FFAA00"},
 ];
 
+const SI=({d,s=18})=><svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
+const SB_ICONS={
+ dashboard:<SI d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10"/>,
+ bank:<SI d="M12 2L2 7h20L12 2z M4 7v10 M20 7v10 M8 7v10 M12 7v10 M16 7v10 M2 17h20 M2 21h20"/>,
+ sales:<SI d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>,
+ publicite:<SI d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 0 1-3.46 0"/>,
+ clients:<SI d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75"/>,
+ agenda:<SI d="M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z M16 2v4 M8 2v4 M3 10h18"/>,
+ activite:<SI d="M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>,
+ conversations:<SI d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>,
+ rapports:<SI d="M18 20V10 M12 20V4 M6 20v-6"/>,
+ settings:<SI d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>,
+};
 export const SB_PORTEUR=[
- {id:"dashboard",icon:"📊",label:"Dashboard",tab:0,accent:C.acc},
- {id:"bank",icon:"🏦",label:"Finances",tab:5,accent:C.g},
- {id:"sales",icon:"📞",label:"Sales",tab:2,accent:"#34d399"},
- {id:"publicite",icon:"📣",label:"Publicité",tab:3,accent:"#f472b6"},
- {id:"clients",icon:"👥",label:"Clients",tab:9,accent:C.o},
- {id:"agenda",icon:"📅",label:"Agenda",tab:11,accent:"#14b8a6"},
- {id:"activite",icon:"✅",label:"Tâches",tab:1,accent:C.b},
- {id:"conversations",icon:"💬",label:"Conversations",tab:14,accent:C.b},
- {id:"rapports",icon:"📋",label:"Rapports",tab:13,accent:C.v},
- {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
+ {id:"dashboard",icon:"dashboard",label:"Dashboard",tab:0,accent:C.acc},
+ {id:"bank",icon:"bank",label:"Finances",tab:5,accent:C.acc},
+ {id:"sales",icon:"sales",label:"Sales",tab:2,accent:C.acc},
+ {id:"publicite",icon:"publicite",label:"Publicité",tab:3,accent:C.acc},
+ {id:"clients",icon:"clients",label:"Clients",tab:9,accent:C.acc},
+ {id:"agenda",icon:"agenda",label:"Agenda",tab:11,accent:C.acc},
+ {id:"activite",icon:"activite",label:"Tâches",tab:1,accent:C.acc},
+ {id:"conversations",icon:"conversations",label:"Conversations",tab:14,accent:C.acc},
+ {id:"rapports",icon:"rapports",label:"Rapports",tab:13,accent:C.acc},
+ {id:"settings",icon:"settings",label:"Paramètres",tab:12,accent:C.td},
 ];
 
 export function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onTour,extra,dataTourPrefix,brand,onThemeToggle,installPrompt,adminBack}){
@@ -4656,51 +4689,61 @@ export function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onT
  useEffect(()=>{items.forEach(g=>{if(g.children&&g.children.some(c=>c.tab===activeTab))setExp(p=>({...p,[g.id]:true}));});},[activeTab]);
  const isAct=t=>t===activeTab;
  const grpAct=g=>g.children?g.children.some(c=>c.tab===activeTab):false;
+ const iconEl=(g)=>SB_ICONS[g.icon]||<span style={{fontSize:14}}>{g.icon}</span>;
 
- return <aside data-tour={`${dataTourPrefix}-nav`} className="glass-sidebar" style={{width:210,minWidth:210,height:"100vh",position:"sticky",top:0,display:"flex",flexDirection:"column",fontFamily:FONT,overflow:"hidden",zIndex:50}}>
-  <div style={{padding:"16px 14px 14px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",gap:9}}>
-   <div style={{width:30,height:30,background:brand?.logoUrl?"transparent":`linear-gradient(135deg,${brand?.accentColor||C.acc},#FF9D00)`,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:13,color:"#0a0a0f",boxShadow:`0 2px 8px ${(brand?.accentColor||C.acc)}44`,flexShrink:0,overflow:"hidden"}}>{brand?.logoUrl?<img src={brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(brand?.logoLetter||brandTitle?.[0]||"S")}</div>
-   <div style={{minWidth:0}}><div style={{fontWeight:800,fontSize:12,letterSpacing:.5,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontFamily:FONT_TITLE}}>{brandTitle}</div><div style={{fontSize:8,color:C.td}}>{brandSub}</div></div>
+ return <aside data-tour={`${dataTourPrefix}-nav`} style={{width:220,minWidth:220,height:"100vh",position:"sticky",top:0,display:"flex",flexDirection:"column",fontFamily:FONT,overflow:"hidden",zIndex:50,background:C.card,borderRight:`1px solid ${C.brd}`}}>
+  {/* Brand */}
+  <div style={{padding:"20px 16px 16px",display:"flex",alignItems:"center",gap:10}}>
+   <div style={{width:34,height:34,background:brand?.logoUrl?"transparent":`linear-gradient(135deg,${brand?.accentColor||C.acc},#FF9D00)`,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:"#0a0a0f",flexShrink:0,overflow:"hidden"}}>{brand?.logoUrl?<img src={brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(brand?.logoLetter||brandTitle?.[0]||"S")}</div>
+   <div style={{minWidth:0,flex:1}}>
+    <div style={{fontWeight:800,fontSize:13,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:0.3}}>{brandTitle}</div>
+    <div style={{fontSize:10,color:C.td,marginTop:1}}>{brandSub}</div>
+   </div>
   </div>
-  <nav style={{flex:1,overflow:"auto",padding:"8px 6px 8px 6px"}}>
+  {/* Nav label */}
+  <div style={{padding:"4px 18px 8px",fontSize:9,fontWeight:700,color:C.tm,letterSpacing:1.5,textTransform:"uppercase"}}>Menu</div>
+  {/* Navigation */}
+  <nav style={{flex:1,overflow:"auto",padding:"0 8px"}}>
    {items.map(g=>{
     const hasK=!!g.children;const open=exp[g.id];const gA=hasK?grpAct(g):isAct(g.tab);
-    return <div key={g.id} style={{marginBottom:1}}>
+    return <div key={g.id} style={{marginBottom:2}}>
      <button data-tour={!hasK?`${dataTourPrefix}-tab-${g.tab}`:undefined} onClick={()=>{if(hasK){setExp(p=>({...p,[g.id]:!p[g.id]}));if(!open&&g.children[0])setTab(g.children[0].tab);}else setTab(g.tab);}}
-      style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:10,border:"none",background:gA?"rgba(255,170,0,.08)":"transparent",color:gA?C.t:C.td,fontSize:11,fontWeight:gA?700:500,cursor:"pointer",fontFamily:FONT,transition:"all .25s cubic-bezier(.4,0,.2,1)",borderLeft:gA?`2.5px solid ${g.accent||C.acc}`:"2.5px solid transparent",textAlign:"left",boxShadow:gA?`0 0 16px ${(g.accent||C.acc)}12`:"none"}}
-      onMouseEnter={e=>{if(!gA)e.currentTarget.style.background=C.card2;}} onMouseLeave={e=>{if(!gA)e.currentTarget.style.background="transparent";}}>
-      <span style={{fontSize:14,width:20,textAlign:"center",flexShrink:0}}>{g.icon}</span>
+      style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderRadius:10,border:"none",background:gA?C.accD:"transparent",color:gA?C.acc:C.td,fontSize:12,fontWeight:gA?600:500,cursor:"pointer",fontFamily:FONT,transition:"all .2s ease",textAlign:"left",position:"relative"}}
+      onMouseEnter={e=>{if(!gA){e.currentTarget.style.background=C.card2;e.currentTarget.style.color=C.t;}}} onMouseLeave={e=>{if(!gA){e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.td;}}}>
+      <span style={{width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,opacity:gA?1:0.6}}>{iconEl(g)}</span>
       <span style={{flex:1}}>{g.label}</span>
-      {hasK&&<span style={{fontSize:7,color:C.td,transition:"transform .2s",transform:open?"rotate(90deg)":"rotate(0)"}}>▶</span>}
+      {gA&&<span style={{width:6,height:6,borderRadius:3,background:C.acc,boxShadow:`0 0 8px ${C.acc}66`}}/>}
+      {hasK&&<span style={{fontSize:8,color:C.td,transition:"transform .2s",transform:open?"rotate(90deg)":"rotate(0)"}}>▶</span>}
      </button>
-     {hasK&&<div style={{marginLeft:16,borderLeft:`1px solid ${open?g.accent+"33":C.brd}`,paddingLeft:0,overflow:"hidden",maxHeight:open?200:0,transition:"max-height .25s ease, opacity .2s",opacity:open?1:0}}>
+     {hasK&&<div style={{marginLeft:24,borderLeft:`1px solid ${open?C.acc+"33":C.brd}`,paddingLeft:0,overflow:"hidden",maxHeight:open?200:0,transition:"max-height .25s ease, opacity .2s",opacity:open?1:0}}>
       {g.children.map(c=>{
        const cA=isAct(c.tab);
        return <button key={c.tab} data-tour={`${dataTourPrefix}-tab-${c.tab}`} onClick={()=>setTab(c.tab)}
-        style={{width:"100%",display:"flex",alignItems:"center",gap:6,padding:"5px 8px 5px 10px",borderRadius:0,borderRight:"none",borderTop:"none",borderBottom:"none",borderLeft:cA?`2px solid ${g.accent||C.acc}`:"2px solid transparent",background:cA?(g.accent||C.acc)+"15":"transparent",color:cA?C.t:C.tm,fontSize:10,fontWeight:cA?600:400,cursor:"pointer",fontFamily:FONT,transition:"all .12s",textAlign:"left"}}
+        style={{width:"100%",display:"flex",alignItems:"center",gap:6,padding:"6px 10px",borderRadius:0,borderRight:"none",borderTop:"none",borderBottom:"none",borderLeft:cA?`2px solid ${C.acc}`:"2px solid transparent",background:cA?C.accD:"transparent",color:cA?C.t:C.tm,fontSize:11,fontWeight:cA?600:400,cursor:"pointer",fontFamily:FONT,transition:"all .12s",textAlign:"left"}}
         onMouseEnter={e=>{if(!cA)e.currentTarget.style.background=C.card2;}} onMouseLeave={e=>{if(!cA)e.currentTarget.style.background="transparent";}}>
-        <span style={{fontSize:11,width:16,textAlign:"center"}}>{c.icon}</span>
         <span style={{flex:1}}>{c.label}</span>
-        {cA&&<span style={{width:5,height:5,borderRadius:3,background:g.accent||C.acc,flexShrink:0}}/>}
+        {cA&&<span style={{width:5,height:5,borderRadius:3,background:C.acc,flexShrink:0}}/>}
        </button>;
       })}
      </div>}
     </div>;
    })}
   </nav>
-  {extra&&<div style={{padding:"6px 10px",borderTop:`1px solid ${C.brd}`}}>{extra}</div>}
-  <div style={{padding:"6px 6px 10px",borderTop:extra?"none":`1px solid ${C.brd}`,display:"flex",flexDirection:"column",gap:1}}>
-   {onThemeToggle&&<button onClick={onThemeToggle} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:"none",background:"transparent",color:C.td,fontSize:10,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=C.card2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-    <span style={{fontSize:12}}>{getTheme()==="light"?"🌙":"☀️"}</span><span>{getTheme()==="light"?"Mode sombre":"Mode clair"}</span>
+  {/* Extra */}
+  {extra&&<div style={{padding:"8px 12px",borderTop:`1px solid ${C.brd}`}}>{extra}</div>}
+  {/* Footer */}
+  <div style={{padding:"8px 8px 14px",borderTop:extra?"none":`1px solid ${C.brd}`,display:"flex",flexDirection:"column",gap:2}}>
+   {onThemeToggle&&<button onClick={onThemeToggle} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,border:"none",background:"transparent",color:C.td,fontSize:11,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=C.card2;e.currentTarget.style.color=C.t;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.td;}}>
+    <SI d={getTheme()==="light"?"M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z":"M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z"} s={16}/><span>{getTheme()==="light"?"Mode sombre":"Mode clair"}</span>
    </button>}
-   {(installPrompt||window.__pwaPrompt)&&<button onClick={()=>{(installPrompt||window.__pwaPrompt)?.prompt();}} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:"none",background:"transparent",color:C.acc,fontSize:10,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=C.card2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-    <span style={{fontSize:12}}>📱</span><span>Installer l'app</span>
+   {(installPrompt||window.__pwaPrompt)&&<button onClick={()=>{(installPrompt||window.__pwaPrompt)?.prompt();}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,border:"none",background:"transparent",color:C.acc,fontSize:11,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"all .15s"}} onMouseEnter={e=>e.currentTarget.style.background=C.card2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+    <SI d="M12 18h.01M8 21h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2z" s={16}/><span>Installer l'app</span>
    </button>}
-   {adminBack&&<button onClick={adminBack} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:"none",background:C.accD,color:C.acc,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"background .12s",marginBottom:2}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,170,0,.2)"} onMouseLeave={e=>e.currentTarget.style.background=C.accD}>
-    <span style={{fontSize:12}}>←</span><span>Retour Admin</span>
+   {adminBack&&<button onClick={adminBack} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,border:"none",background:C.accD,color:C.acc,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"all .15s",marginBottom:2}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,170,0,.2)"} onMouseLeave={e=>e.currentTarget.style.background=C.accD}>
+    <SI d="M19 12H5M12 19l-7-7 7-7" s={16}/><span>Retour Admin</span>
    </button>}
-   <button onClick={()=>{if(typeof adminBack==="function")adminBack();else onLogout();}} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:"none",background:"transparent",color:C.td,fontSize:10,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"background .12s"}} onMouseEnter={e=>{e.currentTarget.style.background=C.rD;e.currentTarget.style.color=C.r;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.td;}}>
-    <span style={{fontSize:12}}>↩</span><span>Déconnexion</span>
+   <button onClick={()=>{if(typeof adminBack==="function")adminBack();else onLogout();}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,border:"none",background:"transparent",color:C.td,fontSize:11,cursor:"pointer",fontFamily:FONT,textAlign:"left",transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=C.rD;e.currentTarget.style.color=C.r;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.td;}}>
+    <SI d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" s={16}/><span>Déconnexion</span>
    </button>
   </div>
  </aside>;

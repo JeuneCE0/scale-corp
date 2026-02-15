@@ -78,10 +78,10 @@ input[type=range]{-webkit-appearance:none;background:${C.brd};height:3px;border-
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:${C.acc};cursor:pointer;box-shadow:0 2px 6px rgba(255,170,0,.3)}
 select{cursor:pointer}select:focus{border-color:${C.acc}44}
 button:focus-visible{outline:2px solid ${C.acc}44;outline-offset:2px}
-.glass-bg{background:#06060b;background-image:radial-gradient(at 20% 30%,rgba(255,170,0,.03) 0%,transparent 50%),radial-gradient(at 80% 70%,rgba(255,157,0,.02) 0%,transparent 50%),radial-gradient(at 50% 50%,rgba(96,165,250,.015) 0%,transparent 60%)}
-.glass-card{background:rgba(14,14,22,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.06);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.3);transition:all .3s cubic-bezier(.4,0,.2,1)}
-.glass-card:hover{border-color:rgba(255,170,0,.15);transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,.4)}
-.glass-card-static{background:rgba(14,14,22,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.06);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.glass-bg{background:#08080d;background-image:radial-gradient(at 20% 30%,rgba(255,170,0,.02) 0%,transparent 50%),radial-gradient(at 80% 70%,rgba(255,157,0,.015) 0%,transparent 50%)}
+.glass-card{background:rgba(14,14,22,.5);border:1px solid rgba(255,255,255,.05);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:all .25s ease}
+.glass-card:hover{border-color:rgba(255,170,0,.12);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.glass-card-static{background:rgba(14,14,22,.5);border:1px solid rgba(255,255,255,.05);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .glass-sidebar{background:rgba(14,14,22,.75);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-right:1px solid rgba(255,255,255,.04)}
 .glass-input{background:rgba(6,6,11,.6);border:1px solid rgba(255,255,255,.06);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:all .2s ease}
 .glass-input:focus-within{border-color:rgba(255,170,0,.3);box-shadow:0 0 16px rgba(255,170,0,.08)}
@@ -91,10 +91,10 @@ button:focus-visible{outline:2px solid ${C.acc}44;outline-offset:2px}
 .glass-btn-ghost{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .glass-btn-ghost:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12)}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-[data-theme="light"] .glass-bg{background:#f5f5f5;background-image:radial-gradient(at 20% 30%,rgba(255,170,0,.04) 0%,transparent 50%),radial-gradient(at 80% 70%,rgba(255,157,0,.03) 0%,transparent 50%)}
-[data-theme="light"] .glass-card{background:rgba(255,255,255,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(0,0,0,.08);box-shadow:0 2px 12px rgba(0,0,0,.06)}
-[data-theme="light"] .glass-card:hover{border-color:rgba(255,170,0,.25);box-shadow:0 4px 20px rgba(0,0,0,.1)}
-[data-theme="light"] .glass-card-static{background:rgba(255,255,255,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(0,0,0,.08);box-shadow:0 2px 12px rgba(0,0,0,.06)}
+[data-theme="light"] .glass-bg{background:#f7f7f8;background-image:radial-gradient(at 20% 30%,rgba(255,170,0,.03) 0%,transparent 50%)}
+[data-theme="light"] .glass-card{background:rgba(255,255,255,.9);border:1px solid rgba(0,0,0,.06);box-shadow:0 1px 3px rgba(0,0,0,.04)}
+[data-theme="light"] .glass-card:hover{border-color:rgba(255,170,0,.2);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+[data-theme="light"] .glass-card-static{background:rgba(255,255,255,.9);border:1px solid rgba(0,0,0,.06);box-shadow:0 1px 3px rgba(0,0,0,.04)}
 [data-theme="light"] .glass-sidebar{background:rgba(255,255,255,.9);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-right:1px solid rgba(0,0,0,.08)}
 [data-theme="light"] .glass-input{background:rgba(255,255,255,.8);border:1px solid rgba(0,0,0,.1)}
 [data-theme="light"] .glass-input:focus-within{border-color:rgba(255,170,0,.5);box-shadow:0 0 12px rgba(255,170,0,.1)}
