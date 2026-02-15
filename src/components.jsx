@@ -6119,7 +6119,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
 
  const filteredFeed=useMemo(()=>feedTypeFilter==="all"?feed:feed.filter(f=>f.type===feedTypeFilter),[feed,feedTypeFilter]);
 
- const tickerItems=useMemo(()=>feed.slice(0,5).map(f=>{const soc=allActS.find(s=>s.id===f.socId);const socName=soc?.nom||soc?.name||"—";const detail=f.desc||"";const amtStr=f.amt?(f.amt>0?`+${fmt(f.amt)}€`:`${fmt(f.amt)}€`):"";return{socName,detail,amtStr,icon:f.icon,color:f.color,logoUrl:soc?.logoUrl||"",brandColor:soc?.brandColor||soc?.color||f.color};}),[feed,allActS]);
+ const aiTicker=useMemo(()=>{const today=new Date().toISOString().slice(0,10);const insights=[];let totalNewProsp=0,totalCalls=0,totalIn=0,totalOut=0,wonDeals=0,lostDeals=0;allActS.forEach(s=>{const sn=s?.nom||s?.name||"";const opps=gd[s.id]?.opportunities||[];const newP=opps.filter(o=>!o.status&&(o.dateAdded||o.createdAt||"").slice(0,10)===today).length;totalNewProsp+=newP;const calls=(gd[s.id]?.calendarEvents||[]).filter(e=>(e?.startTime||"").slice(0,10)===today).length;totalCalls+=calls;const excl=EXCLUDED_ACCOUNTS[s.id]||[];const txs=(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];if(leg&&excl.includes(leg.account_id))return false;return(tx.created_at||tx.createdAt||"").slice(0,10)===today;});txs.forEach(tx=>{const amt=pf(tx.legs?.[0]?.amount||tx?.amount);if(amt>0)totalIn+=amt;else totalOut+=Math.abs(amt);});const w=opps.filter(o=>o.status==="won"&&(o.updatedAt||"").slice(0,10)===today).length;wonDeals+=w;const l=opps.filter(o=>o.status==="lost"&&(o.updatedAt||"").slice(0,10)===today).length;lostDeals+=l;});insights.push(`👤 ${totalNewProsp} nouveau${totalNewProsp>1?"x":""} prospect${totalNewProsp>1?"s":""} aujourd'hui`);if(totalCalls>0)insights.push(`📞 ${totalCalls} appel${totalCalls>1?"s":""} planifié${totalCalls>1?"s":""}`);if(totalIn>0)insights.push(`🤑 ${fmt(totalIn)}€ encaissés`);if(totalOut>0)insights.push(`🔻 ${fmt(totalOut)}€ dépensés`);if(wonDeals>0)insights.push(`✅ ${wonDeals} deal${wonDeals>1?"s":""} gagné${wonDeals>1?"s":""}`);if(lostDeals>0)insights.push(`❌ ${lostDeals} deal${lostDeals>1?"s":""} perdu${lostDeals>1?"s":""}`);const margin=totalIn-totalOut;if(totalIn>0||totalOut>0)insights.push(margin>=0?`📊 Solde du jour : +${fmt(margin)}€`:`📊 Solde du jour : ${fmt(margin)}€`);return insights.join("   •   ");},[allActS,gd,sb]);
 
  const clock=(tz)=>{try{return now.toLocaleTimeString("fr-FR",{timeZone:tz,hour:"2-digit",minute:"2-digit",second:"2-digit"});}catch{return"--:--:--";}};
  const sparkline=(vals)=>{if(!vals||vals.length<2)return null;const mx=Math.max(...vals,1);const pts=vals.map((v,i)=>`${i*(60/(vals.length-1))},${28-v/mx*24}`).join(" ");return <svg width="60" height="28" style={{display:"block"}}><polyline points={pts} fill="none" stroke="#FFAA00" strokeWidth="1.5" opacity=".7"/></svg>;};
@@ -6409,17 +6409,12 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
   </div>
   {/* MAIN CONTENT */}
   {renderMainContent()}
-  {/* BOTTOM STATUS BAR */}
-  <div style={{borderTop:"1px solid rgba(255,255,255,.06)",padding:"6px 24px",overflow:"hidden",flexShrink:0,background:"rgba(255,170,0,.03)",zIndex:1,position:"relative",display:"flex",alignItems:"center",gap:16}}>
-   {tickerItems.length===0&&<span style={{fontSize:11,color:"#71717a"}}>⚡ En attente de données...</span>}
-   {tickerItems.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,fontSize:11,whiteSpace:"nowrap",flexShrink:0}}>
-    {i>0&&<span style={{color:"rgba(255,255,255,.15)",margin:"0 2px"}}>•</span>}
-    {t.logoUrl?<img src={t.logoUrl} alt="" style={{width:14,height:14,borderRadius:4,objectFit:"contain"}}/>:<div style={{width:14,height:14,borderRadius:4,background:(t.brandColor)+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:900,color:t.brandColor}}>{(t.socName||"?")[0]}</div>}
-    <span style={{color:"#e4e4e7",fontWeight:700}}>{t.socName}:</span>
-    <span style={{color:"#a1a1aa"}}>{t.detail}</span>
-    {t.amtStr&&<span style={{color:t.color,fontWeight:700}}>{t.amtStr}</span>}
-    <span>{t.icon}</span>
-   </div>)}
+  {/* BOTTOM AI TICKER */}
+  <div style={{borderTop:"1px solid rgba(255,255,255,.06)",padding:"8px 0",overflow:"hidden",flexShrink:0,background:"rgba(255,170,0,.03)",zIndex:1,position:"relative"}}>
+   <div style={{display:"flex",animation:"ticker-scroll 35s linear infinite",whiteSpace:"nowrap"}}>
+    <span style={{fontSize:11,color:"#FFAA00",paddingRight:80,fontFamily:FONT,letterSpacing:.3}}>🤖 {aiTicker}</span>
+    <span style={{fontSize:11,color:"#FFAA00",paddingRight:80,fontFamily:FONT,letterSpacing:.3}}>🤖 {aiTicker}</span>
+   </div>
   </div>
  </div>;
 }
