@@ -3494,12 +3494,12 @@ export function ConversationsPanel({soc}){
  useEffect(()=>{fetchConvos(false);listPollRef.current=setInterval(()=>fetchConvos(true),60000);return()=>clearInterval(listPollRef.current);},[fetchConvos]);
 
  const loadMsgs=useCallback((c)=>{setSelConvo(c);setMsgs([]);setMsgsLoading(true);setMobileShowThread(true);setSendType(c.type||c.lastMessageType||"SMS");
-  fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_messages",locationId:socKey,conversationId:c.id})}).then(r=>r.json()).then(d=>{const m=Array.isArray(d.messages)?d.messages:Array.isArray(d)?d:[];setMsgs(m.slice().reverse());}).catch(()=>setMsgs([])).finally(()=>setMsgsLoading(false));
+  fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_messages",locationId:socKey,conversationId:c.id})}).then(r=>r.json()).then(d=>{const raw=d.messages;const m=Array.isArray(raw)?raw:Array.isArray(raw?.messages)?raw.messages:Array.isArray(d)?d:[];setMsgs(m.slice().reverse());}).catch(()=>setMsgs([])).finally(()=>setMsgsLoading(false));
  },[socKey]);
 
  // Poll messages every 30s
  useEffect(()=>{clearInterval(msgsPollRef.current);if(!selConvo)return;
-  msgsPollRef.current=setInterval(()=>{fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_messages",locationId:socKey,conversationId:selConvo.id})}).then(r=>r.json()).then(d=>{const m=Array.isArray(d.messages)?d.messages:Array.isArray(d)?d:[];setMsgs(m.slice().reverse());}).catch(()=>{});},30000);
+  msgsPollRef.current=setInterval(()=>{fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_messages",locationId:socKey,conversationId:selConvo.id})}).then(r=>r.json()).then(d=>{const raw=d.messages;const m=Array.isArray(raw)?raw:Array.isArray(raw?.messages)?raw.messages:Array.isArray(d)?d:[];setMsgs(m.slice().reverse());}).catch(()=>{});},30000);
   return()=>clearInterval(msgsPollRef.current);
  },[selConvo,socKey]);
 
@@ -3510,7 +3510,7 @@ export function ConversationsPanel({soc}){
   fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversation_send",locationId:socKey,type:sendType,contactId:selConvo.contactId||selConvo.id,message:msgInput})}).then(r=>{if(!r.ok)throw new Error();setMsgs(p=>[...p,{body:msgInput,direction:"outbound",type:sendType,dateAdded:new Date().toISOString()}]);setMsgInput("");setSentOk(true);setTimeout(()=>setSentOk(false),2000);}).catch(()=>{}).finally(()=>setSending(false));
  };
 
- const filtered=useMemo(()=>{let f=convos;if(channelFilter!=="all")f=f.filter(c=>(c.type||c.lastMessageType||"").toLowerCase().includes(channelFilter.toLowerCase()));const s=search.toLowerCase().trim();if(s)f=f.filter(c=>(c.contactName||c.fullName||c.email||"").toLowerCase().includes(s));return f;},[convos,search,channelFilter]);
+ const filtered=useMemo(()=>{let f=convos;if(channelFilter!=="all")f=f.filter(c=>(c.type||c.lastMessageType||"").toUpperCase().includes(channelFilter));const s=search.toLowerCase().trim();if(s)f=f.filter(c=>(c.contactName||c.fullName||c.email||"").toLowerCase().includes(s));return f;},[convos,search,channelFilter]);
  const sorted=useMemo(()=>[...filtered].sort((a,b)=>new Date(b.lastMessageDate||b.dateUpdated||0)-new Date(a.lastMessageDate||a.dateUpdated||0)),[filtered]);
  const totalUnread=convos.reduce((a,c)=>a+(c.unreadCount||0),0);
 
@@ -3523,7 +3523,7 @@ export function ConversationsPanel({soc}){
     {totalUnread>0&&<span style={{fontSize:9,padding:"2px 7px",borderRadius:10,background:C.b,color:"#fff",fontWeight:700}}>{totalUnread}</span>}
    </div>
    <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Rechercher..." style={{width:"100%",padding:"6px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/>
-   <div style={{display:"flex",gap:3,marginTop:6,flexWrap:"wrap"}}>{[{k:"all",l:"Tous",icon:"💬"},{k:"SMS",l:"SMS",icon:"📱"},{k:"Email",l:"Email",icon:"📧"},{k:"IG",l:"Insta",icon:"📸"},{k:"FB",l:"Messenger",icon:"👤"},{k:"WhatsApp",l:"WA",icon:"💬"}].map(ch=><button key={ch.k} onClick={()=>setChannelFilter(ch.k)} style={{padding:"3px 7px",borderRadius:6,border:`1px solid ${channelFilter===ch.k?C.acc+"66":C.brd}`,background:channelFilter===ch.k?C.accD:"transparent",color:channelFilter===ch.k?C.acc:C.td,fontSize:9,fontWeight:600,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:2}}><span style={{fontSize:10}}>{ch.icon}</span>{ch.l}</button>)}</div>
+   <div style={{display:"flex",gap:3,marginTop:6,flexWrap:"wrap"}}>{[{k:"all",l:"Tous",icon:"💬"},{k:"PHONE",l:"SMS",icon:"📱"},{k:"EMAIL",l:"Email",icon:"📧"},{k:"INSTAGRAM",l:"Insta",icon:"📸"},{k:"FB",l:"Messenger",icon:"👤"},{k:"WHATSAPP",l:"WA",icon:"💬"}].map(ch=>{const count=ch.k==="all"?convos.length:convos.filter(c=>(c.type||c.lastMessageType||"").toUpperCase().includes(ch.k)).length;return <button key={ch.k} onClick={()=>setChannelFilter(ch.k)} style={{padding:"3px 7px",borderRadius:6,border:`1px solid ${channelFilter===ch.k?C.acc+"66":C.brd}`,background:channelFilter===ch.k?C.accD:"transparent",color:channelFilter===ch.k?C.acc:C.td,fontSize:9,fontWeight:600,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:2,opacity:count>0||ch.k==="all"?1:0.4}}><span style={{fontSize:10}}>{ch.icon}</span>{ch.l}{count>0&&ch.k!=="all"?` (${count})`:""}</button>;})}</div>
   </div>
   <div style={{flex:1,overflow:"auto"}}>
    {loading&&<div style={{padding:20,textAlign:"center",color:C.td,fontSize:11}}>Chargement...</div>}
@@ -3560,7 +3560,7 @@ export function ConversationsPanel({soc}){
    <div style={{flex:1,overflow:"auto",padding:10}}>
     {msgsLoading&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>⏳ Chargement des messages...</div>}
     {!msgsLoading&&msgs.length===0&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Aucun message</div>}
-    {msgs.map((m,i)=>{const out=m.direction==="outbound";const mType=m.type||m.messageType||"";return <div key={m.id||i} style={{display:"flex",justifyContent:out?"flex-end":"flex-start",marginBottom:6}}>
+    {msgs.map((m,i)=>{const out=(m.direction||m.meta?.email?.direction||m.source)==="outbound"||m.source==="workflow"||m.source==="app";const mType=m.type||m.messageType||"";return <div key={m.id||i} style={{display:"flex",justifyContent:out?"flex-end":"flex-start",marginBottom:6}}>
      <div style={{maxWidth:"75%",padding:"8px 12px",borderRadius:out?"12px 12px 2px 12px":"12px 12px 12px 2px",background:out?"linear-gradient(135deg,#FFBF00,#FF9D00)":"rgba(255,255,255,.06)",color:out?"#0a0a0f":C.t,fontSize:11}}>
       {mType&&<div style={{fontSize:8,color:out?"rgba(0,0,0,.4)":C.tm,marginBottom:2,fontWeight:600}}>{MSG_TYPE_LABEL(mType)} {mType}</div>}
       <div style={{whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{m.body||m.text||"—"}</div>
@@ -3573,7 +3573,7 @@ export function ConversationsPanel({soc}){
     <select value={sendType} onChange={e=>setSendType(e.target.value)} style={{padding:"6px 4px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:9,fontFamily:FONT,flexShrink:0}}>
      <option value="SMS">📱 SMS</option><option value="Email">📧 Email</option><option value="WhatsApp">💬 WhatsApp</option>
     </select>
-    <textarea value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}} placeholder="Écrire un message... (Entrée = envoyer)" rows={1} style={{flex:1,padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none",resize:"none",maxHeight:80,lineHeight:"1.4"}}/>
+    <textarea value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}} placeholder="Écrire un message... (Entrée = envoyer, Shift+Entrée = retour à la ligne)" rows={3} style={{flex:1,padding:"10px 14px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none",resize:"vertical",minHeight:60,maxHeight:150,lineHeight:"1.5"}}/>
     <Btn small onClick={sendMsg} disabled={sending||!msgInput.trim()}>{sending?"⏳":"Envoyer"}</Btn>
    </div>
    {sentOk&&<div style={{padding:"4px 8px",textAlign:"center",fontSize:10,color:C.g,background:C.gD,borderRadius:"0 0 8px 8px"}}>✓ Message envoyé</div>}
@@ -3582,7 +3582,7 @@ export function ConversationsPanel({soc}){
 
  return <Sect title="💬 Conversations" sub={`Messages GHL${totalUnread>0?` · ${totalUnread} non lu${totalUnread>1?"s":""}`:""}`}>
   {error&&<div style={{padding:"8px 12px",background:C.rD,border:`1px solid ${C.r}33`,borderRadius:8,marginBottom:8,fontSize:11,color:C.r}}>{error}</div>}
-  <div className="conv-layout" style={{display:"flex",gap:8,height:520}}>
+  <div className="conv-layout" style={{display:"flex",gap:8,height:"calc(100vh - 200px)",minHeight:500,maxHeight:800}}>
    <div className="conv-list-wrap">{listPanel}</div>
    <div className="conv-thread-wrap" style={{flex:1,display:"flex",minWidth:0}}>{threadPanel}</div>
   </div>
