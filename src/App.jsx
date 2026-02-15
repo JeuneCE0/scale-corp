@@ -37,14 +37,9 @@ const AICoPilot = lazy(() => import("./components/AI.jsx").then(m => ({ default:
 const TabCRM = lazy(() => import("./components/CRM.jsx").then(m => ({ default: m.TabCRM })));
 const BankingPanel = lazy(() => import("./components/Banking.jsx").then(m => ({ default: m.BankingPanel })));
 
-/* Suspense fallback */
+/* Suspense fallback with skeleton loader */
 function LazyFallback() {
-  return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"60vh",color:C.td,fontSize:13,fontFamily:"Inter,sans-serif"}}>
-    <div style={{textAlign:"center"}}>
-      <div className="dots" style={{fontSize:28,marginBottom:8}}>⟳</div>
-      <div>Chargement…</div>
-    </div>
-  </div>;
+  return <SkeletonDashboard />;
 }
 
 export default function App(){
