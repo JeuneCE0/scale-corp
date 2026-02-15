@@ -6119,7 +6119,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
 
  const filteredFeed=useMemo(()=>feedTypeFilter==="all"?feed:feed.filter(f=>f.type===feedTypeFilter),[feed,feedTypeFilter]);
 
- const ticker=useMemo(()=>feed.slice(0,20).map(f=>`${f.icon} [${(allActS.find(s=>s.id===f.socId)?.name||"").split(" ")[0]}] ${f.desc?.split(": ")[1]||""}${f.amt?` ${fmt(f.amt)}€`:""}`).join("   •   ")||"⚡ PULSE — En attente de données...",[feed,allActS]);
+ const tickerItems=useMemo(()=>feed.slice(0,5).map(f=>{const soc=allActS.find(s=>s.id===f.socId);const socName=soc?.nom||soc?.name||"—";const detail=f.desc||"";const amtStr=f.amt?(f.amt>0?`+${fmt(f.amt)}€`:`${fmt(f.amt)}€`):"";return{socName,detail,amtStr,icon:f.icon,color:f.color,logoUrl:soc?.logoUrl||"",brandColor:soc?.brandColor||soc?.color||f.color};}),[feed,allActS]);
 
  const clock=(tz)=>{try{return now.toLocaleTimeString("fr-FR",{timeZone:tz,hour:"2-digit",minute:"2-digit",second:"2-digit"});}catch{return"--:--:--";}};
  const sparkline=(vals)=>{if(!vals||vals.length<2)return null;const mx=Math.max(...vals,1);const pts=vals.map((v,i)=>`${i*(60/(vals.length-1))},${28-v/mx*24}`).join(" ");return <svg width="60" height="28" style={{display:"block"}}><polyline points={pts} fill="none" stroke="#FFAA00" strokeWidth="1.5" opacity=".7"/></svg>;};
@@ -6409,12 +6409,17 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
   </div>
   {/* MAIN CONTENT */}
   {renderMainContent()}
-  {/* BOTTOM TICKER */}
-  <div style={{borderTop:"1px solid rgba(255,255,255,.06)",padding:"8px 0",overflow:"hidden",flexShrink:0,background:"rgba(255,170,0,.03)",zIndex:1,position:"relative"}}>
-   <div style={{display:"flex",animation:"ticker-scroll 40s linear infinite",whiteSpace:"nowrap"}}>
-    <span style={{fontSize:11,color:"#FFAA00",paddingRight:60}}>{ticker}</span>
-    <span style={{fontSize:11,color:"#FFAA00",paddingRight:60}}>{ticker}</span>
-   </div>
+  {/* BOTTOM STATUS BAR */}
+  <div style={{borderTop:"1px solid rgba(255,255,255,.06)",padding:"6px 24px",overflow:"hidden",flexShrink:0,background:"rgba(255,170,0,.03)",zIndex:1,position:"relative",display:"flex",alignItems:"center",gap:16}}>
+   {tickerItems.length===0&&<span style={{fontSize:11,color:"#71717a"}}>⚡ En attente de données...</span>}
+   {tickerItems.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,fontSize:11,whiteSpace:"nowrap",flexShrink:0}}>
+    {i>0&&<span style={{color:"rgba(255,255,255,.15)",margin:"0 2px"}}>•</span>}
+    {t.logoUrl?<img src={t.logoUrl} alt="" style={{width:14,height:14,borderRadius:4,objectFit:"contain"}}/>:<div style={{width:14,height:14,borderRadius:4,background:(t.brandColor)+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:900,color:t.brandColor}}>{(t.socName||"?")[0]}</div>}
+    <span style={{color:"#e4e4e7",fontWeight:700}}>{t.socName}:</span>
+    <span style={{color:"#a1a1aa"}}>{t.detail}</span>
+    {t.amtStr&&<span style={{color:t.color,fontWeight:700}}>{t.amtStr}</span>}
+    <span>{t.icon}</span>
+   </div>)}
   </div>
  </div>;
 }
