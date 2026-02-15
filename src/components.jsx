@@ -50,10 +50,10 @@ export function Inp({label,value,onChange,type="text",placeholder,suffix,textare
 export function Sel({label,value,onChange,options}){return <div style={{marginBottom:10}}>{label&&<label style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:3,letterSpacing:.3}}>{label}</label>}<select value={value} onChange={e=>onChange(e.target.value)} style={{width:"100%",background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,color:C.t,padding:"8px 10px",fontSize:12,fontFamily:FONT,outline:"none"}}>{options.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}</select></div>;}
 export function Sect({children,title,sub,right}){return <div className="fu" style={{marginTop:16}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:8,flexWrap:"wrap",gap:4}}><div>{title&&<h2 style={{color:C.t,fontSize:13,fontWeight:800,margin:0,letterSpacing:1,textTransform:"uppercase",fontFamily:FONT_TITLE}}>{title}</h2>}{sub&&<p style={{color:C.td,fontSize:10,margin:"1px 0 0"}}>{sub}</p>}</div>{right}</div>{children}</div>;}
 export function Card({children,style:sx,onClick,accent,delay=0}){return <div className={`fu d${Math.min(delay,8)} ${onClick?"glass-card":"glass-card-static"}`} onClick={onClick} style={{padding:14,cursor:onClick?"pointer":"default",...(accent?{borderLeft:`3px solid ${accent}`}:{}),...sx}} >{children}</div>;}
-export function Modal({open,onClose,title,children,wide}){if(!open)return null;return <div className="fi" onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:1000,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"28px 14px",overflowY:"auto",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)"}}><div className="mi glass-modal" onClick={e=>e.stopPropagation()} style={{borderRadius:18,padding:22,width:wide?700:440,maxWidth:"100%"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t}}>{title}</h3><Btn v="ghost" small onClick={onClose}>✕</Btn></div>{children}</div></div>;}
+export function Modal({open,onClose,title,children,wide}){if(!open)return null;return <div className="fi" onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:1000,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"28px 14px",overflowY:"auto",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)"}}><div className="mi glass-modal" onClick={e=>e.stopPropagation()} style={{borderRadius:18,padding:22,width:wide?700:440,maxWidth:"100%"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t}}>{title}</h3><Btn v="ghost" small onClick={onClose} aria-label="Fermer">✕</Btn></div>{children}</div></div>;}
 export function CTip({active,payload,label}){if(!active||!payload)return null;return <div style={{background:"rgba(14,14,22,.85)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,.08)",borderRadius:12,padding:"8px 12px",boxShadow:"0 8px 32px rgba(0,0,0,.5)"}}><div style={{color:C.t,fontWeight:700,fontSize:9,marginBottom:3}}>{label}</div>{payload.map((p,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:4,marginBottom:1}}><span style={{width:4,height:4,borderRadius:2,background:p.color}}/><span style={{color:C.td,fontSize:9}}>{p.name}:</span><span style={{color:C.t,fontSize:9,fontWeight:600}}>{fmt(p.value)}€</span></div>)}</div>;}
 export function Toggle({on,onToggle,label}){return <div onClick={onToggle} style={{display:"inline-flex",alignItems:"center",gap:7,cursor:"pointer",padding:"5px 10px",borderRadius:8,background:on?C.accD:C.card2,border:`1px solid ${on?C.acc+"66":C.brd}`,transition:"all .15s"}}><div style={{width:26,height:14,borderRadius:7,background:on?C.acc:C.brd,position:"relative",transition:"background .2s"}}><div style={{width:10,height:10,borderRadius:5,background:on?"#0a0a0f":C.td,position:"absolute",top:2,left:on?14:2,transition:"left .2s"}}/></div><span style={{fontSize:10,fontWeight:600,color:on?C.acc:C.td}}>{label}</span></div>;}
-export function ActionItem({a,socs,onToggle,onDelete}){const s=socs.find(x=>x.id===a.socId);const late=!a.done&&a.deadline<curM();return <div className="fu" style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:C.card,borderRadius:8,border:`1px solid ${late?C.r+"44":C.brd}`,marginBottom:3}}><div onClick={()=>onToggle(a.id)} style={{width:18,height:18,borderRadius:5,border:`2px solid ${a.done?C.g:C.brd}`,background:a.done?C.gD:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{a.done&&<span style={{color:C.g,fontSize:11}}>✓</span>}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:a.done?C.td:C.t,textDecoration:a.done?"line-through":"none"}}>{a.text}</div><div style={{fontSize:10,color:late?C.r:C.td}}>{s&&<><span style={{width:5,height:5,borderRadius:3,background:s.color,display:"inline-block",marginRight:4}}/>{s.nom} · </>}{ml(a.deadline)}{late&&" ⚠ En retard"}</div></div>{onDelete&&<Btn v="ghost" small onClick={()=>onDelete(a.id)} style={{fontSize:9,padding:"2px 6px"}}>✕</Btn>}</div>;}
+export function ActionItem({a,socs,onToggle,onDelete}){const s=socs.find(x=>x.id===a.socId);const late=!a.done&&a.deadline<curM();return <div className="fu" style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:C.card,borderRadius:8,border:`1px solid ${late?C.r+"44":C.brd}`,marginBottom:3}}><div onClick={()=>onToggle(a.id)} style={{width:18,height:18,borderRadius:5,border:`2px solid ${a.done?C.g:C.brd}`,background:a.done?C.gD:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{a.done&&<span style={{color:C.g,fontSize:11}}>✓</span>}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:a.done?C.td:C.t,textDecoration:a.done?"line-through":"none"}}>{a.text}</div><div style={{fontSize:10,color:late?C.r:C.td}}>{s&&<><span style={{width:5,height:5,borderRadius:3,background:s.color,display:"inline-block",marginRight:4}}/>{s.nom} · </>}{ml(a.deadline)}{late&&" ⚠ En retard"}</div></div>{onDelete&&<Btn v="ghost" small onClick={()=>onDelete(a.id)} style={{fontSize:9,padding:"2px 6px"}} aria-label="Supprimer l'action">✕</Btn>}</div>;}
 /* AI CO-PILOT */
 /* PULSE SYSTEM */
 export function PulseForm({soc,pulses,savePulse,hold}){
@@ -103,7 +103,7 @@ export function MeetingMode({socs,reps,hold,actions,pulses,allM,onExit}){
    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
     <div><div style={{color:C.acc,fontSize:10,fontWeight:700,letterSpacing:2}}>MODE RÉUNION</div><h1 style={{margin:0,fontSize:18,fontWeight:900}}>{hold?.brand?.name||"Scale Corp"} — {ml(cM2)}</h1></div>
     <div style={{display:"flex",alignItems:"center",gap:10}}>
-    <div style={{textAlign:"center"}}><div style={{fontSize:28,fontWeight:900,fontVariantNumeric:"tabular-nums",color:running?C.g:C.t}}>{fmtT(timer)}</div><div style={{display:"flex",gap:4,marginTop:4}}><Btn small v={running?"danger":"success"} onClick={()=>setRunning(!running)}>{running?"⏸":"▶"}</Btn><Btn small v="ghost" onClick={()=>setTimer(0)}>↻</Btn></div></div>
+    <div style={{textAlign:"center"}}><div style={{fontSize:28,fontWeight:900,fontVariantNumeric:"tabular-nums",color:running?C.g:C.t}}>{fmtT(timer)}</div><div style={{display:"flex",gap:4,marginTop:4}}><Btn small v={running?"danger":"success"} onClick={()=>setRunning(!running)} aria-label={running?"Pause":"Démarrer"}>{running?"⏸":"▶"}</Btn><Btn small v="ghost" onClick={()=>setTimer(0)} aria-label="Réinitialiser le timer">↻</Btn></div></div>
     <Btn v="ghost" onClick={onExit}>✕ Quitter</Btn>
     </div>
    </div>
@@ -168,11 +168,12 @@ export function DealFlow({deals,saveDeals}){
   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,marginTop:6}}><span style={{color:C.td,fontSize:12}}>{deals.length} opportunités</span><Btn small onClick={()=>setEdit({id:uid(),nom:"",contact:"",stage:0,value:0,notes:"",at:new Date().toISOString()})}>+ Deal</Btn></div>
   <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:10}}>{DEAL_STAGES.map((stage,si)=><div key={si} style={{minWidth:170,flex:"1 1 170px"}}>
    <div style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:1,marginBottom:6,textAlign:"center"}}>{stage}</div>
+   {deals.filter(d=>d.stage===si).length===0&&<div style={{textAlign:"center",padding:"16px 8px",color:C.td,fontSize:10,opacity:.5}}>Glissez un deal ici</div>}
    {deals.filter(d=>d.stage===si).map(d=><Card key={d.id} style={{marginBottom:5,padding:"10px 12px",cursor:"pointer"}} onClick={()=>setEdit({...d})}>
     <div style={{fontWeight:700,fontSize:12,marginBottom:2}}>{d.nom}</div>
     <div style={{fontSize:10,color:C.td}}>{d.contact}</div>
     {d.value>0&&<div style={{fontSize:11,fontWeight:700,color:C.acc,marginTop:2}}>{fmt(d.value)}€/mois</div>}
-    <div style={{display:"flex",gap:3,marginTop:6}}>{si>0&&<Btn v="ghost" small onClick={e=>{e.stopPropagation();move(d.id,-1);}}>←</Btn>}{si<DEAL_STAGES.length-1&&<Btn v="ghost" small onClick={e=>{e.stopPropagation();move(d.id,1);}}>→</Btn>}</div>
+    <div style={{display:"flex",gap:3,marginTop:6}}>{si>0&&<Btn v="ghost" small onClick={e=>{e.stopPropagation();move(d.id,-1);}} aria-label="Étape précédente">←</Btn>}{si<DEAL_STAGES.length-1&&<Btn v="ghost" small onClick={e=>{e.stopPropagation();move(d.id,1);}} aria-label="Étape suivante">→</Btn>}</div>
    </Card>)}
   </div>)}</div>
   <Modal open={!!edit} onClose={()=>setEdit(null)} title={edit?.nom||"Nouveau deal"}>
@@ -1048,7 +1049,7 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
  const clientInvoices=(clId)=>(invoices||[]).filter(i=>i.clientId===clId).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
  if(myClients.length===0)return <div style={{textAlign:"center",padding:40}}>
   <div style={{fontSize:40,marginBottom:12}}>👥</div>
-  <div style={{fontWeight:700,fontSize:15,marginBottom:6,color:C.t}}>Aucun client</div>
+  <div style={{fontSize:32,marginBottom:8}}>🚀</div><div style={{fontWeight:700,fontSize:15,marginBottom:6,color:C.t}}>Aucun client pour le moment</div>
   <div style={{color:C.td,fontSize:12,marginBottom:16}}>Connectez GHL ou ajoutez des clients manuellement</div>
   <div style={{display:"flex",gap:8,justifyContent:"center"}}>
    <Btn small onClick={()=>addClient("fixed")}>+ Forfait</Btn>
@@ -2185,7 +2186,7 @@ export function NotificationCenter({notifications,open,onClose}){
       <div style={{fontSize:12,fontWeight:600,color:C.t,lineHeight:1.4}}>{n.msg}</div>
       <div style={{fontSize:9,color:C.td,marginTop:3}}>{ago(n.time)}</div>
      </div>
-     <button onClick={e=>{e.stopPropagation();dismiss(n.id);}} style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0,lineHeight:1}}>✕</button>
+     <button onClick={e=>{e.stopPropagation();dismiss(n.id);}} aria-label="Fermer la notification" style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0,lineHeight:1}}>✕</button>
     </div>;
    })}
   </div>
@@ -3443,14 +3444,14 @@ export function InboxPanel({soc,ghlData,socBankData,clients}){
  return <Sect title="📥 Inbox" sub="Feed d'activité">
   <div style={{display:"flex",gap:4,marginBottom:8,flexWrap:"wrap"}}>{filters.map(f2=><button key={f2.v} onClick={()=>setFilter(f2.v)} style={{padding:"4px 10px",borderRadius:20,border:`1px solid ${filter===f2.v?C.acc+"66":C.brd}`,background:filter===f2.v?C.accD:"transparent",color:filter===f2.v?C.acc:C.td,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>{f2.l}</button>)}</div>
   <div style={{display:"flex",gap:4,marginBottom:12}}>{timeFilters.map(f2=><button key={f2.v} onClick={()=>setTimeF(f2.v)} style={{padding:"3px 8px",borderRadius:12,border:`1px solid ${timeF===f2.v?C.b+"66":C.brd}`,background:timeF===f2.v?C.bD:"transparent",color:timeF===f2.v?C.b:C.td,fontSize:9,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>{f2.l}</button>)}</div>
-  {items.length===0&&<Card><div style={{textAlign:"center",padding:20,color:C.td,fontSize:12}}>Aucune activité pour cette période</div></Card>}
+  {items.length===0&&<Card><div style={{textAlign:"center",padding:30,color:C.td}}><div style={{fontSize:28,marginBottom:6}}>📭</div><div style={{fontSize:12}}>Aucune activité pour cette période</div><div style={{fontSize:10,marginTop:4,opacity:.7}}>Changez la période ou le filtre pour voir plus</div></div></Card>}
   {items.map(it=>{const isRead=readIds.includes(it.id);return <div key={it.id} className="fu" style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:isRead?"transparent":"rgba(255,170,0,.03)",borderRadius:10,border:`1px solid ${isRead?C.brd:"rgba(255,170,0,.12)"}`,marginBottom:4,transition:"all .2s"}}>
    <span style={{fontSize:16,flexShrink:0}}>{it.icon}</span>
    <div style={{flex:1,minWidth:0}}>
     <div style={{fontSize:12,fontWeight:isRead?500:700,color:isRead?C.td:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.desc}</div>
     <div style={{fontSize:9,color:C.td}}>{ago(it.date)}</div>
    </div>
-   {!isRead&&<button onClick={()=>markRead(it.id)} style={{padding:"3px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:9,cursor:"pointer",fontFamily:FONT}}>✓ Lu</button>}
+   {!isRead&&<button onClick={()=>markRead(it.id)} aria-label="Marquer comme lu" style={{padding:"3px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:9,cursor:"pointer",fontFamily:FONT}}>✓ Lu</button>}
   </div>;})}
  </Sect>;
 }
@@ -3554,7 +3555,7 @@ export function ConversationsPanel({soc}){
   <div style={{flex:1,overflow:"auto"}}>
    {loading&&<div style={{padding:20,textAlign:"center",color:C.td,fontSize:11}}>Chargement...</div>}
    {!loading&&sorted.length===0&&!error&&<div style={{padding:30,textAlign:"center",color:C.td}}><div style={{fontSize:28,marginBottom:6}}>💬</div><div style={{fontSize:11}}>Aucune conversation pour le moment</div><div style={{fontSize:10,marginTop:4,opacity:.7}}>Les nouvelles conversations apparaîtront ici</div></div>}
-   {sorted.map((c,i)=>{const unread=c.unreadCount||0;const name=c.contactName||c.fullName||c.email||"Contact";const typeIcon=MSG_TYPE_LABEL(c.type||c.lastMessageType);const active=selConvo?.id===c.id;const bgCol=avatarColor(name);return <div key={c.id||i} className="conv-contact-item" onClick={()=>loadMsgs(c)} style={{padding:"10px 12px",borderBottom:`1px solid rgba(255,255,255,.04)`,cursor:"pointer",background:"transparent",borderLeft:active?`3px solid ${C.acc}`:"3px solid transparent",transition:"all .15s",display:"flex",alignItems:"center",gap:10}}>
+   {sorted.map((c,i)=>{const unread=c.unreadCount||0;const name=c.contactName||c.fullName||c.email||"Contact";const typeIcon=MSG_TYPE_LABEL(c.type||c.lastMessageType);const active=selConvo?.id===c.id;const bgCol=avatarColor(name);return <div key={c.id||i} className="conv-contact-item" role="button" tabIndex={0} aria-label={`Conversation avec ${name}${unread>0?`, ${unread} non lu${unread>1?"s":""}`:""}`} onClick={()=>loadMsgs(c)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();loadMsgs(c);}}} style={{padding:"10px 12px",borderBottom:`1px solid rgba(255,255,255,.04)`,cursor:"pointer",background:"transparent",borderLeft:active?`3px solid ${C.acc}`:"3px solid transparent",transition:"all .15s",display:"flex",alignItems:"center",gap:10}}>
     {/* Avatar */}
     <div style={{position:"relative",flexShrink:0}}>
      <div style={{width:38,height:38,borderRadius:19,background:bgCol,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:700,color:"#fff"}}>{avatarLetter(name)}</div>
@@ -3584,7 +3585,7 @@ export function ConversationsPanel({soc}){
   {selConvo&&<>
    {/* Contact header */}
    <div style={{padding:"10px 16px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",gap:10}}>
-    <div className="conv-back-btn" style={{display:"none",cursor:"pointer",fontSize:20,marginRight:2,color:C.acc}} onClick={()=>setMobileShowThread(false)}>←</div>
+    <div className="conv-back-btn" role="button" tabIndex={0} aria-label="Retour à la liste" style={{display:"none",cursor:"pointer",fontSize:20,marginRight:2,color:C.acc}} onClick={()=>setMobileShowThread(false)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();setMobileShowThread(false);}}}>←</div>
     <div style={{width:34,height:34,borderRadius:17,background:avatarColor(selConvo.contactName||selConvo.fullName||"C"),display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#fff",flexShrink:0}}>{avatarLetter(selConvo.contactName||selConvo.fullName||"C")}</div>
     <div style={{flex:1,minWidth:0}}>
      <div style={{display:"flex",alignItems:"center",gap:6}}>
