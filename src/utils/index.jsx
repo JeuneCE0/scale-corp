@@ -1,5 +1,7 @@
 import React from "react";
 import { cachedFetch, cacheInvalidate } from "./cache.js";
+import { fetchWithRetry, ApiError, getApiErrorMessage } from "./apiRetry.js";
+export { ApiError, getApiErrorMessage };
 export const C_DARK={bg:"#06060b",card:"#0e0e16",card2:"#131320",brd:"#1a1a2c",brdL:"#24243a",acc:"#FFAA00",accD:"rgba(255,170,0,.12)",g:"#34d399",gD:"rgba(52,211,153,.1)",r:"#f87171",rD:"rgba(248,113,113,.1)",o:"#fb923c",oD:"rgba(251,146,60,.1)",b:"#60a5fa",bD:"rgba(96,165,250,.1)",t:"#e4e4e7",td:"#71717a",tm:"#3f3f50",v:"#a78bfa",vD:"rgba(167,139,250,.1)"};
 export const C_LIGHT={bg:"#f5f5f5",card:"#ffffff",card2:"#f0f0f0",brd:"#e0e0e0",brdL:"#d0d0d0",acc:"#FFAA00",accD:"#FFF3D6",g:"#22c55e",gD:"#dcfce7",r:"#ef4444",rD:"#fee2e2",b:"#3b82f6",bD:"#dbeafe",o:"#f97316",oD:"#fff7ed",v:"#8b5cf6",vD:"#ede9fe",t:"#1a1a1a",td:"#666666",tm:"#999999"};
 export let C=C_DARK;
@@ -389,12 +391,11 @@ export async function ghlUpdateContact(locationId,contactId,data){return fetchGH
 export async function ghlCreateContact(locationId,data){return fetchGHL("contact_create",locationId,{data});}
 export async function fetchGHL(action,locationId,params={}){
  try{
-  const r=await fetch(GHL_BASE,{
+  return await fetchWithRetry(GHL_BASE,{
    method:"POST",
    headers:sbAuthHeaders(),
    body:JSON.stringify({action,locationId,...params})
   });
-  if(!r.ok)throw new Error(`GHL proxy ${r.status}`);return await r.json();
  }catch(e){console.warn("GHL fetch failed:",e.message);return null;}
 }
 export async function syncGHLForSoc(soc){
@@ -584,8 +585,7 @@ export async function checkAndSendReminders(socs2,reps2,pulses2,slackConfig){
 export const STRIPE_PROXY="/api/stripe";
 export async function fetchStripe(action,params={}){
  try{
-  const r=await fetch(STRIPE_PROXY,{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,...params})});
-  if(!r.ok)return null;return await r.json();
+  return await fetchWithRetry(STRIPE_PROXY,{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,...params})});
  }catch(e){console.warn("Stripe fetch failed:",e.message);return null;}
 }
 export async function syncStripeData(){
@@ -625,8 +625,7 @@ export function mkRevolutDemo(){ return null; }
 export async function fetchRevolut(company,endpoint){
  try{
   const action=endpoint.includes("/transactions")?"transactions":"accounts";
-  const r=await fetch("/api/revolut",{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,company})});
-  if(!r.ok)throw new Error(`Revolut proxy ${r.status}`);return await r.json();
+  return await fetchWithRetry("/api/revolut",{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,company})});
  }catch(e){console.warn("Revolut fetch failed:",e.message);return null;}
 }
 export async function syncRevolut(company){

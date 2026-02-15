@@ -12,6 +12,7 @@ const LazyWidgetEmbed = lazy(() => import("./views/AdminComponents.jsx").then(m 
 const LazyWidgetCard = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.WidgetCard })));
 import { LeaderboardCard, PulseDashWidget } from "./views/PorteurDashboard.jsx";
 import { UserAccessPanel, AnalytiqueTab } from "./views/UserAccess.jsx";
+import { useToast } from "./components/Toast.jsx";
 
 // Lazy-loaded heavy views
 const LazyPulseScreen = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.PulseScreen })));
@@ -91,6 +92,7 @@ const TOUR_PORTEUR=[
 
 
 export default function App(){
+ const toast=useToast();
  const[loaded,setLoaded]=useState(false);const[role,setRole]=useState(null);const[theme,setThemeState]=useState(getTheme);
  const toggleTheme=useCallback(()=>{const t=getTheme()==="dark"?"light":"dark";applyTheme(t);setThemeState(t);},[]);
  
@@ -163,7 +165,7 @@ export default function App(){
  // Auto-sync GHL every 30s + on mount
  useEffect(()=>{
   if(!loaded)return;
-  const doSync=()=>{syncGHL().catch(e=>console.warn("Auto-sync GHL failed:",e));};
+  const doSync=()=>{syncGHL().catch(e=>{console.warn("Auto-sync GHL failed:",e);toast?.warning("Sync GHL échouée. Les données affichées peuvent être obsolètes.");});};
   doSync();
   const id=setInterval(doSync,30000);
   return()=>clearInterval(id);
@@ -193,7 +195,7 @@ export default function App(){
  },[socs]);
  useEffect(()=>{
   if(!loaded)return;
-  const doSync=async()=>{try{await syncRev();await syncAllSocBanks();const sd=await cachedSyncStripeData();if(sd)setStripeData(sd);}catch(e){console.warn("Auto-sync failed:",e);}};
+  const doSync=async()=>{try{await syncRev();await syncAllSocBanks();const sd=await cachedSyncStripeData();if(sd)setStripeData(sd);}catch(e){console.warn("Auto-sync failed:",e);toast?.warning("Sync bancaire/Stripe échouée. Données potentiellement obsolètes.");}};
   doSync();
   const id=setInterval(doSync,60000);
   return()=>clearInterval(id);
