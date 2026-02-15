@@ -3478,8 +3478,10 @@ export function AgendaPanel({soc,ghlData}){
 
 /* ===== CONVERSATIONS PANEL ===== */
 /* ===== CONVERSATIONS PANEL ===== */
-const MSG_TYPE_ICONS={SMS:"📱",Email:"📧",WhatsApp:"💬",GMB:"📍",FB:"👤",IG:"📸",Live_Chat:"🌐",Custom:"💬"};
+const MSG_TYPE_ICONS={SMS:"📱",Email:"📧",WhatsApp:"💬",GMB:"📍",FB:"👤",IG:"📸",Live_Chat:"🌐",Custom:"💬",TYPE_PHONE:"📱",TYPE_EMAIL:"📧",TYPE_INSTAGRAM:"📸",TYPE_FACEBOOK:"👤",TYPE_WHATSAPP:"💬",TYPE_LIVE_CHAT:"🌐",TYPE_ACTIVITY_OPPORTUNITY:"⚙️",TYPE_ACTIVITY_CONTACT:"⚙️",TYPE_CALL:"📞"};
 const MSG_TYPE_LABEL=(t)=>MSG_TYPE_ICONS[t]||"💬";
+const MSG_TYPE_NAME={TYPE_PHONE:"SMS",TYPE_EMAIL:"Email",TYPE_INSTAGRAM:"Instagram",TYPE_FACEBOOK:"Messenger",TYPE_WHATSAPP:"WhatsApp",TYPE_LIVE_CHAT:"Live Chat",TYPE_ACTIVITY_OPPORTUNITY:"Système",TYPE_ACTIVITY_CONTACT:"Système",TYPE_CALL:"Appel",SMS:"SMS",Email:"Email",WhatsApp:"WhatsApp",IG:"Instagram",FB:"Messenger"};
+const isSystemMsg=(m)=>{const t=(m.messageType||m.type||"").toString();return t.includes("ACTIVITY")||t==="28"||m.source==="system"||/opportunity|contact.*created|status.*changed|stage.*changed/i.test(m.body||"");};
 function fmtDate(d){if(!d)return"";try{const dt=new Date(d);const now=new Date();const diff=now-dt;if(diff<6e4)return"À l'instant";if(diff<36e5)return Math.floor(diff/6e4)+"min";if(diff<864e5&&dt.toDateString()===now.toDateString())return dt.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});if(diff<1728e5)return"Hier "+dt.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});return dt.toLocaleDateString("fr-FR",{day:"numeric",month:"short"});}catch{return"";}}
 
 export function ConversationsPanel({soc}){
@@ -3560,9 +3562,15 @@ export function ConversationsPanel({soc}){
    <div style={{flex:1,overflow:"auto",padding:10}}>
     {msgsLoading&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>⏳ Chargement des messages...</div>}
     {!msgsLoading&&msgs.length===0&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Aucun message</div>}
-    {msgs.map((m,i)=>{const out=(m.direction||m.meta?.email?.direction||m.source)==="outbound"||m.source==="workflow"||m.source==="app";const mType=m.type||m.messageType||"";return <div key={m.id||i} style={{display:"flex",justifyContent:out?"flex-end":"flex-start",marginBottom:6}}>
+    {msgs.map((m,i)=>{const out=(m.direction||m.meta?.email?.direction||m.source)==="outbound"||m.source==="workflow"||m.source==="app";const mType=m.type||m.messageType||"";const sys=isSystemMsg(m);const channelIcon=MSG_TYPE_LABEL(m.messageType||mType);const channelName=MSG_TYPE_NAME[m.messageType||mType]||"";
+     if(sys)return <div key={m.id||i} style={{display:"flex",justifyContent:"center",marginBottom:6}}>
+      <div style={{maxWidth:"80%",padding:"6px 12px",borderRadius:10,background:"rgba(113,113,122,.12)",border:`1px solid rgba(113,113,122,.15)`,fontSize:10,color:C.td,textAlign:"center",fontStyle:"italic"}}>
+       <span style={{fontSize:9}}>⚙️</span> {m.body||m.text||"—"} <span style={{fontSize:8,opacity:.7}}>· {fmtDate(m.dateAdded)}</span>
+      </div>
+     </div>;
+     return <div key={m.id||i} style={{display:"flex",justifyContent:out?"flex-end":"flex-start",marginBottom:6}}>
      <div style={{maxWidth:"75%",padding:"8px 12px",borderRadius:out?"12px 12px 2px 12px":"12px 12px 12px 2px",background:out?"linear-gradient(135deg,#FFBF00,#FF9D00)":"rgba(255,255,255,.06)",color:out?"#0a0a0f":C.t,fontSize:11}}>
-      {mType&&<div style={{fontSize:8,color:out?"rgba(0,0,0,.4)":C.tm,marginBottom:2,fontWeight:600}}>{MSG_TYPE_LABEL(mType)} {mType}</div>}
+      {channelName&&<div style={{fontSize:8,color:out?"rgba(0,0,0,.45)":C.tm,marginBottom:2,fontWeight:700,display:"flex",alignItems:"center",gap:3}}><span>{channelIcon}</span><span>{channelName}</span>{m.meta?.email?.subject&&<span style={{fontWeight:400,opacity:.8}}>· {m.meta.email.subject}</span>}</div>}
       <div style={{whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{m.body||m.text||"—"}</div>
       <div style={{fontSize:8,color:out?"rgba(0,0,0,.5)":C.tm,marginTop:2,textAlign:"right"}}>{fmtDate(m.dateAdded)}</div>
      </div>
