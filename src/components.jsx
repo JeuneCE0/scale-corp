@@ -3526,7 +3526,7 @@ export function ConversationsPanel({soc}){
 
  if(!socKey)return <div style={{padding:30,textAlign:"center"}}><div style={{fontSize:32,marginBottom:8}}>📡</div><div style={{fontWeight:700,fontSize:13,marginBottom:6,color:C.t}}>GHL non configuré</div><div style={{color:C.td,fontSize:11}}>Ajoute l'ID GoHighLevel (Location ID) dans les paramètres de cette société pour activer les conversations.</div></div>;
 
- const listPanel=<div style={{width:"100%",maxWidth:320,overflow:"hidden",padding:0,display:"flex",flexDirection:"column",flexShrink:0,background:"rgba(14,14,22,.5)",borderRight:`1px solid ${C.brd}`}}>
+ const listPanel=<div style={{width:"100%",maxWidth:320,minHeight:0,overflow:"hidden",padding:0,display:"flex",flexDirection:"column",flexShrink:0,background:"rgba(14,14,22,.5)",borderRight:`1px solid ${C.brd}`}}>
   {/* Search */}
   <div style={{padding:"12px 12px 0"}}>
    <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Rechercher..." style={{width:"100%",padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:"rgba(255,255,255,.04)",color:C.t,fontSize:11,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/>
@@ -3562,7 +3562,7 @@ export function ConversationsPanel({soc}){
 
  const SEND_CHANNELS=[{k:"SMS",icon:"📱"},{k:"Email",icon:"📧"},{k:"WhatsApp",icon:"💬"}];
 
- const threadPanel=<div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,background:"rgba(14,14,22,.3)"}}>
+ const threadPanel=<div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,minHeight:0,overflow:"hidden",background:"rgba(14,14,22,.3)"}}>
   {!selConvo&&<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8,color:C.td}}>
    <div style={{fontSize:48,opacity:.3}}>💬</div><div style={{fontSize:14,fontWeight:600,opacity:.5}}>Sélectionnez une conversation</div>
   </div>}
@@ -3615,19 +3615,21 @@ export function ConversationsPanel({soc}){
   </>}
  </div>;
 
- return <div style={{margin:"-16px -16px 0",maxWidth:"none",width:"calc(100% + 32px)",height:"calc(100vh - 0px)",display:"flex",flexDirection:"column"}}>
-  {error&&<div style={{padding:"8px 12px",background:C.rD,border:`1px solid ${C.r}33`,fontSize:11,color:C.r}}>{error}</div>}
-  <div className="conv-layout" style={{display:"flex",flex:1,overflow:"hidden",background:"rgba(10,10,15,.6)"}}>
-   <div className="conv-list-wrap">{listPanel}</div>
-   <div className="conv-thread-wrap" style={{flex:1,display:"flex",minWidth:0}}>{threadPanel}</div>
+ return <div className="conv-root" style={{margin:"-16px -16px 0",maxWidth:"none",width:"calc(100% + 32px)",height:"calc(100vh - 60px)",display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
+  {error&&<div style={{padding:"8px 12px",background:C.rD,border:`1px solid ${C.r}33`,fontSize:11,color:C.r,flexShrink:0}}>{error}</div>}
+  <div className="conv-layout" style={{display:"flex",flex:1,overflow:"hidden",background:"rgba(10,10,15,.6)",minHeight:0}}>
+   <div className="conv-list-wrap" style={{display:"flex",flexShrink:0}}>{listPanel}</div>
+   <div className="conv-thread-wrap" style={{flex:1,display:"flex",minWidth:0,minHeight:0}}>{threadPanel}</div>
   </div>
   <style>{`
    @keyframes convFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+   .conv-root{box-sizing:border-box;}
+   .conv-list-wrap>div{height:100%!important;max-height:100%!important;}
+   .conv-thread-wrap>div{height:100%!important;max-height:100%!important;}
    @media(max-width:640px){
     .conv-layout{flex-direction:column;height:auto!important;}
-    .conv-list-wrap{display:${mobileShowThread&&selConvo?"none":"block"}!important;width:100%!important;}
-    .conv-list-wrap>div{max-width:100%!important;height:400px;}
-    .conv-thread-wrap{display:${!mobileShowThread||!selConvo?"none":"flex"}!important;min-height:400px;}
+    .conv-list-wrap{display:${mobileShowThread&&selConvo?"none":"flex"}!important;width:100%!important;height:50vh!important;}
+    .conv-thread-wrap{display:${!mobileShowThread||!selConvo?"none":"flex"}!important;height:50vh!important;}
     .conv-back-btn{display:block!important;}
    }
   `}</style>
