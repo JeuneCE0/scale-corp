@@ -1988,25 +1988,6 @@ export function SocSettingsPanel({soc,save,socs,clients}){
  const accent2=form.brandColorSecondary||"";
  return <Sect title="⚙️ Paramètres" sub={soc.nom}>
   {saved&&<div style={{background:C.gD,border:`1px solid ${C.g}22`,borderRadius:8,padding:"8px 12px",marginBottom:12,color:C.g,fontSize:11,fontWeight:700}}>✅ Paramètres sauvegardés</div>}
-  <Card style={{padding:16,marginBottom:12}}>
-   <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
-    <div style={{width:56,height:56,borderRadius:28,background:accent+"22",border:`2px solid ${accent}44`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
-     {form.logoUrl?<img src={form.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:form.logo?<img src={form.logo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:24,fontWeight:900,color:accent}}>{(form.nom||"?")[0]}</span>}
-    </div>
-    <div style={{flex:1}}>
-     <div style={{fontWeight:800,fontSize:16,color:C.t}}>{form.nom||"Sans nom"}</div>
-     <div style={{fontSize:11,color:C.td}}>{form.act} · {form.porteur}</div>
-    </div>
-   </div>
-   <Inp label="Nom de la société" value={form.nom} onChange={v=>setForm({...form,nom:v})}/>
-   <Inp label="Activité" value={form.act} onChange={v=>setForm({...form,act:v})}/>
-   <Inp label="Porteur (fondateur)" value={form.porteur} onChange={v=>setForm({...form,porteur:v})}/>
-   <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
-    <Inp label="Email" value={form.email} onChange={v=>setForm({...form,email:v})} placeholder="contact@..."/>
-    <Inp label="Téléphone" value={form.phone} onChange={v=>setForm({...form,phone:v})} placeholder="+33..."/>
-   </div>
-   <Inp label="Description" value={form.desc} onChange={v=>setForm({...form,desc:v})} placeholder="Décrivez l'activité de la société..."/>
-  </Card>
   {/* Branding section */}
   <Card style={{padding:16,marginBottom:12}}>
    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:14}}><span style={{fontSize:16}}>🎨</span><div><div style={{fontWeight:800,fontSize:13,color:C.t}}>Branding</div><div style={{fontSize:10,color:C.td}}>Personnalisez l'apparence de votre espace</div></div></div>
@@ -2634,19 +2615,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
  },[gd,ghlCl,calEvts,myClients]);
  // Meta Ads data
  const metaAds=useMemo(()=>{try{return JSON.parse(localStorage.getItem(`metaAds_${soc.id}_${cm}`));}catch{return null;}},[soc.id,cm]);
- // Conseil du jour IA
- const conseilDuJour=useMemo(()=>{
-  const tips=[];
-  const now20=Date.now()-20*864e5;
-  const noCallClients=myClients.filter(cl=>{const cn=(cl.name||"").toLowerCase();return !calEvts.some(e=>new Date(e.startTime||0).getTime()>now20&&(e.contactName||e.title||"").toLowerCase().includes(cn));});
-  if(noCallClients.length>0)noCallClients.slice(0,3).forEach(cl=>{tips.push({text:`💡 Appelle ${cl.name||"ce client"} — pas de contact récent`,action:"clients"});});
-  if(convRate>0)tips.push({text:`💡 Ton taux de conversion est à ${convRate}% — ${convRate>30?"continue comme ça !":"essaie d'améliorer ton pitch"}`,action:null});
-  const h48=Date.now()-48*36e5;
-  const newLeads=ghlCl.filter(c2=>new Date(c2.at||c2.dateAdded||0).getTime()>h48).length;
-  if(newLeads>0)tips.push({text:`💡 ${newLeads} lead${newLeads>1?"s":""} ${newLeads>1?"attendent":"attend"} une réponse depuis 48h`,action:"clients"});
-  if(tips.length===0)tips.push({text:"💡 Tout semble en ordre — continue sur ta lancée !",action:null});
-  return tips;
- },[soc.id,ghlData,myClients,calEvts,convRate,ghlCl]);
+ // Conseil du jour IA — removed
  // Expand states for mini-lists
  const[showIncome,setShowIncome]=useState(false);
  const[showExpenses,setShowExpenses]=useState(false);
@@ -2660,24 +2629,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
   {sub&&<div style={{marginTop:4,fontSize:9,fontWeight:600,color:C.td}}>{sub}</div>}
  </div>;
  return <div className="fu">
-  {/* Conseil du jour IA */}
-  {(()=>{
-   const[tipIdx,setTipIdx]=useState(0);
-   const tips=conseilDuJour;const tip=tips[tipIdx%tips.length]||{text:"",action:null};
-   return <div className="glass-card-static" style={{padding:"14px 18px",marginBottom:16,borderLeft:`3px solid ${C.acc}`,background:"rgba(255,170,0,.04)"}}>
-    <div style={{display:"flex",alignItems:"center",gap:8}}>
-     <div style={{flex:1,fontSize:12,fontWeight:600,color:C.t}}>{tip.text}</div>
-     <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-      {tips.length>1&&<>
-       <button onClick={()=>setTipIdx(Math.max(0,tipIdx-1))} style={{background:"none",border:"none",color:tipIdx>0?C.acc:C.tm,cursor:tipIdx>0?"pointer":"default",fontSize:14,padding:2}}>‹</button>
-       <span style={{fontSize:9,color:C.td,fontWeight:600,minWidth:28,textAlign:"center"}}>{tipIdx%tips.length+1}/{tips.length}</span>
-       <button onClick={()=>setTipIdx(Math.min(tips.length-1,tipIdx+1))} style={{background:"none",border:"none",color:tipIdx<tips.length-1?C.acc:C.tm,cursor:tipIdx<tips.length-1?"pointer":"default",fontSize:14,padding:2}}>›</button>
-      </>}
-      {tip.action&&<button onClick={()=>setPTab(tip.action==="clients"?3:0)} style={{background:C.accD,border:`1px solid ${C.acc}44`,borderRadius:6,color:C.acc,fontSize:9,fontWeight:700,padding:"3px 8px",cursor:"pointer",fontFamily:FONT}}>→</button>}
-     </div>
-    </div>
-   </div>;
-  })()}
+  {/* Conseil du jour IA — removed */}
   {/* Prévisionnel */}
   {prevu>0&&<div className="glass-card-static" style={{padding:20,marginBottom:16}}>
     <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>📊 PRÉVISIONNEL</div>
@@ -2745,27 +2697,8 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
     <KPI label="No-show" value={`${noShowPct}%`} sub={totalEvts>0?`${noShowEvts}/${totalEvts}`:null} accent={C.r} icon="🚫"/>
     <KPI label="Jours avant conversion" value={avgDaysConv!==null?`${avgDaysConv}j`:"—"} accent={C.o} icon="⏱️"/>
    </div>
-   {/* Top 5 clients */}
-   {top5Clients.length>0&&<div className="glass-card-static" style={{padding:18,marginBottom:12}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>🏅 TOP 5 CLIENTS</div>
-    {top5Clients.map((c,i)=><div key={c.id||i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<top5Clients.length-1?`1px solid ${C.brd}`:"none"}}>
-     <span style={{width:24,height:24,borderRadius:8,background:i===0?"linear-gradient(135deg,#FFBF00,#FF9D00)":i===1?"linear-gradient(135deg,#c0c0c0,#a0a0a0)":i===2?"linear-gradient(135deg,#cd7f32,#a0622e)":C.card2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:i<3?"#0a0a0f":C.td,flexShrink:0}}>{i+1}</span>
-     <div style={{flex:1,minWidth:0}}>
-      <div style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name||"—"}</div>
-      <div style={{fontSize:9,color:C.td,display:"flex",gap:6,flexWrap:"wrap"}}>
-       {c.durationMonths!==null&&<span>📅 {c.durationMonths} mois</span>}
-       {c.domain&&<span>🏢 {c.domain}</span>}
-       <span>~{fmt(c.avgMonthly)}€/mois</span>
-      </div>
-     </div>
-     <div style={{textAlign:"right"}}>
-      <div style={{fontWeight:800,fontSize:13,color:acc2}}>{fmt(c.cumul)}€</div>
-      <div style={{fontSize:8,color:C.td}}>cumulé</div>
-     </div>
-    </div>)}
-   </div>}
    {/* Funnel de conversion — horizontal */}
-   <div className="glass-card-static" style={{padding:18}}>
+   <div className="glass-card-static" style={{padding:18,marginBottom:12}}>
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>🔄 FUNNEL DE CONVERSION</div>
     <div style={{display:"flex",alignItems:"center",gap:0}}>
      {funnelData.map((f,i)=>{const conv=i>0&&funnelData[i-1].count>0?Math.round(f.count/funnelData[i-1].count*100):null;
@@ -2783,6 +2716,25 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
      })}
     </div>
    </div>
+   {/* Top 5 clients */}
+   {top5Clients.length>0&&<div className="glass-card-static" style={{padding:18}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>🏅 TOP 5 CLIENTS</div>
+    {top5Clients.map((c,i)=><div key={c.id||i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<top5Clients.length-1?`1px solid ${C.brd}`:"none"}}>
+     <span style={{width:24,height:24,borderRadius:8,background:i===0?"linear-gradient(135deg,#FFBF00,#FF9D00)":i===1?"linear-gradient(135deg,#c0c0c0,#a0a0a0)":i===2?"linear-gradient(135deg,#cd7f32,#a0622e)":C.card2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:i<3?"#0a0a0f":C.td,flexShrink:0}}>{i+1}</span>
+     <div style={{flex:1,minWidth:0}}>
+      <div style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name||"—"}</div>
+      <div style={{fontSize:9,color:C.td,display:"flex",gap:6,flexWrap:"wrap"}}>
+       {c.durationMonths!==null&&<span>📅 {c.durationMonths} mois</span>}
+       {c.domain&&<span>🏢 {c.domain}</span>}
+       <span>~{fmt(c.avgMonthly)}€/mois</span>
+      </div>
+     </div>
+     <div style={{textAlign:"right"}}>
+      <div style={{fontWeight:800,fontSize:13,color:acc2}}>{fmt(c.cumul)}€</div>
+      <div style={{fontSize:8,color:C.td}}>cumulé</div>
+     </div>
+    </div>)}
+   </div>}
   </div>
 
   {/* ===== BANDEAU 3 — PUBLICITÉ ===== */}
@@ -3188,11 +3140,15 @@ export function ActivitePanel({soc,ghlData,socBankData,clients}){
  const[manualTasks,setManualTasks]=useState(()=>{try{return JSON.parse(localStorage.getItem(`todo_${soc.id}`)||"[]");}catch{return[];}});
  const[doneIds,setDoneIds]=useState(()=>{try{return JSON.parse(localStorage.getItem(`todo_done_${soc.id}`)||"[]");}catch{return[];}});
  const[newTask,setNewTask]=useState("");
+ const[newDeadline,setNewDeadline]=useState("");
  const[readIds,setReadIds]=useState(()=>{try{return JSON.parse(localStorage.getItem(`inbox_read_${soc.id}`)||"[]");}catch{return[];}});
+ const[,forceUpdate]=useState(0);
+ useEffect(()=>{const iv=setInterval(()=>forceUpdate(x=>x+1),60000);return()=>clearInterval(iv);},[]);
  const saveDone=(ids)=>{setDoneIds(ids);try{localStorage.setItem(`todo_done_${soc.id}`,JSON.stringify(ids));}catch{}};
  const saveManual=(tasks)=>{setManualTasks(tasks);try{localStorage.setItem(`todo_${soc.id}`,JSON.stringify(tasks));}catch{}};
  const toggleDone=(id)=>{const n=doneIds.includes(id)?doneIds.filter(x=>x!==id):[...doneIds,id];saveDone(n);};
- const addTask=()=>{if(!newTask.trim())return;saveManual([...manualTasks,{id:uid(),text:newTask.trim(),priority:"normal",at:new Date().toISOString()}]);setNewTask("");};
+ const addTask=()=>{if(!newTask.trim())return;saveManual([...manualTasks,{id:uid(),text:newTask.trim(),priority:"normal",at:new Date().toISOString(),deadline:newDeadline||null}]);setNewTask("");setNewDeadline("");};
+ const deadlineLabel=(dl)=>{if(!dl)return null;const diff=new Date(dl).getTime()-Date.now();if(diff<0)return{text:"Expiré",color:C.r};const mins=Math.floor(diff/60000);if(mins<60)return{text:`${mins}min`,color:C.o};const hrs=Math.floor(mins/60);const rm=mins%60;if(hrs<24)return{text:`${hrs}h${rm>0?String(rm).padStart(2,"0"):""}`,color:hrs<2?C.o:C.g};const days=Math.floor(hrs/24);return{text:`${days}j`,color:C.g};};
  const markRead=(id)=>{const n=[...readIds,id];setReadIds(n);try{localStorage.setItem(`inbox_read_${soc.id}`,JSON.stringify(n));}catch{}};
  // Auto tasks
  const autoTasks=useMemo(()=>{
@@ -3234,14 +3190,16 @@ export function ActivitePanel({soc,ghlData,socBankData,clients}){
     <span style={{fontSize:11,fontWeight:800,color:C.acc,fontFamily:FONT_TITLE}}>📋 TÂCHES DU JOUR</span>
     <span style={{fontSize:9,color:C.td}}>{sorted.filter(t=>!doneIds.includes(t.id)).length} restantes</span>
    </div>
-   <div style={{display:"flex",gap:6,marginBottom:10}}>
-    <input value={newTask} onChange={e=>setNewTask(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();}} placeholder="Ajouter une tâche..." style={{flex:1,padding:"7px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
+   <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+    <input value={newTask} onChange={e=>setNewTask(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();}} placeholder="Ajouter une tâche..." style={{flex:"1 1 140px",padding:"7px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
+    <input type="datetime-local" value={newDeadline} onChange={e=>setNewDeadline(e.target.value)} style={{padding:"7px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none",minWidth:140}}/>
     <Btn small onClick={addTask}>+</Btn>
    </div>
    {sorted.map(t=>{const done=doneIds.includes(t.id);return <div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:done?"transparent":"rgba(14,14,22,.6)",borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3,opacity:done?.5:1}}>
     <div onClick={()=>toggleDone(t.id)} style={{width:16,height:16,borderRadius:4,border:`2px solid ${done?C.g:C.brd}`,background:done?C.gD:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{done&&<span style={{color:C.g,fontSize:9}}>✓</span>}</div>
     <span style={{fontSize:11,flexShrink:0}}>{priorityIcon[t.priority]||"🟢"}</span>
     <div style={{flex:1,fontSize:11,fontWeight:done?400:600,color:done?C.td:C.t,textDecoration:done?"line-through":"none"}}>{t.text}</div>
+    {(()=>{const dl=deadlineLabel(t.deadline);return dl?<span style={{fontSize:8,fontWeight:800,color:dl.color,background:dl.color+"18",padding:"1px 5px",borderRadius:6,flexShrink:0}}>⏱{dl.text}</span>:null;})()}
     {t.auto&&<span style={{fontSize:8,color:C.td,background:C.card2,padding:"1px 5px",borderRadius:6}}>auto</span>}
     {/* Actions 1-clic */}
     {t.auto&&t.id.startsWith("cal_")&&<button onClick={(e)=>{e.stopPropagation();const cName=t.text.replace(/^📞 Appel avec /,"").replace(/ à .*$/,"");const cl2=(clients||[]).find(c=>c.socId===soc.id&&(c.name||"").toLowerCase().includes(cName.toLowerCase()));if(cl2?.phone)window.open(`tel:${cl2.phone}`);else if(soc.ghlLocationId)window.open(`https://app.gohighlevel.com/v2/location/${soc.ghlLocationId}/calendar`);}} style={{padding:"2px 6px",borderRadius:5,border:`1px solid ${C.b}`,background:C.bD,color:C.b,fontSize:8,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>📞</button>}
@@ -3287,26 +3245,46 @@ export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData
  const sendMsg=()=>{if(!msgInput.trim()||!selClient||convos.length===0)return;
   fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversation_send",locationId:socKey,type:"Email",contactId:selClient.ghlId||selClient.id,message:msgInput})}).then(()=>{setConvoMsgs(p=>[...p,{body:msgInput,direction:"outbound",dateAdded:new Date().toISOString()}]);setMsgInput("");}).catch(()=>{});
  };
- // Pipeline data
+ // Pipeline data — simplified 3 categories
  const gd=ghlData?.[soc.id];const opps=gd?.opportunities||[];const stages=gd?.pipelines?.[0]?.stages||[];
  const stageNames=stages.length>0?stages.map(s=>s.name||s):["Nouveau","Contacté","Qualifié","Proposition","Gagné"];
- const byStage=useMemo(()=>{const m={};stageNames.forEach(s=>{m[s]=opps.filter(o=>o.stage===s);});return m;},[opps,stageNames]);
+ const txs=socBankData?.transactions||[];
+ const simplifiedPipeline=useMemo(()=>{
+  const attenteOpps=opps.filter(o=>o.status==="open"||o.status==="pending");
+  const clientsOpps=opps.filter(o=>o.status==="won");
+  const perdusOpps=opps.filter(o=>o.status==="lost"||o.status==="abandoned");
+  // Cumul encaissements for won clients
+  const clientsCumul=clientsOpps.reduce((acc,o)=>{
+   const cn=(o.name||o.contact?.name||"").toLowerCase().trim();
+   const matched=txs.filter(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;return cn.length>2&&(leg.description||tx.reference||"").toLowerCase().includes(cn);});
+   return acc+matched.reduce((a,tx)=>a+(tx.legs?.[0]?.amount||0),0);
+  },0);
+  // Montant mensuel perdu cumulé
+  const perdusMensuel=perdusOpps.reduce((acc,o)=>acc+(o.value||0),0);
+  return{
+   "Attente signature":{opps:attenteOpps,value:attenteOpps.reduce((a,o)=>a+(o.value||0),0),color:"#60a5fa",icon:"✍️"},
+   "Clients":{opps:clientsOpps,value:clientsCumul,color:C.g,icon:"✅"},
+   "Perdus":{opps:perdusOpps,value:perdusMensuel,color:C.r,icon:"❌"}
+  };
+ },[opps,txs]);
  // Find pipeline stage for a client
  const clientStage=(cl)=>{const opp=opps.find(o=>(o.contact?.name||"").toLowerCase()===(cl.name||"").toLowerCase()||o.contact?.email===cl.email);return opp?{stage:opp.stage,value:opp.value,status:opp.status}:null;};
  if(viewMode==="kanban"){
-  return <Sect title="👥 Clients" sub="Vue Pipeline Kanban" right={<div style={{display:"flex",gap:4}}><Btn small v={viewMode==="list"?"primary":"ghost"} onClick={()=>setViewMode("list")}>📋 Liste</Btn><Btn small v={viewMode==="kanban"?"primary":"ghost"} onClick={()=>setViewMode("kanban")}>🔄 Kanban</Btn></div>}>
-   <div style={{display:"flex",gap:8,overflow:"auto",paddingBottom:8}}>
-    {Object.entries(byStage).map(([stage,cards],si)=><div key={stage} style={{minWidth:180,flex:"1 0 180px"}}>
-     <div style={{padding:"8px 10px",borderRadius:"10px 10px 0 0",background:GHL_STAGES_COLORS[si%GHL_STAGES_COLORS.length]+"22",borderBottom:`2px solid ${GHL_STAGES_COLORS[si%GHL_STAGES_COLORS.length]}`,marginBottom:4}}>
-      <div style={{fontWeight:700,fontSize:11,color:GHL_STAGES_COLORS[si%GHL_STAGES_COLORS.length]}}>{stage}</div>
-      <div style={{fontSize:9,color:C.td}}>{cards.length} deal{cards.length>1?"s":""} · {fmt(cards.reduce((a,o)=>a+(o.value||0),0))}€</div>
+  return <Sect title="👥 Clients" sub="Vue Pipeline simplifiée" right={<div style={{display:"flex",gap:4}}><Btn small v={viewMode==="list"?"primary":"ghost"} onClick={()=>setViewMode("list")}>📋 Liste</Btn><Btn small v={viewMode==="kanban"?"primary":"ghost"} onClick={()=>setViewMode("kanban")}>🔄 Kanban</Btn></div>}>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:12}}>
+    {Object.entries(simplifiedPipeline).map(([cat,data])=><div key={cat} className="fade-up" style={{background:"rgba(14,14,22,.4)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",border:`1px solid ${data.color}33`,borderRadius:14,overflow:"hidden"}}>
+     <div style={{padding:"12px 14px",background:`${data.color}15`,borderBottom:`2px solid ${data.color}55`}}>
+      <div style={{fontWeight:800,fontSize:12,color:data.color}}>{data.icon} {cat}</div>
+      <div style={{fontSize:10,color:C.td,marginTop:2}}>{data.opps.length} opportunité{data.opps.length>1?"s":""} · <strong style={{color:data.color}}>{fmt(data.value)}€</strong></div>
      </div>
-     {cards.map(o=><div key={o.id} className="glass-card-static" style={{padding:10,marginBottom:4,cursor:"pointer",borderLeft:`3px solid ${GHL_STAGES_COLORS[si%GHL_STAGES_COLORS.length]}`}} onClick={()=>{const cl=(clients||[]).find(c=>(c.name||"").toLowerCase()===(o.name||o.contact?.name||"").toLowerCase());if(cl)setSelClient(cl);}}>
-      <div style={{fontWeight:600,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.name||o.contact?.name||"—"}</div>
-      <div style={{fontSize:10,fontWeight:800,color:C.acc,marginTop:2}}>{fmt(o.value||0)}€</div>
-      <div style={{fontSize:8,color:C.td,marginTop:2}}>{o.createdAt?ago(o.createdAt):""}</div>
-     </div>)}
-     {cards.length===0&&<div style={{padding:16,textAlign:"center",color:C.tm,fontSize:10,border:`1px dashed ${C.brd}`,borderRadius:8}}>Vide</div>}
+     <div style={{padding:8,maxHeight:320,overflowY:"auto"}}>
+      {data.opps.map(o=><div key={o.id} className="glass-card-static" style={{padding:10,marginBottom:4,cursor:"pointer",borderLeft:`3px solid ${data.color}`}} onClick={()=>{const cl=(clients||[]).find(c=>(c.name||"").toLowerCase()===(o.name||o.contact?.name||"").toLowerCase());if(cl)setSelClient(cl);}}>
+       <div style={{fontWeight:600,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.name||o.contact?.name||"—"}</div>
+       <div style={{fontSize:10,fontWeight:800,color:data.color,marginTop:2}}>{fmt(o.value||0)}€</div>
+       <div style={{fontSize:8,color:C.td,marginTop:2}}>{o.createdAt?ago(o.createdAt):""}</div>
+      </div>)}
+      {data.opps.length===0&&<div style={{padding:16,textAlign:"center",color:C.tm,fontSize:10,border:`1px dashed ${C.brd}`,borderRadius:8}}>Vide</div>}
+     </div>
     </div>)}
    </div>
   </Sect>;
@@ -4003,6 +3981,7 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
   {pTab===9&&<ErrorBoundary label="Clients"><ClientsUnifiedPanel soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices} stripeData={stripeData}/></ErrorBoundary>}
   {pTab===14&&<ErrorBoundary label="Conversations"><ConversationsPanel soc={soc}/></ErrorBoundary>}
   {pTab===13&&<ErrorBoundary label="Rapports"><RapportsPanel soc={soc} socBankData={socBankData} ghlData={ghlData} clients={clients} reps={reps} allM={allM} hold={hold}/></ErrorBoundary>}
+  {pTab===15&&<ErrorBoundary label="Agenda"><AgendaPanel soc={soc} ghlData={ghlData}/></ErrorBoundary>}
   {pTab===12&&<SocSettingsPanel soc={soc} save={save} socs={socs} clients={clients}/>}
   {pTab===1&&<ErrorBoundary label="Activité"><ActivitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
   {pTab===2&&<ErrorBoundary label="Sales"><SalesPanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
@@ -4476,6 +4455,115 @@ export const SB_ADMIN=[
  {id:"pulse",icon:"⚡",label:"PULSE",tab:99,accent:"#FFAA00"},
 ];
 
+/* ===== AGENDA PANEL ===== */
+export function AgendaPanel({soc,ghlData}){
+ const[viewMode,setViewMode]=useState("week");
+ const[currentDate,setCurrentDate]=useState(new Date());
+ const[showModal,setShowModal]=useState(false);
+ const[modalData,setModalData]=useState({title:"",start:"",end:"",email:""});
+ const[dragEvt,setDragEvt]=useState(null);
+ const calEvts=ghlData?.[soc.id]?.calendarEvents||[];
+ const socKey=soc.ghlLocationId||soc.id;
+
+ const weekStart=useMemo(()=>{const d=new Date(currentDate);d.setDate(d.getDate()-d.getDay()+1);d.setHours(0,0,0,0);return d;},[currentDate]);
+ const weekDays=useMemo(()=>Array.from({length:7},(_,i)=>{const d=new Date(weekStart);d.setDate(d.getDate()+i);return d;}),[weekStart]);
+ const monthStart=useMemo(()=>new Date(currentDate.getFullYear(),currentDate.getMonth(),1),[currentDate]);
+ const monthDays=useMemo(()=>{const days=[];const first=new Date(monthStart);const startDay=first.getDay()||7;for(let i=1-startDay;i<=42-(startDay);i++){const d=new Date(monthStart);d.setDate(d.getDate()+i-1+1);days.push(d);if(days.length>=35&&d.getMonth()!==monthStart.getMonth())break;}return days.slice(0,42);},[monthStart]);
+
+ const eventsForDay=(d)=>{const ds=d.toISOString().slice(0,10);return calEvts.filter(e=>(e.startTime||"").startsWith(ds));};
+ const nav=(dir)=>{const d=new Date(currentDate);if(viewMode==="week")d.setDate(d.getDate()+dir*7);else d.setMonth(d.getMonth()+dir);setCurrentDate(d);};
+ const fmtTime=(iso)=>{try{return new Date(iso).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});}catch{return"";}};
+ const fmtDay=(d)=>d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric"});
+ const fmtMonth=(d)=>d.toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
+ const isToday=(d)=>d.toISOString().slice(0,10)===new Date().toISOString().slice(0,10);
+
+ const createEvent=async()=>{if(!modalData.title||!modalData.start)return;
+  try{await fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"calendar_create_event",locationId:socKey,title:modalData.title,startTime:new Date(modalData.start).toISOString(),endTime:modalData.end?new Date(modalData.end).toISOString():new Date(new Date(modalData.start).getTime()+3600000).toISOString(),email:modalData.email||undefined})});showToast("✅ RDV créé","success");}catch{showToast("❌ Erreur création RDV","error");}
+  setShowModal(false);setModalData({title:"",start:"",end:"",email:""});};
+ const deleteEvent=async(evtId)=>{try{await fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"calendar_delete_event",locationId:socKey,eventId:evtId})});showToast("🗑️ RDV supprimé","success");}catch{showToast("❌ Erreur","error");}};
+ const moveEvent=async(evtId,newDate)=>{const evt=calEvts.find(e=>e.id===evtId);if(!evt)return;
+  const oldStart=new Date(evt.startTime);const oldEnd=new Date(evt.endTime||oldStart.getTime()+3600000);const diff=newDate.getTime()-new Date(oldStart.toISOString().slice(0,10)).getTime();
+  try{await fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"calendar_update_event",locationId:socKey,eventId:evtId,startTime:new Date(oldStart.getTime()+diff).toISOString(),endTime:new Date(oldEnd.getTime()+diff).toISOString()})});showToast("📅 RDV déplacé","success");}catch{showToast("❌ Erreur","error");}};
+ const genMeetLink=()=>{const code=Math.random().toString(36).slice(2,12);return`https://meet.google.com/${code.slice(0,3)}-${code.slice(3,7)}-${code.slice(7)}`;};
+
+ const hours=Array.from({length:14},(_,i)=>i+7);
+ const evtStyle={padding:"3px 6px",borderRadius:6,background:"linear-gradient(135deg,#14b8a622,#14b8a633)",border:"1px solid #14b8a655",marginBottom:2,cursor:"grab",fontSize:9};
+
+ return <Sect title="📅 Agenda" sub="Calendrier & rendez-vous" right={<div style={{display:"flex",gap:4,alignItems:"center"}}>
+  <Btn small v={viewMode==="week"?"primary":"ghost"} onClick={()=>setViewMode("week")}>Semaine</Btn>
+  <Btn small v={viewMode==="month"?"primary":"ghost"} onClick={()=>setViewMode("month")}>Mois</Btn>
+  <Btn small onClick={()=>{setModalData({title:"",start:"",end:"",email:""});setShowModal(true);}}>+ RDV</Btn>
+ </div>}>
+  {/* Navigation */}
+  <div className="glass-card-static" style={{padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+   <button onClick={()=>nav(-1)} style={{background:"none",border:"none",color:C.acc,cursor:"pointer",fontSize:18,padding:4}}>‹</button>
+   <span style={{fontWeight:800,fontSize:13,color:C.t,fontFamily:FONT_TITLE}}>{viewMode==="week"?`Semaine du ${fmtDay(weekStart)}`:`${fmtMonth(monthStart)}`}</span>
+   <button onClick={()=>nav(1)} style={{background:"none",border:"none",color:C.acc,cursor:"pointer",fontSize:18,padding:4}}>›</button>
+  </div>
+
+  {/* Week view */}
+  {viewMode==="week"&&<div className="glass-card-static" style={{padding:0,overflow:"auto"}}>
+   <div style={{display:"grid",gridTemplateColumns:`60px repeat(7,1fr)`,minWidth:700}}>
+    <div style={{padding:8,borderBottom:`1px solid ${C.brd}`,borderRight:`1px solid ${C.brd}`}}/>
+    {weekDays.map((d,i)=><div key={i} style={{padding:"8px 4px",textAlign:"center",borderBottom:`1px solid ${C.brd}`,borderRight:i<6?`1px solid ${C.brd}`:"none",background:isToday(d)?"rgba(255,170,0,.08)":"transparent"}}>
+     <div style={{fontSize:9,fontWeight:700,color:isToday(d)?C.acc:C.td,textTransform:"uppercase"}}>{d.toLocaleDateString("fr-FR",{weekday:"short"})}</div>
+     <div style={{fontSize:14,fontWeight:900,color:isToday(d)?C.acc:C.t}}>{d.getDate()}</div>
+    </div>)}
+    {hours.map(h=><Fragment key={h}>
+     <div style={{padding:"4px 8px",fontSize:9,color:C.td,fontWeight:600,borderRight:`1px solid ${C.brd}`,borderBottom:`1px solid ${C.brd}22`,textAlign:"right"}}>{String(h).padStart(2,"0")}:00</div>
+     {weekDays.map((d,di)=>{const dayEvts=eventsForDay(d).filter(e=>{const eh=new Date(e.startTime).getHours();return eh===h;});
+      return <div key={di} style={{padding:2,borderRight:di<6?`1px solid ${C.brd}`:"none",borderBottom:`1px solid ${C.brd}22`,minHeight:36,background:isToday(d)?"rgba(255,170,0,.03)":"transparent"}}
+       onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(dragEvt){const target=new Date(d);target.setHours(h,0,0,0);moveEvent(dragEvt,target);setDragEvt(null);}}}>
+       {dayEvts.map(ev=><div key={ev.id} draggable onDragStart={()=>setDragEvt(ev.id)} style={evtStyle}>
+        <div style={{fontWeight:700,color:"#14b8a6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fmtTime(ev.startTime)} {ev.title||ev.contactName||"RDV"}</div>
+        {ev.contactName&&<div style={{color:C.td,fontSize:8}}>{ev.contactName}</div>}
+        <button onClick={(e2)=>{e2.stopPropagation();deleteEvent(ev.id);}} style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:8,padding:0}}>🗑️</button>
+       </div>)}
+      </div>;})}
+    </Fragment>)}
+   </div>
+  </div>}
+
+  {/* Month view */}
+  {viewMode==="month"&&<div className="glass-card-static" style={{padding:8}}>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1}}>
+    {["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"].map(d=><div key={d} style={{padding:6,textAlign:"center",fontSize:9,fontWeight:700,color:C.td}}>{d}</div>)}
+    {monthDays.map((d,i)=>{const inMonth=d.getMonth()===monthStart.getMonth();const evts=eventsForDay(d);
+     return <div key={i} style={{padding:4,minHeight:70,border:`1px solid ${C.brd}22`,borderRadius:6,background:isToday(d)?"rgba(255,170,0,.06)":inMonth?"transparent":"rgba(0,0,0,.2)",opacity:inMonth?1:.4}}
+      onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(dragEvt){const target=new Date(d);target.setHours(9,0,0,0);moveEvent(dragEvt,target);setDragEvt(null);}}}>
+      <div style={{fontSize:11,fontWeight:isToday(d)?900:600,color:isToday(d)?C.acc:C.t,marginBottom:2}}>{d.getDate()}</div>
+      {evts.slice(0,3).map(ev=><div key={ev.id} draggable onDragStart={()=>setDragEvt(ev.id)} style={{padding:"1px 4px",borderRadius:4,background:"#14b8a622",border:"1px solid #14b8a644",marginBottom:1,fontSize:8,color:"#14b8a6",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"grab"}}>
+       {fmtTime(ev.startTime)} {ev.contactName||ev.title||"RDV"}
+      </div>)}
+      {evts.length>3&&<div style={{fontSize:7,color:C.td,textAlign:"center"}}>+{evts.length-3}</div>}
+     </div>;})}
+   </div>
+  </div>}
+
+  {/* Modal création RDV */}
+  {showModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999}} onClick={()=>setShowModal(false)}>
+   <div className="fade-up glass-card-static" style={{padding:24,borderRadius:16,maxWidth:400,width:"90%"}} onClick={e=>e.stopPropagation()}>
+    <div style={{fontWeight:800,fontSize:14,color:C.t,marginBottom:16,fontFamily:FONT_TITLE}}>📅 Nouveau rendez-vous</div>
+    <div style={{display:"flex",flexDirection:"column",gap:10}}>
+     <input value={modalData.title} onChange={e=>setModalData(p=>({...p,title:e.target.value}))} placeholder="Titre du RDV" style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/>
+     <div style={{display:"flex",gap:8}}>
+      <div style={{flex:1}}><label style={{fontSize:9,color:C.td,fontWeight:600}}>Début</label><input type="datetime-local" value={modalData.start} onChange={e=>setModalData(p=>({...p,start:e.target.value}))} style={{width:"100%",padding:"8px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/></div>
+      <div style={{flex:1}}><label style={{fontSize:9,color:C.td,fontWeight:600}}>Fin</label><input type="datetime-local" value={modalData.end} onChange={e=>setModalData(p=>({...p,end:e.target.value}))} style={{width:"100%",padding:"8px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/></div>
+     </div>
+     <input value={modalData.email} onChange={e=>setModalData(p=>({...p,email:e.target.value}))} placeholder="Email participant (optionnel)" style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/>
+     <div style={{display:"flex",gap:8}}>
+      <Btn small onClick={()=>{const link=genMeetLink();setModalData(p=>({...p,title:(p.title?p.title+" — ":"")+link}));showToast("🔗 Lien Meet ajouté","success");}}>🎥 Google Meet</Btn>
+     </div>
+     <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:8}}>
+      <Btn small v="ghost" onClick={()=>setShowModal(false)}>Annuler</Btn>
+      <Btn small onClick={createEvent}>Créer le RDV</Btn>
+     </div>
+    </div>
+   </div>
+  </div>}
+ </Sect>;
+}
+
 export const SB_PORTEUR=[
  {id:"dashboard",icon:"📊",label:"Dashboard",tab:0,accent:C.acc},
  {id:"activite",icon:"⚡",label:"Activité",tab:1,accent:C.b},
@@ -4485,6 +4573,7 @@ export const SB_PORTEUR=[
  {id:"conversations",icon:"💬",label:"Conversations",tab:14,accent:C.b},
  {id:"bank",icon:"🏦",label:"Banque",tab:5,accent:C.g},
  {id:"rapports",icon:"📋",label:"Rapports",tab:13,accent:C.v},
+ {id:"agenda",icon:"📅",label:"Agenda",tab:15,accent:"#14b8a6"},
  {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
 ];
 
