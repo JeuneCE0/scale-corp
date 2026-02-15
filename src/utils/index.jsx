@@ -76,7 +76,37 @@ export const CSS=`@import url('https://fonts.googleapis.com/css2?family=Teachers
 @keyframes typeReveal{from{max-height:0;opacity:0}to{max-height:600px;opacity:1}}
 @media(max-width:768px){.sidebar-desktop{display:none !important}.main-content{margin-left:0 !important}.mobile-header{display:flex !important}.kpi-grid-responsive{grid-template-columns:1fr 1fr !important}.chart-responsive{min-height:180px}.tx-list-mobile .tx-detail{display:none}}
 @media(min-width:769px){.mobile-header{display:none !important}}
-@media(max-width:768px){.admin-grid{grid-template-columns:1fr !important}.admin-card{min-width:auto !important}.admin-stats-row{grid-template-columns:1fr !important;gap:8px !important}.pulse-grid{grid-template-columns:1fr !important}.pulse-left,.pulse-right{display:none !important}.pulse-center{grid-column:1 !important}.main-content div[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr !important}.main-content div[style*="grid-template-columns: 1fr 1fr 1fr"]{grid-template-columns:1fr !important}.main-content div[style*="gridTemplateColumns"]{min-width:0 !important}.admin-responsive-grid{grid-template-columns:1fr !important}.admin-responsive-2col{grid-template-columns:1fr 1fr !important}table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:11px !important}.admin-soc-grid{grid-template-columns:1fr !important}.admin-soc-selector{left:10px !important;top:50px !important}.main-content{padding-top:48px !important}.glass-card,.glass-card-static{min-width:0 !important}.modal-wide{width:90vw !important;max-width:90vw !important}.ai-chat-panel{width:90vw !important;right:0 !important;max-width:none !important}.notif-panel{width:85vw !important;right:0 !important}}
+@media(max-width:768px){.admin-grid{grid-template-columns:1fr !important}.admin-card{min-width:auto !important}.admin-stats-row{grid-template-columns:1fr !important;gap:8px !important}.pulse-grid{grid-template-columns:1fr !important}.pulse-left,.pulse-right{display:none !important}.pulse-center{grid-column:1 !important}.main-content div[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr !important}.main-content div[style*="grid-template-columns: 1fr 1fr 1fr"]{grid-template-columns:1fr !important}.main-content div[style*="gridTemplateColumns"]{min-width:0 !important}.admin-responsive-grid{grid-template-columns:1fr !important}.admin-responsive-2col{grid-template-columns:1fr 1fr !important}table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:11px !important}.admin-soc-grid{grid-template-columns:1fr !important}.admin-soc-selector{left:10px !important;top:50px !important}.main-content{padding-top:48px !important}.glass-card,.glass-card-static{min-width:0 !important}.modal-wide{width:90vw !important;max-width:90vw !important}.ai-chat-panel{width:90vw !important;right:0 !important;max-width:none !important}.notif-panel{width:85vw !important;right:0 !important}
+/* === PORTEUR MOBILE POLISH === */
+.main-content>div{padding-left:12px !important;padding-right:12px !important;max-width:100% !important}
+/* KPI grids: 2 columns on mobile */
+.main-content div[style*="gridTemplateColumns: repeat(auto-fit"]{grid-template-columns:1fr 1fr !important;gap:6px !important}
+.main-content div[style*="gridTemplateColumns: repeat(4"]{grid-template-columns:1fr 1fr !important;gap:6px !important}
+.main-content div[style*="gridTemplateColumns: 1fr 1fr 1fr 1fr"]{grid-template-columns:1fr 1fr !important}
+/* Charts: reduce height */
+.main-content .recharts-wrapper{min-height:160px !important}
+/* Pipeline kanban: vertical on mobile */
+.main-content div[style*="overflowX: auto"]{overflow-x:auto;-webkit-overflow-scrolling:touch}
+/* Inbox items: compact */
+.main-content div[style*="maxHeight:300"]{max-height:200px !important}
+/* Prevent horizontal scroll anywhere */
+html,body{overflow-x:hidden !important}
+.glass-bg{overflow-x:hidden !important}
+/* Modal: full width */
+.glass-modal{width:95vw !important;max-width:95vw !important;margin:8px !important;padding:14px !important}
+/* Hamburger menu: smooth */
+.mobile-header button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+/* Fix KPI font sizes */
+.glass-card-static div[style*="fontSize: 28"]{font-size:20px !important}
+.glass-card-static div[style*="fontSize: 26"]{font-size:18px !important}
+.glass-card-static div[style*="fontSize: 34"]{font-size:22px !important}
+/* Fix flex wrapping on small screens */
+.main-content div[style*="display: flex"]{flex-wrap:wrap}
+.main-content div[style*="display:flex"]{flex-wrap:wrap}
+/* Tables: scrollable */
+.main-content table{min-width:500px}
+.main-content div:has(>table){overflow-x:auto;-webkit-overflow-scrolling:touch}
+}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:${C.brd};border-radius:3px}
 input[type=range]{-webkit-appearance:none;background:${C.brd};height:3px;border-radius:4px;outline:none}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:${C.acc};cursor:pointer;box-shadow:0 2px 6px rgba(255,170,0,.3)}
