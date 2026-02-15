@@ -3187,15 +3187,10 @@ export function ActivitePanel({soc,ghlData,socBankData,clients}){
  const priorityIcon={urgent:"🔴",important:"🟡",normal:"🟢"};
  const priorityOrder={urgent:0,important:1,normal:2};
  const sorted=[...allTasks].sort((a,b)=>(priorityOrder[a.priority]||2)-(priorityOrder[b.priority]||2));
- // Activity feed
+ // Activity feed = completed tasks only
  const feedItems=useMemo(()=>{
-  const all=[];const gd=ghlData?.[soc.id];
-  (gd?.ghlClients||[]).forEach(c=>{const d=new Date(c.at||c.dateAdded||0);all.push({id:"lead_"+c.id,type:"lead",icon:"🟢",desc:`Nouveau lead: ${c.name||c.email||"—"}`,date:d});});
-  (socBankData?.transactions||[]).filter(t=>(t.legs?.[0]?.amount||0)>0).forEach(t=>{const d=new Date(t.created_at||t.date||0);const amt=Math.abs(t.legs?.[0]?.amount||0);all.push({id:"pay_"+t.id,type:"payment",icon:"💰",desc:`${t.legs?.[0]?.description||t.reference||"Paiement"}: +${fmt(amt)}€`,date:d});});
-  (gd?.calendarEvents||[]).forEach(e=>{const d=new Date(e.startTime||0);all.push({id:"rdv_"+e.id,type:"rdv",icon:"📅",desc:`RDV: ${e.title||e.contactName||"—"}`,date:d});});
-  (gd?.opportunities||[]).filter(o=>o.status==="won"||o.status==="lost").forEach(o=>{const d=new Date(o.updatedAt||o.createdAt||0);all.push({id:"deal_"+o.id,type:"deal",icon:o.status==="won"?"🏆":"❌",desc:`Deal ${o.status==="won"?"gagné":"perdu"}: ${o.name||"—"} (${fmt(o.value||0)}€)`,date:d});});
-  return all.sort((a,b)=>b.date-a.date).slice(0,30);
- },[soc.id,ghlData,socBankData]);
+  return sorted.filter(t=>doneIds.includes(t.id)).map(t=>({id:t.id,icon:"✅",desc:t.text,date:new Date()})).slice(0,30);
+ },[sorted,doneIds]);
  // Productivité semaine
  const weekKey=`prod_${soc.id}_${curW()}`;
  const[weekDone,setWeekDone]=useState(()=>{try{return parseInt(localStorage.getItem(weekKey)||"0");}catch{return 0;}});
@@ -3234,7 +3229,7 @@ export function ActivitePanel({soc,ghlData,socBankData,clients}){
   </div>
   {/* Activity feed */}
   <div className="glass-card-static" style={{padding:16}}>
-   <div style={{fontSize:11,fontWeight:800,color:C.b,fontFamily:FONT_TITLE,marginBottom:10}}>📥 ACTIVITÉ RÉCENTE</div>
+   <div style={{fontSize:11,fontWeight:800,color:C.b,fontFamily:FONT_TITLE,marginBottom:10}}>✅ TÂCHES RÉALISÉES</div>
    <div style={{maxHeight:400,overflowY:"auto"}}>
     {feedItems.map(it=>{const isRead=readIds.includes(it.id);return <div key={it.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:isRead?"transparent":"rgba(255,170,0,.03)",borderRadius:8,border:`1px solid ${isRead?C.brd:"rgba(255,170,0,.12)"}`,marginBottom:3}}>
      <span style={{fontSize:14,flexShrink:0}}>{it.icon}</span>
