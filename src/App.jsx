@@ -31,11 +31,11 @@ import { GlobalSearch } from "./components/GlobalSearch.jsx";
 import { SkeletonDashboard, SkeletonKPI, SkeletonCard, SkeletonTable, SkeletonStyles } from "./components/Skeletons.jsx";
 
 /* LAZY-LOADED HEAVY VIEWS */
+// Lazy-loaded components — imported directly from chunk files (not via components.jsx barrel)
 const PulseScreen = lazy(() => import("./components/PulseScreen.jsx").then(m => ({ default: m.PulseScreen })));
 const AICoPilot = lazy(() => import("./components/AI.jsx").then(m => ({ default: m.AICoPilot })));
 const TabCRM = lazy(() => import("./components/CRM.jsx").then(m => ({ default: m.TabCRM })));
 const BankingPanel = lazy(() => import("./components/Banking.jsx").then(m => ({ default: m.BankingPanel })));
-// RapportsPanel is used inside SocieteView, not directly in App — loaded via components.jsx
 
 /* Suspense fallback */
 function LazyFallback() {
@@ -300,6 +300,8 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  const missing=actS.filter(s=>!gr(reps,s.id,cM2));const lateActions=actions.filter(a=>!a.done&&a.deadline<cM2);
  return <div className="glass-bg" style={{display:"flex",minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}</style>
+  <SkeletonStyles/>
+  <GlobalSearch open={showSearch} onClose={()=>setShowSearch(false)} clients={clients} socs={socs} socBank={socBank} ghlData={ghlData} onNavigate={handleSearchNav}/>
   {missedRecap&&<div className="fi" style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)"}} onClick={()=>setMissedRecap(null)}>
    <div onClick={e=>e.stopPropagation()} style={{width:460,maxHeight:"80vh",background:C.card,border:`1px solid ${C.brd}`,borderRadius:20,overflow:"hidden",backdropFilter:"blur(20px)"}}>
     <div style={{padding:"20px 24px",borderBottom:`1px solid ${C.brd}`,background:`linear-gradient(135deg,${C.acc}11,transparent)`}}>
@@ -350,6 +352,9 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     <option value="">👁 Vue société...</option>
     {socs.filter(s=>s.stat==="active"||s.stat==="lancement").map(s=><option key={s.id} value={s.id}>{s.nom} — {s.porteur}</option>)}
    </select>
+   <button onClick={()=>setShowSearch(true)} style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:11,fontWeight:600,fontFamily:FONT,cursor:"pointer",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",gap:5}}>
+    <span>🔍</span><span>Rechercher</span><kbd style={{fontSize:9,padding:"1px 4px",borderRadius:3,background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.08)",color:C.tm}}>⌘K</kbd>
+   </button>
   </div>
   <div style={{padding:"16px 22px 50px",maxWidth:1000,margin:"0 auto"}}>
   {tab===0&&<>
