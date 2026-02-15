@@ -180,7 +180,7 @@ export default async function handler(req, res) {
         return res.status(200).json(await evRes.json());
       }
       case "conversations_list":
-        url = `${GHL_BASE}/conversations/search?locationId=${locationId}&limit=20&sortBy=last_message_date&sortOrder=desc`;
+        url = `${GHL_BASE}/conversations/search?locationId=${locationId}&limit=50&sortBy=last_message_date&sortOrder=desc`;
         break;
       case "conversations_messages": {
         if (!params.conversationId) return res.status(400).json({ error: "Missing conversationId" });

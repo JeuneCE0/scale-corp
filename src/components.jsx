@@ -3484,7 +3484,7 @@ function fmtDate(d){if(!d)return"";try{const dt=new Date(d);const now=new Date()
 
 export function ConversationsPanel({soc}){
  const socKey=soc.ghlLocationId;
- const[convos,setConvos]=useState([]);const[selConvo,setSelConvo]=useState(null);const[msgs,setMsgs]=useState([]);const[msgInput,setMsgInput]=useState("");const[loading,setLoading]=useState(false);const[msgsLoading,setMsgsLoading]=useState(false);const[error,setError]=useState(null);const[search,setSearch]=useState("");const[sendType,setSendType]=useState("SMS");const[sending,setSending]=useState(false);const[sentOk,setSentOk]=useState(false);const[mobileShowThread,setMobileShowThread]=useState(false);
+ const[convos,setConvos]=useState([]);const[selConvo,setSelConvo]=useState(null);const[msgs,setMsgs]=useState([]);const[msgInput,setMsgInput]=useState("");const[loading,setLoading]=useState(false);const[msgsLoading,setMsgsLoading]=useState(false);const[error,setError]=useState(null);const[search,setSearch]=useState("");const[sendType,setSendType]=useState("SMS");const[sending,setSending]=useState(false);const[sentOk,setSentOk]=useState(false);const[mobileShowThread,setMobileShowThread]=useState(false);const[channelFilter,setChannelFilter]=useState("all");
  const msgsEndRef=useRef(null);const listPollRef=useRef(null);const msgsPollRef=useRef(null);
 
  const fetchConvos=useCallback((quiet)=>{if(!socKey)return;if(!quiet){setLoading(true);setError(null);}
@@ -3510,7 +3510,7 @@ export function ConversationsPanel({soc}){
   fetch(`/api/ghl?action=conversation_send&loc=${socKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:sendType,contactId:selConvo.contactId||selConvo.id,message:msgInput})}).then(r=>{if(!r.ok)throw new Error();setMsgs(p=>[...p,{body:msgInput,direction:"outbound",type:sendType,dateAdded:new Date().toISOString()}]);setMsgInput("");setSentOk(true);setTimeout(()=>setSentOk(false),2000);}).catch(()=>{}).finally(()=>setSending(false));
  };
 
- const filtered=useMemo(()=>{const s=search.toLowerCase().trim();if(!s)return convos;return convos.filter(c=>(c.contactName||c.fullName||c.email||"").toLowerCase().includes(s));},[convos,search]);
+ const filtered=useMemo(()=>{let f=convos;if(channelFilter!=="all")f=f.filter(c=>(c.type||c.lastMessageType||"").toLowerCase().includes(channelFilter.toLowerCase()));const s=search.toLowerCase().trim();if(s)f=f.filter(c=>(c.contactName||c.fullName||c.email||"").toLowerCase().includes(s));return f;},[convos,search,channelFilter]);
  const sorted=useMemo(()=>[...filtered].sort((a,b)=>new Date(b.lastMessageDate||b.dateUpdated||0)-new Date(a.lastMessageDate||a.dateUpdated||0)),[filtered]);
  const totalUnread=convos.reduce((a,c)=>a+(c.unreadCount||0),0);
 
@@ -3523,6 +3523,7 @@ export function ConversationsPanel({soc}){
     {totalUnread>0&&<span style={{fontSize:9,padding:"2px 7px",borderRadius:10,background:C.b,color:"#fff",fontWeight:700}}>{totalUnread}</span>}
    </div>
    <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Rechercher..." style={{width:"100%",padding:"6px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/>
+   <div style={{display:"flex",gap:3,marginTop:6,flexWrap:"wrap"}}>{[{k:"all",l:"Tous",icon:"💬"},{k:"SMS",l:"SMS",icon:"📱"},{k:"Email",l:"Email",icon:"📧"},{k:"IG",l:"Insta",icon:"📸"},{k:"FB",l:"Messenger",icon:"👤"},{k:"WhatsApp",l:"WA",icon:"💬"}].map(ch=><button key={ch.k} onClick={()=>setChannelFilter(ch.k)} style={{padding:"3px 7px",borderRadius:6,border:`1px solid ${channelFilter===ch.k?C.acc+"66":C.brd}`,background:channelFilter===ch.k?C.accD:"transparent",color:channelFilter===ch.k?C.acc:C.td,fontSize:9,fontWeight:600,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:2}}><span style={{fontSize:10}}>{ch.icon}</span>{ch.l}</button>)}</div>
   </div>
   <div style={{flex:1,overflow:"auto"}}>
    {loading&&<div style={{padding:20,textAlign:"center",color:C.td,fontSize:11}}>Chargement...</div>}
