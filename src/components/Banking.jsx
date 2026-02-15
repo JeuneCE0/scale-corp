@@ -19,20 +19,21 @@ export function categorizeTransaction(tx){
  const legDesc=((tx.legs?.[0]?.description||"")+"").toLowerCase();
  const hasCounterparty=!!tx.legs?.[0]?.counterparty;const isSingleLeg=(tx.legs||[]).length===1;
  const isRealDividend=(/dividend/i.test(tx.reference||"")&&hasCounterparty&&isSingleLeg)||(/scale\s*corp/i.test(legDesc)&&hasCounterparty&&isSingleLeg)||(/scale\s*corp/i.test(ref));
- if(isRealDividend)return TX_CATEGORIES[10];
+ const findCat=(id)=>TX_CATEGORIES.find(c=>c.id===id)||TX_CATEGORIES[8];
+ if(isRealDividend)return findCat("dividendes");
  // Internal pocket transfers (not real expenses) — treat as internal transfers
- if(tx.type==="transfer"&&/to eur (sol|publicit|prestataire|abonnement|anthony|jimmy|principal)/i.test(ref))return TX_CATEGORIES[7];
- if(tx.type==="transfer"&&/echange to eur|exchange to eur/i.test(ref))return TX_CATEGORIES[7];
- if(amt>0)return TX_CATEGORIES[1];
- if(/loyer|rent/.test(ref))return TX_CATEGORIES[2];
- if(/facebook|google ads|meta ads|meta|tiktok|pub/.test(ref))return TX_CATEGORIES[3];
- if(/lecosysteme|l.{0,2}ecosyst[eè]me/i.test(ref))return TX_CATEGORIES[4];
- if(/company.*pro.*plan|plan.*fee/i.test(ref))return TX_CATEGORIES[4];
- if(/stripe|notion|slack|ghl|zapier|skool|adobe|figma|revolut|gohighlevel|highlevel|canva|chatgpt|openai|anthropic|vercel|github|zoom|brevo|make\.com|clickup|airtable/.test(ref))return TX_CATEGORIES[4];
- if(/lucien|salaire|salary|freelance|prestataire|prestation/.test(ref))return TX_CATEGORIES[6];
- if(/fynovates|fiscalit|tax|tva|impot|imposition|urssaf|cfe|cotisation/i.test(ref))return TX_CATEGORIES[8];
- if(tx.type==="transfer")return TX_CATEGORIES[7];
- return TX_CATEGORIES[9];
+ if(tx.type==="transfer"&&/to eur (sol|publicit|prestataire|abonnement|anthony|jimmy|principal)/i.test(ref))return findCat("transfert");
+ if(tx.type==="transfer"&&/echange to eur|exchange to eur/i.test(ref))return findCat("transfert");
+ if(amt>0)return findCat("revenus");
+ if(/loyer|rent/.test(ref))return findCat("loyer");
+ if(/facebook|google ads|meta ads|meta|tiktok|pub/.test(ref))return findCat("pub");
+ if(/lecosysteme|l.{0,2}ecosyst[eè]me/i.test(ref))return findCat("abonnements");
+ if(/company.*pro.*plan|plan.*fee/i.test(ref))return findCat("abonnements");
+ if(/stripe|notion|slack|ghl|zapier|skool|adobe|figma|revolut|gohighlevel|highlevel|canva|chatgpt|openai|anthropic|vercel|github|zoom|brevo|make\.com|clickup|airtable/.test(ref))return findCat("abonnements");
+ if(/lucien|salaire|salary|freelance|prestataire|prestation/.test(ref))return findCat("equipe");
+ if(/fynovates|fiscalit|tax|tva|impot|imposition|urssaf|cfe|cotisation/i.test(ref))return findCat("fiscalite");
+ if(tx.type==="transfer")return findCat("transfert");
+ return findCat("autres");
 }
 export function BankingPanel({revData,onSync,compact,clients:allClients2=[]}){
  const cachedRev=(!revData||!revData.accounts)?cacheGet("rev_eco"):null;
