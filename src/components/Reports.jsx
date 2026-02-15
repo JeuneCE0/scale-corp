@@ -10,166 +10,497 @@ import {
   pf, prevM, project, revFinancials, runway, sSet, sbUpsert, simH, sinceLbl, sinceMonths, slackSend, subMonthly, teamMonthly,
   uid, autoCategorize,
 } from "../shared.jsx";
+import { categorizeTransaction } from "./BankingPanel.jsx";
+import { TX_CATEGORIES } from "../components.jsx";
 
 
-/* RAPPORTS PANEL */
-export function RapportsPanel({soc,socBankData,ghlData,clients,reps,allM,hold}){
- const[expandedMonth,setExpandedMonth]=useState(null);
- const[notesMap,setNotesMap]=useState(()=>{try{return JSON.parse(localStorage.getItem(`scRapportNotes_${soc?.id}`)||"{}");}catch{return{};}});
- const saveNote=(month,text)=>{const next={...notesMap,[month]:text};setNotesMap(next);try{localStorage.setItem(`scRapportNotes_${soc?.id}`,JSON.stringify(next));}catch{}};
- const cm=curM();
- const months=useMemo(()=>{const ms=[];let m=cm;for(let i=0;i<12;i++){ms.push(m);m=prevM(m);}return ms;},[cm]);
- const getMonthData=(month)=>{
-  const txs=(socBankData?.transactions||[]).filter(t=>(t.created_at||"").startsWith(month));
-  const excl=EXCLUDED_ACCOUNTS[soc?.id]||[];
-  const filtered=txs.filter(t=>!isExcludedTx(t,excl));
-  const ca=filtered.filter(t=>(t.legs?.[0]?.amount||0)>0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0);
-  const charges=Math.abs(filtered.filter(t=>(t.legs?.[0]?.amount||0)<0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0));
-  const marge=ca-charges;
-  // Top 5 clients by collected
-  const clientTotals={};filtered.filter(t=>(t.legs?.[0]?.amount||0)>0).forEach(t=>{const desc=(t.legs?.[0]?.description||t.reference||"").trim();clientTotals[desc]=(clientTotals[desc]||0)+(t.legs?.[0]?.amount||0);});
-  const topClients=Object.entries(clientTotals).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  // Top 5 expenses
-  const expTotals={};filtered.filter(t=>(t.legs?.[0]?.amount||0)<0).forEach(t=>{const desc=(t.legs?.[0]?.description||t.reference||"").trim();expTotals[desc]=(expTotals[desc]||0)+Math.abs(t.legs?.[0]?.amount||0);});
-  const topExpenses=Object.entries(expTotals).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  // Clients won/lost
-  const gd=ghlData?.[soc.id];
-  const wonThisMonth=(gd?.opportunities||[]).filter(o=>o.status==="won"&&(o.updatedAt||o.createdAt||"").startsWith(month)).length;
-  const lostThisMonth=(gd?.opportunities||[]).filter(o=>o.status==="lost"&&(o.updatedAt||o.createdAt||"").startsWith(month)).length;
-  return{ca,charges,marge,topClients,topExpenses,wonThisMonth,lostThisMonth,treso:socBankData?.balance||0,txCount:filtered.length};
- };
- // MRR tracking
- const activeClients=(clients||[]).filter(c=>c.socId===soc.id&&c.status==="active"&&c.billing);
- const mrrMonths=months.slice(0,6).reverse();
- const mrrData=useMemo(()=>{
-  return activeClients.map(cl=>{
-   const cn=(cl.name||"").toLowerCase().trim();
-   const monthPayments={};
-   mrrMonths.forEach(mo=>{
-    const txs=(socBankData?.transactions||[]).filter(t=>(t.created_at||"").startsWith(mo));
-    const found=txs.some(t=>{const leg=t.legs?.[0];if(!leg||leg.amount<=0)return false;const desc=(leg.description||t.reference||"").toLowerCase();return cn.length>2&&desc.includes(cn);});
-    monthPayments[mo]=found;
-   });
-   return{client:cl,payments:monthPayments,billing:clientMonthlyRevenue(cl)};
+/* ============ HELPER: compute all report data for a given month ============ */
+function computeReportData(soc, month, socBankData, ghlData, clients, reps) {
+  const excl = EXCLUDED_ACCOUNTS[soc?.id] || [];
+  const allTxs = (socBankData?.transactions || []);
+  const txs = allTxs.filter(t => (t.created_at || "").startsWith(month));
+  const filtered = txs.filter(t => !isExcludedTx(t, excl));
+
+  // txCatOverrides from localStorage
+  let txCatOverrides = {};
+  try { txCatOverrides = JSON.parse(localStorage.getItem(`scTxCat_${soc?.id}`)) || {}; } catch {}
+  const getCat = (tx) => {
+    if (txCatOverrides[tx.id]) {
+      const found = TX_CATEGORIES.find(c => c.id === txCatOverrides[tx.id]);
+      if (found) return found;
+    }
+    return categorizeTransaction(tx);
+  };
+
+  // FINANCES
+  const inTxs = filtered.filter(t => (t.legs?.[0]?.amount || 0) > 0);
+  const outTxs = filtered.filter(t => (t.legs?.[0]?.amount || 0) < 0);
+  const ca = inTxs.reduce((a, t) => a + (t.legs?.[0]?.amount || 0), 0);
+  const charges = Math.abs(outTxs.reduce((a, t) => a + (t.legs?.[0]?.amount || 0), 0));
+  const marge = ca - charges;
+  const margePct = ca > 0 ? Math.round(marge / ca * 100) : 0;
+  const treso = socBankData?.balance || 0;
+
+  // Category breakdown for expenses
+  const catBreakdown = {};
+  outTxs.forEach(t => {
+    const cat = getCat(t);
+    const label = cat?.label || "📦 Autres dépenses";
+    catBreakdown[label] = (catBreakdown[label] || 0) + Math.abs(t.legs?.[0]?.amount || 0);
   });
- },[activeClients,socBankData,mrrMonths]);
- const mrrTheorique=activeClients.reduce((a,c)=>a+clientMonthlyRevenue(c),0);
- return <div className="fu">
-  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-   <div><h2 style={{color:C.t,fontSize:13,fontWeight:800,margin:0,fontFamily:FONT_TITLE}}>📋 RAPPORTS MENSUELS</h2><p style={{color:C.td,fontSize:10,margin:"2px 0 0"}}>Bilans financiers auto-générés</p></div>
-   <ReplayMensuel soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}} clients={clients} ghlData={ghlData}/>
-  </div>
-  {months.map((month,mi)=>{
-   const d=getMonthData(month);const isExpanded=expandedMonth===month||mi===0;const isCurrent=mi===0;
-   return <div key={month} className={`glass-card-static fu d${Math.min(mi+1,6)}`} style={{padding:isCurrent?20:14,marginBottom:10,cursor:isCurrent?undefined:"pointer"}} onClick={!isCurrent?()=>setExpandedMonth(expandedMonth===month?null:month):undefined}>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:isExpanded?12:0}}>
-     <div style={{display:"flex",alignItems:"center",gap:8}}>
-      <span style={{fontSize:isCurrent?16:12}}>{isCurrent?"📊":"📄"}</span>
-      <div>
-       <div style={{fontWeight:800,fontSize:isCurrent?14:12,color:C.t}}>{ml(month)}{isCurrent?" (en cours)":""}</div>
-       {!isExpanded&&<div style={{fontSize:9,color:C.td}}>CA {fmt(d.ca)}€ · Charges {fmt(d.charges)}€ · Marge {fmt(d.marge)}€ ({d.ca>0?Math.round(d.marge/d.ca*100):0}%)</div>}
-      </div>
-     </div>
-     {!isCurrent&&<span style={{fontSize:11,color:C.td}}>{isExpanded?"▲":"▼"}</span>}
-    </div>
-    {isExpanded&&<>
-     {/* KPIs */}
-     <div className="rg4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:14}}>
-      <div style={{padding:10,background:C.gD,borderRadius:8,textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.g}}>{fmt(d.ca)}€</div><div style={{fontSize:8,color:C.g,fontWeight:600}}>CA</div></div>
-      <div style={{padding:10,background:C.rD,borderRadius:8,textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.r}}>{fmt(d.charges)}€</div><div style={{fontSize:8,color:C.r,fontWeight:600}}>Charges</div></div>
-      <div style={{padding:10,background:d.marge>=0?C.gD:C.rD,borderRadius:8,textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:d.marge>=0?C.g:C.r}}>{fmt(d.marge)}€</div><div style={{fontSize:10,fontWeight:700,color:d.marge>=0?C.g:C.r,marginTop:2}}>{d.ca>0?Math.round(d.marge/d.ca*100):0}%</div><div style={{fontSize:8,color:C.td,fontWeight:600}}>Marge bénéficiaire</div></div>
-      <div style={{padding:10,background:C.bD,borderRadius:8,textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.b}}>{d.txCount}</div><div style={{fontSize:8,color:C.td,fontWeight:600}}>Transactions</div></div>
-     </div>
-     {/* Top clients + expenses side by side */}
-     <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-      <div>
-       <div style={{fontSize:9,fontWeight:700,color:C.g,marginBottom:6}}>TOP CLIENTS</div>
-       {d.topClients.length===0?<div style={{fontSize:10,color:C.td}}>—</div>:d.topClients.map(([n,v],i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:`1px solid ${C.brd}08`}}><span style={{fontSize:10,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"70%"}}>{n}</span><span style={{fontSize:10,fontWeight:700,color:C.g}}>{fmt(v)}€</span></div>)}
-      </div>
-      <div>
-       <div style={{fontSize:9,fontWeight:700,color:C.r,marginBottom:6}}>TOP DÉPENSES</div>
-       {d.topExpenses.length===0?<div style={{fontSize:10,color:C.td}}>—</div>:d.topExpenses.map(([n,v],i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:`1px solid ${C.brd}08`}}><span style={{fontSize:10,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"70%"}}>{n}</span><span style={{fontSize:10,fontWeight:700,color:C.r}}>{fmt(v)}€</span></div>)}
-      </div>
-     </div>
-     {/* Won/lost */}
-     <div style={{display:"flex",gap:12,marginBottom:12}}>
-      <span style={{fontSize:10,color:C.g,fontWeight:600}}>✅ {d.wonThisMonth} client{d.wonThisMonth>1?"s":""} gagné{d.wonThisMonth>1?"s":""}</span>
-      <span style={{fontSize:10,color:C.r,fontWeight:600}}>❌ {d.lostThisMonth} perdu{d.lostThisMonth>1?"s":""}</span>
-     </div>
-     {/* Objectifs vs Réalité */}
-     {(soc.obj||soc.monthlyGoal)>0&&(()=>{const obj=soc.obj||soc.monthlyGoal||0;const atteint=d.ca>=obj;return <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:atteint?C.gD:C.rD,borderRadius:8,marginBottom:12}}>
-      <span style={{fontSize:14}}>{atteint?"✅":"❌"}</span>
-      <div style={{flex:1}}><div style={{fontSize:10,fontWeight:700,color:atteint?C.g:C.r}}>{atteint?"Objectif atteint":"Non atteint"}</div><div style={{fontSize:9,color:C.td}}>Objectif: {fmt(obj)}€ · Réalisé: {fmt(d.ca)}€ ({obj>0?Math.round(d.ca/obj*100):0}%)</div></div>
-     </div>;})()}
-     {/* Publicité Meta */}
-     {(()=>{let metaD=null;try{metaD=JSON.parse(localStorage.getItem(`metaAds_${soc.id}_${month}`));}catch{}
-      if(!metaD||!metaD.spend)return null;
-      const sp3=metaD.spend||0,lds3=metaD.leads||0,rev3=metaD.revenue||0;
-      const cpl3=lds3>0?sp3/lds3:0,roas3=sp3>0?rev3/sp3:0;
-      let metaPD=null;try{metaPD=JSON.parse(localStorage.getItem(`metaAds_${soc.id}_${prevM(month)}`));}catch{}
-      const pCpl3=metaPD&&metaPD.leads>0?metaPD.spend/metaPD.leads:0;
-      const pRoas3=metaPD&&metaPD.spend>0?metaPD.revenue/metaPD.spend:0;
-      return <div style={{padding:10,background:C.accD,borderRadius:8,marginBottom:12,border:`1px solid ${C.acc}22`}}>
-       <div style={{fontSize:9,fontWeight:700,color:C.acc,marginBottom:6}}>📣 PUBLICITÉ META</div>
-       <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-        <span style={{fontSize:10,fontWeight:600}}>Budget: {fmt(sp3)}€</span>
-        <span style={{fontSize:10,fontWeight:600}}>Leads: {lds3}</span>
-        <span style={{fontSize:10,fontWeight:600,color:cpl3>0&&pCpl3>0?(cpl3<=pCpl3?C.g:C.r):C.t}}>CPL: {cpl3.toFixed(2)}€{pCpl3>0?` (${cpl3<=pCpl3?"↓":"↑"})`:""}</span>
-        <span style={{fontSize:10,fontWeight:600,color:roas3>=2?C.g:roas3>=1?C.o:C.r}}>ROAS: {roas3.toFixed(2)}x{pRoas3>0?` (${roas3>=pRoas3?"↑":"↓"})`:""}</span>
-       </div>
-      </div>;
-     })()}
-     {/* Export PDF */}
-     <button onClick={(e)=>{e.stopPropagation();const logo=hold?.brand?.logoUrl||"";const treso=socBankData?.balance||0;const activeClList=(clients||[]).filter(c=>c.socId===soc.id&&c.status==="active");const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rapport ${ml(month)} — ${soc.nom}</title><style>body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px 50px;color:#1a1a1a;max-width:800px;margin:0 auto;line-height:1.5}h1{color:#FFAA00;font-size:26px;margin-bottom:4px;border-bottom:3px solid #FFAA00;padding-bottom:8px}h2{color:#333;font-size:15px;margin-top:24px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px}.sub{color:#666;font-size:13px;margin-bottom:24px}.kpis{display:flex;gap:12px;margin:20px 0}.kpi{flex:1;padding:16px;background:#f8f8f8;border-radius:10px;text-align:center;border:1px solid #eee}.kpi .val{font-size:24px;font-weight:900}.kpi .lbl{font-size:11px;color:#666;margin-top:4px}table{width:100%;border-collapse:collapse;margin-top:8px}td,th{padding:8px 12px;border-bottom:1px solid #eee;text-align:left;font-size:12px}th{background:#f8f8f8;font-weight:700;color:#333;font-size:11px;text-transform:uppercase;letter-spacing:.5px}.footer{margin-top:40px;padding-top:16px;border-top:1px solid #ddd;color:#999;font-size:10px;text-align:center}@media print{body{padding:20px 30px}@page{margin:15mm}}</style></head><body>${logo?`<img src="${logo}" style="height:48px;margin-bottom:16px"/>`:""}
-<h1>Rapport ${ml(month)}</h1><p class="sub">${soc.nom} — ${soc.porteur} · ${soc.act}</p>
-<div class="kpis"><div class="kpi"><div class="val" style="color:#22c55e">${fmt(d.ca)}€</div><div class="lbl">Chiffre d'affaires</div></div><div class="kpi"><div class="val" style="color:#ef4444">${fmt(d.charges)}€</div><div class="lbl">Charges</div></div><div class="kpi"><div class="val" style="color:${d.marge>=0?"#22c55e":"#ef4444"}">${fmt(d.marge)}€</div><div class="lbl">Marge</div></div><div class="kpi"><div class="val" style="color:#3b82f6">${fmt(treso)}€</div><div class="lbl">Trésorerie</div></div></div>
-${(soc.obj||0)>0?`<div style="padding:12px 16px;background:${d.ca>=(soc.obj||0)?"#dcfce7;border:1px solid #bbf7d0":"#fee2e2;border:1px solid #fecaca"};border-radius:8px;margin:16px 0"><strong>${d.ca>=(soc.obj||0)?"✅ Objectif atteint":"❌ Objectif non atteint"}</strong> — ${fmt(d.ca)}€ / ${fmt(soc.obj)}€ (${Math.round(d.ca/(soc.obj||1)*100)}%)</div>`:""}
-<h2>Top Clients</h2><table><tr><th>Client</th><th style="text-align:right">Montant</th></tr>${d.topClients.map(([n,v])=>`<tr><td>${n}</td><td style="font-weight:700;color:#22c55e;text-align:right">${fmt(v)}€</td></tr>`).join("")}${d.topClients.length===0?"<tr><td colspan='2' style='color:#999'>Aucun</td></tr>":""}</table>
-<h2>Top Dépenses</h2><table><tr><th>Dépense</th><th style="text-align:right">Montant</th></tr>${d.topExpenses.map(([n,v])=>`<tr><td>${n}</td><td style="font-weight:700;color:#ef4444;text-align:right">${fmt(v)}€</td></tr>`).join("")}${d.topExpenses.length===0?"<tr><td colspan='2' style='color:#999'>Aucune</td></tr>":""}</table>
-${activeClList.length>0?`<h2>Clients actifs (${activeClList.length})</h2><table><tr><th>Client</th><th>Type</th><th style="text-align:right">€/mois</th></tr>${activeClList.slice(0,15).map(c=>`<tr><td>${c.name||"—"}</td><td>${c.billing?.type||"—"}</td><td style="text-align:right;font-weight:600">${fmt(clientMonthlyRevenue(c))}€</td></tr>`).join("")}</table>`:""}
-<div style="display:flex;gap:16px;margin-top:16px"><span style="font-size:12px;color:#22c55e;font-weight:600">✅ ${d.wonThisMonth} client${d.wonThisMonth>1?"s":""} gagné${d.wonThisMonth>1?"s":""}</span><span style="font-size:12px;color:#ef4444;font-weight:600">❌ ${d.lostThisMonth} perdu${d.lostThisMonth>1?"s":""}</span></div>
-<div class="footer">MRR théorique: ${fmt(mrrTheorique)}€/mois · ${d.txCount} transactions · Généré le ${new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</div></body></html>`;const w=window.open("","_blank");w.document.write(html);w.document.close();w.focus();setTimeout(()=>w.print(),500);}} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${C.acc}`,background:C.accD,color:C.acc,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:FONT,marginBottom:12,display:"inline-flex",alignItems:"center",gap:4}}>📄 Exporter PDF</button>
-     {/* Notes per month */}
-     <div style={{marginTop:8}}>
-      <label style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:.5,display:"block",marginBottom:4}}>📝 NOTES DU MOIS</label>
-      <textarea value={notesMap[month]||""} onChange={e=>saveNote(month,e.target.value)} placeholder="Ajouter vos observations, commentaires..." style={{width:"100%",minHeight:isCurrent?80:50,padding:10,borderRadius:8,border:`1px solid ${C.brd}`,background:"rgba(6,6,11,0.6)",color:C.t,fontSize:11,fontFamily:FONT,outline:"none",resize:"vertical"}}/>
-     </div>
-    </>}
-   </div>;
-  })}
-  {/* Objectifs summary */}
-  {(soc.obj||soc.monthlyGoal)>0&&(()=>{const obj=soc.obj||soc.monthlyGoal||0;const results=months.map(mo=>getMonthData(mo)).filter(d=>d.txCount>0);const atteints=results.filter(d=>d.ca>=obj).length;const total=results.length;const pctObj=total>0?Math.round(atteints/total*100):0;return <div className="glass-card-static" style={{padding:16,marginTop:12,marginBottom:4,display:"flex",alignItems:"center",gap:12}}>
-   <span style={{fontSize:24}}>{pctObj>=70?"🏆":pctObj>=40?"📊":"📉"}</span>
-   <div><div style={{fontWeight:800,fontSize:12,color:pctObj>=70?C.g:pctObj>=40?C.o:C.r}}>Objectifs atteints: {atteints}/{total} mois ({pctObj}%)</div><div style={{fontSize:9,color:C.td}}>Objectif mensuel: {fmt(obj)}€</div></div>
-  </div>;})()}
-  {/* MRR TRACKING */}
-  {activeClients.length>0&&<div className="glass-card-static" style={{padding:20,marginTop:16}}>
-   <div style={{fontSize:9,fontWeight:700,color:C.v,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📊 SUIVI MRR — RÉCURRENCE CLIENTS</div>
-   <div style={{overflowX:"auto"}}>
-    <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
-     <thead><tr>
-      <th style={{textAlign:"left",padding:"6px 8px",borderBottom:`1px solid ${C.brd}`,color:C.td,fontWeight:700,fontSize:9}}>Client</th>
-      <th style={{textAlign:"right",padding:"6px 4px",borderBottom:`1px solid ${C.brd}`,color:C.td,fontWeight:700,fontSize:8}}>€/m</th>
-      {mrrMonths.map(mo=><th key={mo} style={{textAlign:"center",padding:"6px 4px",borderBottom:`1px solid ${C.brd}`,color:C.td,fontWeight:700,fontSize:8,minWidth:50}}>{ml(mo).split(" ")[0]}</th>)}
-     </tr></thead>
-     <tbody>
-      {mrrData.map(({client:cl,payments,billing})=><tr key={cl.id}>
-       <td style={{padding:"5px 8px",borderBottom:`1px solid ${C.brd}08`,fontWeight:600,color:C.t,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cl.name}</td>
-       <td style={{padding:"5px 4px",borderBottom:`1px solid ${C.brd}08`,textAlign:"right",fontWeight:700,color:C.acc}}>{fmt(billing)}€</td>
-       {mrrMonths.map(mo=><td key={mo} style={{padding:"5px 4px",borderBottom:`1px solid ${C.brd}08`,textAlign:"center"}}>{payments[mo]?<span style={{color:C.g}}>✅</span>:<span style={{color:C.r,background:C.rD,padding:"1px 4px",borderRadius:4}}>❌</span>}</td>)}
-      </tr>)}
-      <tr style={{fontWeight:800}}>
-       <td style={{padding:"8px 8px",color:C.t}}>MRR Théorique</td>
-       <td style={{padding:"8px 4px",textAlign:"right",color:C.acc}}>{fmt(mrrTheorique)}€</td>
-       {mrrMonths.map(mo=>{const real=mrrData.filter(d=>d.payments[mo]).reduce((a,d)=>a+d.billing,0);return <td key={mo} style={{padding:"8px 4px",textAlign:"center",color:real>=mrrTheorique?C.g:C.r,fontSize:10}}>{fmt(real)}€</td>;})}
-      </tr>
-     </tbody>
-    </table>
-   </div>
-  </div>}
- </div>;
+  const catData = Object.entries(catBreakdown).sort((a, b) => b[1] - a[1]);
+
+  // Top encaissements
+  const inGrouped = {};
+  inTxs.forEach(t => {
+    const desc = (t.legs?.[0]?.description || t.reference || "").trim() || "Inconnu";
+    inGrouped[desc] = (inGrouped[desc] || 0) + (t.legs?.[0]?.amount || 0);
+  });
+  const topEncaissements = Object.entries(inGrouped).sort((a, b) => b[1] - a[1]).slice(0, 7);
+
+  // Top dépenses
+  const outGrouped = {};
+  outTxs.forEach(t => {
+    const desc = (t.legs?.[0]?.description || t.reference || "").trim() || "Inconnu";
+    outGrouped[desc] = (outGrouped[desc] || 0) + Math.abs(t.legs?.[0]?.amount || 0);
+  });
+  const topDepenses = Object.entries(outGrouped).sort((a, b) => b[1] - a[1]).slice(0, 7);
+
+  // SALES
+  const gd = ghlData?.[soc?.id] || {};
+  const opps = gd.opportunities || [];
+  const calEvents = gd.calendarEvents || [];
+  const ghlCl = gd.ghlClients || [];
+
+  const prospectsMonth = ghlCl.filter(c => (c.dateAdded || c.createdAt || "").startsWith(month)).length;
+  const myCl = (clients || []).filter(c => c.socId === soc?.id);
+  const activeCl = myCl.filter(c => c.status === "active");
+  const churnedCl = myCl.filter(c => c.status === "churned" || c.status === "lost");
+
+  const callsMonth = calEvents.filter(e => (e.startTime || "").startsWith(month)).length;
+  const wonDeals = opps.filter(o => o.status === "won" && (o.updatedAt || o.createdAt || "").startsWith(month));
+  const closings = wonDeals.length;
+  const lostDeals = opps.filter(o => o.status === "lost" && (o.updatedAt || o.createdAt || "").startsWith(month)).length;
+
+  const conversionRate = prospectsMonth > 0 ? Math.round(closings / prospectsMonth * 100) : 0;
+  const avgClientValue = activeCl.length > 0 ? Math.round(activeCl.reduce((a, c) => a + clientMonthlyRevenue(c), 0) / activeCl.length) : 0;
+
+  // No-show
+  const noShowVal = parseInt(localStorage.getItem(`salesNoShow_${soc?.id}_${month}`) || "0");
+  const noShowPct = callsMonth > 0 ? Math.round(noShowVal / callsMonth * 100) : 0;
+
+  // Pipeline valorisation
+  const openOpps = opps.filter(o => o.status === "open");
+  const pipelineTotal = openOpps.reduce((a, o) => a + (o.monetaryValue || o.value || 0), 0);
+
+  // Funnel stages (try to match common stage names)
+  const pipelines = gd.pipelines || [];
+  const stages = pipelines.flatMap(p => p.stages || []);
+  const stageMap = {};
+  stages.forEach(st => { stageMap[st.id] = st.name; });
+  const funnelLabels = ["Prospect", "Appel Découverte", "Appel Intégration", "Client"];
+  const funnel = {};
+  openOpps.forEach(o => {
+    const sName = (stageMap[o.pipelineStageId] || o.stageName || "").toLowerCase();
+    if (sName.includes("prospect") || sName.includes("lead") || sName.includes("nouveau")) funnel["Prospect"] = (funnel["Prospect"] || 0) + 1;
+    else if (sName.includes("découverte") || sName.includes("discovery") || sName.includes("appel 1") || sName.includes("qualifying")) funnel["Appel Découverte"] = (funnel["Appel Découverte"] || 0) + 1;
+    else if (sName.includes("intégration") || sName.includes("closing") || sName.includes("appel 2") || sName.includes("négociation")) funnel["Appel Intégration"] = (funnel["Appel Intégration"] || 0) + 1;
+    else if (sName.includes("client") || sName.includes("won") || sName.includes("gagné")) funnel["Client"] = (funnel["Client"] || 0) + 1;
+    else funnel["Prospect"] = (funnel["Prospect"] || 0) + 1;
+  });
+  // Add won deals to Client count
+  funnel["Client"] = (funnel["Client"] || 0) + closings;
+
+  // Top 5 clients (by bank collected)
+  const top5Clients = activeCl.map(cl => {
+    const cn = (cl.name || "").toLowerCase().trim();
+    const matchedTxs = allTxs.filter(tx => {
+      const leg = tx.legs?.[0];
+      if (!leg || leg.amount <= 0) return false;
+      const desc = (leg.description || tx.reference || "").toLowerCase();
+      if (cn.length > 2 && desc.includes(cn)) return true;
+      const pts = cn.split(/\s+/).filter(p => p.length > 2);
+      return pts.length >= 2 && pts.every(p => desc.includes(p));
+    });
+    const cumule = matchedTxs.reduce((a, tx) => a + (tx.legs?.[0]?.amount || 0), 0);
+    const firstTx = matchedTxs.length > 0 ? matchedTxs.reduce((a, tx) => {
+      const d = new Date(tx.created_at || 0).getTime();
+      return d < a ? d : a;
+    }, Infinity) : Date.now();
+    const months2 = Math.max(1, Math.ceil((Date.now() - firstTx) / (30.44 * 864e5)));
+    const avgMois = months2 > 0 ? Math.round(cumule / months2) : 0;
+    return { name: cl.name, cumule, duree: months2, avgMois, monthly: clientMonthlyRevenue(cl) };
+  }).sort((a, b) => b.cumule - a.cumule).slice(0, 5);
+
+  // PUBLICITÉ
+  let metaAds = null;
+  try { metaAds = JSON.parse(localStorage.getItem(`metaAds_${soc?.id}_${month}`)); } catch {}
+  const adSpend = metaAds?.spend || 0;
+  const adImpressions = metaAds?.impressions || 0;
+  const adClicks = metaAds?.clicks || 0;
+  const adLeads = metaAds?.leads || 0;
+  const adRevenue = metaAds?.revenue || 0;
+  const cpl = adLeads > 0 ? adSpend / adLeads : 0;
+  const cpc = adClicks > 0 ? adSpend / adClicks : 0;
+  const cpm = adImpressions > 0 ? (adSpend / adImpressions) * 1000 : 0;
+  // Appels bookés Ads: estimate from calendar events that match ad-sourced leads (approximate: use adLeads as proxy for booked calls from ads if no better data)
+  const adsCallsBooked = metaAds?.callsBooked || Math.min(adLeads, callsMonth);
+  const costPerCall = adsCallsBooked > 0 ? adSpend / adsCallsBooked : 0;
+  const roas = adSpend > 0 ? adRevenue / adSpend : 0;
+
+  return {
+    // Finances
+    ca, charges, marge, margePct, treso, catData, topEncaissements, topDepenses, txCount: filtered.length,
+    // Sales
+    prospectsMonth, activeCl: activeCl.length, churnedCl: churnedCl.length,
+    callsMonth, closings, lostDeals, conversionRate, avgClientValue,
+    noShowVal, noShowPct, pipelineTotal, funnel, funnelLabels, top5Clients,
+    // Pub
+    hasAds: !!metaAds && adSpend > 0, adSpend, adImpressions, adClicks, adLeads, adRevenue,
+    cpl, cpc, cpm, adsCallsBooked, costPerCall, roas,
+    // Meta
+    wonDeals: closings, lostMonth: lostDeals,
+  };
 }
-/* SYNERGIES MAP */
+
+/* ============ SECTION RENDERER (screen) ============ */
+const SectionTitle = ({ icon, title }) => (
+  <div style={{ fontSize: 11, fontWeight: 800, color: C.acc, letterSpacing: 1, marginBottom: 10, marginTop: 16, fontFamily: FONT_TITLE, textTransform: "uppercase" }}>
+    {icon} {title}
+  </div>
+);
+
+const KpiBox = ({ value, label, color, sub }) => (
+  <div style={{ padding: 10, background: color + "14", borderRadius: 8, textAlign: "center", minWidth: 0 }}>
+    <div style={{ fontWeight: 900, fontSize: 16, color }}>{value}</div>
+    {sub && <div style={{ fontSize: 9, fontWeight: 700, color, marginTop: 1 }}>{sub}</div>}
+    <div style={{ fontSize: 8, color: C.td, fontWeight: 600, marginTop: 2 }}>{label}</div>
+  </div>
+);
+
+const PIE_COLORS = ["#FFAA00", "#34d399", "#f87171", "#60a5fa", "#a78bfa", "#fb923c", "#ec4899", "#14b8a6"];
+
+/* ============ RAPPORTS PANEL ============ */
+export function RapportsPanel({ soc, socBankData, ghlData, clients, reps, allM, hold }) {
+  const [expandedMonth, setExpandedMonth] = useState(null);
+  const [notesMap, setNotesMap] = useState(() => { try { return JSON.parse(localStorage.getItem(`scRapportNotes_${soc?.id}`) || "{}"); } catch { return {}; } });
+  const saveNote = (month, text) => { const next = { ...notesMap, [month]: text }; setNotesMap(next); try { localStorage.setItem(`scRapportNotes_${soc?.id}`, JSON.stringify(next)); } catch {} };
+  const cm = curM();
+  const months = useMemo(() => { const ms = []; let m = cm; for (let i = 0; i < 12; i++) { ms.push(m); m = prevM(m); } return ms; }, [cm]);
+
+  // MRR tracking
+  const activeClients = (clients || []).filter(c => c.socId === soc?.id && c.status === "active" && c.billing);
+  const mrrMonths = months.slice(0, 6).reverse();
+  const mrrData = useMemo(() => {
+    return activeClients.map(cl => {
+      const cn = (cl.name || "").toLowerCase().trim();
+      const monthPayments = {};
+      mrrMonths.forEach(mo => {
+        const txs = (socBankData?.transactions || []).filter(t => (t.created_at || "").startsWith(mo));
+        const found = txs.some(t => { const leg = t.legs?.[0]; if (!leg || leg.amount <= 0) return false; const desc = (leg.description || t.reference || "").toLowerCase(); return cn.length > 2 && desc.includes(cn); });
+        monthPayments[mo] = found;
+      });
+      return { client: cl, payments: monthPayments, billing: clientMonthlyRevenue(cl) };
+    });
+  }, [activeClients, socBankData, mrrMonths]);
+  const mrrTheorique = activeClients.reduce((a, c) => a + clientMonthlyRevenue(c), 0);
+
+  const renderMonthReport = (month, d, isCurrent) => {
+    return <>
+      {/* ═══ 1. FINANCES ═══ */}
+      <SectionTitle icon="💰" title="Finances" />
+      <div className="rg4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 12 }}>
+        <KpiBox value={`${fmt(d.ca)}€`} label="CA du mois" color={C.g} />
+        <KpiBox value={`${fmt(d.charges)}€`} label="Charges" color={C.r} />
+        <KpiBox value={`${fmt(d.marge)}€`} label="Marge" color={d.marge >= 0 ? C.g : C.r} sub={`${d.margePct}%`} />
+        <KpiBox value={`${fmt(d.treso)}€`} label="Trésorerie" color={C.b} />
+      </div>
+
+      {/* Category breakdown */}
+      {d.catData.length > 0 && <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, color: C.td, marginBottom: 6 }}>RÉPARTITION DES DÉPENSES</div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ width: 100, height: 100, flexShrink: 0 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart><Pie data={d.catData.map(([n, v]) => ({ name: n, value: v }))} dataKey="value" cx="50%" cy="50%" outerRadius={45} innerRadius={20} strokeWidth={0}>
+                {d.catData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+              </Pie></PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {d.catData.map(([n, v], i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", fontSize: 10 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: PIE_COLORS[i % PIE_COLORS.length], flexShrink: 0 }} />
+              <span style={{ color: C.t, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n}</span>
+              <span style={{ fontWeight: 700, color: C.td }}>{fmt(v)}€</span>
+            </div>)}
+          </div>
+        </div>
+      </div>}
+
+      {/* Top encaissements & dépenses */}
+      <div className="rg2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: C.g, marginBottom: 6 }}>TOP ENCAISSEMENTS</div>
+          {d.topEncaissements.length === 0 ? <div style={{ fontSize: 10, color: C.td }}>—</div> : d.topEncaissements.map(([n, v], i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", borderBottom: `1px solid ${C.brd}08` }}><span style={{ fontSize: 10, color: C.t, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "70%" }}>{n}</span><span style={{ fontSize: 10, fontWeight: 700, color: C.g }}>{fmt(v)}€</span></div>)}
+        </div>
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: C.r, marginBottom: 6 }}>TOP DÉPENSES</div>
+          {d.topDepenses.length === 0 ? <div style={{ fontSize: 10, color: C.td }}>—</div> : d.topDepenses.map(([n, v], i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", borderBottom: `1px solid ${C.brd}08` }}><span style={{ fontSize: 10, color: C.t, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "70%" }}>{n}</span><span style={{ fontSize: 10, fontWeight: 700, color: C.r }}>{fmt(v)}€</span></div>)}
+        </div>
+      </div>
+
+      {/* ═══ 2. SALES ═══ */}
+      <SectionTitle icon="📈" title="Sales" />
+      <div className="rg4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 8 }}>
+        <KpiBox value={d.prospectsMonth} label="Prospects" color={C.b} />
+        <KpiBox value={d.activeCl} label="Clients actifs" color={C.g} />
+        <KpiBox value={d.churnedCl} label="Churned" color={C.r} />
+        <KpiBox value={d.callsMonth} label="Appels" color={C.acc} />
+      </div>
+      <div className="rg4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 12 }}>
+        <KpiBox value={d.closings} label="Closings" color={C.g} />
+        <KpiBox value={`${d.conversionRate}%`} label="Conversion" color={d.conversionRate >= 20 ? C.g : C.o} />
+        <KpiBox value={`${fmt(d.avgClientValue)}€`} label="Avg client" color={C.acc} />
+        <KpiBox value={`${d.noShowPct}%`} label="No-show" color={d.noShowPct > 20 ? C.r : C.g} sub={`${d.noShowVal} no-shows`} />
+      </div>
+
+      {/* Pipeline */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+        <div style={{ padding: "8px 14px", background: C.accD, borderRadius: 8, border: `1px solid ${C.acc}22` }}>
+          <div style={{ fontSize: 8, fontWeight: 700, color: C.acc }}>PIPELINE</div>
+          <div style={{ fontSize: 16, fontWeight: 900, color: C.acc }}>{fmt(d.pipelineTotal)}€</div>
+        </div>
+      </div>
+
+      {/* Funnel */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, color: C.td, marginBottom: 6 }}>FUNNEL</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          {d.funnelLabels.map((label, i) => {
+            const count = d.funnel[label] || 0;
+            const maxCount = Math.max(1, ...d.funnelLabels.map(l => d.funnel[l] || 0));
+            const width = Math.max(40, (count / maxCount) * 100);
+            return <Fragment key={label}>
+              {i > 0 && <span style={{ color: C.td, fontSize: 10 }}>→</span>}
+              <div style={{ padding: "6px 10px", background: `${[C.b, C.acc, C.o, C.g][i]}18`, borderRadius: 6, textAlign: "center", minWidth: width, flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 900, color: [C.b, C.acc, C.o, C.g][i] }}>{count}</div>
+                <div style={{ fontSize: 7, color: C.td, fontWeight: 600 }}>{label}</div>
+              </div>
+            </Fragment>;
+          })}
+        </div>
+      </div>
+
+      {/* Top 5 clients */}
+      {d.top5Clients.length > 0 && <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, color: C.g, marginBottom: 6 }}>TOP 5 CLIENTS</div>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
+          <thead><tr>
+            <th style={{ textAlign: "left", padding: "4px 6px", borderBottom: `1px solid ${C.brd}`, color: C.td, fontSize: 8 }}>Client</th>
+            <th style={{ textAlign: "right", padding: "4px 6px", borderBottom: `1px solid ${C.brd}`, color: C.td, fontSize: 8 }}>Cumulé</th>
+            <th style={{ textAlign: "right", padding: "4px 6px", borderBottom: `1px solid ${C.brd}`, color: C.td, fontSize: 8 }}>Durée</th>
+            <th style={{ textAlign: "right", padding: "4px 6px", borderBottom: `1px solid ${C.brd}`, color: C.td, fontSize: 8 }}>Avg/mois</th>
+          </tr></thead>
+          <tbody>{d.top5Clients.map((cl, i) => <tr key={i}>
+            <td style={{ padding: "4px 6px", borderBottom: `1px solid ${C.brd}08`, color: C.t, fontWeight: 600 }}>{cl.name}</td>
+            <td style={{ padding: "4px 6px", borderBottom: `1px solid ${C.brd}08`, textAlign: "right", color: C.g, fontWeight: 700 }}>{fmt(cl.cumule)}€</td>
+            <td style={{ padding: "4px 6px", borderBottom: `1px solid ${C.brd}08`, textAlign: "right", color: C.td }}>{cl.duree} mois</td>
+            <td style={{ padding: "4px 6px", borderBottom: `1px solid ${C.brd}08`, textAlign: "right", color: C.acc, fontWeight: 600 }}>{fmt(cl.avgMois)}€</td>
+          </tr>)}</tbody>
+        </table>
+      </div>}
+
+      {/* ═══ 3. PUBLICITÉ ═══ */}
+      {d.hasAds && <>
+        <SectionTitle icon="📣" title="Publicité" />
+        <div className="rg4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 8 }}>
+          <KpiBox value={d.adLeads} label="Prospects Ads" color={C.b} />
+          <KpiBox value={d.adsCallsBooked} label="Appels bookés" color={C.acc} />
+          <KpiBox value={`${d.cpl.toFixed(2)}€`} label="CPL" color={C.acc} />
+          <KpiBox value={`${d.cpc.toFixed(2)}€`} label="CPC" color={C.td} />
+        </div>
+        <div className="rg4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 12 }}>
+          <KpiBox value={`${d.cpm.toFixed(2)}€`} label="CPM" color={C.td} />
+          <KpiBox value={`${d.costPerCall.toFixed(2)}€`} label="Coût/appel" color={d.costPerCall > 50 ? C.r : C.g} />
+          <KpiBox value={`${d.roas.toFixed(2)}x`} label="ROAS" color={d.roas >= 2 ? C.g : d.roas >= 1 ? C.o : C.r} />
+          <KpiBox value={`${fmt(d.adSpend)}€`} label="Budget total" color={C.r} />
+        </div>
+      </>}
+
+      {/* Objectif */}
+      {(soc.obj || soc.monthlyGoal) > 0 && (() => { const obj = soc.obj || soc.monthlyGoal || 0; const atteint = d.ca >= obj; return <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: atteint ? C.gD : C.rD, borderRadius: 8, marginBottom: 12 }}>
+        <span style={{ fontSize: 14 }}>{atteint ? "✅" : "❌"}</span>
+        <div style={{ flex: 1 }}><div style={{ fontSize: 10, fontWeight: 700, color: atteint ? C.g : C.r }}>{atteint ? "Objectif atteint" : "Non atteint"}</div><div style={{ fontSize: 9, color: C.td }}>Objectif: {fmt(obj)}€ · Réalisé: {fmt(d.ca)}€ ({obj > 0 ? Math.round(d.ca / obj * 100) : 0}%)</div></div>
+      </div>; })()}
+    </>;
+  };
+
+  /* ═══ PDF EXPORT ═══ */
+  const exportPDF = (month) => {
+    const d = computeReportData(soc, month, socBankData, ghlData, clients, reps);
+    const logo = hold?.brand?.logoUrl || "";
+    const socName = soc?.nom || "Société";
+    const monthLabel = ml(month);
+
+    const catRows = d.catData.map(([n, v]) => `<tr><td>${n}</td><td style="text-align:right;font-weight:700">${fmt(v)}€</td></tr>`).join("");
+    const topInRows = d.topEncaissements.map(([n, v]) => `<tr><td>${n}</td><td style="text-align:right;font-weight:700;color:#22c55e">${fmt(v)}€</td></tr>`).join("") || "<tr><td colspan='2' style='color:#999'>—</td></tr>";
+    const topOutRows = d.topDepenses.map(([n, v]) => `<tr><td>${n}</td><td style="text-align:right;font-weight:700;color:#ef4444">${fmt(v)}€</td></tr>`).join("") || "<tr><td colspan='2' style='color:#999'>—</td></tr>";
+    const top5Rows = d.top5Clients.map(cl => `<tr><td>${cl.name}</td><td style="text-align:right">${fmt(cl.cumule)}€</td><td style="text-align:right">${cl.duree} mois</td><td style="text-align:right">${fmt(cl.avgMois)}€</td></tr>`).join("");
+    const funnelHTML = d.funnelLabels.map((l, i) => `<span style="display:inline-block;padding:6px 14px;background:${["#3b82f620", "#FFAA0020", "#f9731620", "#22c55e20"][i]};border-radius:6px;margin-right:4px;text-align:center"><strong style="font-size:18px;color:${["#3b82f6", "#FFAA00", "#f97316", "#22c55e"][i]}">${d.funnel[l] || 0}</strong><br><span style="font-size:9px;color:#666">${l}</span></span>${i < 3 ? '<span style="color:#999;margin:0 4px">→</span>' : ''}`).join("");
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rapport ${monthLabel} — ${socName}</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px 50px;color:#1a1a1a;max-width:850px;margin:0 auto;line-height:1.5;background:#fff}
+h1{color:#FFAA00;font-size:24px;margin-bottom:2px;border-bottom:3px solid #FFAA00;padding-bottom:8px}
+h2{color:#333;font-size:14px;margin-top:28px;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;border-left:4px solid #FFAA00;padding-left:10px}
+.sub{color:#666;font-size:12px;margin-bottom:20px}
+.kpis{display:flex;gap:10px;margin:14px 0;flex-wrap:wrap}
+.kpi{flex:1;min-width:100px;padding:14px;background:#f8f9fa;border-radius:10px;text-align:center;border:1px solid #eee}
+.kpi .val{font-size:22px;font-weight:900}
+.kpi .lbl{font-size:10px;color:#666;margin-top:2px}
+.kpi .sub2{font-size:9px;color:#888;margin-top:1px}
+table{width:100%;border-collapse:collapse;margin:8px 0}
+td,th{padding:7px 10px;border-bottom:1px solid #eee;text-align:left;font-size:11px}
+th{background:#f8f9fa;font-weight:700;color:#333;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.footer{margin-top:40px;padding-top:14px;border-top:1px solid #ddd;color:#999;font-size:9px;text-align:center}
+@media print{body{padding:15px 20px;font-size:10px}@page{margin:12mm}.kpi .val{font-size:18px}h1{font-size:20px}h2{font-size:12px}}
+</style></head><body>
+${logo ? `<img src="${logo}" style="height:44px;margin-bottom:12px"/>` : ""}
+<h1>Rapport Mensuel — ${monthLabel}</h1>
+<p class="sub">${socName}${soc?.porteur ? " — " + soc.porteur : ""}${soc?.act ? " · " + soc.act : ""}</p>
+
+<h2>💰 Finances</h2>
+<div class="kpis">
+<div class="kpi"><div class="val" style="color:#22c55e">${fmt(d.ca)}€</div><div class="lbl">CA du mois</div></div>
+<div class="kpi"><div class="val" style="color:#ef4444">${fmt(d.charges)}€</div><div class="lbl">Charges</div></div>
+<div class="kpi"><div class="val" style="color:${d.marge >= 0 ? "#22c55e" : "#ef4444"}">${fmt(d.marge)}€</div><div class="sub2">${d.margePct}%</div><div class="lbl">Marge</div></div>
+<div class="kpi"><div class="val" style="color:#3b82f6">${fmt(d.treso)}€</div><div class="lbl">Trésorerie</div></div>
+</div>
+
+${d.catData.length > 0 ? `<h3 style="font-size:11px;color:#666;margin:16px 0 6px">Répartition des dépenses</h3><table><tr><th>Catégorie</th><th style="text-align:right">Montant</th></tr>${catRows}</table>` : ""}
+
+<div class="cols2">
+<div><h3 style="font-size:11px;color:#22c55e;margin:10px 0 4px">Top Encaissements</h3><table>${topInRows}</table></div>
+<div><h3 style="font-size:11px;color:#ef4444;margin:10px 0 4px">Top Dépenses</h3><table>${topOutRows}</table></div>
+</div>
+
+<h2>📈 Sales</h2>
+<div class="kpis">
+<div class="kpi"><div class="val" style="color:#3b82f6">${d.prospectsMonth}</div><div class="lbl">Prospects</div></div>
+<div class="kpi"><div class="val" style="color:#22c55e">${d.activeCl}</div><div class="lbl">Clients actifs</div></div>
+<div class="kpi"><div class="val" style="color:#ef4444">${d.churnedCl}</div><div class="lbl">Churned</div></div>
+<div class="kpi"><div class="val" style="color:#FFAA00">${d.callsMonth}</div><div class="lbl">Appels</div></div>
+</div>
+<div class="kpis">
+<div class="kpi"><div class="val" style="color:#22c55e">${d.closings}</div><div class="lbl">Closings</div></div>
+<div class="kpi"><div class="val">${d.conversionRate}%</div><div class="lbl">Conversion</div></div>
+<div class="kpi"><div class="val">${fmt(d.avgClientValue)}€</div><div class="lbl">Avg client</div></div>
+<div class="kpi"><div class="val" style="color:${d.noShowPct > 20 ? "#ef4444" : "#22c55e"}">${d.noShowPct}%</div><div class="sub2">${d.noShowVal} no-shows</div><div class="lbl">No-show</div></div>
+</div>
+
+<div style="margin:14px 0"><strong style="color:#FFAA00">Pipeline : </strong><span style="font-size:18px;font-weight:900;color:#FFAA00">${fmt(d.pipelineTotal)}€</span></div>
+
+<div style="margin:14px 0">${funnelHTML}</div>
+
+${d.top5Clients.length > 0 ? `<h3 style="font-size:11px;color:#333;margin:16px 0 6px">Top 5 Clients</h3><table><tr><th>Client</th><th style="text-align:right">Cumulé</th><th style="text-align:right">Durée</th><th style="text-align:right">Avg/mois</th></tr>${top5Rows}</table>` : ""}
+
+${d.hasAds ? `<h2>📣 Publicité</h2>
+<div class="kpis">
+<div class="kpi"><div class="val" style="color:#3b82f6">${d.adLeads}</div><div class="lbl">Prospects Ads</div></div>
+<div class="kpi"><div class="val">${d.adsCallsBooked}</div><div class="lbl">Appels bookés</div></div>
+<div class="kpi"><div class="val">${d.cpl.toFixed(2)}€</div><div class="lbl">CPL</div></div>
+<div class="kpi"><div class="val">${d.cpc.toFixed(2)}€</div><div class="lbl">CPC</div></div>
+</div>
+<div class="kpis">
+<div class="kpi"><div class="val">${d.cpm.toFixed(2)}€</div><div class="lbl">CPM</div></div>
+<div class="kpi"><div class="val">${d.costPerCall.toFixed(2)}€</div><div class="lbl">Coût/appel</div></div>
+<div class="kpi"><div class="val" style="color:${d.roas >= 2 ? "#22c55e" : d.roas >= 1 ? "#f97316" : "#ef4444"}">${d.roas.toFixed(2)}x</div><div class="lbl">ROAS</div></div>
+<div class="kpi"><div class="val" style="color:#ef4444">${fmt(d.adSpend)}€</div><div class="lbl">Budget total</div></div>
+</div>` : ""}
+
+<div class="footer">Généré le ${new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} · ${d.txCount} transactions · MRR: ${fmt(mrrTheorique)}€/mois</div>
+</body></html>`;
+
+    const w = window.open("", "_blank");
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 500);
+  };
+
+  return <div className="fu">
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+      <div><h2 style={{ color: C.t, fontSize: 13, fontWeight: 800, margin: 0, fontFamily: FONT_TITLE }}>📋 RAPPORTS MENSUELS</h2><p style={{ color: C.td, fontSize: 10, margin: "2px 0 0" }}>Bilans complets auto-générés — Finances · Sales · Publicité</p></div>
+      <ReplayMensuel soc={soc} reps={reps} allM={allM} socBank={socBankData ? { [soc.id]: socBankData } : {}} clients={clients} ghlData={ghlData} />
+    </div>
+    {months.map((month, mi) => {
+      const d = computeReportData(soc, month, socBankData, ghlData, clients, reps);
+      const isExpanded = expandedMonth === month || mi === 0;
+      const isCurrent = mi === 0;
+      return <div key={month} className={`glass-card-static fu d${Math.min(mi + 1, 6)}`} style={{ padding: isCurrent ? 20 : 14, marginBottom: 10, cursor: isCurrent ? undefined : "pointer" }} onClick={!isCurrent ? () => setExpandedMonth(expandedMonth === month ? null : month) : undefined}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isExpanded ? 12 : 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: isCurrent ? 16 : 12 }}>{isCurrent ? "📊" : "📄"}</span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: isCurrent ? 14 : 12, color: C.t }}>{ml(month)}{isCurrent ? " (en cours)" : ""}</div>
+              {!isExpanded && <div style={{ fontSize: 9, color: C.td }}>CA {fmt(d.ca)}€ · Charges {fmt(d.charges)}€ · Marge {fmt(d.marge)}€ ({d.margePct}%) · {d.closings} closings · Pipeline {fmt(d.pipelineTotal)}€</div>}
+            </div>
+          </div>
+          {!isCurrent && <span style={{ fontSize: 11, color: C.td }}>{isExpanded ? "▲" : "▼"}</span>}
+        </div>
+        {isExpanded && <>
+          {renderMonthReport(month, d, isCurrent)}
+
+          {/* Export PDF + Won/lost summary */}
+          <div style={{ display: "flex", gap: 12, marginTop: 12, alignItems: "center" }}>
+            <button onClick={(e) => { e.stopPropagation(); exportPDF(month); }} style={{ padding: "6px 14px", borderRadius: 8, border: `1px solid ${C.acc}`, background: C.accD, color: C.acc, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: FONT, display: "inline-flex", alignItems: "center", gap: 4 }}>📄 Exporter PDF</button>
+            <span style={{ fontSize: 10, color: C.g, fontWeight: 600 }}>✅ {d.closings} closing{d.closings > 1 ? "s" : ""}</span>
+            <span style={{ fontSize: 10, color: C.r, fontWeight: 600 }}>❌ {d.lostMonth} perdu{d.lostMonth > 1 ? "s" : ""}</span>
+          </div>
+
+          {/* Notes per month */}
+          <div style={{ marginTop: 10 }}>
+            <label style={{ fontSize: 9, fontWeight: 700, color: C.td, letterSpacing: .5, display: "block", marginBottom: 4 }}>📝 NOTES DU MOIS</label>
+            <textarea value={notesMap[month] || ""} onChange={e => saveNote(month, e.target.value)} placeholder="Ajouter vos observations, commentaires..." style={{ width: "100%", minHeight: isCurrent ? 80 : 50, padding: 10, borderRadius: 8, border: `1px solid ${C.brd}`, background: "rgba(6,6,11,0.6)", color: C.t, fontSize: 11, fontFamily: FONT, outline: "none", resize: "vertical" }} />
+          </div>
+        </>}
+      </div>;
+    })}
+    {/* Objectifs summary */}
+    {(soc.obj || soc.monthlyGoal) > 0 && (() => { const obj = soc.obj || soc.monthlyGoal || 0; const results = months.map(mo => computeReportData(soc, mo, socBankData, ghlData, clients, reps)).filter(d => d.txCount > 0); const atteints = results.filter(d => d.ca >= obj).length; const total = results.length; const pctObj = total > 0 ? Math.round(atteints / total * 100) : 0; return <div className="glass-card-static" style={{ padding: 16, marginTop: 12, marginBottom: 4, display: "flex", alignItems: "center", gap: 12 }}>
+      <span style={{ fontSize: 24 }}>{pctObj >= 70 ? "🏆" : pctObj >= 40 ? "📊" : "📉"}</span>
+      <div><div style={{ fontWeight: 800, fontSize: 12, color: pctObj >= 70 ? C.g : pctObj >= 40 ? C.o : C.r }}>Objectifs atteints: {atteints}/{total} mois ({pctObj}%)</div><div style={{ fontSize: 9, color: C.td }}>Objectif mensuel: {fmt(obj)}€</div></div>
+    </div>; })()}
+    {/* MRR TRACKING */}
+    {activeClients.length > 0 && <div className="glass-card-static" style={{ padding: 20, marginTop: 16 }}>
+      <div style={{ fontSize: 9, fontWeight: 700, color: C.v, letterSpacing: 1, marginBottom: 12, fontFamily: FONT_TITLE }}>📊 SUIVI MRR — RÉCURRENCE CLIENTS</div>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
+          <thead><tr>
+            <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: `1px solid ${C.brd}`, color: C.td, fontWeight: 700, fontSize: 9 }}>Client</th>
+            <th style={{ textAlign: "right", padding: "6px 4px", borderBottom: `1px solid ${C.brd}`, color: C.td, fontWeight: 700, fontSize: 8 }}>€/m</th>
+            {mrrMonths.map(mo => <th key={mo} style={{ textAlign: "center", padding: "6px 4px", borderBottom: `1px solid ${C.brd}`, color: C.td, fontWeight: 700, fontSize: 8, minWidth: 50 }}>{ml(mo).split(" ")[0]}</th>)}
+          </tr></thead>
+          <tbody>
+            {mrrData.map(({ client: cl, payments, billing }) => <tr key={cl.id}>
+              <td style={{ padding: "5px 8px", borderBottom: `1px solid ${C.brd}08`, fontWeight: 600, color: C.t, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cl.name}</td>
+              <td style={{ padding: "5px 4px", borderBottom: `1px solid ${C.brd}08`, textAlign: "right", fontWeight: 700, color: C.acc }}>{fmt(billing)}€</td>
+              {mrrMonths.map(mo => <td key={mo} style={{ padding: "5px 4px", borderBottom: `1px solid ${C.brd}08`, textAlign: "center" }}>{payments[mo] ? <span style={{ color: C.g }}>✅</span> : <span style={{ color: C.r, background: C.rD, padding: "1px 4px", borderRadius: 4 }}>❌</span>}</td>)}
+            </tr>)}
+            <tr style={{ fontWeight: 800 }}>
+              <td style={{ padding: "8px 8px", color: C.t }}>MRR Théorique</td>
+              <td style={{ padding: "8px 4px", textAlign: "right", color: C.acc }}>{fmt(mrrTheorique)}€</td>
+              {mrrMonths.map(mo => { const real = mrrData.filter(d => d.payments[mo]).reduce((a, d) => a + d.billing, 0); return <td key={mo} style={{ padding: "8px 4px", textAlign: "center", color: real >= mrrTheorique ? C.g : C.r, fontSize: 10 }}>{fmt(real)}€</td>; })}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>}
+  </div>;
+}
+
 /* ============ REPLAY MENSUEL ============ */
 export function ReplayMensuel({soc,reps,allM,socBank,clients,ghlData}){
  const[open,setOpen]=useState(false);
@@ -185,11 +516,9 @@ export function ReplayMensuel({soc,reps,allM,socBank,clients,ghlData}){
  const growth=prevCa>0?Math.round((ca-prevCa)/prevCa*100):0;
  const topClient=activeCl.map(c=>({name:c.name,rev:clientMonthlyRevenue(c)})).sort((a,b)=>b.rev-a.rev)[0];
  const gd=ghlData?.[soc?.id];const leads=pf(r?.leads)||(gd?.ghlClients||[]).length;
- // Score calculation
  const goalPct=soc?.obj?Math.min(100,Math.round(ca/soc.obj*100)):50;
  const margePct=ca>0?Math.round(marge/ca*100):0;
  const score=Math.min(100,Math.round(goalPct*0.4+Math.min(100,margePct*2)*0.3+(growth>0?Math.min(100,growth*2):0)*0.3));
- // Records
  const records=useMemo(()=>{
   const recs=[];const allCas=allM.slice(0,-1).map(m=>pf(gr(reps,soc?.id,m)?.ca));const maxPrev=Math.max(0,...allCas);
   if(ca>maxPrev&&maxPrev>0)recs.push(`🏆 Record CA: ${fmt(ca)}€ (ancien: ${fmt(maxPrev)}€)`);
