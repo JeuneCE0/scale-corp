@@ -72,9 +72,8 @@ const CSS=`@import url('https://fonts.googleapis.com/css2?family=Teachers:wght@4
 @keyframes slideInRight{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
 @keyframes slideInUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
 @keyframes typeReveal{from{max-height:0;opacity:0}to{max-height:600px;opacity:1}}
-@media(max-width:768px){.sidebar-desktop{display:none !important}.main-content{margin-left:0 !important}.mobile-header{display:flex !important}.kpi-grid-responsive{grid-template-columns:1fr 1fr !important}.chart-responsive{min-height:180px}.tx-list-mobile .tx-detail{display:none}}
+@media(max-width:768px){.sidebar-desktop{display:none !important}.main-content{margin-left:0 !important;padding:10px !important;padding-top:48px !important}.mobile-header{display:flex !important}.kpi-grid-responsive{grid-template-columns:1fr 1fr !important}.chart-responsive{min-height:180px}.tx-list-mobile .tx-detail{display:none}.rg4{grid-template-columns:1fr 1fr !important}.rg2{grid-template-columns:1fr !important}.rg3{grid-template-columns:1fr !important}.rg-auto{grid-template-columns:1fr 1fr !important}.glass-card,.glass-card-static{min-width:0 !important;overflow:hidden}.admin-grid{grid-template-columns:1fr !important}.admin-card{min-width:auto !important}.admin-stats-row{grid-template-columns:1fr !important;gap:8px !important}.pulse-grid{grid-template-columns:1fr !important}.pulse-left,.pulse-right{display:none !important}.pulse-center{grid-column:1 !important}.admin-responsive-grid{grid-template-columns:1fr !important}.admin-responsive-2col{grid-template-columns:1fr 1fr !important}table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:11px !important}.admin-soc-grid{grid-template-columns:1fr !important}.admin-soc-selector{left:10px !important;top:50px !important}.modal-wide{width:95vw !important;max-width:95vw !important}.glass-modal{width:95vw !important;max-width:95vw !important;padding:14px !important}.ai-chat-panel{width:92vw !important;right:0 !important;max-width:none !important}.notif-panel{width:88vw !important;right:0 !important}.recharts-wrapper{font-size:10px !important}.page-wrap{padding:12px 10px !important}.rg2k{grid-template-columns:1fr 1fr !important}.ob-sidebar{display:none !important}.ob-content{padding:14px 10px !important}}
 @media(min-width:769px){.mobile-header{display:none !important}}
-@media(max-width:768px){.admin-grid{grid-template-columns:1fr !important}.admin-card{min-width:auto !important}.admin-stats-row{grid-template-columns:1fr !important;gap:8px !important}.pulse-grid{grid-template-columns:1fr !important}.pulse-left,.pulse-right{display:none !important}.pulse-center{grid-column:1 !important}.main-content div[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr !important}.main-content div[style*="grid-template-columns: 1fr 1fr 1fr"]{grid-template-columns:1fr !important}.main-content div[style*="gridTemplateColumns"]{min-width:0 !important}.admin-responsive-grid{grid-template-columns:1fr !important}.admin-responsive-2col{grid-template-columns:1fr 1fr !important}table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:11px !important}.admin-soc-grid{grid-template-columns:1fr !important}.admin-soc-selector{left:10px !important;top:50px !important}.main-content{padding-top:48px !important}.glass-card,.glass-card-static{min-width:0 !important}.modal-wide{width:90vw !important;max-width:90vw !important}.ai-chat-panel{width:90vw !important;right:0 !important;max-width:none !important}.notif-panel{width:85vw !important;right:0 !important}}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:${C.brd};border-radius:3px}
 input[type=range]{-webkit-appearance:none;background:${C.brd};height:3px;border-radius:4px;outline:none}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:${C.acc};cursor:pointer;box-shadow:0 2px 6px rgba(255,170,0,.3)}
@@ -1051,9 +1050,9 @@ function MeetingMode({socs,reps,hold,actions,pulses,allM,onExit}){
    </div>
    <div style={{display:"flex",gap:2,marginTop:12,overflowX:"auto"}}>{steps.map((s,i)=><button key={i} onClick={()=>setStep(i)} style={{padding:"8px 14px",borderRadius:8,fontSize:11,fontWeight:step===i?700:500,border:"none",background:step===i?C.acc+"22":"transparent",color:step===i?C.acc:C.td,cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap"}}>{s.icon} {s.title}</button>)}</div>
   </div>
-  <div style={{padding:"20px 30px",maxWidth:900,margin:"0 auto"}}>
+  <div className="page-wrap" style={{padding:"20px 30px",maxWidth:900,margin:"0 auto"}}>
    {step===0&&<div className="si">
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:14}}>
+    <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:14}}>
     <KPI label="CA Groupe" value={`${fmt(actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.ca),0))}€`} accent={C.acc}/><KPI label="Marge" value={`${fmt(actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.ca)-pf(gr(reps,s.id,cM2)?.charges),0))}€`} accent={C.g}/><KPI label="/ Fondateur" value={`${fmt(hc.pf)}€`} accent={C.o}/><KPI label="Pipeline" value={`${fmt(socs.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.pipeline),0))}€`} accent={C.b}/>
     </div>
     <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:16}}>{actS.map(s=>{const hs=healthScore(s,reps);const r=gr(reps,s.id,cM2);
@@ -1078,7 +1077,7 @@ function MeetingMode({socs,reps,hold,actions,pulses,allM,onExit}){
     <div style={{flex:1}}><div style={{fontWeight:900,fontSize:18}}>{s.nom}</div><div style={{color:C.td,fontSize:11,display:"flex",gap:6,alignItems:"center"}}><span>{s.porteur} — {s.act}</span>{s.incub&&<span style={{color:C.v,fontSize:9,background:C.vD,padding:"1px 6px",borderRadius:8}}>📅 {sinceLbl(s.incub)}</span>}</div></div>
     <GradeBadge grade={hs.grade} color={hs.color} size="lg"/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
+    <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
     <KPI label="CA" value={r?`${fmt(r.ca)}€`:"—"} accent={C.acc} small/><KPI label="Marge" value={r?`${fmt(pf(r.ca)-pf(r.charges))}€`:"—"} accent={C.g} small/>
     {s.rec&&<KPI label="MRR" value={r?`${fmt(r.mrr)}€`:"—"} accent={C.b} small/>}
     <KPI label="Pipeline" value={r?`${fmt(r.pipeline)}€`:"—"} accent={C.acc} small/>
@@ -1362,7 +1361,7 @@ function MilestonesWall({milestones,soc}){
    <PBar value={unlocked.length} max={milestones.length} color={C.acc} h={4}/>
   </Card>
   {unlocked.length>0&&<Sect title="Trophées" sub={`${unlocked.length} débloqués`}>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(90px,1fr))",gap:6}}>
+   <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(90px,1fr))",gap:6}}>
     {unlocked.sort((a,b)=>b.tier-a.tier).slice(0,showAll?999:12).map((m,i)=>
     <div key={m.id} className={`fu d${Math.min(i+1,8)}`} style={{background:TIER_BG[m.tier],border:`1px solid ${TIER_COLORS[m.tier]}22`,borderRadius:10,padding:"10px 8px",textAlign:"center",position:"relative",overflow:"hidden"}}>
     {m.tier>=4&&<div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse at 50% 0%,${TIER_COLORS[m.tier]}08,transparent 70%)`,pointerEvents:"none"}}/>}
@@ -1452,7 +1451,7 @@ function SocBankWidget({bankData,onSync,soc}){
  return <>
   {isDemo&&<div className="fu" style={{background:C.oD,border:`1px solid ${C.o}22`,borderRadius:10,padding:"6px 12px",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{color:C.o,fontSize:10,fontWeight:600}}>⚠ Demo — Ajoute le token Revolut via l'admin</span><Btn small v="ghost" onClick={onSync} style={{fontSize:9}}>↻</Btn></div>}
   {/* 3 KPI cards */}
-  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
+  <div className="rg3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
    <div className="glass-card-static" style={{padding:20,textAlign:"center"}}>
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:6,fontFamily:FONT_TITLE}}>SOLDE ACTUEL</div>
     <div style={{fontWeight:900,fontSize:26,color:C.g,lineHeight:1}}>{fmt(balance)}€</div>
@@ -1569,14 +1568,14 @@ function RapportsPanel({soc,socBankData,ghlData,clients,reps,allM}){
     </div>
     {isExpanded&&<>
      {/* KPIs */}
-     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:14}}>
+     <div className="rg4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:14}}>
       <div style={{padding:10,background:C.gD,borderRadius:8,textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.g}}>{fmt(d.ca)}€</div><div style={{fontSize:8,color:C.g,fontWeight:600}}>CA</div></div>
       <div style={{padding:10,background:C.rD,borderRadius:8,textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.r}}>{fmt(d.charges)}€</div><div style={{fontSize:8,color:C.r,fontWeight:600}}>Charges</div></div>
       <div style={{padding:10,background:d.marge>=0?C.gD:C.rD,borderRadius:8,textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:d.marge>=0?C.g:C.r}}>{fmt(d.marge)}€</div><div style={{fontSize:8,color:C.td,fontWeight:600}}>Marge</div></div>
       <div style={{padding:10,background:C.bD,borderRadius:8,textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.b}}>{d.txCount}</div><div style={{fontSize:8,color:C.td,fontWeight:600}}>Transactions</div></div>
      </div>
      {/* Top clients + expenses side by side */}
-     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+     <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
       <div>
        <div style={{fontSize:9,fontWeight:700,color:C.g,marginBottom:6}}>TOP CLIENTS</div>
        {d.topClients.length===0?<div style={{fontSize:10,color:C.td}}>—</div>:d.topClients.map(([n,v],i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:`1px solid ${C.brd}08`}}><span style={{fontSize:10,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"70%"}}>{n}</span><span style={{fontSize:10,fontWeight:700,color:C.g}}>{fmt(v)}€</span></div>)}
@@ -1714,7 +1713,7 @@ function SynergiesPanel({socs,synergies,saveSynergies}){
    })}
   </Sect>
   <Modal open={!!editing} onClose={()=>setEditing(null)} title="Synergie">{editing&&<>
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+   <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Sel label="De" value={editing.from} onChange={v=>setEditing({...editing,from:v})} options={actS.map(s=>({v:s.id,l:s.nom}))}/>
     <Sel label="Vers" value={editing.to} onChange={v=>setEditing({...editing,to:v})} options={actS.map(s=>({v:s.id,l:s.nom}))}/>
     <Sel label="Type" value={editing.type} onChange={v=>setEditing({...editing,type:v})} options={Object.entries(SYN_TYPES).map(([k,v])=>({v:k,l:`${v.icon} ${v.label}`}))}/>
@@ -1781,7 +1780,7 @@ function KnowledgeBase({socs,kb,saveKb,isPorteur,socId}){
   })}
   <Modal open={!!editing} onClose={()=>setEditing(null)} title="Knowledge Base">{editing&&<>
    <Inp label="Titre" value={editing.title} onChange={v=>setEditing({...editing,title:v})} placeholder="Ex: Playbook Cold Outreach"/>
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+   <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Sel label="Catégorie" value={editing.cat} onChange={v=>setEditing({...editing,cat:v})} options={Object.entries(KB_CATS).map(([k,v])=>({v:k,l:v.label}))}/>
     <Sel label="Auteur" value={editing.author} onChange={v=>setEditing({...editing,author:v})} options={socs.map(s=>({v:s.id,l:s.nom}))}/>
    </div>
@@ -1833,7 +1832,7 @@ function RiskMatrix({socs,reps,allM}){
     <span>Marge: <strong style={{color:hover.margin>=0?C.g:C.r}}>{hover.margin}%</strong></span>
     </div>
    </div>}
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:10}}>
+   <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:10}}>
     {[["⭐ Stars","Croissance+ & Marge+",C.g],["💰 Cash cows","Marge+ mais stagne",C.acc],["🚀 À surveiller","Croît mais pas rentable",C.o],["⚠ Critique","Déclin & pertes",C.r]].map(([l,d,c],i)=>
     <div key={i} style={{display:"flex",alignItems:"center",gap:5,padding:"4px 8px",background:c+"08",borderRadius:6,border:`1px solid ${c}18`}}>
     <span style={{fontSize:10}}>{l.split(" ")[0]}</span>
@@ -1898,7 +1897,7 @@ function GamificationPanel({soc,ca,myClients,streak,reps,allM,ghlData}){
    </div>
   </div>
   {/* Badge Grid */}
-  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(100px,1fr))",gap:6}}>
+  <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(100px,1fr))",gap:6}}>
    {BADGES.map(b=>{const unlocked=unlockedBadges.includes(b.id);return <div key={b.id} style={{padding:"10px 6px",borderRadius:10,border:`1px solid ${unlocked?C.acc+"44":C.brd}`,background:unlocked?C.accD:"transparent",textAlign:"center",opacity:unlocked?1:0.4,transition:"all .3s"}}>
     <div style={{fontSize:20,marginBottom:2,filter:unlocked?"none":"grayscale(1)"}}>{b.label.split(" ").pop()}</div>
     <div style={{fontSize:8,fontWeight:700,color:unlocked?C.acc:C.td}}>{b.label.replace(/\s*[^\w\s]+$/,"").trim()}</div>
@@ -2297,11 +2296,11 @@ function SubsTeamPanel({socs,subs,saveSubs,team,saveTeam,socId,reps,isCompact,so
   <Modal open={!!editSub} onClose={()=>setEditSub(null)} title={editSub?.name?"Modifier abonnement":"Nouvel abonnement"}>
    {editSub&&<>
     <Inp label="Nom" value={editSub.name} onChange={v=>setEditSub({...editSub,name:v})} placeholder="Ex: Notion, Adobe, GoHighLevel…"/>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="Montant" value={editSub.amount} onChange={v=>setEditSub({...editSub,amount:pf(v)})} type="number" suffix="€"/>
     <Sel label="Fréquence" value={editSub.freq} onChange={v=>setEditSub({...editSub,freq:v})} options={[{v:"monthly",l:"Mensuel"},{v:"annual",l:"Annuel"}]}/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Sel label="Catégorie" value={editSub.cat} onChange={v=>setEditSub({...editSub,cat:v})} options={Object.entries(SUB_CATS).map(([k,v2])=>({v:k,l:`${v2.icon} ${v2.l}`}))}/>
     {socId==="all"&&<Sel label="Affectation" value={editSub.socId} onChange={v=>setEditSub({...editSub,socId:v})} options={[{v:"holding",l:"🏢 Holding"},...socs.filter(s=>s.stat==="active"||s.stat==="lancement").map(s=>({v:s.id,l:s.nom}))]}/>}
     </div>
@@ -2347,7 +2346,7 @@ function SubsTeamPanel({socs,subs,saveSubs,team,saveTeam,socId,reps,isCompact,so
   </Modal>
   <Modal open={!!editTm} onClose={()=>setEditTm(null)} title={editTm?.name?"Modifier membre":"Nouveau membre"}>
    {editTm&&<>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="Nom" value={editTm.name} onChange={v=>setEditTm({...editTm,name:v})} placeholder="Ex: Arnaud, Sarah…"/>
     <Inp label="Rôle" value={editTm.role} onChange={v=>setEditTm({...editTm,role:v})} placeholder="Ex: CSM, Closer, Monteur…"/>
     </div>
@@ -2439,7 +2438,7 @@ function ChallengesPanel({socs,reps,allM,pulses,challenges,saveChallenges}){
    )}
   </Sect>}
   <Sect title="Lancer un challenge" sub="Choisir un défi pour ce mois">
-   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:6}}>
+   <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:6}}>
     {CHALLENGE_TEMPLATES.map(tmpl=>{
     const active=(challenges||[]).some(c=>c.templateId===tmpl.id&&c.month===cM2);
     return <div key={tmpl.id} className="fu ba" onClick={active?undefined:()=>launchChallenge(tmpl.id)} style={{padding:12,background:active?C.gD:C.card,border:`1px solid ${active?C.g+"44":C.brd}`,borderRadius:10,cursor:active?"default":"pointer",textAlign:"center",opacity:active?0.6:1}}>
@@ -2628,7 +2627,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
   </div>
   </div>;
  return <div>
-  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:6,marginBottom:12}}>
+  <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:6,marginBottom:12}}>
    <Card accent={C.acc} style={{padding:"10px 12px",textAlign:"center"}} delay={1}>
     <div style={{color:C.td,fontSize:8,fontWeight:700,letterSpacing:.5}}>MRR TOTAL</div>
     <div style={{fontWeight:900,fontSize:20,color:C.acc}}>{fmt(totalMRR)}€</div>
@@ -2700,7 +2699,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     </div>
     <button onClick={()=>setInvView(invView?"":"all")} style={{background:"none",border:"none",color:C.acc,fontSize:9,cursor:"pointer",fontFamily:FONT,fontWeight:600}}>{invView?"Masquer":"Voir toutes"}</button>
    </div>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:10}}>
+   <div className="rg4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:10}}>
     <div style={{textAlign:"center",padding:"6px 4px",background:C.bg,borderRadius:6}}>
     <div style={{fontWeight:900,fontSize:16,color:C.g}}>{fmt(totalEncaisse)}€</div>
     <div style={{fontSize:7,color:C.td,fontWeight:600}}>ENCAISSÉ</div>
@@ -2909,7 +2908,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     </div>
     <button onClick={()=>setInvView(invView?"":"all")} style={{background:"none",border:"none",color:C.acc,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>{invView?"Masquer les factures":"Voir toutes les factures"}</button>
    </div>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:10}}>
+   <div className="rg4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:10}}>
     <div style={{padding:"8px 10px",background:C.gD,borderRadius:8,textAlign:"center"}}>
     <div style={{fontWeight:900,fontSize:16,color:C.g}}>{fmt(totalEncaisse)}€</div>
     <div style={{fontSize:8,color:C.g,fontWeight:600}}>Encaissé ({invPaid.length})</div>
@@ -3052,11 +3051,11 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     <span style={{fontSize:10,fontWeight:600,color:editCl.ghlId?C.g:C.o}}>{editCl.ghlId?"Synced avec GHL":"Local uniquement"}</span>
     {editCl.ghlId&&<span style={{fontSize:8,color:C.td,marginLeft:"auto",fontFamily:"monospace"}}>{editCl.ghlId.slice(0,12)}…</span>}
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="Nom du contact" value={editCl.name} onChange={v=>setEditCl({...editCl,name:v})} placeholder="Ex: Marion Pothin"/>
     <Inp label="Entreprise" value={editCl.company||""} onChange={v=>setEditCl({...editCl,company:v})} placeholder="Ex: Studio Fitness Paris"/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="Email" value={editCl.email} onChange={v=>setEditCl({...editCl,email:v})} placeholder="email@client.com"/>
     <Inp label="Téléphone" value={editCl.phone} onChange={v=>setEditCl({...editCl,phone:v})} placeholder="06..."/>
     </div>
@@ -3071,11 +3070,11 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     )}
     </div>
     {b.type==="fixed"&&<>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="Montant" value={b.amount} onChange={v=>setEditCl({...editCl,billing:{...b,amount:pf(v)}})} type="number" suffix="€"/>
     <Sel label="Fréquence" value={b.freq||"monthly"} onChange={v=>setEditCl({...editCl,billing:{...b,freq:v}})} options={[{v:"monthly",l:"Mensuel"},{v:"annual",l:"Annuel"}]}/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="Engagement (mois)" value={b.commitment||0} onChange={v=>setEditCl({...editCl,billing:{...b,commitment:pf(v)}})} type="number" suffix="mois"/>
     <Inp label="Date de début" value={b.startDate||""} onChange={v=>setEditCl({...editCl,billing:{...b,startDate:v}})} type="date"/>
     </div>
@@ -3086,12 +3085,12 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     {b.amount>0&&!b.commitment&&<div style={{padding:"6px 8px",background:C.oD,borderRadius:6,fontSize:10,color:C.o,marginTop:4}}>Sans engagement — résiliable à tout moment</div>}
     </>}
     {b.type==="percent"&&<>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="Pourcentage" value={b.percent||0} onChange={v=>setEditCl({...editCl,billing:{...b,percent:pf(v)}})} type="number" suffix="%"/>
     <Sel label="Base de calcul" value={b.basis||"ca"} onChange={v=>setEditCl({...editCl,billing:{...b,basis:v}})} options={[{v:"ca",l:"% du CA"},{v:"benefice",l:"% du bénéfice"}]}/>
     </div>
     <Inp label="Date de début" value={b.startDate||""} onChange={v=>setEditCl({...editCl,billing:{...b,startDate:v}})} type="date"/>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="CA mensuel du client" value={editCl.clientCA||""} onChange={v=>setEditCl({...editCl,clientCA:pf(v)})} type="number" suffix="€"/>
     {b.basis==="benefice"&&<Inp label="Charges client" value={editCl.clientCharges||""} onChange={v=>setEditCl({...editCl,clientCharges:pf(v)})} type="number" suffix="€"/>}
     </div>
@@ -3100,19 +3099,19 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     </div>}
     </>}
     {b.type==="hybrid"&&<>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="Montant fixe" value={b.amount} onChange={v=>setEditCl({...editCl,billing:{...b,amount:pf(v)}})} type="number" suffix="€"/>
     <Sel label="Fréquence" value={b.freq||"monthly"} onChange={v=>setEditCl({...editCl,billing:{...b,freq:v}})} options={[{v:"monthly",l:"Mensuel"},{v:"annual",l:"Annuel"}]}/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="Pourcentage" value={b.percent||0} onChange={v=>setEditCl({...editCl,billing:{...b,percent:pf(v)}})} type="number" suffix="%"/>
     <Sel label="Base de calcul" value={b.basis||"ca"} onChange={v=>setEditCl({...editCl,billing:{...b,basis:v}})} options={[{v:"ca",l:"% du CA"},{v:"benefice",l:"% du bénéfice"}]}/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="Engagement (mois)" value={b.commitment||0} onChange={v=>setEditCl({...editCl,billing:{...b,commitment:pf(v)}})} type="number" suffix="mois"/>
     <Inp label="Date de début" value={b.startDate||""} onChange={v=>setEditCl({...editCl,billing:{...b,startDate:v}})} type="date"/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="CA mensuel du client" value={editCl.clientCA||""} onChange={v=>setEditCl({...editCl,clientCA:pf(v)})} type="number" suffix="€"/>
     {b.basis==="benefice"&&<Inp label="Charges client" value={editCl.clientCharges||""} onChange={v=>setEditCl({...editCl,clientCharges:pf(v)})} type="number" suffix="€"/>}
     </div>
@@ -3121,11 +3120,11 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     </div>}
     </>}
     {b.type==="oneoff"&&<>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="Montant total" value={b.amount||0} onChange={v=>setEditCl({...editCl,billing:{...b,amount:pf(v)}})} type="number" suffix="€"/>
     <Inp label="Produit / Offre" value={b.product||""} onChange={v=>setEditCl({...editCl,billing:{...b,product:v}})} placeholder="Ex: Accompagnement Pub"/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 10px"}}>
+    <div className="rg3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 10px"}}>
     <Inp label="Nb échéances" value={b.installments||1} onChange={v=>setEditCl({...editCl,billing:{...b,installments:Math.max(1,pf(v))}})} type="number" suffix="x"/>
     <Inp label="Date 1er paiement" value={b.paidDate||""} onChange={v=>setEditCl({...editCl,billing:{...b,paidDate:v}})} type="date"/>
     <Inp label="Date de livraison" value={b.deliveredDate||""} onChange={v=>setEditCl({...editCl,billing:{...b,deliveredDate:v}})} type="date"/>
@@ -3283,7 +3282,7 @@ function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices
     })()}
     <div style={{padding:"10px 12px",background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`,margin:"8px 0"}}>
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:6}}>CONNEXIONS EXTERNES</div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="ID GoHighLevel" value={editCl.ghlId||""} onChange={v=>setEditCl({...editCl,ghlId:v})} placeholder="Contact/Opportunity ID" small/>
     <Inp label="ID Stripe" value={editCl.stripeId||""} onChange={v=>setEditCl({...editCl,stripeId:v})} placeholder="cus_..." small/>
     </div>
@@ -3413,7 +3412,7 @@ function GoalEditor({goals,setGoals,evo}){
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8}}>🎯 MES OBJECTIFS DU MOIS</div>
   </div>
-  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+  <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
   {DEFAULT_GOALS.map(g=>{
    const goal=goals[g.id]||0;const current=g.id==="marge"?(last?last.margePct:0):g.field&&last?last[g.field]||0:0;
    const progress=goal>0?Math.min(100,Math.round(current/goal*100)):0;
@@ -3478,7 +3477,7 @@ function MeetingPrepView({soc,evo,myActions,myJournal,pulses,hs,rw,milestones,cM
   </div>
   {/* Situation */}
   <Sect title="Situation actuelle">
-   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:6,marginBottom:10}}>
+   <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:6,marginBottom:10}}>
     <KPI label="CA" value={last?`${fmt(last.ca)}€`:"—"} accent={C.acc} icon="💰" small/>
     <KPI label="Marge" value={last?`${last.margePct}%`:"—"} accent={last&&last.marge>=0?C.g:C.r} icon="📊" small/>
     <KPI label="Score" value={`${hs.grade} (${hs.score})`} accent={hs.color} icon="❤" small/>
@@ -3564,7 +3563,7 @@ function SocSettingsPanel({soc,save,socs,clients}){
    <Inp label="Nom de la société" value={form.nom} onChange={v=>setForm({...form,nom:v})}/>
    <Inp label="Activité" value={form.act} onChange={v=>setForm({...form,act:v})}/>
    <Inp label="Porteur (fondateur)" value={form.porteur} onChange={v=>setForm({...form,porteur:v})}/>
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+   <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="Email" value={form.email} onChange={v=>setForm({...form,email:v})} placeholder="contact@..."/>
     <Inp label="Téléphone" value={form.phone} onChange={v=>setForm({...form,phone:v})} placeholder="+33..."/>
    </div>
@@ -3590,7 +3589,7 @@ function SocSettingsPanel({soc,save,socs,clients}){
     <Inp label="Ou URL externe" value={form.logoUrl.startsWith("data:")?"":(form.logoUrl||"")} onChange={v=>setForm({...form,logoUrl:v})} placeholder="https://..." small note="Laisser vide pour utiliser le fichier uploadé"/>
    </div>
    {/* Color pickers */}
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+   <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
     <div>
      <label style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:4,letterSpacing:.3}}>Couleur principale</label>
      <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -3641,7 +3640,7 @@ function SocSettingsPanel({soc,save,socs,clients}){
     const saveMeta=()=>{try{localStorage.setItem(metaKey,JSON.stringify(metaForm));sSet(metaKey,metaForm);sbUpsert('meta_ads',{society_id:soc.id,month:metaMonth,...metaForm});}catch{}setMetaSaved(true);setTimeout(()=>setMetaSaved(false),2000);};
     return <>
      <Sel label="Mois" value={metaMonth} onChange={loadMeta} options={monthOpts}/>
-     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+     <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
       <Inp label="Dépenses pub (€)" type="number" value={metaForm.spend||""} onChange={v=>setMetaForm({...metaForm,spend:pf(v)})} suffix="€"/>
       <Inp label="Impressions" type="number" value={metaForm.impressions||""} onChange={v=>setMetaForm({...metaForm,impressions:parseInt(v)||0})}/>
       <Inp label="Clics" type="number" value={metaForm.clicks||""} onChange={v=>setMetaForm({...metaForm,clicks:parseInt(v)||0})}/>
@@ -4081,7 +4080,7 @@ function PulseDashWidget({soc,existing,savePulse,hold}){
  return <div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.35s"}}>
   <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>⚡ COMMENT ÇA VA CETTE SEMAINE ?</div>
   <div style={{display:"flex",gap:6,marginBottom:10}}>{MOODS.map((e,i)=><button key={i} onClick={()=>setMood(i)} style={{fontSize:20,padding:"4px 7px",borderRadius:8,border:`2px solid ${mood===i?C.acc:C.brd}`,background:mood===i?C.accD:"transparent",cursor:"pointer",transition:"all .15s"}}>{e}</button>)}</div>
-  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+  <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
    <div><label style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:3}}>🏆 Victoire</label><input value={win} onChange={e=>setWin(e.target.value)} placeholder="Ta win de la semaine" style={{width:"100%",padding:"7px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/></div>
    <div><label style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:3}}>🚧 Blocage <span style={{fontWeight:400,color:C.tm}}>(optionnel)</span></label><input value={blocker} onChange={e=>setBlocker(e.target.value)} placeholder="Un frein ?" style={{width:"100%",padding:"7px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/></div>
   </div>
@@ -4213,7 +4212,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
    {label:"RDV aujourd'hui",value:String((ghlData?.[soc.id]?.calendarEvents||[]).filter(e=>(e.startTime||"").startsWith(new Date().toISOString().slice(0,10))).length),accent:C.o},
   ];
   return <div className="fu" style={{padding:"8px 0"}}>
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+   <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
     {mobileKpis.map((k,i)=><div key={i} className="glass-card-static" style={{padding:20,textAlign:"center"}}>
      <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:6,fontFamily:FONT_TITLE}}>{k.label}</div>
      <div style={{fontSize:28,fontWeight:900,color:k.accent,lineHeight:1}}>{k.value}</div>
@@ -4375,7 +4374,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
    },[reps,soc.id,cm,socBank]);
    const Sparkline=({data,color})=>{if(!data||data.every(v=>v===0))return null;const max=Math.max(...data,1);const min=Math.min(...data,0);const range=max-min||1;const w=48,h=18;const pts=data.map((v,i)=>`${(i/(data.length-1))*w},${h-((v-min)/range)*h}`).join(" ");return <svg width={w} height={h} style={{marginLeft:6,flexShrink:0}}><polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".6"/></svg>;};
    const sparkKeys=["ca","charges","marge","treso"];
-   return <div className="kpi-grid-responsive" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:20}}>
+   return <div className="kpi-grid-responsive rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:20}}>
     {kpis.map((k,i)=><div key={i} className="fade-up glass-card-static kpi-shimmer" style={{padding:22,animationDelay:`${i*0.1}s`,position:"relative",overflow:"hidden",transition:"all .3s cubic-bezier(.4,0,.2,1)"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${k.accent||C.acc}33`;e.currentTarget.style.boxShadow=`0 0 28px ${(k.accent||C.acc)}18`;e.currentTarget.style.transform="translateY(-3px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,.06)";e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,.3)";e.currentTarget.style.transform="translateY(0)";}}>
      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
       <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:8,fontFamily:FONT_TITLE}}>{k.label}</div>
@@ -4435,7 +4434,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
   {/* Gamification XP & Badges */}
   <GamificationPanel soc={soc} ca={ca} myClients={myClients} streak={streak} reps={reps} allM={allM} ghlData={ghlData}/>
   {/* Quick nav to Sales & Pub tabs */}
-  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+  <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
    <div className="fade-up glass-card" onClick={()=>setPTab(2)} style={{padding:18,cursor:"pointer",textAlign:"center",animationDelay:"0.32s",borderTop:`2px solid #34d399`}}>
     <div style={{fontSize:24,marginBottom:6}}>📞</div>
     <div style={{fontWeight:700,fontSize:12,color:C.t}}>Sales</div>
@@ -4452,7 +4451,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
   {/* Pulse widget */}
   {(()=>{const w=curW();const existing=pulses?.[`${soc.id}_${w}`];return <PulseDashWidget soc={soc} existing={existing} savePulse={savePulse} hold={hold}/>;})()}
   {/* Today's Agenda Summary + Alerts */}
-  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+  <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
    <div className="fade-up glass-card-static" style={{padding:16,animationDelay:"0.3s"}}>
     <div style={{fontSize:9,fontWeight:700,color:C.v,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>📅 AGENDA DU JOUR</div>
     {(()=>{const now2=new Date();const ts2=now2.toISOString().slice(0,10);const evts2=(ghlData?.[soc.id]?.calendarEvents||[]).filter(e=>(e.startTime||"").startsWith(ts2)).sort((a,b)=>new Date(a.startTime)-new Date(b.startTime)).slice(0,3);
@@ -4638,7 +4637,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
    </div>
   </div>;})()}
   {/* Quick Actions */}
-  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:12,marginBottom:20}}>
+  <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:12,marginBottom:20}}>
    {[{icon:"👥",title:"Clients",sub:"Portefeuille",tab:9},{icon:"🏦",title:"Banque",sub:"Transactions",tab:5},{icon:"⚙️",title:"Paramètres",sub:"Configurer",tab:12}].map((a,i)=>
     <div key={i} className="fade-up glass-card" onClick={()=>setPTab(a.tab)} style={{padding:18,cursor:"pointer",textAlign:"center",animationDelay:`${0.5+i*0.1}s`}}>
      <div style={{fontSize:24,marginBottom:6}}>{a.icon}</div>
@@ -4761,7 +4760,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
        <span style={{fontSize:10,background:"linear-gradient(135deg,#3b82f6,#8b5cf6)",color:"#fff",padding:"2px 8px",borderRadius:10,fontWeight:800}}>🧠</span>
        <span style={{fontSize:11,fontWeight:800,letterSpacing:1,color:C.t,fontFamily:FONT_TITLE}}>ORACLE — PRÉDICTIONS IA</span>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+      <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
        {oraclePredictions.map((p,i)=><div key={i} className="fu" style={{padding:14,background:"rgba(99,102,241,.06)",border:"1px solid rgba(99,102,241,.15)",borderRadius:12,animationDelay:`${1.1+i*0.08}s`}}>
         <div style={{fontSize:20,marginBottom:6}}>{p.icon}</div>
         <div style={{fontSize:11,fontWeight:600,color:C.t,marginBottom:8,lineHeight:1.4}}>{p.text}</div>
@@ -4846,7 +4845,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
        <span style={{fontWeight:900,fontSize:16,color:ecsColor}}>{ecsBadge.split(" ").slice(1).join(" ")}</span>
       </div>
       <div style={{fontSize:10,color:C.td,marginBottom:8}}>Score propriétaire basé sur 6 critères de performance</div>
-      {showEcsBreak&&<div className="slide-down" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
+      {showEcsBreak&&<div className="slide-down rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
        {[{l:"Paiements",v:ecsScore.payment,m:200},{l:"Croissance CA",v:ecsScore.caGrowth,m:200},{l:"Rétention",v:ecsScore.retention,m:200},{l:"Pipeline",v:ecsScore.pipeline,m:150},{l:"Réactivité",v:ecsScore.responsiveness,m:150},{l:"Diversification",v:ecsScore.diversification,m:100}].map((b,i)=><div key={i} style={{fontSize:9,color:C.td}}>
         <div style={{display:"flex",justifyContent:"space-between"}}><span>{b.l}</span><span style={{fontWeight:700,color:b.v/b.m>.7?C.g:b.v/b.m>.4?C.o:C.r}}>{b.v}/{b.m}</span></div>
         <div style={{height:3,background:C.brd,borderRadius:2,marginTop:1}}><div style={{height:"100%",width:`${b.v/b.m*100}%`,background:b.v/b.m>.7?C.g:b.v/b.m>.4?C.o:C.r,borderRadius:2}}/></div>
@@ -4906,7 +4905,7 @@ function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePuls
       </div>
       <div style={{width:80,height:6,background:C.brd,borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:`${completed/QUESTS.length*100}%`,background:"linear-gradient(90deg,#FFBF00,#FF9D00)",borderRadius:3,transition:"width .5s"}}/></div>
      </div>
-     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+     <div className="rg4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
       {QUESTS.map((q,i)=>{const isDone=q.done||!!completedQuests[q.id];const isCeleb=celebrating===q.id;
        return <div key={q.id} style={{padding:12,borderRadius:12,background:isDone?"rgba(255,170,0,.08)":"rgba(255,255,255,.02)",border:`1px solid ${isDone?"rgba(255,170,0,.3)":"rgba(255,255,255,.04)"}`,textAlign:"center",opacity:isDone?1:.45,transition:"all .3s",position:"relative",overflow:"hidden",...(isCeleb?{animation:"celebGlow 1s ease infinite",boxShadow:"0 0 30px rgba(255,170,0,.3)"}:{})}}>
         {isCeleb&&<div style={{position:"absolute",inset:0,pointerEvents:"none",overflow:"hidden"}}>{["🎉","⭐","✨","🔥","💫"].map((e,j)=><span key={j} style={{position:"absolute",fontSize:14,left:`${20+j*15}%`,top:-10,animation:`confetti 2s ease ${j*0.2}s forwards`}}>{e}</span>)}</div>}
@@ -5658,7 +5657,7 @@ function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
      <td style={{padding:"6px",textAlign:"right",color:cl2.convRate>30?C.g:cl2.convRate>15?C.o:C.r,fontWeight:700}}>{cl2.convRate}%</td>
      <td style={{padding:"6px",textAlign:"right",fontWeight:800,color:C.acc}}>{fmt(cl2.revenue)}€</td>
     </tr>)}</tbody>
-   </table>:<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+   </table>:<div className="rg4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
     {[{l:"Appels ce mois",v:String(cur.totalCalls),c:C.b},{l:"Deals conclus",v:String(cur.wonCount),c:C.g},{l:"Taux conversion",v:`${cur.stratCalls>0?Math.round(cur.wonCount/cur.stratCalls*100):0}%`,c:C.v},{l:"CA généré",v:`${fmt(cur.wonVal)}€`,c:C.acc}].map((s,i)=>
      <div key={i} style={{textAlign:"center",padding:12,background:s.c+"10",borderRadius:10,border:`1px solid ${s.c}22`}}>
       <div style={{fontWeight:900,fontSize:20,color:s.c}}>{s.v}</div>
@@ -5912,7 +5911,7 @@ function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    </div>
   </div>
   {/* ROI Calculator + Benchmarks */}
-  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+  <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
    <div className="fade-up glass-card-static" style={{padding:22,animationDelay:"0.55s",borderLeft:`3px solid ${totRoas>=1?C.g:C.r}`}}>
     <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>💰 ROI CALCULATOR</div>
     <div style={{textAlign:"center",marginBottom:12}}>
@@ -6114,7 +6113,7 @@ function TabSimulateur({socs,reps,hold}){
    <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:6,height:6,borderRadius:3,background:s.color}}/><span style={{fontWeight:700,fontSize:12}}>{s.nom}</span></div><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{color:C.td,fontSize:10}}>Actuel: {fmt(curCA)}€</span><span style={{fontWeight:800,fontSize:14,color:v>curCA?C.g:v<curCA?C.r:C.t,minWidth:70,textAlign:"right"}}>{fmt(v)}€</span></div></div>
    <input type="range" min={0} max={Math.max(curCA*3,30000)} step={100} value={v} onChange={e=>setSimCA({...simCA,[s.id]:parseInt(e.target.value)})} style={{width:"100%"}}/></div>;})}
  </Sect>
- <Sect title="Impact"><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+ <Sect title="Impact"><div className="rg3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
   <Card style={{padding:14,textAlign:"center"}}><div style={{color:C.td,fontSize:10,fontWeight:700}}>FLUX</div><div style={{fontWeight:800,fontSize:20,color:C.g}}>{fmt(hcSim.tIn)}€</div><div style={{color:C.td,fontSize:10}}>actuel: {fmt(hcReal.tIn)}€</div></Card>
   <Card style={{padding:14,textAlign:"center"}}><div style={{color:C.td,fontSize:10,fontWeight:700}}>DISPO</div><div style={{fontWeight:800,fontSize:20,color:C.acc}}>{fmt(hcSim.dispo)}€</div><div style={{color:C.td,fontSize:10}}>actuel: {fmt(hcReal.dispo)}€</div></Card>
   <Card style={{padding:14,textAlign:"center"}}><div style={{color:C.td,fontSize:10,fontWeight:700}}>/ FONDATEUR</div><div style={{fontWeight:800,fontSize:20,color:diff>=0?C.g:C.r}}>{fmt(hcSim.pf)}€</div><div style={{color:diff>=0?C.g:C.r,fontSize:11,fontWeight:600}}>{diff>=0?"+":""}{fmt(diff)}€</div></Card>
@@ -6216,11 +6215,11 @@ function OnboardingWizard({onComplete,onSkip,hold}){
     </div>
     <ObInp label="Nom de l'entreprise" required value={form.companyName} onChange={v=>up("companyName",v)} placeholder="Ex: MonBusiness SAS"/>
     <ObSelect label="Secteur d'activité" required value={form.sector} onChange={v=>up("sector",v)} options={OB_SECTORS} placeholder="Sélectionnez..."/>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
      <ObInp label="Site web" value={form.website} onChange={v=>up("website",v)} placeholder="https://..."/>
      <ObInp label="Date de création" type="date" value={form.foundedDate} onChange={v=>up("foundedDate",v)}/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
      <ObInp label="Ville" value={form.city} onChange={v=>up("city",v)} placeholder="Ex: Saint-Denis"/>
      <ObInp label="Pays" value={form.country} onChange={v=>up("country",v)} placeholder="Ex: France"/>
     </div>
@@ -6233,16 +6232,16 @@ function OnboardingWizard({onComplete,onSkip,hold}){
      <strong>📌</strong> Le contact principal recevra toutes les communications de l'incubateur.
     </div>
     <div style={{fontSize:13,fontWeight:700,color:C.t,marginBottom:10}}>Contact principal *</div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
      <ObInp label="Nom complet" required value={form.founderName} onChange={v=>up("founderName",v)} placeholder="Prénom Nom"/>
      <ObInp label="Rôle" required value={form.founderRole} onChange={v=>up("founderRole",v)} placeholder="Ex: CEO"/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
      <ObInp label="Email" required type="email" value={form.founderEmail} onChange={v=>up("founderEmail",v)} placeholder="email@entreprise.com"/>
      <ObInp label="Téléphone" value={form.founderPhone} onChange={v=>up("founderPhone",v)} placeholder="+262 6..."/>
     </div>
     <div style={{fontSize:13,fontWeight:700,color:C.t,margin:"16px 0 8px"}}>Associé(e) <span style={{fontWeight:400,color:C.td,fontSize:11}}>(optionnel)</span></div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
      <ObInp label="Nom" value={form.cofounderName} onChange={v=>up("cofounderName",v)} placeholder="Prénom Nom"/>
      <ObInp label="Rôle" value={form.cofounderRole} onChange={v=>up("cofounderRole",v)} placeholder="Ex: COO"/>
     </div>
@@ -6252,7 +6251,7 @@ function OnboardingWizard({onComplete,onSkip,hold}){
     <div style={{padding:"11px 14px",borderRadius:9,background:C.accD,border:`1px solid ${C.acc}33`,marginBottom:18,fontSize:12,color:C.acc,lineHeight:1.5}}>
      <strong>📌</strong> "Photo de départ" dans l'incubateur — référence pour mesurer votre progression.
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
      <ObInp label="CA mensuel actuel (€)" type="number" value={form.currentMRR} onChange={v=>up("currentMRR",v)} placeholder="Ex: 5000" info="Revenu mensuel actuel"/>
      <ObInp label="Taille de l'équipe" type="number" value={form.teamSize} onChange={v=>up("teamSize",v)} placeholder="Ex: 3"/>
     </div>
@@ -6322,7 +6321,7 @@ function OnboardingWizard({onComplete,onSkip,hold}){
     {[
      ["🏢","Entreprise",form.companyName?<><div><strong>{form.companyName}</strong> · {form.sector||"—"}</div>{form.city&&<div style={{fontSize:11,color:C.td}}>📍 {form.city}{form.country?`, ${form.country}`:""}</div>}{form.description&&<div style={{fontSize:11,color:C.td,fontStyle:"italic",marginTop:2}}>"{form.description.slice(0,80)}{form.description.length>80?"...":""}"</div>}</>:null],
      ["👥","Contact",form.founderName?<><div><strong>{form.founderName}</strong> — {form.founderRole}</div><div style={{fontSize:11,color:C.td}}>📧 {form.founderEmail}</div>{form.cofounderName&&<div style={{fontSize:11,color:C.td}}>Associé : {form.cofounderName}</div>}</>:null],
-     ["📊","Métriques",<><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:2,fontSize:11}}><span>CA : <strong>{form.currentMRR?`${Number(form.currentMRR).toLocaleString()}€`:"—"}</strong></span><span>Équipe : <strong>{form.teamSize||"—"}</strong></span><span>Stade : <strong>{form.fundingStage||"—"}</strong></span></div></>],
+     ["📊","Métriques",<><div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:2,fontSize:11}}><span>CA : <strong>{form.currentMRR?`${Number(form.currentMRR).toLocaleString()}€`:"—"}</strong></span><span>Équipe : <strong>{form.teamSize||"—"}</strong></span><span>Stade : <strong>{form.fundingStage||"—"}</strong></span></div></>],
      ["🎯","Objectifs",<><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{form.goals.map(g=><span key={g} style={{padding:"3px 9px",borderRadius:10,background:C.accD,color:C.acc,fontSize:10,fontWeight:600}}>{g}</span>)}</div><div style={{fontSize:11,color:C.td,marginTop:3}}>⏱ Horizon : {form.timeline} mois</div></>],
      ["📋","Engagements",<div style={{fontSize:11}}><div>CGU : {form.acceptTerms?"✅":"❌"} · Reporting : {form.acceptReporting?"✅":"❌"} · Mentorship : {form.acceptMentorship?"✅":"⬜"}</div></div>],
      ["⚙️","Préférences",<div style={{fontSize:11}}><div>Email : {form.notifEmail?"✅":"⬜"} · Slack : {form.notifSlack?"✅":"⬜"} · Digest : {form.notifWeekly?"✅":"⬜"}</div><div>Profil : {form.dashPublic?"👁️ Public":"🔒 Privé"}</div></div>],
@@ -6339,7 +6338,7 @@ function OnboardingWizard({onComplete,onSkip,hold}){
   <style>{CSS}{`@keyframes obSlide{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}@keyframes obPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,170,0,.4)}70%{box-shadow:0 0 0 8px rgba(255,170,0,0)}}`}</style>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   {/* Sidebar stepper */}
-  <div style={{width:220,minHeight:"100vh",background:C.card,borderRight:`1px solid ${C.brd}`,padding:"28px 16px",display:"flex",flexDirection:"column"}}>
+  <div className="ob-sidebar" style={{width:220,minHeight:"100vh",background:C.card,borderRight:`1px solid ${C.brd}`,padding:"28px 16px",display:"flex",flexDirection:"column"}}>
    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:28}}>
     <div style={{width:32,height:32,background:hold?.brand?.logoUrl?"transparent":`linear-gradient(135deg,${hold?.brand?.accentColor||C.acc},#FF9D00)`,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:"#0a0a0f",overflow:"hidden"}}>{hold?.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(hold?.brand?.logoLetter||"S")}</div>
     <div><div style={{fontWeight:800,fontSize:13,letterSpacing:.5}}>{hold?.brand?.name||"L'INCUBATEUR ECS"}</div><div style={{color:C.td,fontSize:9}}>Onboarding</div></div>
@@ -6364,8 +6363,8 @@ function OnboardingWizard({onComplete,onSkip,hold}){
     <h1 style={{margin:0,fontSize:20,fontWeight:800,color:C.t}}>{stp.title}</h1>
     <p style={{margin:"4px 0 0",color:C.td,fontSize:12}}>{stp.sub}</p>
    </div>
-   <div ref={ref} style={{flex:1,overflowY:"auto",padding:"24px 28px"}}>
-    <div style={{maxWidth:540,animation:anim?"none":"obSlide .3s cubic-bezier(.16,1,.3,1)"}}>{renderStep()}</div>
+   <div ref={ref} className="ob-content" style={{flex:1,overflowY:"auto",padding:"24px 28px"}}>
+    <div style={{maxWidth:540,margin:"0 auto",animation:anim?"none":"obSlide .3s cubic-bezier(.16,1,.3,1)"}}>{renderStep()}</div>
    </div>
    <div style={{padding:"14px 28px",borderTop:`1px solid ${C.brd}`,background:C.card,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
     <button onClick={()=>{if(step>0)go(step-1);}} disabled={step===0}
@@ -6608,7 +6607,7 @@ function AdminClientsTab({clients,socs}){
  const filtered=allCl.filter(c=>!clSearch||c.name?.toLowerCase().includes(clSearch.toLowerCase())||socs.find(s=>s.id===c.socId)?.nom?.toLowerCase().includes(clSearch.toLowerCase()));
  const sorted=[...filtered].sort((a,b)=>{if(clSort==="ca")return clientMonthlyRevenue(b)-clientMonthlyRevenue(a);if(clSort==="society")return(a.socId||"").localeCompare(b.socId||"");return(a.name||"").localeCompare(b.name||"");});
  return <><div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>👥 Clients — Toutes sociétés</div>
-  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:14}}>
+  <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:14}}>
    <KPI label="Total clients" value={allCl.length} accent={C.b} icon="👥" delay={1}/>
    <KPI label="Actifs" value={activeAll.length} accent={C.g} icon="✅" delay={2}/>
    <KPI label="Perdus" value={churnedAll.length} accent={C.r} icon="❌" delay={3}/>
@@ -6673,7 +6672,7 @@ function WarRoom({soc,reps,allM,ghlData,clients,socBank,socs,onClose,readOnly}){
    </div>
   </div>
   {/* KPI Ticker */}
-  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,padding:"14px 20px"}}>
+  <div className="rg4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,padding:"14px 20px"}}>
    {[{l:"CA",v:`${fmt(ca)}€`,c:"#FFAA00"},{l:"Leads",v:leads,c:"#60a5fa"},{l:"Deals",v:deals,c:"#34d399"},{l:"Pipeline",v:`${fmt(pipeline)}€`,c:"#a78bfa"}].map(k=>
     <div key={k.l} className="wr-kpi" style={{...glassPanel,textAlign:"center",padding:"12px 8px"}}>
      <div style={{fontSize:9,color:"#71717a",fontWeight:700,letterSpacing:1,marginBottom:4}}>{k.l}</div>
@@ -6681,7 +6680,7 @@ function WarRoom({soc,reps,allM,ghlData,clients,socBank,socs,onClose,readOnly}){
     </div>)}
   </div>
   {/* Main content */}
-  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,padding:"0 20px 20px"}}>
+  <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,padding:"0 20px 20px"}}>
    {/* Focus Mode - Sprint Ring */}
    <div style={{...glassPanel,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:260}}>
     <svg width="160" height="160" viewBox="0 0 100 100">
@@ -7131,7 +7130,7 @@ function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose}){
   </div>
  </div>;
 
- const renderSocCards=()=><div style={{overflow:"auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:12,alignContent:"start"}}>
+ const renderSocCards=()=><div className="rg-auto" style={{overflow:"auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:12,alignContent:"start"}}>
   {/* Donut chart */}
   {view==="global"&&socCards.length>1&&<div style={{...GC,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gridColumn:"span 1"}}>
    <div style={{width:120,height:120,borderRadius:"50%",background:donutGradient,position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -7158,7 +7157,7 @@ function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose}){
     </div>
    </div>
    {s.porteur&&<div style={{fontSize:10,color:"#71717a",marginBottom:6}}>👤 {s.porteur}</div>}
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+   <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
     <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>CA</div><div style={{fontSize:15,fontWeight:700,color:"#FFAA00"}}>{fK(s.ca)}€</div></div>
     <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Prospects</div><div style={{fontSize:15,fontWeight:700,color:"#60a5fa"}}>{s.prosp}</div></div>
     <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Pipeline</div><div style={{fontSize:13,fontWeight:600,color:"#a78bfa"}}>{fK(s.pipVal)}€</div></div>
@@ -7271,10 +7270,10 @@ function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose}){
     <div style={GC}><div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>MRR</div><div style={{fontSize:26,fontWeight:900,color:"#34d399",fontFamily:FONT_TITLE}}>{fmt(animatedVals.mrr)}€</div>{sparkline(mrrHist)}</div>
     <div style={GC}><div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Trésorerie</div><div style={{fontSize:26,fontWeight:900,color:"#60a5fa",fontFamily:FONT_TITLE}}>{fmt(allActS.reduce((a,s)=>a+pf(sb[s.id]?.balance),0))}€</div></div>
    </div>
-   <div style={{overflow:"auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:12,alignContent:"start"}}>
+   <div className="rg-auto" style={{overflow:"auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:12,alignContent:"start"}}>
     {socCards.map(s=><div key={s.id} className="pulse-card" style={GChover}>
      <div style={{fontWeight:800,fontSize:13,fontFamily:FONT_TITLE,color:"#e4e4e7",marginBottom:8}}>{s.status} {s.name} <span style={{fontSize:10,color:s.gradeColor,fontWeight:800}}>{s.grade}</span></div>
-     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+     <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
       <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>CA</div><div style={{fontSize:15,fontWeight:700,color:"#FFAA00"}}>{fK(s.ca)}€</div></div>
       <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Solde</div><div style={{fontSize:15,fontWeight:700,color:"#34d399"}}>{fK(s.bal)}€</div></div>
       <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>CA M-1</div><div style={{fontSize:13,fontWeight:600,color:"#71717a"}}>{fK(s.caP)}€</div></div>
@@ -7292,10 +7291,10 @@ function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose}){
    {renderSocCards()}
   </div>;
   if(view==="detail"&&socFilter!=="all"){const s=socCards[0];if(!s)return <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:"#71717a"}}>Sélectionnez une société</div>;
-   return <div style={{flex:1,display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,padding:16,overflow:"auto"}}>
+   return <div className="rg2" style={{flex:1,display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,padding:16,overflow:"auto"}}>
     <div style={{display:"flex",flexDirection:"column",gap:12}}>
      <div style={{...GC,textAlign:"center"}}><div style={{fontSize:22,fontWeight:900,fontFamily:FONT_TITLE,color:"#FFAA00",marginBottom:8}}>{s.status} {s.name} <span style={{fontSize:14,color:s.gradeColor}}>{s.grade}</span></div>{s.porteur&&<div style={{fontSize:12,color:"#71717a"}}>👤 {s.porteur}</div>}</div>
-     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+     <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
       <div style={GC}><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>CA</div><div style={{fontSize:24,fontWeight:900,color:"#FFAA00"}}>{fmt(s.ca)}€</div></div>
       <div style={GC}><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Prospects</div><div style={{fontSize:24,fontWeight:900,color:"#60a5fa"}}>{s.prosp}</div></div>
       <div style={GC}><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Pipeline</div><div style={{fontSize:24,fontWeight:900,color:"#a78bfa"}}>{fmt(s.pipVal)}€</div></div>
@@ -7444,7 +7443,7 @@ function ReplayMensuel({soc,reps,allM,socBank,clients,ghlData}){
  },[ca,activeCl,mrr,allM,reps,soc,clients]);
  const proj=project(reps,soc?.id,allM);
  const slides=[
-  {title:"📊 Ton mois en chiffres",bg:"linear-gradient(135deg,#1a1a4e,#0a0a2e)",render:()=><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginTop:20}}>{[{l:"CA",v:fmt(ca)+"€",c:C.g},{l:"Charges",v:fmt(ch)+"€",c:C.r},{l:"Leads",v:String(leads),c:C.b},{l:"Clients",v:String(activeCl.length),c:C.acc}].map((k,i)=><div key={i} style={{textAlign:"center",animation:`celebIn .5s ease ${i*0.1}s both`}}><div style={{fontSize:36,fontWeight:900,color:k.c,fontFamily:FONT_TITLE}}>{k.v}</div><div style={{fontSize:12,color:C.td,marginTop:4}}>{k.l}</div></div>)}</div>},
+  {title:"📊 Ton mois en chiffres",bg:"linear-gradient(135deg,#1a1a4e,#0a0a2e)",render:()=><div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginTop:20}}>{[{l:"CA",v:fmt(ca)+"€",c:C.g},{l:"Charges",v:fmt(ch)+"€",c:C.r},{l:"Leads",v:String(leads),c:C.b},{l:"Clients",v:String(activeCl.length),c:C.acc}].map((k,i)=><div key={i} style={{textAlign:"center",animation:`celebIn .5s ease ${i*0.1}s both`}}><div style={{fontSize:36,fontWeight:900,color:k.c,fontFamily:FONT_TITLE}}>{k.v}</div><div style={{fontSize:12,color:C.td,marginTop:4}}>{k.l}</div></div>)}</div>},
   {title:"🏆 Ton meilleur client",bg:"linear-gradient(135deg,#2d1a00,#1a0a00)",render:()=><div style={{textAlign:"center",marginTop:30}}>{topClient?<><div style={{fontSize:48,marginBottom:10,animation:"celebIn .5s ease both"}}>🏆</div><div style={{fontSize:24,fontWeight:900,color:C.acc}}>{topClient.name}</div><div style={{fontSize:18,color:C.g,fontWeight:700,marginTop:8}}>{fmt(topClient.rev)}€/mois</div><div style={{marginTop:12,display:"inline-block",padding:"4px 14px",borderRadius:20,background:C.accD,color:C.acc,fontSize:11,fontWeight:700}}>⭐ MVP du mois</div></>:<div style={{color:C.td,fontSize:14}}>Pas encore de client ce mois</div>}</div>},
   {title:"📈 Ta croissance",bg:"linear-gradient(135deg,#001a2d,#000a1a)",render:()=><div style={{textAlign:"center",marginTop:30}}><div style={{fontSize:56,fontWeight:900,color:growth>=0?C.g:C.r,animation:"celebIn .5s ease both"}}>{growth>=0?"+":""}{growth}%</div><div style={{fontSize:13,color:C.td,marginTop:8}}>vs {ml(pm)}</div><div style={{marginTop:16,display:"flex",justifyContent:"center",gap:20}}><div><div style={{fontSize:14,fontWeight:700,color:C.td}}>Avant</div><div style={{fontSize:20,fontWeight:800,color:C.t}}>{fmt(prevCa)}€</div></div><div style={{fontSize:24,color:C.td}}>→</div><div><div style={{fontSize:14,fontWeight:700,color:C.td}}>Maintenant</div><div style={{fontSize:20,fontWeight:800,color:C.g}}>{fmt(ca)}€</div></div></div></div>},
   {title:"🔥 Tes records battus",bg:"linear-gradient(135deg,#2d0a00,#1a0500)",render:()=><div style={{marginTop:20}}>{records.length>0?records.map((r2,i)=><div key={i} style={{padding:"14px 18px",background:"rgba(255,255,255,.05)",borderRadius:12,marginBottom:10,fontSize:14,color:C.t,animation:`slideInRight .3s ease ${i*0.1}s both`}}>{r2}</div>):<div style={{textAlign:"center",color:C.td,fontSize:14,marginTop:30}}>Continue comme ça, les records arrivent ! 💪</div>}</div>},
@@ -7619,7 +7618,7 @@ function InvestorBoard({socs,reps,allM,hold,pin:inputPin}){
    <div className="admin-stats-row" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,marginBottom:32}}>
     {[{l:"Sociétés",v:actS.length,c:C.b},{l:"CA Total",v:fmt(totalCA)+"€",c:C.g},{l:"Croissance",v:`${growthPct>=0?"+":""}${growthPct}%`,c:growthPct>=0?C.g:C.r}].map((k,i)=><div key={i} className="glass-card-static admin-card" style={{padding:24,textAlign:"center"}}><div style={{fontSize:32,fontWeight:900,color:k.c,fontFamily:FONT_TITLE}}>{k.v}</div><div style={{fontSize:11,color:C.td,marginTop:6}}>{k.l}</div></div>)}
    </div>
-   <div className="admin-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:16}}>
+   <div className="admin-grid rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:16}}>
     {actS.map(s=>{const sCa=pf(gr(reps,s.id,cm)?.ca);const sPrev=pf(gr(reps,s.id,pm)?.ca);const sTrend=sPrev>0?Math.round((sCa-sPrev)/sPrev*100):0;const hs=healthScore(s,reps);
      return <div key={s.id} className="glass-card" style={{padding:20}}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
@@ -7828,7 +7827,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
      <p style={{color:C.td,fontSize:13,margin:"8px 0 0",lineHeight:1.5}}>Votre espace est configuré. Connectez-vous puis découvrez la plateforme avec un tutoriel guidé de chaque onglet.</p>
     </div>
     <div style={{padding:"20px 28px"}}>
-     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{[{icon:"📊",label:"Dashboard",desc:"Pilotage global"},{icon:"🏆",label:"Milestones",desc:"Trophées & progrès"},{icon:"🤖",label:"AI Copilot",desc:"Insights IA"},{icon:"📈",label:"Analytique",desc:"Tendances & comparaisons"}].map(it=>
+     <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{[{icon:"📊",label:"Dashboard",desc:"Pilotage global"},{icon:"🏆",label:"Milestones",desc:"Trophées & progrès"},{icon:"🤖",label:"AI Copilot",desc:"Insights IA"},{icon:"📈",label:"Analytique",desc:"Tendances & comparaisons"}].map(it=>
       <div key={it.label} style={{padding:"12px 14px",borderRadius:10,background:C.bg,border:`1px solid ${C.brd}`,display:"flex",alignItems:"center",gap:8}}>
        <span style={{fontSize:18}}>{it.icon}</span><div><div style={{fontWeight:700,fontSize:11,color:C.t}}>{it.label}</div><div style={{fontSize:10,color:C.td}}>{it.desc}</div></div></div>)}</div>
     </div>
@@ -7949,7 +7948,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </div>
     <SmartAlertsPanel alerts={smartAlerts.slice(0,5)}/>
    </div>}
-   <div data-tour="admin-kpis" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8}}>
+   <div className="rg-auto" data-tour="admin-kpis" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8}}>
     <KPI label="CA Groupe" value={`${fmt(actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.ca),0))}€`} accent={C.acc} icon="💰" delay={1}/>
     <KPI label="Marge nette" value={`${fmt(actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.ca)-pf(gr(reps,s.id,cM2)?.charges),0))}€`} accent={C.g} icon="📊" delay={2}/>
     <KPI label="On se verse" value={`${fmt(hold.remun)}€`} accent={C.o} icon="👤" delay={3} sub={`${fmt(hold.remun/2)}€ chacun`}/>
@@ -7957,7 +7956,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     <KPI label="Trésorerie" value={`${fmt(hold.treso)}€`} accent={(hold.treso||0)<5e3?C.r:C.g} icon="🏦" delay={5}/>
     <KPI label="ROI Incubation" value={`${(()=>{const first=(allM||[])[0];const last=cM2;if(!first)return"—";const caFirst=actS.reduce((a,s)=>a+pf(gr(reps,s.id,first)?.ca),0);const caLast=actS.reduce((a,s)=>a+pf(gr(reps,s.id,last)?.ca),0);if(caFirst<=0)return caLast>0?"+∞":"0%";return`${caLast>=caFirst?"+":""}${Math.round((caLast-caFirst)/caFirst*100)}%`;})()}`} accent="#a78bfa" icon="🚀" delay={6} sub="vs 1er mois"/>
    </div>
-   <div className="admin-responsive-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:14}}>
+   <div className="admin-responsive-grid rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:14}}>
     <div>
     {feed.length>0&&<div data-tour="admin-feed"><Card style={{padding:12,marginBottom:10}}>
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:6}}>ACTIVITÉ RÉCENTE</div>
@@ -8012,7 +8011,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    <InboxUnifiee socs={actS} ghlData={ghlData}/>
    <div style={{marginTop:14}}><LeaderboardCard socs={socs} reps={reps} allM={allM} actions={actions} pulses={pulses} socBank={socBank}/></div>
    <Sect title="Portfolio" sub={`${actS.filter(s=>s.id!=="eco").length} sociétés actives`}>
-    <div data-tour="admin-portfolio" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:8}}>
+    <div className="rg-auto" data-tour="admin-portfolio" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:8}}>
     {actS.filter(s=>s.id!=="eco").map((s,i)=>{
     const r=gr(reps,s.id,cM2);const hs2=healthScore(s,reps);const rw2=runway(reps,s.id,allM);const sb=socBank[s.id];
     const ca2=r?pf(r.ca):0;const ms=calcMilestones(s,reps,actions,pulses,allM);const msUnlocked=ms.filter(m=>m.unlocked);
@@ -8026,7 +8025,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     <GradeBadge grade={hs2.grade} color={hs2.color}/>
     {(s.obj||0)>0&&(()=>{const pctO=Math.min(100,Math.round(ca2/(s.obj)*100));const r2=16;const circ=2*Math.PI*r2;const off=circ-(pctO/100)*circ;return <svg width="38" height="38" style={{flexShrink:0}}><circle cx="19" cy="19" r={r2} fill="none" stroke={C.brd} strokeWidth="3"/><circle cx="19" cy="19" r={r2} fill="none" stroke={pctO>=100?C.g:C.acc} strokeWidth="3" strokeDasharray={circ} strokeDashoffset={off} strokeLinecap="round" transform="rotate(-90 19 19)"/><text x="19" y="21" textAnchor="middle" fontSize="9" fontWeight="800" fill={pctO>=100?C.g:C.acc}>{pctO}%</text></svg>;})()}
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,marginBottom:6}}>
+    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,marginBottom:6}}>
     <div style={{background:C.bg,borderRadius:6,padding:"5px 7px"}}><div style={{color:C.td,fontSize:8,fontWeight:600}}>CA</div><div style={{fontWeight:800,fontSize:12,color:C.t}}>{ca2>0?`${fmt(ca2)}€`:"—"}</div></div>
     <div style={{background:C.bg,borderRadius:6,padding:"5px 7px"}}><div style={{color:C.td,fontSize:8,fontWeight:600}}>{sb?"SOLDE":"TRÉSO"}</div><div style={{fontWeight:800,fontSize:12,color:C.g}}>{sb?`${fmt(sb.balance)}€`:r?`${fmt(pf(r.tresoSoc))}€`:"—"}</div></div>
     </div>
@@ -8049,7 +8048,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </div>
    </Sect>
    <div data-tour="admin-milestones"><Sect title="🏆 Milestones" sub="Progression de chaque société">
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:6}}>
+    <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:6}}>
     {actS.filter(s=>s.id!=="eco").map((s,i)=>{
     const ms=calcMilestones(s,reps,actions,pulses,allM);const un=ms.filter(m=>m.unlocked);const pctMs=Math.round(un.length/ms.length*100);
     const topTier=un.sort((a2,b2)=>b2.tier-a2.tier).slice(0,5);
@@ -8071,7 +8070,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     })}
     </div>
    </Sect></div>
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:14}}>
+   <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:14}}>
     <Card style={{padding:12,cursor:"pointer"}} onClick={()=>setTab(10)}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
     <span style={{fontSize:11,fontWeight:700}}>🤝 Synergies</span>
@@ -8115,7 +8114,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
      <Btn small onClick={()=>setESoc({id:`s${Date.now()}`,nom:"",porteur:"",act:"",pT:"benefices",pP:20,stat:"lancement",color:"#22d3ee",pin:String(2000+socs.length),rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:new Date().toISOString().slice(0,10),slackId:""})}>+ Ajouter une société</Btn>
     </div>
    </div>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10}}>
+   <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10}}>
    {socs.map((s,i)=>{const hs2=healthScore(s,reps);const r=gr(reps,s.id,cM2);const ca2=pf(r?.ca);const rp2=gr(reps,s.id,prevM(cM2));const prevCa2=pf(rp2?.ca);const trend2=prevCa2>0?Math.round((ca2-prevCa2)/prevCa2*100):0;const sb=socBank[s.id];const myCl2=(clients||[]).filter(c=>c.socId===s.id&&c.status==="active");
    return <div key={s.id} className={`glass-card fu d${Math.min(i+1,8)}`} style={{padding:16,cursor:"pointer"}} onClick={()=>setESoc({...s})}>
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
@@ -8123,7 +8122,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
      <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.nom}</div><div style={{color:C.td,fontSize:10}}>{s.porteur}</div></div>
      <span style={{fontSize:16}}>{hs2.grade==="A"||hs2.grade==="B"?"🟢":hs2.grade==="C"?"🟡":"🔴"}</span>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
+    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
      <div style={{background:C.bg,borderRadius:8,padding:"6px 8px"}}><div style={{color:C.td,fontSize:8,fontWeight:600}}>CA</div><div style={{fontWeight:800,fontSize:14,color:C.acc}}>{ca2>0?`${fmt(ca2)}€`:"—"}</div></div>
      <div style={{background:C.bg,borderRadius:8,padding:"6px 8px"}}><div style={{color:C.td,fontSize:8,fontWeight:600}}>CLIENTS</div><div style={{fontWeight:800,fontSize:14,color:C.b}}>{myCl2.length}</div></div>
     </div>
@@ -8135,7 +8134,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </div>
    <Sect title="Journal">{Object.entries(journal).filter(([,v])=>v.length>0).map(([sid,entries])=>{const s=socs.find(x=>x.id===sid);if(!s)return null;return <div key={sid} style={{marginBottom:8}}><div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:5,height:5,borderRadius:3,background:s.color}}/><span style={{fontWeight:700,fontSize:12}}>{s.nom}</span></div>{entries.sort((a2,b2)=>new Date(b2.date)-new Date(a2.date)).map(j=><div key={j.id} style={{padding:"4px 0 4px 14px",borderLeft:`2px solid ${s.color}33`,marginBottom:2}}><div style={{fontSize:11,color:C.t}}>{j.text}</div><div style={{fontSize:9,color:C.td}}>{new Date(j.date).toLocaleDateString("fr-FR")}</div></div>)}</div>;})}</Sect>
    <Modal open={!!eSoc} onClose={()=>setESoc(null)} title={eSoc?.nom||"Nouvelle société"} wide>{eSoc&&<>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
     <Inp label="Nom" value={eSoc.nom} onChange={v=>setESoc({...eSoc,nom:v})}/>
     <Inp label="Porteur" value={eSoc.porteur} onChange={v=>setESoc({...eSoc,porteur:v})}/>
     <Inp label="Activité" value={eSoc.act} onChange={v=>setESoc({...eSoc,act:v})}/>
@@ -8149,7 +8148,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     <Inp label="Obj. mensuel" value={eSoc.obj} onChange={v=>setESoc({...eSoc,obj:pf(v)})} type="number" suffix="€"/>
     <Inp label="Obj. trim." value={eSoc.objQ} onChange={v=>setESoc({...eSoc,objQ:pf(v)})} type="number" suffix="€"/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:8}}>
+    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:8}}>
     <div style={{padding:"10px 12px",background:C.bg,borderRadius:8,border:`1px solid ${C.brd}`}}><div style={{display:"flex",alignItems:"center",gap:5,marginBottom:6}}><span style={{fontSize:12}}>📡</span><span style={{fontWeight:700,fontSize:10,color:C.td}}>GHL</span></div><Inp label="Clé API" value={eSoc.ghlKey||""} onChange={v=>setESoc({...eSoc,ghlKey:v})} placeholder="eyJhbGciOi..." small/></div>
     <div style={{padding:"10px 12px",background:C.bg,borderRadius:8,border:`1px solid ${C.brd}`}}><div style={{display:"flex",alignItems:"center",gap:5,marginBottom:6}}><span style={{fontSize:12}}>🏦</span><span style={{fontWeight:700,fontSize:10,color:C.td}}>REVOLUT</span></div><Inp label="Token" value={eSoc.revToken||""} onChange={v=>setESoc({...eSoc,revToken:v})} placeholder="oa_sand_..." small/><Sel label="Env." value={eSoc.revEnv||"sandbox"} onChange={v=>setESoc({...eSoc,revEnv:v})} options={[{v:"sandbox",l:"Sandbox"},{v:"production",l:"Production"}]}/></div>
     </div>
@@ -8169,13 +8168,13 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     const totalCh=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.charges),0);
     const totalMarge=totalCA-totalCh;const margePctG=totalCA>0?Math.round(totalMarge/totalCA*100):0;
     const totalTreso=actS.reduce((a,s)=>a+(socBank[s.id]?.balance||pf(gr(reps,s.id,cM2)?.tresoSoc)),0);
-    return <><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:8,marginBottom:14}}>
+    return <><div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:8,marginBottom:14}}>
      <KPI label="CA Total" value={`${fmt(totalCA)}€`} accent={C.acc} icon="💰" delay={1}/>
      <KPI label="Charges Totales" value={`${fmt(totalCh)}€`} accent={C.r} icon="📤" delay={2}/>
      <KPI label="Marge Nette" value={`${fmt(totalMarge)}€ (${margePctG}%)`} accent={totalMarge>0?C.g:C.r} icon="📊" delay={3}/>
      <KPI label="Trésorerie" value={`${fmt(totalTreso)}€`} accent={totalTreso>5000?C.g:C.r} icon="🏦" delay={4}/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
      <Card style={{padding:14}}><div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📊 CA PAR SOCIÉTÉ (6 MOIS)</div>
       <div style={{height:220}}><ResponsiveContainer><AreaChart data={allM.slice(-6).map(m=>{const row={mois:ml(m)};actS.filter(s=>s.id!=="eco").forEach(s=>{row[s.nom]=pf(gr(reps,s.id,m)?.ca);});return row;})}><CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis dataKey="mois" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/><YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/><Tooltip content={<CTip/>}/><Legend wrapperStyle={{fontSize:9}}/>{actS.filter(s=>s.id!=="eco").map(s=><Area key={s.id} type="monotone" dataKey={s.nom} stackId="1" stroke={s.color} fill={s.color+"44"} strokeWidth={1.5}/>)}</AreaChart></ResponsiveContainer></div>
      </Card>
@@ -8215,7 +8214,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    const allTeamM=team.reduce((a,t)=>{const ca=t.socId!=="holding"?pf(gr(reps,t.socId,cM2)?.ca):0;return a+teamMonthly(t,ca);},0);
    return <>
    <div style={{display:"flex",justifyContent:"flex-end",marginTop:6,gap:6}}><Btn small v="secondary" onClick={()=>setTab(13)}>🔄 Gérer charges</Btn><Btn small onClick={()=>setEHold(true)}>⚙ Paramètres</Btn></div>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginTop:8}}>
+   <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginTop:8}}>
     <KPI label="Flux entrant" value={`${fmt(hc.tIn)}€`} accent={C.g} icon="💰" delay={1} sub={`Remontées: ${fmt(hc.rem)}€`}/>
     <KPI label="On se verse" value={`${fmt(hold.remun)}€`} accent={C.acc} icon="👤" delay={2} sub={`${fmt(hold.remun/2)}€ chacun`}/>
     <KPI label="Charges holding" value={`${fmt(hc.tCh)}€`} accent={C.r} icon="📤" delay={3}/>
@@ -8291,7 +8290,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </Card>
    </Sect>
    <Sect title="Évolution des revenus"><div className="fu d4" style={{height:200,background:C.card,borderRadius:12,border:`1px solid ${C.brd}`,padding:"14px 6px 6px 0"}}><ResponsiveContainer><BarChart data={allM.map(m=>{const h2=calcH(socs,reps,hold,m);return{mois:ml(m),Entrant:h2.tIn,Rémunération:hold.remun,Dispo:h2.dispo};}).filter(d=>d.Entrant>0)}><CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis dataKey="mois" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/><YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/><Tooltip content={<CTip/>}/><Legend wrapperStyle={{fontSize:10}}/><Bar dataKey="Entrant" fill={C.g} radius={[3,3,0,0]}/><Bar dataKey="Rémunération" fill={C.acc} radius={[3,3,0,0]}/><Bar dataKey="Dispo" fill={C.b} radius={[3,3,0,0]}/></BarChart></ResponsiveContainer></div></Sect>
-   <Modal open={eHold} onClose={()=>setEHold(false)} title="Paramètres holding" wide><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}><Inp label="Logiciels" type="number" value={hold.logiciels} onChange={v=>setHold({...hold,logiciels:pf(v)})} suffix="€"/><Inp label="Équipe" type="number" value={hold.equipe} onChange={v=>setHold({...hold,equipe:pf(v)})} suffix="€"/><Inp label="Service" type="number" value={hold.service} onChange={v=>setHold({...hold,service:pf(v)})} suffix="€"/><Inp label="Cabinet" type="number" value={hold.cabinet} onChange={v=>setHold({...hold,cabinet:pf(v)})} suffix="€"/><Inp label="Rémunération" type="number" value={hold.remun} onChange={v=>setHold({...hold,remun:pf(v)})} suffix="€"/><Inp label="Réserve" type="number" value={hold.reservePct} onChange={v=>setHold({...hold,reservePct:pf(v)})} suffix="%"/><Inp label="CRM/soc" type="number" value={hold.crm} onChange={v=>setHold({...hold,crm:pf(v)})} suffix="€"/><Inp label="Trésorerie" type="number" value={hold.treso} onChange={v=>setHold({...hold,treso:pf(v)})} suffix="€"/></div><div style={{marginTop:12,padding:"12px 14px",background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><span style={{fontSize:16}}>🏦</span><span style={{fontWeight:700,fontSize:12,color:C.td}}>REVOLUT BUSINESS</span></div><Inp label="API Token" value={hold.revolutToken||""} onChange={v=>setHold({...hold,revolutToken:v})} placeholder="oa_sand_..." note="Settings → API → Generate token (avec les scopes accounts:read + transactions:read)"/><Sel label="Environnement" value={hold.revolutEnv||"sandbox"} onChange={v=>setHold({...hold,revolutEnv:v})} options={[{v:"sandbox",l:"Sandbox (test)"},{v:"production",l:"Production (live)"}]}/></div>
+   <Modal open={eHold} onClose={()=>setEHold(false)} title="Paramètres holding" wide><div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}><Inp label="Logiciels" type="number" value={hold.logiciels} onChange={v=>setHold({...hold,logiciels:pf(v)})} suffix="€"/><Inp label="Équipe" type="number" value={hold.equipe} onChange={v=>setHold({...hold,equipe:pf(v)})} suffix="€"/><Inp label="Service" type="number" value={hold.service} onChange={v=>setHold({...hold,service:pf(v)})} suffix="€"/><Inp label="Cabinet" type="number" value={hold.cabinet} onChange={v=>setHold({...hold,cabinet:pf(v)})} suffix="€"/><Inp label="Rémunération" type="number" value={hold.remun} onChange={v=>setHold({...hold,remun:pf(v)})} suffix="€"/><Inp label="Réserve" type="number" value={hold.reservePct} onChange={v=>setHold({...hold,reservePct:pf(v)})} suffix="%"/><Inp label="CRM/soc" type="number" value={hold.crm} onChange={v=>setHold({...hold,crm:pf(v)})} suffix="€"/><Inp label="Trésorerie" type="number" value={hold.treso} onChange={v=>setHold({...hold,treso:pf(v)})} suffix="€"/></div><div style={{marginTop:12,padding:"12px 14px",background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><span style={{fontSize:16}}>🏦</span><span style={{fontWeight:700,fontSize:12,color:C.td}}>REVOLUT BUSINESS</span></div><Inp label="API Token" value={hold.revolutToken||""} onChange={v=>setHold({...hold,revolutToken:v})} placeholder="oa_sand_..." note="Settings → API → Generate token (avec les scopes accounts:read + transactions:read)"/><Sel label="Environnement" value={hold.revolutEnv||"sandbox"} onChange={v=>setHold({...hold,revolutEnv:v})} options={[{v:"sandbox",l:"Sandbox (test)"},{v:"production",l:"Production (live)"}]}/></div>
    <div style={{marginTop:12,padding:"12px 14px",background:C.bg,borderRadius:10,border:`1px solid ${hold.slack?.enabled?C.g+"44":C.brd}`}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
     <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:16}}>💬</span><span style={{fontWeight:700,fontSize:12,color:C.td}}>SLACK</span></div>
@@ -8306,7 +8305,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     {hold.slack?.mode==="bob"&&<Inp label="Bob Webhook URL" value={hold.slack?.bobWebhook||""} onChange={v=>setHold({...hold,slack:{...hold.slack,bobWebhook:v}})} placeholder="https://your-bob-webhook.com/..." small/>}
     <div style={{padding:"8px 10px",background:C.card2,borderRadius:8,marginTop:8}}>
     <div style={{fontSize:9,color:C.td,fontWeight:700,marginBottom:6}}>NOTIFICATIONS</div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
+    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
     <Toggle on={hold.slack?.notifyReport!==false} onToggle={()=>setHold({...hold,slack:{...hold.slack,notifyReport:!hold.slack?.notifyReport}})} label="📊 Rapports soumis"/>
     <Toggle on={hold.slack?.notifyPulse!==false} onToggle={()=>setHold({...hold,slack:{...hold.slack,notifyPulse:!hold.slack?.notifyPulse}})} label="⚡ Pulses envoyés"/>
     <Toggle on={hold.slack?.notifyValidation!==false} onToggle={()=>setHold({...hold,slack:{...hold.slack,notifyValidation:!hold.slack?.notifyValidation}})} label="✅ Rapports validés"/>
@@ -8318,7 +8317,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </div>
    <div style={{marginTop:12,padding:"12px 14px",background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`}}>
     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><span style={{fontSize:16}}>🎨</span><span style={{fontWeight:700,fontSize:12,color:C.td}}>BRANDING</span></div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
+    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
     <Inp label="Nom de la plateforme" value={hold.brand?.name||"L'INCUBATEUR ECS"} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),name:v}})}/>
     <Inp label="Sous-titre" value={hold.brand?.sub||"Plateforme de pilotage"} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),sub:v}})}/>
     <Inp label="Logo URL (optionnel)" value={hold.brand?.logoUrl||""} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),logoUrl:v}})} placeholder="https://..."/>
@@ -8376,13 +8375,13 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     const totalClos=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.leadsClos),0);
     const totalPipeline=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.pipeline),0);
     const convRate=totalLeads>0?Math.round(totalClos/totalLeads*100):0;
-    return <><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:14}}>
+    return <><div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:14}}>
      <KPI label="Leads Total" value={totalLeads} accent={C.b} icon="📞" delay={1}/>
      <KPI label="Deals Clos" value={totalClos} accent={C.g} icon="✅" delay={2}/>
      <KPI label="Pipeline" value={`${fmt(totalPipeline)}€`} accent={C.acc} icon="🔄" delay={3}/>
      <KPI label="Conversion" value={`${convRate}%`} accent={convRate>20?C.g:C.o} icon="📈" delay={4}/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
      <Card style={{padding:14}}><div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📊 LEADS PAR SOCIÉTÉ</div>
       <div style={{height:220}}><ResponsiveContainer><BarChart data={actS.filter(s=>s.id!=="eco").map(s=>({nom:s.nom,leads:pf(gr(reps,s.id,cM2)?.leads),clos:pf(gr(reps,s.id,cM2)?.leadsClos),color:s.color}))}><CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis dataKey="nom" tick={{fill:C.td,fontSize:8}} axisLine={false} tickLine={false}/><YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/><Tooltip content={<CTip/>}/><Legend wrapperStyle={{fontSize:9}}/><Bar dataKey="leads" fill={C.b} radius={[3,3,0,0]} name="Leads"/><Bar dataKey="clos" fill={C.g} radius={[3,3,0,0]} name="Clos"/></BarChart></ResponsiveContainer></div>
      </Card>
@@ -8406,13 +8405,13 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     const totalLeads2=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.leads),0);
     const cplG=totalLeads2>0?Math.round(totalPub/totalLeads2):0;
     const roasG=totalPub>0?Math.round(totalCA/totalPub*100)/100:0;
-    return <><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:14}}>
+    return <><div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:14}}>
      <KPI label="Dépenses Pub" value={`${fmt(totalPub)}€`} accent={C.r} icon="📣" delay={1}/>
      <KPI label="CA Généré" value={`${fmt(totalCA)}€`} accent={C.g} icon="💰" delay={2}/>
      <KPI label="CPL Moyen" value={cplG>0?`${fmt(cplG)}€`:"—"} accent={C.o} icon="📞" delay={3}/>
      <KPI label="ROAS Global" value={roasG>0?`${roasG}x`:"—"} accent={roasG>3?C.g:roasG>1?C.o:C.r} icon="📈" delay={4}/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
      <Card style={{padding:14}}><div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>💸 PUB vs CA PAR SOCIÉTÉ</div>
       <div style={{height:220}}><ResponsiveContainer><BarChart data={actS.filter(s=>s.id!=="eco"&&pf(gr(reps,s.id,cM2)?.pub)>0).map(s=>({nom:s.nom,pub:pf(gr(reps,s.id,cM2)?.pub),ca:pf(gr(reps,s.id,cM2)?.ca)}))}><CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis dataKey="nom" tick={{fill:C.td,fontSize:8}} axisLine={false} tickLine={false}/><YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/><Tooltip content={<CTip/>}/><Legend wrapperStyle={{fontSize:9}}/><Bar dataKey="pub" fill={C.r} radius={[3,3,0,0]} name="Pub"/><Bar dataKey="ca" fill={C.g} radius={[3,3,0,0]} name="CA"/></BarChart></ResponsiveContainer></div>
      </Card>
@@ -8470,7 +8469,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   {tab===18&&<>
    {/* PARAMÈTRES */}
    <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>⚙️ Paramètres Holding</div>
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+   <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
     <Card style={{padding:16}}>
      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>🎨</span><span style={{fontWeight:700,fontSize:12}}>Branding</span></div>
      <Inp label="Nom plateforme" value={hold.brand?.name||"L'INCUBATEUR ECS"} onChange={v=>setHold({...hold,brand:{...(hold.brand||DH.brand),name:v}})}/>
@@ -8483,7 +8482,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </Card>
     <Card style={{padding:16}}>
      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>💰</span><span style={{fontWeight:700,fontSize:12}}>Finance Holding</span></div>
-     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 8px"}}>
+     <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 8px"}}>
       <Inp label="Réserve" type="number" value={hold.reservePct} onChange={v=>setHold({...hold,reservePct:pf(v)})} suffix="%"/>
       <Inp label="Rémunération" type="number" value={hold.remun} onChange={v=>setHold({...hold,remun:pf(v)})} suffix="€"/>
       <Inp label="Logiciels" type="number" value={hold.logiciels} onChange={v=>setHold({...hold,logiciels:pf(v)})} suffix="€"/>
