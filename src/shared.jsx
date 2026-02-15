@@ -651,7 +651,8 @@ export async function syncRevolut(company){
 export function mkSocRevDemo(){ return null; }
 // Accounts to exclude from treasury per company (personal pockets, dividend transit, etc.)
 // Check if a transaction involves any excluded pocket account (any leg)
-export function isExcludedTx(tx,excl){if(!excl||excl.length===0)return false;const leg=tx.legs?.[0];if(!leg)return true;if(excl.includes(leg.account_id))return true;if(tx.type==="transfer"&&(tx.legs||[]).some(l=>excl.includes(l.account_id)))return true;if(tx.type==="exchange")return true;return false;}
+const EXCLUDED_DESCRIPTIONS=[/from mohammad dayyaan/i,/to mohammad dayyaan/i];
+export function isExcludedTx(tx,excl){if(!excl||excl.length===0)return false;const leg=tx.legs?.[0];if(!leg)return true;if(excl.includes(leg.account_id))return true;if(tx.type==="transfer"&&(tx.legs||[]).some(l=>excl.includes(l.account_id)))return true;if(tx.type==="exchange")return true;const desc=(leg.description||tx.reference||"").toLowerCase();if(EXCLUDED_DESCRIPTIONS.some(rx=>rx.test(desc)))return true;return false;}
 export const EXCLUDED_ACCOUNTS={
  leadx:["5c008ba9-b9a7-4141-97dc-6a53ef3d6646","5fce1497-811e-4266-9889-2da74aa27733","2918c7ec-c0ed-4d9b-92f9-0abd1f3eff9c","8cdffd30-603d-40f4-bbca-3dec89ae0ded"], // Dayyaan, SCALE CORP, Prestataires, Budget Client
  copy:["a1edf694-ba2d-e22e-0400-127be91fc216","a86df684-89e0-e227-0400-12caeed463bb","bd0ed66e-8c45-e2ea-0400-12f5f3c26431","50235dfb-45de-e28e-0400-12838affb4e8","fd2034e4-5573-e212-0400-12fc5150f4bb","247e7259-d80f-e2c2-0400-12f2c5aec474"], // BCS: Sol, Anthony&Rudy, Publicité, Abonnements, Prestataires, Jimmy
