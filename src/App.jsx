@@ -74,7 +74,7 @@ const CSS=`@import url('https://fonts.googleapis.com/css2?family=Teachers:wght@4
 @keyframes typeReveal{from{max-height:0;opacity:0}to{max-height:600px;opacity:1}}
 @media(max-width:768px){.sidebar-desktop{display:none !important}.main-content{margin-left:0 !important}.mobile-header{display:flex !important}.kpi-grid-responsive{grid-template-columns:1fr 1fr !important}.chart-responsive{min-height:180px}.tx-list-mobile .tx-detail{display:none}}
 @media(min-width:769px){.mobile-header{display:none !important}}
-@media(max-width:768px){.admin-grid{grid-template-columns:1fr !important}.admin-card{min-width:auto !important}.admin-stats-row{grid-template-columns:1fr !important;gap:8px !important}.pulse-grid{grid-template-columns:1fr !important}.pulse-left,.pulse-right{display:none !important}.pulse-center{grid-column:1 !important}.main-content div[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr !important}.main-content div[style*="grid-template-columns: 1fr 1fr 1fr"]{grid-template-columns:1fr !important}.main-content div[style*="gridTemplateColumns"]{min-width:0 !important}.admin-responsive-grid{grid-template-columns:1fr !important}.admin-responsive-2col{grid-template-columns:1fr 1fr !important}table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:11px !important}.admin-soc-grid{grid-template-columns:1fr !important}.admin-soc-selector{left:10px !important;top:50px !important}.main-content{padding-top:48px !important}}
+@media(max-width:768px){.admin-grid{grid-template-columns:1fr !important}.admin-card{min-width:auto !important}.admin-stats-row{grid-template-columns:1fr !important;gap:8px !important}.pulse-grid{grid-template-columns:1fr !important}.pulse-left,.pulse-right{display:none !important}.pulse-center{grid-column:1 !important}.main-content div[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr !important}.main-content div[style*="grid-template-columns: 1fr 1fr 1fr"]{grid-template-columns:1fr !important}.main-content div[style*="gridTemplateColumns"]{min-width:0 !important}.admin-responsive-grid{grid-template-columns:1fr !important}.admin-responsive-2col{grid-template-columns:1fr 1fr !important}table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:11px !important}.admin-soc-grid{grid-template-columns:1fr !important}.admin-soc-selector{left:10px !important;top:50px !important}.main-content{padding-top:48px !important}.glass-card,.glass-card-static{min-width:0 !important}.modal-wide{width:90vw !important;max-width:90vw !important}.ai-chat-panel{width:90vw !important;right:0 !important;max-width:none !important}.notif-panel{width:85vw !important;right:0 !important}}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:${C.brd};border-radius:3px}
 input[type=range]{-webkit-appearance:none;background:${C.brd};height:3px;border-radius:4px;outline:none}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:${C.acc};cursor:pointer;box-shadow:0 2px 6px rgba(255,170,0,.3)}
@@ -775,6 +775,17 @@ function healthScore(s,reps){
  const grade=pts>=80?"A":pts>=60?"B":pts>=40?"C":"D";
  return{grade,color:{A:C.g,B:C.b,C:C.o,D:C.r}[grade],score:pts,obj:objS,growth:growS,margin:margS,retention:retS};
 }
+function leadScore(opp){
+ let s=0;
+ if(opp?.value&&pf(opp.value)>0)s+=20;if(pf(opp?.value)>=1000)s+=10;
+ if(opp?.contact?.email)s+=15;if(opp?.contact?.phone)s+=10;
+ if(opp?.contact?.companyName)s+=10;
+ const d=opp?.dateAdded||opp?.createdAt;if(d){const days=(Date.now()-new Date(d))/864e5;if(days<7)s+=20;else if(days<14)s+=10;else if(days<30)s+=5;}
+ if(opp?.status==="won")s+=15;else if(opp?.status==="open")s+=10;
+ return Math.min(s,100);
+}
+function leadScoreColor(s){return s>=70?"#34d399":s>=40?"#FFAA00":"#f87171";}
+function leadScoreLabel(s){return s>=70?"🟢":s>=40?"🟡":"🔴";}
 function qCA(reps,sid,month){return qMonths(month).reduce((a,m)=>a+pf(gr(reps,sid,m)?.ca),0);}
 function getAlerts(socs,reps,hold){
  const a=[],c=curM(),p=prevM(c);
