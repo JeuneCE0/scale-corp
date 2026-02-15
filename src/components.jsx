@@ -2548,8 +2548,8 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
   const expense=Math.abs(expenseTxs.reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0));
   return{income:Math.round(income),expense:Math.round(expense),incomeTxs,expenseTxs};
  },[bankData,soc.id,cm]);
- const ca=pf(report?.ca)||bankFinancials.income;
- const charges=pf(report?.charges)||bankFinancials.expense;
+ const ca=bankFinancials.income||pf(report?.ca);
+ const charges=bankFinancials.expense||pf(report?.charges);
  const marge=ca-charges;const margePct=ca>0?Math.round(marge/ca*100):0;
  const treso=bankData?.balance||0;
  const myClients=(clients||[]).filter(c=>c.socId===soc.id&&c.status==="active");
