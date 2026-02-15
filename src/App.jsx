@@ -390,7 +390,7 @@ async function fetchGHL(action,locationId,params={}){
  try{
   const r=await fetch(GHL_BASE,{
    method:"POST",
-   headers:{"Content-Type":"application/json"},
+   headers:sbAuthHeaders(),
    body:JSON.stringify({action,locationId,...params})
   });
   if(!r.ok)throw new Error(`GHL proxy ${r.status}`);return await r.json();
@@ -583,7 +583,7 @@ async function checkAndSendReminders(socs2,reps2,pulses2,slackConfig){
 const STRIPE_PROXY="/api/stripe";
 async function fetchStripe(action,params={}){
  try{
-  const r=await fetch(STRIPE_PROXY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,...params})});
+  const r=await fetch(STRIPE_PROXY,{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,...params})});
   if(!r.ok)return null;return await r.json();
  }catch(e){console.warn("Stripe fetch failed:",e.message);return null;}
 }
@@ -624,7 +624,7 @@ function mkRevolutDemo(){ return null; }
 async function fetchRevolut(company,endpoint){
  try{
   const action=endpoint.includes("/transactions")?"transactions":"accounts";
-  const r=await fetch("/api/revolut",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,company})});
+  const r=await fetch("/api/revolut",{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,company})});
   if(!r.ok)throw new Error(`Revolut proxy ${r.status}`);return await r.json();
  }catch(e){console.warn("Revolut fetch failed:",e.message);return null;}
 }

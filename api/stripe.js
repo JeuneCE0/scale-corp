@@ -1,4 +1,5 @@
 // Vercel Serverless Function - Stripe API Proxy
+import { verifyAuth } from './_middleware.js';
 
 const STRIPE_BASE = "https://api.stripe.com";
 
@@ -19,13 +20,17 @@ function checkRateLimit(ip) {
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
   if (!checkRateLimit(ip)) return res.status(429).json({ error: "Too many requests" });
+
+  // Auth check (log-only for now)
+  const auth = await verifyAuth(req);
+  if (!auth) console.warn(`[${new Date().toISOString()}] STRIPE UNAUTHED ip=${ip}`);
 
   const { action, customer } = req.body || {};
   if (!action) return res.status(400).json({ error: "Missing action" });

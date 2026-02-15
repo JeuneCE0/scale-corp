@@ -2,6 +2,7 @@
 // API keys are stored server-side only (Vercel env vars)
 
 import { readFileSync, existsSync } from 'fs';
+import { verifyAuth, canAccessGHLLocation } from './_middleware.js';
 
 const LOCATION_KEY_MAP = {
   "NsV7HI2MbE6qHtRp410y": "GHL_ECO_KEY",
@@ -35,7 +36,7 @@ export default async function handler(req, res) {
   // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -52,7 +53,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Invalid action" });
   }
 
-  console.log(`[${new Date().toISOString()}] GHL action=${action} loc=${locationId||'-'} ip=${ip}`);
+  // Auth check (log-only for now, will enforce later)
+  const auth = await verifyAuth(req);
+  if (!auth) {
+    console.warn(`[${new Date().toISOString()}] GHL UNAUTHED action=${action} ip=${ip}`);
+  } else if (locationId && !canAccessGHLLocation(auth, locationId)) {
+    console.warn(`[${new Date().toISOString()}] GHL FORBIDDEN user=${auth.userId} loc=${locationId} ip=${ip}`);
+    return res.status(403).json({ error: "Access denied to this location" });
+  }
+  console.log(`[${new Date().toISOString()}] GHL action=${action} loc=${locationId||'-'} user=${auth?.userId||'anon'} ip=${ip}`);
 
   // webhook_events doesn't need locationId
   if (action === "webhook_events") {
