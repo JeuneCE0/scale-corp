@@ -403,10 +403,14 @@ async function syncGHLForSoc(soc){
  if(!pipData||!pipData.pipelines)return null;
  const allPipelines=pipData.pipelines||[];
  if(allPipelines.length===0)return null;
- // Fetch opportunities for ALL pipelines
+ // Fetch opportunities, contacts and calendar in parallel
+ const [oppResults,ctData,evData]=await Promise.all([
+  Promise.all(allPipelines.map(pip=>fetchGHL("opportunities",loc,{pipeline_id:pip.id}).then(d=>({pip,d})))),
+  fetchGHL("contacts_list",loc),
+  fetchGHL("calendar_events",loc,{startTime:Date.now()-365*24*60*60*1000,endTime:Date.now()})
+ ]);
  let allMappedOpps=[];const allPipelinesMeta=[];
- for(const pip of allPipelines){
-  const oppData2=await fetchGHL("opportunities",loc,{pipeline_id:pip.id});
+ for(const{pip,d:oppData2} of oppResults){
   const opps2=(oppData2?.opportunities||[]).map(o=>({
    id:o.id,name:o.contact?.name||o.name||"Sans nom",stage:o.pipelineStageId,
    value:o.monetaryValue||0,email:o.contact?.email||"",phone:o.contact?.phone||"",
@@ -421,8 +425,6 @@ async function syncGHLForSoc(soc){
  }
  const mappedOpps=allMappedOpps;
  const won=mappedOpps.filter(o=>o.status==="won");const open2=mappedOpps.filter(o=>o.status==="open");
- // Fetch contacts list
- const ctData=await fetchGHL("contacts_list",loc);
  const rawContacts=(ctData?.contacts||[]);
  // Build a map of contactId→opp status from opportunities
  const contactOppStatus={};
@@ -441,8 +443,6 @@ async function syncGHLForSoc(soc){
   domain:((c.tags||[]).find(t=>t.startsWith("domaine:"))||"").replace("domaine:",""),
   source:c.source||"",notes:(c.tags||[]).filter(t=>!t.startsWith("domaine:")).join(", "),ghlId:c.id,stripeId:"",at:c.dateAdded||new Date().toISOString()
  }));
- // Fetch calendar events (calls)
- const evData=await fetchGHL("calendar_events",loc,{startTime:Date.now()-365*24*60*60*1000,endTime:Date.now()});
  const calEvents=evData?.events||[];
  return{
   pipelines:allPipelinesMeta,opportunities:mappedOpps,ghlClients,calendarEvents:calEvents,
@@ -5533,11 +5533,11 @@ function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    <div><div style={{fontSize:9,fontWeight:700,color:C.acc,letterSpacing:1.5,fontFamily:FONT_TITLE}}>📞 SALES — {soc.nom}</div><div style={{fontSize:11,color:C.td,marginTop:2}}>Données GHL × Meta × Revolut</div></div>
   </div>
   {/* KPIs */}
-  <div className="kpi-grid-responsive" style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20}}>
-   {kpis.map((k,i)=><div key={i} className="fade-up glass-card-static kpi-shimmer" style={{padding:16,textAlign:"center",animationDelay:`${i*0.05}s`,position:"relative",overflow:"hidden"}}>
-    <div style={{fontSize:18,marginBottom:4}}>{k.icon}</div>
-    <div style={{fontWeight:900,fontSize:20,color:k.color,lineHeight:1}}>{k.value}</div>
-    <div style={{fontSize:8,fontWeight:700,color:C.td,marginTop:6,letterSpacing:.5,fontFamily:FONT_TITLE}}>{k.label}</div>
+  <div className="kpi-grid-responsive" style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:16}}>
+   {kpis.map((k,i)=><div key={i} className="fade-up glass-card-static" style={{padding:"10px 6px",textAlign:"center",animationDelay:`${i*0.03}s`}}>
+    <div style={{fontSize:14,marginBottom:2}}>{k.icon}</div>
+    <div style={{fontWeight:900,fontSize:16,color:k.color,lineHeight:1.1}}>{k.value}</div>
+    <div style={{fontSize:7,fontWeight:700,color:C.td,marginTop:4,letterSpacing:.3,fontFamily:FONT_TITLE}}>{k.label}</div>
    </div>)}
   </div>
   {/* Pipeline Kanban */}
@@ -7691,10 +7691,11 @@ export default function App(){
   const hasKeys=socs.some(s=>s.ghlLocationId||s.ghlKey);
   let newData={};
   if(hasKeys){
-   for(const s of socs.filter(x=>x.ghlLocationId||x.ghlKey)){
+   const results=await Promise.allSettled(socs.filter(x=>x.ghlLocationId||x.ghlKey).map(async s=>{
     const d=await syncGHLForSoc(s);
-    if(d)newData[s.id]=d;
-   }
+    return{id:s.id,d};
+   }));
+   results.forEach(r=>{if(r.status==="fulfilled"&&r.value.d)newData[r.value.id]=r.value.d;});
   }
   const demo=mkGHLDemo(socs);
   socs.filter(s=>s.stat==="active"&&s.id!=="eco").forEach(s=>{
@@ -7735,18 +7736,18 @@ export default function App(){
   const nb={...socBank,[socId]:data};setSocBank(nb);await sSet("scAb",nb);
  },[socs,socBank]);
  const syncAllSocBanks=useCallback(async()=>{
-  const nb={};
-  for(const s of socs.filter(x=>["active","lancement"].includes(x.stat)&&x.id!=="eco")){
+  const entries=await Promise.all(socs.filter(x=>["active","lancement"].includes(x.stat)&&x.id!=="eco").map(async s=>{
    let data=null;
    if(s.revolutCompany){data=await syncSocRevolut(s);}
    if(!data)data=mkSocRevDemo(s);
-   nb[s.id]=data;
-  }
+   return[s.id,data];
+  }));
+  const nb=Object.fromEntries(entries);
   setSocBank(nb);await sSet("scAb",nb);
  },[socs]);
  useEffect(()=>{
   if(!loaded)return;
-  const doSync=async()=>{try{await syncRev();await syncAllSocBanks();const sd=await syncStripeData();if(sd)setStripeData(sd);}catch(e){console.warn("Auto-sync failed:",e);}};
+  const doSync=async()=>{try{await Promise.all([syncRev(),syncAllSocBanks(),syncStripeData().then(sd=>{if(sd)setStripeData(sd);})]);} catch(e){console.warn("Auto-sync failed:",e);}};
   doSync();
   const id=setInterval(doSync,60000);
   return()=>clearInterval(id);
