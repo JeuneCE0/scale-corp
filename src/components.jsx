@@ -193,8 +193,9 @@ export const TX_CATEGORIES=[
  {id:"abonnements",label:"💻 Abonnements",icon:"💻"},
  {id:"equipe",label:"👥 Équipe",icon:"👥"},
  {id:"transfert",label:"🏦 Transfert interne",icon:"🏦"},
+ {id:"fiscalite",label:"🏛️ Fiscalité",icon:"🏛️"},
  {id:"autres",label:"📦 Autres dépenses",icon:"📦"},
- {id:"dividendes",label:"🏛️ Dividendes Holding",icon:"🏛️"},
+ {id:"dividendes",label:"🏛 Dividendes Holding",icon:"🏛"},
 ];
 /* MILESTONES UI */
 export function MilestonesWall({milestones,soc}){
