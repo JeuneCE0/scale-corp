@@ -4466,6 +4466,7 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
    <SubsTeamPanel socs={[soc]} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId={soc.id} reps={reps} socBankData={socBankData}/>
   </>}
   {pTab===9&&<ErrorBoundary label="Clients"><ClientsUnifiedPanel soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices} stripeData={stripeData}/></ErrorBoundary>}
+  {pTab===14&&<ErrorBoundary label="Conversations"><ConversationsPanel soc={soc}/></ErrorBoundary>}
   {pTab===13&&<ErrorBoundary label="Rapports"><RapportsPanel soc={soc} socBankData={socBankData} ghlData={ghlData} clients={clients} reps={reps} allM={allM} hold={hold}/></ErrorBoundary>}
   {pTab===12&&<SocSettingsPanel soc={soc} save={save} socs={socs} clients={clients}/>}
   {pTab===1&&<ErrorBoundary label="Activité"><ActivitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
@@ -4946,6 +4947,7 @@ export const SB_PORTEUR=[
  {id:"sales",icon:"📞",label:"Sales",tab:2,accent:"#34d399"},
  {id:"publicite",icon:"📣",label:"Publicité",tab:3,accent:"#f472b6"},
  {id:"clients",icon:"👥",label:"Clients",tab:9,accent:C.o},
+ {id:"conversations",icon:"💬",label:"Conversations",tab:14,accent:C.b},
  {id:"bank",icon:"🏦",label:"Banque",tab:5,accent:C.g},
  {id:"rapports",icon:"📋",label:"Rapports",tab:13,accent:C.v},
  {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
