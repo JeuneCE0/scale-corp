@@ -2709,11 +2709,6 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
   return tips;
  },[soc.id,ghlData,myClients,bankData]);
  return <div className="fu">
-  {/* Score santé compact */}
-  <div className="glass-card-static" style={{padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
-   <span style={{fontWeight:900,fontSize:14,color:perfScore>75?C.g:perfScore>50?C.o:C.r}}>{perfScore}/100</span>
-   <span style={{fontSize:11,color:C.td}}>Score santé · {smartAlerts.length} alerte{smartAlerts.length>1?"s":""}</span>
-  </div>
   {/* Conseil du jour IA */}
   {(()=>{
    const[tipIdx,setTipIdx]=useState(0);
@@ -2744,30 +2739,8 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
    })}
    {smartAlerts.length>3&&<button onClick={()=>setPTab(1)} style={{background:"none",border:"none",color:C.acc,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT,marginTop:4}}>Voir tout ({smartAlerts.length}) →</button>}
   </div>}
-  {/* Performance Score + Prévisionnel row */}
-  <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:12,marginBottom:16}}>
-   {(()=>{
-    const[displayScore,setDisplayScore]=useState(0);
-    const[showBreakdown,setShowBreakdown]=useState(false);
-    useEffect(()=>{let frame=0;const target=perfScore;const duration=40;const step=()=>{frame++;const progress=Math.min(frame/duration,1);const eased=1-Math.pow(1-progress,3);setDisplayScore(Math.round(eased*target));if(frame<duration)requestAnimationFrame(step);};requestAnimationFrame(step);},[perfScore]);
-    const caScore=soc.obj>0?Math.min(40,Math.round(ca/soc.obj*40)):ca>0?20:0;
-    const gd9=ghlData?.[soc.id];const s2=Object.entries(gd9?.stats?.callsByType||{}).filter(([n])=>!/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);const i2=Object.entries(gd9?.stats?.callsByType||{}).filter(([n])=>/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);const convScore=Math.min(20,s2>0?Math.round(i2/s2*20):0);
-    const clientScore=Math.min(20,Math.round(myClients.length/Math.max(1,gd9?.ghlClients?.length||1)*20));
-    const payScore=perfScore-caScore-convScore-clientScore;
-    const gradientColor=perfScore>70?"#34d399":perfScore>=40?"#FFAA00":"#f87171";
-    return <div className="glass-card-static" style={{padding:20,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minWidth:110,position:"relative",cursor:"pointer"}} onMouseEnter={()=>setShowBreakdown(true)} onMouseLeave={()=>setShowBreakdown(false)}>
-     <div style={{position:"relative",width:80,height:80,marginBottom:6}}>
-      <svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="33" fill="none" stroke={C.brd} strokeWidth="6"/><circle cx="40" cy="40" r="33" fill="none" stroke={gradientColor} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${displayScore*2.073} 207.3`} transform="rotate(-90 40 40)" style={{transition:"stroke-dasharray .6s ease, stroke .4s ease"}}/></svg>
-      <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:22,color:gradientColor}}>{displayScore}</div>
-     </div>
-     <div style={{fontSize:8,fontWeight:700,color:C.td,letterSpacing:.5,textAlign:"center",fontFamily:FONT_TITLE}}>SCORE PERFORMANCE</div>
-     {showBreakdown&&<div style={{position:"absolute",bottom:-60,left:"50%",transform:"translateX(-50%)",background:"rgba(14,14,22,.95)",border:`1px solid ${C.brd}`,borderRadius:10,padding:"8px 12px",zIndex:10,whiteSpace:"nowrap",boxShadow:"0 8px 32px rgba(0,0,0,.6)",fontSize:9,color:C.td}}>
-      <div>CA: <strong style={{color:C.acc}}>{caScore}/40</strong> | Conv: <strong style={{color:C.v}}>{convScore}/20</strong></div>
-      <div>Clients: <strong style={{color:C.b}}>{clientScore}/20</strong> | Paiements: <strong style={{color:C.g}}>{Math.max(0,payScore)}/20</strong></div>
-     </div>}
-    </div>;
-   })()}
-   {prevu>0&&<div className="glass-card-static" style={{padding:20}}>
+  {/* Prévisionnel */}
+  {prevu>0&&<div className="glass-card-static" style={{padding:20,marginBottom:16}}>
     <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>📊 PRÉVISIONNEL</div>
     <div style={{display:"flex",gap:16,marginBottom:8}}>
      <div><div style={{fontSize:8,color:C.td}}>Prévu</div><div style={{fontWeight:900,fontSize:18,color:C.acc}}>{fmt(prevu)}€</div></div>
@@ -2775,8 +2748,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
      <div><div style={{fontSize:8,color:C.td}}>%</div><div style={{fontWeight:900,fontSize:18,color:prevuColor}}>{prevuPct}%</div></div>
     </div>
     <div style={{height:6,background:C.brd,borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.min(prevuPct,100)}%`,background:prevuColor,borderRadius:3,transition:"width .5s ease"}}/></div>
-   </div>}
-  </div>
+  </div>}
   {/* Hero KPIs */}
   {(()=>{
    const sparkData=useMemo(()=>{
@@ -4591,7 +4563,6 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
   {/* === PORTEUR DASHBOARD (pTab 0) === */}
   {pTab===0&&<><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
   </div>
-  <PredictionsCard soc={soc} reps={reps} allM={allM} clients={clients} ghlData={ghlData} socBank={socBankData?{[soc.id]:socBankData}:{}}/>
   <PorteurDashboard soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}} ghlData={ghlData} setPTab={setPTab} soc2={soc} clients={clients} pulses={pulses} savePulse={savePulse} hold={hold} stripeData={stripeData}/>
   </>}
   {pTab===5&&<><SocBankWidget bankData={socBankData} onSync={()=>syncSocBank(soc.id)} soc={soc}/>
