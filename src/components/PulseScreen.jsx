@@ -56,6 +56,14 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
  const triggerPulseRing=useCallback(()=>{setPulseRing(true);setTimeout(()=>setPulseRing(false),1200);},[]);
 
  const sb=socBank||{};const gd=ghlData||{};
+
+ // Time range helper
+ const timeRange=useMemo(()=>{const end=new Date();const start=new Date();if(timeFilter==="1j")start.setDate(end.getDate()-1);else if(timeFilter==="7j")start.setDate(end.getDate()-7);else if(timeFilter==="30j")start.setDate(end.getDate()-30);else{start.setDate(1);}return{start:start.toISOString().slice(0,10),end:end.toISOString().slice(0,10)};},[timeFilter]);
+ const prevRange=useMemo(()=>{const days=timeFilter==="1j"?1:timeFilter==="7j"?7:timeFilter==="30j"?30:new Date().getDate();const end=new Date(timeRange.start);end.setDate(end.getDate()-1);const start=new Date(end);start.setDate(end.getDate()-days+1);return{start:start.toISOString().slice(0,10),end:end.toISOString().slice(0,10)};},[timeFilter,timeRange]);
+ const inRange=(dateStr)=>{if(!dateStr)return false;const d=dateStr.slice(0,10);return d>=timeRange.start&&d<=timeRange.end;};
+ const inPrevRange=(dateStr)=>{if(!dateStr)return false;const d=dateStr.slice(0,10);return d>=prevRange.start&&d<=prevRange.end;};
+ const periodLabel=timeFilter==="1j"?"ce jour":timeFilter==="7j"?"7 derniers jours":timeFilter==="30j"?"30 derniers jours":"ce mois";
+
  const actS=useMemo(()=>{let s=(socs||[]).filter(s=>s.status!=="archived");if(statusFilter==="active")s=s.filter(x=>x.status==="active");else if(statusFilter==="lancement")s=s.filter(x=>x.status==="lancement");if(socFilter!=="all")s=s.filter(x=>x.id===socFilter);return s;},[socs,statusFilter,socFilter]);
  const allActS=(socs||[]).filter(s=>s.status!=="archived");
 
@@ -66,9 +74,9 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
  const totalProspects=useMemo(()=>allActS.reduce((a,s)=>a+getProspects(s.id).length,0),[allActS,gd]);
  const todayStr=now.toISOString().slice(0,10);
  const yesterdayStr=useMemo(()=>{const d=new Date(now);d.setDate(d.getDate()-1);return d.toISOString().slice(0,10);},[now]);
- const prospectsToday=useMemo(()=>allActS.reduce((a,s)=>a+getProspects(s.id).filter(p=>(p.dateAdded||p.createdAt||"").slice(0,10)===todayStr).length,0),[allActS,gd,todayStr]);
- const prospectsYesterday=useMemo(()=>allActS.reduce((a,s)=>a+getProspects(s.id).filter(p=>(p.dateAdded||p.createdAt||"").slice(0,10)===yesterdayStr).length,0),[allActS,gd,yesterdayStr]);
- const deltaProspects=prospectsToday-prospectsYesterday;
+ const prospectsInRange=useMemo(()=>allActS.reduce((a,s)=>a+getProspects(s.id).filter(p=>inRange(p.dateAdded||p.createdAt||"")).length,0),[allActS,gd,timeRange]);
+ const prospectsPrevRange=useMemo(()=>allActS.reduce((a,s)=>a+getProspects(s.id).filter(p=>inPrevRange(p.dateAdded||p.createdAt||"")).length,0),[allActS,gd,prevRange]);
+ const deltaProspects=prospectsInRange-prospectsPrevRange;
 
  const totalCA=useMemo(()=>allActS.reduce((a,s)=>{const r=gr(reps,s.id,cM);return a+pf(r?.ca);},0),[allActS,reps,cM]);
  const prevCA=useMemo(()=>allActS.reduce((a,s)=>{const r=gr(reps,s.id,prevMVal);return a+pf(r?.ca);},0),[allActS,reps,prevMVal]);
@@ -84,7 +92,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
  useEffect(()=>{const targets={ca:totalCA,pipeline:totalPipeline,mrr:totalMRR};const start=Date.now();const dur=1200;const anim=()=>{const t=Math.min((Date.now()-start)/dur,1);const ease=1-Math.pow(1-t,3);setAnimatedVals({ca:Math.round(targets.ca*ease),pipeline:Math.round(targets.pipeline*ease),mrr:Math.round(targets.mrr*ease)});if(t<1)requestAnimationFrame(anim);};requestAnimationFrame(anim);},[totalCA,totalPipeline,totalMRR]);
 
  // Today's payments
- const todayPayments=useMemo(()=>allActS.reduce((a,s)=>{return a+(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];return leg&&pf(leg.amount)>0&&(tx.created_at||tx.createdAt||"").slice(0,10)===todayStr;}).reduce((x,tx)=>x+pf(tx.legs?.[0]?.amount),0);},0),[allActS,sb,todayStr]);
+ const rangePayments=useMemo(()=>allActS.reduce((a,s)=>{return a+(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];return leg&&pf(leg.amount)>0&&inRange(tx.created_at||tx.createdAt||"");}).reduce((x,tx)=>x+pf(tx.legs?.[0]?.amount),0);},0),[allActS,sb,timeRange]);
 
  // Revenue vs expenses ratio
  const totalRevenues=useMemo(()=>allActS.reduce((a,s)=>{const r=gr(reps,s.id,cM);return a+pf(r?.ca);},0),[allActS,reps,cM]);
@@ -115,7 +123,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
  // Auto-scroll feed on new items
  useEffect(()=>{if(feed.length>prevFeedLen.current&&feedRef.current){feedRef.current.scrollTop=0;}prevFeedLen.current=feed.length;},[feed.length]);
 
- const filteredFeed=useMemo(()=>feedTypeFilter==="all"?feed:feed.filter(f=>f.type===feedTypeFilter),[feed,feedTypeFilter]);
+ const filteredFeed=useMemo(()=>{let f=feed.filter(x=>inRange(x.ts));if(feedTypeFilter!=="all")f=f.filter(x=>x.type===feedTypeFilter);return f;},[feed,feedTypeFilter,timeRange]);
 
  const aiTickerItems=useMemo(()=>{const today=new Date().toISOString().slice(0,10);const items=[];let totalIn=0,totalOut=0;allActS.forEach(s=>{const sn=s?.nom||s?.name||"";const logo=s?.logoUrl||"";const color=s?.brandColor||s?.color||"#FFAA00";const opps=gd[s.id]?.opportunities||[];const newP=opps.filter(o=>!o.status&&(o.dateAdded||o.createdAt||"").slice(0,10)===today).length;const calls=(gd[s.id]?.calendarEvents||[]).filter(e=>(e?.startTime||"").slice(0,10)===today).length;const excl=EXCLUDED_ACCOUNTS[s.id]||[];let socIn=0,socOut=0;(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];if(leg&&excl.includes(leg.account_id))return false;return(tx.created_at||tx.createdAt||"").slice(0,10)===today;}).forEach(tx=>{const amt=pf(tx.legs?.[0]?.amount||tx?.amount);if(amt>0)socIn+=amt;else socOut+=Math.abs(amt);});totalIn+=socIn;totalOut+=socOut;const won=opps.filter(o=>o.status==="won"&&(o.updatedAt||"").slice(0,10)===today).length;const lost=opps.filter(o=>o.status==="lost"&&(o.updatedAt||"").slice(0,10)===today).length;const bits=[];if(newP>0)bits.push(`👤 +${newP} prospect${newP>1?"s":""}`);if(calls>0)bits.push(`📞 ${calls} appel${calls>1?"s":""}`);if(socIn>0)bits.push(`🤑 +${fmt(socIn)}€`);if(socOut>0)bits.push(`🔻 -${fmt(socOut)}€`);if(won>0)bits.push(`✅ ${won} deal gagné`);if(lost>0)bits.push(`❌ ${lost} deal perdu`);if(bits.length>0)items.push({sn,logo,color,text:bits.join(" · ")});});const margin=totalIn-totalOut;if(totalIn>0||totalOut>0)items.push({sn:"Global",logo:"",color:"#FFAA00",text:`📊 Solde : ${margin>=0?"+":""}${fmt(margin)}€`});return items;},[allActS,gd,sb]);
 

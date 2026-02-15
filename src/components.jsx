@@ -2387,7 +2387,7 @@ export function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
   }
   return `🤖 Je n'ai pas compris ta question.\n\nEssaie :\n• « combien de clients actifs »\n• « CA ce mois »\n• « qui n'a pas payé »\n• « prochains RDV »\n• « résumé »\n• « aide » pour voir toutes les commandes`;
  };
- const SUGGESTIONS=[{q:"Résumé",icon:"📋"},{q:"CA ce mois",icon:"📊"},{q:"Impayés",icon:"💸"},{q:"RDV",icon:"📅"},{q:"Objectif",icon:"🎯"},{q:"Météo",icon:"🌡️"}];
+ const SUGGESTIONS=[{q:"Résumé",icon:"📋"},{q:"CA ce mois",icon:"📊"},{q:"Impayés",icon:"💸"},{q:"RDV",icon:"📅"},{q:"Objectif",icon:"🎯"},{q:"Alertes",icon:"⚠️"}];
  const ask=(q)=>{
   if(!q.trim())return;
   const trimmed=q.trim();
@@ -2659,17 +2659,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
    </div>)}
   </div>;
  }
- const meteo=useMemo(()=>{
-  const critAlerts=smartAlerts.filter(a=>a.priority===1).length;
-  const allAlertCount=smartAlerts.length;
-  const unpaidCount=myClients.filter(c=>{const cn=(c.name||"").toLowerCase().trim();const now45x=Date.now()-45*864e5;return c.billing&&!(bankData?.transactions||[]).some(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;return new Date(tx.created_at).getTime()>now45x&&(leg.description||tx.reference||"").toLowerCase().includes(cn);});}).length;
-  const convRateM=(()=>{const gd=ghlData?.[soc.id];const cbt=gd?.stats?.callsByType||{};const s2=Object.entries(cbt).filter(([n])=>!/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);const i2=Object.entries(cbt).filter(([n])=>/int[eé]g/i.test(n)).reduce((a,[,v])=>a+v,0);return s2>0?Math.round(i2/s2*100):0;})();
-  const caTrendM=prevCa>0?Math.round((ca-prevCa)/prevCa*100):0;
-  if(perfScore>75&&critAlerts===0)return{emoji:"☀️",text:"Tout roule !",sub:`CA ${caTrendM>=0?"+":""}${caTrendM}%, ${unpaidCount} impayé${unpaidCount>1?"s":""}`,glow:"rgba(52,211,153,.15)",color:C.g,border:"linear-gradient(135deg,#34d399,#22c55e)"};
-  if((perfScore>=50&&perfScore<=75)||allAlertCount<=2)return{emoji:"⛅",text:"Quelques points d'attention",sub:`${unpaidCount>0?unpaidCount+" impayé"+(unpaidCount>1?"s":""):"Conversion "+convRateM+"%"}`,glow:"rgba(251,146,60,.15)",color:C.o,border:"linear-gradient(135deg,#FFAA00,#fb923c)"};
-  if((perfScore>=30&&perfScore<50)||allAlertCount>=3)return{emoji:"🌧️",text:"Vigilance requise",sub:`${unpaidCount} impayé${unpaidCount>1?"s":""}, conversion ${convRateM>0?convRateM+"%":"en baisse"}`,glow:"rgba(248,113,113,.15)",color:C.r,border:"linear-gradient(135deg,#fb923c,#f87171)"};
-  return{emoji:"⛈️",text:"Actions urgentes nécessaires",sub:`${critAlerts} alerte${critAlerts>1?"s":""} critique${critAlerts>1?"s":""}`,glow:"rgba(248,113,113,.25)",color:C.r,border:"linear-gradient(135deg,#f87171,#dc2626)"};
- },[perfScore,smartAlerts]);
+ /* météo business removed — replaced by score compact */
  // Conseil du jour IA
  const conseilDuJour=useMemo(()=>{
   const dayOfMonth=new Date().getDate();const tips=[];
@@ -2701,18 +2691,10 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
   return tips;
  },[soc.id,ghlData,myClients,bankData]);
  return <div className="fu">
-  {/* Météo Business + Streak */}
-  <div style={{display:"flex",gap:12,marginBottom:16,alignItems:"stretch"}}>
-   <div style={{flex:1,padding:3,borderRadius:18,background:meteo.border||"linear-gradient(135deg,#34d399,#22c55e)"}}>
-    <div className="glass-card-static" style={{padding:"20px 24px",display:"flex",alignItems:"center",gap:16,borderRadius:15,boxShadow:`0 0 30px ${meteo.glow}`}}>
-     <span style={{fontSize:64,lineHeight:1,animation:"weatherPulse 3s ease-in-out infinite",display:"inline-block"}}>{meteo.emoji}</span>
-     <div>
-      <div style={{fontWeight:900,fontSize:16,color:meteo.color,marginBottom:2}}>{meteo.text}</div>
-      <div style={{fontSize:11,color:C.t,fontWeight:500,opacity:.8}}>{meteo.sub}</div>
-      <div style={{fontSize:9,color:C.td,marginTop:4}}>Score: {perfScore}/100 · {smartAlerts.length} alerte{smartAlerts.length>1?"s":""}</div>
-     </div>
-    </div>
-   </div>
+  {/* Score santé compact */}
+  <div className="glass-card-static" style={{padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+   <span style={{fontWeight:900,fontSize:14,color:perfScore>75?C.g:perfScore>50?C.o:C.r}}>{perfScore}/100</span>
+   <span style={{fontSize:11,color:C.td}}>Score santé · {smartAlerts.length} alerte{smartAlerts.length>1?"s":""}</span>
   </div>
   {/* Conseil du jour IA */}
   {(()=>{
