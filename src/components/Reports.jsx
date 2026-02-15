@@ -67,7 +67,7 @@ export function RapportsPanel({soc,socBankData,ghlData,clients,reps,allM,hold}){
       <span style={{fontSize:isCurrent?16:12}}>{isCurrent?"📊":"📄"}</span>
       <div>
        <div style={{fontWeight:800,fontSize:isCurrent?14:12,color:C.t}}>{ml(month)}{isCurrent?" (en cours)":""}</div>
-       {!isExpanded&&<div style={{fontSize:9,color:C.td}}>CA {fmt(d.ca)}€ · Charges {fmt(d.charges)}€ · Marge {fmt(d.marge)}€</div>}
+       {!isExpanded&&<div style={{fontSize:9,color:C.td}}>CA {fmt(d.ca)}€ · Charges {fmt(d.charges)}€ · Marge {fmt(d.marge)}€ ({d.ca>0?Math.round(d.marge/d.ca*100):0}%)</div>}
       </div>
      </div>
      {!isCurrent&&<span style={{fontSize:11,color:C.td}}>{isExpanded?"▲":"▼"}</span>}
@@ -77,7 +77,7 @@ export function RapportsPanel({soc,socBankData,ghlData,clients,reps,allM,hold}){
      <div className="rg4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:14}}>
       <div style={{padding:10,background:C.gD,borderRadius:8,textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.g}}>{fmt(d.ca)}€</div><div style={{fontSize:8,color:C.g,fontWeight:600}}>CA</div></div>
       <div style={{padding:10,background:C.rD,borderRadius:8,textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.r}}>{fmt(d.charges)}€</div><div style={{fontSize:8,color:C.r,fontWeight:600}}>Charges</div></div>
-      <div style={{padding:10,background:d.marge>=0?C.gD:C.rD,borderRadius:8,textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:d.marge>=0?C.g:C.r}}>{fmt(d.marge)}€</div><div style={{fontSize:8,color:C.td,fontWeight:600}}>Marge</div></div>
+      <div style={{padding:10,background:d.marge>=0?C.gD:C.rD,borderRadius:8,textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:d.marge>=0?C.g:C.r}}>{fmt(d.marge)}€</div><div style={{fontSize:10,fontWeight:700,color:d.marge>=0?C.g:C.r,marginTop:2}}>{d.ca>0?Math.round(d.marge/d.ca*100):0}%</div><div style={{fontSize:8,color:C.td,fontWeight:600}}>Marge bénéficiaire</div></div>
       <div style={{padding:10,background:C.bD,borderRadius:8,textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.b}}>{d.txCount}</div><div style={{fontSize:8,color:C.td,fontWeight:600}}>Transactions</div></div>
      </div>
      {/* Top clients + expenses side by side */}

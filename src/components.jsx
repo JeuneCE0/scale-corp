@@ -112,7 +112,7 @@ export function MeetingMode({socs,reps,hold,actions,pulses,allM,onExit}){
   <div className="page-wrap" style={{padding:"20px 30px",maxWidth:900,margin:"0 auto"}}>
    {step===0&&<div className="si">
     <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:14}}>
-    <KPI label="CA Groupe" value={`${fmt(actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.ca),0))}€`} accent={C.acc}/><KPI label="Marge" value={`${fmt(actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.ca)-pf(gr(reps,s.id,cM2)?.charges),0))}€`} accent={C.g}/><KPI label="/ Fondateur" value={`${fmt(hc.pf)}€`} accent={C.o}/><KPI label="Pipeline" value={`${fmt(socs.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.pipeline),0))}€`} accent={C.b}/>
+    {(()=>{const caG=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.ca),0);const chG=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.charges),0);const margeG=caG-chG;const margePctG=caG>0?Math.round(margeG/caG*100):0;return<><KPI label="CA Groupe" value={`${fmt(caG)}€`} accent={C.acc}/><KPI label="Marge" value={`${fmt(margeG)}€ (${margePctG}%)`} accent={margeG>=0?C.g:C.r}/><KPI label="/ Fondateur" value={`${fmt(hc.pf)}€`} accent={C.o}/><KPI label="Pipeline" value={`${fmt(socs.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.pipeline),0))}€`} accent={C.b}/></>;})()}
     </div>
     <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:16}}>{actS.map(s=>{const hs=healthScore(s,reps);const r=gr(reps,s.id,cM2);
      const myCl=(clients||[]).filter(c=>c.socId===s.id&&c.status==="active");const chCl=(clients||[]).filter(c=>c.socId===s.id&&c.status==="churned").length;const totCl=myCl.length+chCl;
@@ -137,7 +137,7 @@ export function MeetingMode({socs,reps,hold,actions,pulses,allM,onExit}){
     <GradeBadge grade={hs.grade} color={hs.color} size="lg"/>
     </div>
     <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
-    <KPI label="CA" value={r?`${fmt(r.ca)}€`:"—"} accent={C.acc} small/><KPI label="Marge" value={r?`${fmt(pf(r.ca)-pf(r.charges))}€`:"—"} accent={C.g} small/>
+    {(()=>{const ca2=pf(r?.ca),ch2=pf(r?.charges),m2=ca2-ch2,mp2=ca2>0?Math.round(m2/ca2*100):0;return<><KPI label="CA" value={r?`${fmt(ca2)}€`:"—"} accent={C.acc} small/><KPI label="Marge" value={r?`${fmt(m2)}€ (${mp2}%)`:"—"} accent={m2>=0?C.g:C.r} small/></>;})()}
     {s.rec&&<KPI label="MRR" value={r?`${fmt(r.mrr)}€`:"—"} accent={C.b} small/>}
     <KPI label="Pipeline" value={r?`${fmt(r.pipeline)}€`:"—"} accent={C.acc} small/>
     {rw&&<KPI label="Runway" value={`${rw.months} mois`} accent={rw.months<3?C.r:rw.months<6?C.o:C.g} small/>}
