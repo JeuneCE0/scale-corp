@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef, Fragment, createContext, useContext } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, Fragment, createContext, useContext, Suspense, lazy } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Area, AreaChart, Legend, Line, LineChart, ComposedChart, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
 import {
   AUTO_CAT_MAP, BF, BILL_TYPES, C, CLIENT_STATUS, CSS, CURR_SYMBOLS, C_DARK, C_LIGHT, DEAL_STAGES, DEMO_ACTIONS,
@@ -20,13 +20,30 @@ import {
 
 /* UI COMPONENTS */
 import {
-  AICoPilot, ActionItem, AdminClientsTab, Badge, BankingPanel, BenchmarkRadar, Btn, CTip, Card, ChallengesPanel, ClientPortal,
+  ActionItem, AdminClientsTab, Badge, BenchmarkRadar, Btn, CTip, Card, ChallengesPanel, ClientPortal,
   CohortAnalysis, DealFlow, GradeBadge, InboxUnifiee, Inp, InvestorBoard, KPI, KnowledgeBase, LeaderboardCard, MeetingMode,
-  MilestonesCompact, Modal, OnboardingWizard, PBar, PulseOverview, PulseScreen, RiskMatrix, Sect, Sel, Sidebar, SmartAlertsPanel,
-  SocieteView, SubsTeamBadge, SubsTeamPanel, SynergiesAutoPanel, SynergiesPanel, TabCRM, Toggle, TutorialOverlay, ValRow,
+  MilestonesCompact, Modal, OnboardingWizard, PBar, PulseOverview, RiskMatrix, Sect, Sel, Sidebar, SmartAlertsPanel,
+  SocieteView, SubsTeamBadge, SubsTeamPanel, SynergiesAutoPanel, SynergiesPanel, Toggle, TutorialOverlay, ValRow,
   WarRoomReadOnly, WidgetEmbed, WidgetRenderer, calcSmartAlerts,
   SB_ADMIN, SB_PORTEUR, TOUR_ADMIN, TOUR_PORTEUR, CHALLENGE_TEMPLATES,
 } from "./components.jsx";
+
+/* LAZY-LOADED HEAVY VIEWS */
+const PulseScreen = lazy(() => import("./components/PulseScreen.jsx").then(m => ({ default: m.PulseScreen })));
+const AICoPilot = lazy(() => import("./components/AI.jsx").then(m => ({ default: m.AICoPilot })));
+const TabCRM = lazy(() => import("./components/CRM.jsx").then(m => ({ default: m.TabCRM })));
+const BankingPanel = lazy(() => import("./components/Banking.jsx").then(m => ({ default: m.BankingPanel })));
+// RapportsPanel is used inside SocieteView, not directly in App — loaded via components.jsx
+
+/* Suspense fallback */
+function LazyFallback() {
+  return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"60vh",color:C.td,fontSize:13,fontFamily:"Inter,sans-serif"}}>
+    <div style={{textAlign:"center"}}>
+      <div className="dots" style={{fontSize:28,marginBottom:8}}>⟳</div>
+      <div>Chargement…</div>
+    </div>
+  </div>;
+}
 
 export default function App(){
  const[loaded,setLoaded]=useState(false);const[role,setRole]=useState(null);const[theme,setThemeState]=useState(getTheme);
@@ -200,7 +217,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  const hash=window.location.hash;
  if(hash.startsWith("#widget/")){const wSocId=hash.replace("#widget/","");return <><style>{CSS}</style><WidgetRenderer socId={wSocId} socs={socs} clients={clients}/></>;}
  if(hash.startsWith("#warroom/")){const wrSocId=hash.replace("#warroom/","");return <><style>{CSS}</style><WarRoomReadOnly socId={wrSocId} socs={socs} reps={reps} allM={allM} ghlData={ghlData} clients={clients} socBank={socBank}/></>;}
- if(hash==="#pulse")return <><style>{CSS}</style><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>{window.location.hash="";window.location.reload();}}/></>;
+ if(hash==="#pulse")return <><style>{CSS}</style><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>{window.location.hash="";window.location.reload();}}/></Suspense></>;
  if(hash.startsWith("#portal/")){const parts=hash.replace("#portal/","").split("/");return <><style>{CSS}</style><ClientPortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients} ghlData={ghlData}/></>;}
  if(hash.startsWith("#board/")){const bPin=hash.replace("#board/","");return <><style>{CSS}</style><InvestorBoard socs={socs} reps={reps} allM={allM} hold={hold} pin={bPin}/></>;}
 
@@ -270,7 +287,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </div>
    </div>
   </div>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData}/></></ErrorBoundary>;}
- if(showPulse)return <><style>{CSS}</style><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>setShowPulse(false)}/></>;
+ if(showPulse)return <><style>{CSS}</style><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>setShowPulse(false)}/></Suspense></>;
  if(meeting)return <MeetingMode socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} onExit={()=>setMeeting(false)}/>;
  /* ADMIN → Porteur View Override */
  if(adminSocView){const asoc=socs.find(s=>s.id===adminSocView);if(asoc)return <SocieteView key={asoc.id} soc={asoc} reps={reps} allM={allM} save={save} onLogout={()=>setAdminSocView(null)} onTour={()=>{}} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[asoc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData} adminBack={()=>setAdminSocView(null)}/>;}
@@ -359,7 +376,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     <Sect title="⚡ Pulse" sub={curW()}><PulseOverview socs={socs} pulses={pulses}/></Sect>
     </div>
     <div data-tour="admin-leaderboard">
-    <BankingPanel revData={revData} onSync={syncRev} compact clients={clients}/>
+    <Suspense fallback={<LazyFallback/>}><BankingPanel revData={revData} onSync={syncRev} compact clients={clients}/></Suspense>
     <Card style={{padding:12,marginTop:10}}>
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:6}}>🏆 CLASSEMENT</div>
     {leaderboard.slice(0,5).map((lb,i)=>{const ms=calcMilestones(lb.soc,reps,actions,pulses,allM);const msN=ms.filter(m=>m.unlocked).length;return <div key={lb.soc.id} className={`fu d${Math.min(i+1,5)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:i<Math.min(leaderboard.length,5)-1?`1px solid ${C.brd}08`:"none"}}>
@@ -748,10 +765,10 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </div>}
    </Sect>
   </>;})()}
-  {tab===5&&<AICoPilot socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} revData={revData} socBank={socBank} okrs={okrs} synergies={synergies} clients={clients}/>}
+  {tab===5&&<Suspense fallback={<LazyFallback/>}><AICoPilot socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} revData={revData} socBank={socBank} okrs={okrs} synergies={synergies} clients={clients}/></Suspense>}
   {tab===6&&<DealFlow deals={deals} saveDeals={saveDeals}/>}
-  {tab===7&&<TabCRM socs={socs} ghlData={ghlData} onSync={syncGHL}/>}
-  {tab===8&&<BankingPanel revData={revData} onSync={syncRev} clients={clients}/>}
+  {tab===7&&<Suspense fallback={<LazyFallback/>}><TabCRM socs={socs} ghlData={ghlData} onSync={syncGHL}/></Suspense>}
+  {tab===8&&<Suspense fallback={<LazyFallback/>}><BankingPanel revData={revData} onSync={syncRev} clients={clients}/></Suspense>}
   {tab===10&&<SynergiesPanel socs={socs} synergies={synergies} saveSynergies={saveSynergies}/>}
   {tab===11&&<KnowledgeBase socs={socs} kb={kb} saveKb={saveKb}/>}
   {tab===12&&<ChallengesPanel socs={socs} reps={reps} allM={allM} pulses={pulses} challenges={challenges} saveChallenges={saveChallenges}/>}
