@@ -11,8 +11,12 @@ import {
   uid, autoCategorize, ErrorCard, OfflineBanner, cacheGet,
 } from "../shared.jsx";
 
-import { KPI, Btn, Sect, Card } from "../components.jsx";
 import { TX_CATEGORIES } from "../shared.jsx";
+// Minimal UI components to avoid circular import with components.jsx
+const KPI=({label,value,sub,accent,small,icon})=>{const C2=C;return <div className="glass-card-static" style={{padding:small?"10px 12px":"14px 16px",textAlign:"center"}}>{icon&&<div style={{fontSize:16,marginBottom:4}}>{icon}</div>}<div style={{color:C2.td,fontSize:small?7:8,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:FONT_TITLE}}>{label}</div><div style={{fontSize:small?16:20,fontWeight:900,color:accent||C2.t,lineHeight:1}}>{value}</div>{sub&&<div style={{marginTop:4,fontSize:9,fontWeight:600,color:C2.td}}>{sub}</div>}</div>;};
+const Btn=({children,onClick,v="primary",small,style:sx,disabled})=>{const bg=v==="primary"?"linear-gradient(135deg,#FFBF00,#FF9D00)":v==="danger"?"linear-gradient(135deg,#f87171,#ef4444)":v==="success"?"linear-gradient(135deg,#34d399,#10b981)":v==="secondary"?C.card2:"transparent";const tc=v==="ghost"?C.td:(v==="primary"||v==="danger"||v==="success")?"#0a0a0f":C.t;return <button onClick={onClick} disabled={disabled} style={{background:bg,color:tc,border:v==="ghost"?`1px solid ${C.brd}`:"none",borderRadius:small?6:10,padding:small?"5px 10px":"10px 20px",fontWeight:700,fontSize:small?10:12,cursor:disabled?"not-allowed":"pointer",fontFamily:FONT,opacity:disabled?.5:1,transition:"all .15s",...sx}}>{children}</button>;};
+const Sect=({children,title,sub,right})=><div className="fu" style={{marginTop:16}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:8,flexWrap:"wrap",gap:4}}><div>{title&&<h2 style={{color:C.t,fontSize:13,fontWeight:800,margin:0,letterSpacing:1,textTransform:"uppercase",fontFamily:FONT_TITLE}}>{title}</h2>}{sub&&<p style={{color:C.td,fontSize:10,margin:"1px 0 0"}}>{sub}</p>}</div>{right}</div>{children}</div>;
+const Card=({children,style:sx,onClick,accent,delay=0})=><div className={`fu d${Math.min(delay,8)} ${onClick?"glass-card":"glass-card-static"}`} onClick={onClick} style={{padding:14,cursor:onClick?"pointer":"default",...(accent?{borderLeft:`3px solid ${accent}`}:{}),...sx}}>{children}</div>;
 
 export function categorizeTransaction(tx){
  const leg=tx.legs?.[0];if(!leg)return{id:"autres",label:"📦 Autres dépenses",icon:"📦"};
