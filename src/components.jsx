@@ -14,11 +14,12 @@ import {
 
 // Import + re-export from chunk files
 import { PredictionsCard, LiveFeed } from "./components/PulseScreen.jsx";
-export { PredictionsCard, LiveFeed };
-export { categorizeTransaction, BankingTransactions, SocBankWidget } from "./components/Banking.jsx";
+import { categorizeTransaction, BankingTransactions, SocBankWidget } from "./components/Banking.jsx";
+export { PredictionsCard, LiveFeed, categorizeTransaction, BankingTransactions, SocBankWidget };
 // TabCRM is lazy-loaded directly; AICoPilot is lazy-loaded directly; PulseScreen is lazy-loaded directly; BankingPanel is lazy-loaded directly
-export { AIWeeklyCoach } from "./components/AI.jsx";
-export { RapportsPanel, ReplayMensuel } from "./components/Reports.jsx";
+import { AIWeeklyCoach } from "./components/AI.jsx";
+import { RapportsPanel, ReplayMensuel } from "./components/Reports.jsx";
+export { AIWeeklyCoach, RapportsPanel, ReplayMensuel };
 
 export function Badge({s}){const m={active:[C.gD,C.g,"Active"],lancement:[C.oD,C.o,"Lancement"],signature:[C.bD,C.b,"Signature"],inactive:[C.rD,C.r,"Inactive"]};const[bg2,c2,l]=m[s]||m.inactive;return <span style={{background:bg2,color:c2,padding:"2px 8px",borderRadius:20,fontSize:9,fontWeight:700,letterSpacing:.5}}>{l}</span>;}
 export function IncubBadge({incub}){if(!incub)return null;const lbl=sinceLbl(incub);return <span style={{background:C.vD,color:C.v,padding:"2px 7px",borderRadius:20,fontSize:9,fontWeight:600}}>📅 {lbl}</span>;}
