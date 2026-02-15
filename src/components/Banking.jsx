@@ -11,7 +11,8 @@ import {
   uid, autoCategorize, ErrorCard, OfflineBanner, cacheGet,
 } from "../shared.jsx";
 
-import { KPI, Btn, Sect, Card, TX_CATEGORIES } from "../components.jsx";
+import { KPI, Btn, Sect, Card } from "../components.jsx";
+import { TX_CATEGORIES } from "../shared.jsx";
 
 export function categorizeTransaction(tx){
  const leg=tx.legs?.[0];if(!leg)return{id:"autres",label:"📦 Autres dépenses",icon:"📦"};
@@ -19,7 +20,7 @@ export function categorizeTransaction(tx){
  const legDesc=((tx.legs?.[0]?.description||"")+"").toLowerCase();
  const hasCounterparty=!!tx.legs?.[0]?.counterparty;const isSingleLeg=(tx.legs||[]).length===1;
  const isRealDividend=(/dividend/i.test(tx.reference||"")&&hasCounterparty&&isSingleLeg)||(/scale\s*corp/i.test(legDesc)&&hasCounterparty&&isSingleLeg)||(/scale\s*corp/i.test(ref));
- const findCat=(id)=>TX_CATEGORIES.find(c=>c.id===id)||TX_CATEGORIES[8];
+ const findCat=(id)=>TX_CATEGORIES.find(c=>c.id===id)||{id,label:id,icon:"📦"};
  if(isRealDividend)return findCat("dividendes");
  // Internal pocket transfers (not real expenses) — treat as internal transfers
  if(tx.type==="transfer"&&/to eur (sol|publicit|prestataire|abonnement|anthony|jimmy|principal)/i.test(ref))return findCat("transfert");

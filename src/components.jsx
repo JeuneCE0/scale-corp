@@ -185,18 +185,7 @@ export function DealFlow({deals,saveDeals}){
  </>;
 }
 /* BANKING - REVOLUT */
-export const TX_CATEGORIES=[
- {id:"all",label:"Toutes",icon:""},
- {id:"revenus",label:"💰 Revenus",icon:"💰"},
- {id:"loyer",label:"🏠 Loyer",icon:"🏠"},
- {id:"pub",label:"📢 Publicité",icon:"📢"},
- {id:"abonnements",label:"💻 Abonnements",icon:"💻"},
- {id:"equipe",label:"👥 Équipe",icon:"👥"},
- {id:"transfert",label:"🏦 Transfert interne",icon:"🏦"},
- {id:"fiscalite",label:"🏛️ Fiscalité",icon:"🏛️"},
- {id:"autres",label:"📦 Autres dépenses",icon:"📦"},
- {id:"dividendes",label:"🏛 Dividendes Holding",icon:"🏛"},
-];
+export { TX_CATEGORIES } from "./shared.jsx";
 /* MILESTONES UI */
 export function MilestonesWall({milestones,soc}){
  const[showAll,setShowAll]=useState(false);

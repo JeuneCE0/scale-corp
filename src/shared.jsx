@@ -973,3 +973,16 @@ const CACHE_PREFIX="sc_cache_";
 export function cacheSet(key,data){try{localStorage.setItem(CACHE_PREFIX+key,JSON.stringify({data,ts:Date.now()}));}catch{}}
 export function cacheGet(key,maxAgeMs=86400000){try{const raw=localStorage.getItem(CACHE_PREFIX+key);if(!raw)return null;const{data,ts}=JSON.parse(raw);if(Date.now()-ts>maxAgeMs)return null;return data;}catch{return null;}}
 
+export const TX_CATEGORIES=[
+ {id:"all",label:"Toutes",icon:""},
+ {id:"revenus",label:"💰 Revenus",icon:"💰"},
+ {id:"loyer",label:"🏠 Loyer",icon:"🏠"},
+ {id:"pub",label:"📢 Publicité",icon:"📢"},
+ {id:"abonnements",label:"💻 Abonnements",icon:"💻"},
+ {id:"equipe",label:"👥 Équipe",icon:"👥"},
+ {id:"transfert",label:"🏦 Transfert interne",icon:"🏦"},
+ {id:"fiscalite",label:"🏛️ Fiscalité",icon:"🏛️"},
+ {id:"autres",label:"📦 Autres dépenses",icon:"📦"},
+ {id:"dividendes",label:"🏛 Dividendes Holding",icon:"🏛"},
+];
+
