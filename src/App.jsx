@@ -6021,6 +6021,7 @@ function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,
   <div className="mobile-header" style={{display:"none",position:"fixed",top:0,left:0,right:0,zIndex:100,background:"rgba(14,14,22,.8)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,.06)",padding:"10px 16px",alignItems:"center",gap:10}}>
    <button onClick={()=>setMobileMenuOpen(!mobileMenuOpen)} style={{background:"none",border:"none",fontSize:20,color:C.t,cursor:"pointer",padding:4}}>☰</button>
    <div style={{flex:1,fontWeight:800,fontSize:13,fontFamily:FONT_TITLE,color:soc.brandColor||soc.color}}>{soc.nom}</div>
+   <button onClick={onThemeToggle} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",padding:4,color:C.td}}>{getTheme()==="light"?"🌙":"☀️"}</button>
    <button onClick={()=>setNotifOpen(true)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",position:"relative",padding:4}}>🔔{porteurNotifs.length>0&&<span style={{position:"absolute",top:0,right:0,width:14,height:14,borderRadius:7,background:C.r,color:"#fff",fontSize:8,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{porteurNotifs.length}</span>}</button>
   </div>
   {/* Mobile sidebar overlay */}
@@ -7905,7 +7906,8 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   {false&&role==="admin"&&<TutorialOverlay steps={TOUR_ADMIN} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={setTab}/>}
   <div className="mobile-header" style={{display:"none",position:"fixed",top:0,left:0,right:0,zIndex:100,background:"rgba(14,14,22,.8)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,.06)",padding:"10px 16px",alignItems:"center",gap:10}}>
    <button onClick={()=>setAdminMobileMenu(!adminMobileMenu)} style={{background:"none",border:"none",fontSize:20,color:C.t,cursor:"pointer",padding:4}}>☰</button>
-   <span style={{fontWeight:800,fontSize:14,fontFamily:FONT_TITLE,color:C.acc}}>⚡ {hold.brand?.name||"L'INCUBATEUR ECS"}</span>
+   <span style={{flex:1,fontWeight:800,fontSize:14,fontFamily:FONT_TITLE,color:C.acc}}>⚡ {hold.brand?.name||"L'INCUBATEUR ECS"}</span>
+   <button onClick={toggleTheme} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",padding:4,color:C.td}}>{getTheme()==="light"?"🌙":"☀️"}</button>
   </div>
   {adminMobileMenu&&<div className="fi" onClick={()=>setAdminMobileMenu(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:150}}><div onClick={e=>e.stopPropagation()} style={{width:240,height:"100vh",background:C.card,borderRight:`1px solid ${C.brd}`,overflowY:"auto"}}>
    <Sidebar items={SB_ADMIN} activeTab={tab} setTab={t=>{setTab(t);setAdminMobileMenu(false);}} brandTitle={hold.brand?.name||"L'INCUBATEUR ECS"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>{setRole(null);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");}} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand}/>
@@ -7942,6 +7944,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     <KPI label="On se verse" value={`${fmt(hold.remun)}€`} accent={C.o} icon="👤" delay={3} sub={`${fmt(hold.remun/2)}€ chacun`}/>
     <KPI label="Reste dispo" value={`${fmt(hc.dispo)}€`} accent={hc.dispo>0?C.g:C.r} icon="✨" delay={4}/>
     <KPI label="Trésorerie" value={`${fmt(hold.treso)}€`} accent={(hold.treso||0)<5e3?C.r:C.g} icon="🏦" delay={5}/>
+    <KPI label="ROI Incubation" value={`${(()=>{const first=(allM||[])[0];const last=cM2;if(!first)return"—";const caFirst=actS.reduce((a,s)=>a+pf(gr(reps,s.id,first)?.ca),0);const caLast=actS.reduce((a,s)=>a+pf(gr(reps,s.id,last)?.ca),0);if(caFirst<=0)return caLast>0?"+∞":"0%";return`${caLast>=caFirst?"+":""}${Math.round((caLast-caFirst)/caFirst*100)}%`;})()}`} accent="#a78bfa" icon="🚀" delay={6} sub="vs 1er mois"/>
    </div>
    <div className="admin-responsive-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:14}}>
     <div>
