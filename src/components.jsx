@@ -3479,10 +3479,10 @@ export function AgendaPanel({soc,ghlData}){
 /* ===== CONVERSATIONS PANEL ===== */
 /* ===== CONVERSATIONS PANEL ===== */
 export function ConversationsPanel({soc}){
- const socKey=soc.ghlLocationId||soc.id;
- const[convos,setConvos]=useState([]);const[selConvo,setSelConvo]=useState(null);const[msgs,setMsgs]=useState([]);const[msgInput,setMsgInput]=useState("");const[loading,setLoading]=useState(false);
- useEffect(()=>{let cancel=false;setLoading(true);
-  fetch(`/api/ghl?action=conversations_list&loc=${socKey}`).then(r=>r.json()).then(d=>{if(!cancel)setConvos(Array.isArray(d.conversations)?d.conversations:Array.isArray(d)?d:[]);}).catch(()=>{}).finally(()=>{if(!cancel)setLoading(false);});
+ const socKey=soc.ghlLocationId;
+ const[convos,setConvos]=useState([]);const[selConvo,setSelConvo]=useState(null);const[msgs,setMsgs]=useState([]);const[msgInput,setMsgInput]=useState("");const[loading,setLoading]=useState(false);const[error,setError]=useState(null);
+ useEffect(()=>{if(!socKey){setLoading(false);return;}let cancel=false;setLoading(true);setError(null);
+  fetch(`/api/ghl?action=conversations_list&loc=${socKey}`).then(r=>{if(!r.ok)throw new Error("API error");return r.json();}).then(d=>{if(!cancel)setConvos(Array.isArray(d.conversations)?d.conversations:Array.isArray(d)?d:[]);}).catch(()=>{if(!cancel)setError("Impossible de charger les conversations");}).finally(()=>{if(!cancel)setLoading(false);});
   return()=>{cancel=true;};
  },[socKey]);
  const loadMsgs=(c)=>{setSelConvo(c);setMsgs([]);
@@ -3491,11 +3491,13 @@ export function ConversationsPanel({soc}){
  const sendMsg=()=>{if(!msgInput.trim()||!selConvo)return;
   fetch(`/api/ghl?action=conversation_send&loc=${socKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"Email",contactId:selConvo.contactId||selConvo.id,message:msgInput})}).then(()=>{setMsgs(p=>[...p,{body:msgInput,direction:"outbound",dateAdded:new Date().toISOString()}]);setMsgInput("");}).catch(()=>{});
  };
+ if(!socKey)return <Sect title="💬 Conversations" sub="Messages GHL"><div className="glass-card-static" style={{padding:30,textAlign:"center"}}><div style={{fontSize:32,marginBottom:8}}>📡</div><div style={{fontWeight:700,fontSize:13,marginBottom:6,color:C.t}}>GHL non configuré</div><div style={{color:C.td,fontSize:11}}>Ajoute l'ID GoHighLevel (Location ID) dans les paramètres de cette société pour activer les conversations.</div></div></Sect>;
  return <Sect title="💬 Conversations" sub="Messages GHL">
+  {error&&<div style={{padding:"8px 12px",background:C.rD,border:`1px solid ${C.r}33`,borderRadius:8,marginBottom:8,fontSize:11,color:C.r}}>{error}</div>}
   <div style={{display:"flex",gap:8,height:480}}>
    <div className="glass-card-static" style={{width:240,overflow:"auto",padding:0}}>
     {loading&&<div style={{padding:20,textAlign:"center",color:C.td,fontSize:11}}>Chargement...</div>}
-    {!loading&&convos.length===0&&<div style={{padding:20,textAlign:"center",color:C.td,fontSize:11}}>Aucune conversation</div>}
+    {!loading&&convos.length===0&&!error&&<div style={{padding:20,textAlign:"center",color:C.td,fontSize:11}}>Aucune conversation</div>}
     {convos.map((c,i)=><div key={c.id||i} onClick={()=>loadMsgs(c)} style={{padding:"10px 12px",borderBottom:`1px solid ${C.brd}`,cursor:"pointer",background:selConvo?.id===c.id?"rgba(255,170,0,.08)":"transparent",transition:"background .15s"}} onMouseEnter={e=>{if(selConvo?.id!==c.id)e.currentTarget.style.background=C.card2;}} onMouseLeave={e=>{if(selConvo?.id!==c.id)e.currentTarget.style.background="transparent";}}>
      <div style={{fontWeight:600,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.contactName||c.fullName||c.email||"Contact"}</div>
      <div style={{fontSize:9,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.lastMessageBody||c.snippet||"—"}</div>
