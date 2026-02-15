@@ -568,8 +568,8 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    {/* FINANCES — Consolidated */}
    <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>💰 Finances Consolidées</div>
    {(()=>{
-    const totalCA=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.ca),0);
-    const totalCh=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.charges),0);
+    const totalCA=actS.reduce((a,s)=>{const r=gr(reps,s.id,cM2);const repCa=pf(r?.ca);if(repCa>0)return a+repCa;const sb=socBank[s.id];if(!sb?.monthly)return a;return a+(sb.monthly[cM2]?.income||0);},0);
+    const totalCh=actS.reduce((a,s)=>{const r=gr(reps,s.id,cM2);const repCh=pf(r?.charges);if(repCh>0)return a+repCh;const sb=socBank[s.id];if(!sb?.monthly)return a;return a+(sb.monthly[cM2]?.expense||0);},0);
     const totalMarge=totalCA-totalCh;const margePctG=totalCA>0?Math.round(totalMarge/totalCA*100):0;
     const totalTreso=actS.reduce((a,s)=>a+(socBank[s.id]?.balance||pf(gr(reps,s.id,cM2)?.tresoSoc)),0);
     return <><div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:8,marginBottom:14}}>

@@ -2529,7 +2529,17 @@ export function PulseDashWidget({soc,existing,savePulse,hold}){
 export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePulse,hold,clients,stripeData}){
  const cm=curM();const report=gr(reps,soc.id,cm);
  const bankData=socBank?.[soc.id];const acc2=soc.brandColor||soc.color||C.acc;
- const ca=report?pf(report.ca):0;const charges=report?pf(report.charges):0;
+ // Use bank data as fallback when report not filled
+ const bankFinancials=useMemo(()=>{
+  if(!bankData?.transactions)return{income:0,expense:0};
+  const excl=EXCLUDED_ACCOUNTS[soc.id]||[];
+  const monthTxs=bankData.transactions.filter(t=>(t.created_at||"").startsWith(cm)&&!isExcludedTx(t,excl));
+  const income=monthTxs.filter(t=>(t.legs?.[0]?.amount||0)>0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0);
+  const expense=Math.abs(monthTxs.filter(t=>(t.legs?.[0]?.amount||0)<0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0));
+  return{income:Math.round(income),expense:Math.round(expense)};
+ },[bankData,soc.id,cm]);
+ const ca=pf(report?.ca)||bankFinancials.income;
+ const charges=pf(report?.charges)||bankFinancials.expense;
  const marge=ca-charges;const margePct=ca>0?Math.round(marge/ca*100):0;
  const treso=bankData?.balance||0;
  const pm=prevM(cm);const prevReport=gr(reps,soc.id,pm);
