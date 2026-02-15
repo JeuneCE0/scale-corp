@@ -43,8 +43,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
   if(e.key==="f"||e.key==="F"){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}catch{}}
   if(e.key==="m"||e.key==="M")setSoundOn(p=>!p);
   if(e.key==="r"||e.key==="R"){setRefreshing(true);setTimeout(()=>setRefreshing(false),1000);}
-  const viewKeys={"1":"global","2":"pipeline","3":"activity"};
-  if(viewKeys[e.key])setView(viewKeys[e.key]);
+  // Only global view remains
  };window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[onClose]);
 
  const getAudioCtx=useCallback(()=>{if(!audioCtxRef.current)audioCtxRef.current=new(window.AudioContext||window.webkitAudioContext)();return audioCtxRef.current;},[]);
@@ -58,7 +57,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
  const sb=socBank||{};const gd=ghlData||{};
 
  // Time range helper
- const timeRange=useMemo(()=>{const end=new Date();const start=new Date();if(timeFilter==="1j")start.setDate(end.getDate()-1);else if(timeFilter==="7j")start.setDate(end.getDate()-7);else if(timeFilter==="30j")start.setDate(end.getDate()-30);else{start.setDate(1);}return{start:start.toISOString().slice(0,10),end:end.toISOString().slice(0,10)};},[timeFilter]);
+ const timeRange=useMemo(()=>{const end=new Date();const start=new Date();if(timeFilter==="1j"){/* today only — start=today */}else if(timeFilter==="7j")start.setDate(end.getDate()-6);else if(timeFilter==="30j")start.setDate(end.getDate()-29);else{start.setDate(1);}return{start:start.toISOString().slice(0,10),end:end.toISOString().slice(0,10)};},[timeFilter]);
  const prevRange=useMemo(()=>{const days=timeFilter==="1j"?1:timeFilter==="7j"?7:timeFilter==="30j"?30:new Date().getDate();const end=new Date(timeRange.start);end.setDate(end.getDate()-1);const start=new Date(end);start.setDate(end.getDate()-days+1);return{start:start.toISOString().slice(0,10),end:end.toISOString().slice(0,10)};},[timeFilter,timeRange]);
  const inRange=(dateStr)=>{if(!dateStr)return false;const d=dateStr.slice(0,10);return d>=timeRange.start&&d<=timeRange.end;};
  const inPrevRange=(dateStr)=>{if(!dateStr)return false;const d=dateStr.slice(0,10);return d>=prevRange.start&&d<=prevRange.end;};
@@ -71,32 +70,32 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
  const prevMVal=useMemo(()=>{const d=new Date();d.setMonth(d.getMonth()-1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;},[]);
 
  const getProspects=(sid)=>{const g=gd[sid];if(!g)return[];return(g.opportunities||g.ghlClients||[]).filter(o=>o?.status==="open"||!o?.status);};
- const totalProspects=useMemo(()=>allActS.reduce((a,s)=>a+getProspects(s.id).length,0),[allActS,gd]);
+ const totalProspects=useMemo(()=>actS.reduce((a,s)=>a+getProspects(s.id).filter(p=>inRange(p.dateAdded||p.createdAt||"")).length,0),[actS,gd,timeRange]);
  const todayStr=now.toISOString().slice(0,10);
  const yesterdayStr=useMemo(()=>{const d=new Date(now);d.setDate(d.getDate()-1);return d.toISOString().slice(0,10);},[now]);
- const prospectsInRange=useMemo(()=>allActS.reduce((a,s)=>a+getProspects(s.id).filter(p=>inRange(p.dateAdded||p.createdAt||"")).length,0),[allActS,gd,timeRange]);
- const prospectsPrevRange=useMemo(()=>allActS.reduce((a,s)=>a+getProspects(s.id).filter(p=>inPrevRange(p.dateAdded||p.createdAt||"")).length,0),[allActS,gd,prevRange]);
+ const prospectsInRange=useMemo(()=>actS.reduce((a,s)=>a+getProspects(s.id).filter(p=>inRange(p.dateAdded||p.createdAt||"")).length,0),[actS,gd,timeRange]);
+ const prospectsPrevRange=useMemo(()=>actS.reduce((a,s)=>a+getProspects(s.id).filter(p=>inPrevRange(p.dateAdded||p.createdAt||"")).length,0),[actS,gd,prevRange]);
  const deltaProspects=prospectsInRange-prospectsPrevRange;
 
- const totalCA=useMemo(()=>allActS.reduce((a,s)=>{const r=gr(reps,s.id,cM);return a+pf(r?.ca);},0),[allActS,reps,cM]);
- const prevCA=useMemo(()=>allActS.reduce((a,s)=>{const r=gr(reps,s.id,prevMVal);return a+pf(r?.ca);},0),[allActS,reps,prevMVal]);
- const totalPipeline=useMemo(()=>allActS.reduce((a,s)=>a+pf(gd[s.id]?.stats?.pipelineValue),0),[allActS,gd]);
- const totalMRR=useMemo(()=>allActS.reduce((a,s)=>{const r=gr(reps,s.id,cM);return a+pf(r?.mrr);},0),[allActS,reps,cM]);
+ const totalCA=useMemo(()=>actS.reduce((a,s)=>{const excl=EXCLUDED_ACCOUNTS[s.id]||[];return a+(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];if(!leg||excl.includes(leg.account_id))return false;return pf(leg.amount)>0&&inRange(tx.created_at||tx.createdAt||"");}).reduce((x,tx)=>x+pf(tx.legs?.[0]?.amount),0);},0),[actS,sb,timeRange]);
+ const prevCA=useMemo(()=>actS.reduce((a,s)=>{const excl=EXCLUDED_ACCOUNTS[s.id]||[];return a+(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];if(!leg||excl.includes(leg.account_id))return false;return pf(leg.amount)>0&&inPrevRange(tx.created_at||tx.createdAt||"");}).reduce((x,tx)=>x+pf(tx.legs?.[0]?.amount),0);},0),[actS,sb,prevRange]);
+ const totalPipeline=useMemo(()=>actS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).filter(o=>(o?.status==="open"||!o?.status)&&inRange(o.dateAdded||o.createdAt||o.updatedAt||"")).reduce((x,o)=>x+pf(o?.value),0),0),[actS,gd,timeRange]);
+ const totalMRR=useMemo(()=>actS.reduce((a,s)=>{const r=gr(reps,s.id,cM);return a+pf(r?.mrr);},0),[actS,reps,cM]);
 
- const totalWon=useMemo(()=>allActS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="won").length,0),[allActS,gd]);
- const totalOpps=useMemo(()=>allActS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).length,0),[allActS,gd]);
+ const totalWon=useMemo(()=>actS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="won"&&inRange(o.updatedAt||o.createdAt||"")).length,0),[actS,gd,timeRange]);
+ const totalOpps=useMemo(()=>actS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).filter(o=>inRange(o.dateAdded||o.createdAt||o.updatedAt||"")).length,0),[actS,gd,timeRange]);
  const convRate=totalOpps>0?((totalWon/totalOpps)*100).toFixed(1):0;
- const avgDeal=totalWon>0?allActS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="won").reduce((x,o)=>x+pf(o?.value),0),0)/totalWon:0;
+ const avgDeal=totalWon>0?actS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="won"&&inRange(o.updatedAt||o.createdAt||"")).reduce((x,o)=>x+pf(o?.value),0),0)/totalWon:0;
 
  // Animated counters
  useEffect(()=>{const targets={ca:totalCA,pipeline:totalPipeline,mrr:totalMRR};const start=Date.now();const dur=1200;const anim=()=>{const t=Math.min((Date.now()-start)/dur,1);const ease=1-Math.pow(1-t,3);setAnimatedVals({ca:Math.round(targets.ca*ease),pipeline:Math.round(targets.pipeline*ease),mrr:Math.round(targets.mrr*ease)});if(t<1)requestAnimationFrame(anim);};requestAnimationFrame(anim);},[totalCA,totalPipeline,totalMRR]);
 
  // Today's payments
- const rangePayments=useMemo(()=>allActS.reduce((a,s)=>{return a+(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];return leg&&pf(leg.amount)>0&&inRange(tx.created_at||tx.createdAt||"");}).reduce((x,tx)=>x+pf(tx.legs?.[0]?.amount),0);},0),[allActS,sb,timeRange]);
+ const rangePayments=useMemo(()=>actS.reduce((a,s)=>{return a+(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];return leg&&pf(leg.amount)>0&&inRange(tx.created_at||tx.createdAt||"");}).reduce((x,tx)=>x+pf(tx.legs?.[0]?.amount),0);},0),[actS,sb,timeRange]);
 
- // Revenue vs expenses ratio
- const totalRevenues=useMemo(()=>allActS.reduce((a,s)=>{const r=gr(reps,s.id,cM);return a+pf(r?.ca);},0),[allActS,reps,cM]);
- const totalExpenses=useMemo(()=>allActS.reduce((a,s)=>{const r=gr(reps,s.id,cM);return a+pf(r?.charges);},0),[allActS,reps,cM]);
+ // Revenue vs expenses ratio (from bank transactions, filtered by period)
+ const totalRevenues=useMemo(()=>actS.reduce((a,s)=>{const excl=EXCLUDED_ACCOUNTS[s.id]||[];return a+(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];if(!leg||excl.includes(leg.account_id))return false;return pf(leg.amount)>0&&inRange(tx.created_at||tx.createdAt||"");}).reduce((x,tx)=>x+pf(tx.legs?.[0]?.amount),0);},0),[actS,sb,timeRange]);
+ const totalExpenses=useMemo(()=>actS.reduce((a,s)=>{const excl=EXCLUDED_ACCOUNTS[s.id]||[];return a+(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];if(!leg||excl.includes(leg.account_id))return false;return pf(leg.amount)<0&&inRange(tx.created_at||tx.createdAt||"");}).reduce((x,tx)=>x+Math.abs(pf(tx.legs?.[0]?.amount)),0);},0),[actS,sb,timeRange]);
 
  // Business weather
  const bizWeather=useMemo(()=>{const score=totalCA>0&&prevCA>0?(totalCA/prevCA)*100:50;if(score>=120)return{emoji:"☀️",label:"Excellent",color:"#34d399"};if(score>=100)return{emoji:"🌤️",label:"Bien",color:"#60a5fa"};if(score>=80)return{emoji:"⛅",label:"Correct",color:"#FFAA00"};if(score>=60)return{emoji:"🌧️",label:"Attention",color:"#f87171"};return{emoji:"⛈️",label:"Critique",color:"#f87171"};},[totalCA,prevCA]);
@@ -118,27 +117,27 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
  const donutData=useMemo(()=>{const total=socCards.reduce((a,c)=>a+c.ca,0)||1;let cumPct=0;return socCards.filter(s=>s.ca>0).map(s=>{const pct=(s.ca/total)*100;const start=cumPct;cumPct+=pct;return{name:s.name,pct,start,color:s.brandColor||s.color||"#FFAA00"};});},[socCards]);
  const donutGradient=useMemo(()=>{if(donutData.length===0)return"conic-gradient(rgba(255,255,255,.1) 0% 100%)";return"conic-gradient("+donutData.map(d=>`${d.color} ${d.start}% ${d.start+d.pct}%`).join(",")+")";} ,[donutData]);
 
- const feed=useMemo(()=>{const items=[];allActS.forEach(s=>{const excl=EXCLUDED_ACCOUNTS[s.id]||[];(sb[s.id]?.transactions||[]).slice(0,10).forEach(tx=>{const leg=tx.legs?.[0];if(leg&&excl.includes(leg.account_id))return;const desc=leg?.description||tx?.reference||"Transaction";const amt=pf(leg?.amount||tx?.amount);const cat=autoCategorize(desc);const catLabel=cat!=="autre"?` [${cat}]`:"";items.push({ts:tx.created_at||tx.createdAt||"",icon:amt>0?"🤑":"🔻",desc:`${desc}${catLabel}`,amt,color:amt>0?"#34d399":"#f87171",socId:s.id,type:amt>0?"payment":"expense"});});(gd[s.id]?.opportunities||gd[s.id]?.ghlClients||[]).slice(0,5).forEach(c=>{const name=c?.contactName||c?.contact?.name||c?.name||c?.email||"Contact";const isWon=c?.status==="won";const isLost=c?.status==="lost";const icon=isWon?"✅":isLost?"❌":"👤";const label=isWon?"Deal gagné":isLost?"Deal perdu":"Nouveau prospect";items.push({ts:c.dateAdded||c.createdAt||c.updatedAt||"",icon,desc:`${label} - ${name}`,amt:isWon?pf(c?.value):0,color:isWon?"#34d399":isLost?"#f87171":"#60a5fa",socId:s.id,type:isWon?"won":isLost?"lost":"lead"});});(gd[s.id]?.calendarEvents||[]).slice(0,3).forEach(e=>{items.push({ts:e?.startTime||"",icon:"📞",desc:`Appel planifié - ${e?.title||e?.contactName||"RDV"}`,amt:0,color:"#a78bfa",socId:s.id,type:"call"});});});items.sort((a,b)=>new Date(b.ts)-new Date(a.ts));return items.slice(0,50);},[allActS,sb,gd]);
+ const feed=useMemo(()=>{const items=[];actS.forEach(s=>{const excl=EXCLUDED_ACCOUNTS[s.id]||[];(sb[s.id]?.transactions||[]).slice(0,10).forEach(tx=>{const leg=tx.legs?.[0];if(leg&&excl.includes(leg.account_id))return;const desc=leg?.description||tx?.reference||"Transaction";const amt=pf(leg?.amount||tx?.amount);const cat=autoCategorize(desc);const catLabel=cat!=="autre"?` [${cat}]`:"";items.push({ts:tx.created_at||tx.createdAt||"",icon:amt>0?"🤑":"🔻",desc:`${desc}${catLabel}`,amt,color:amt>0?"#34d399":"#f87171",socId:s.id,type:amt>0?"payment":"expense"});});(gd[s.id]?.opportunities||gd[s.id]?.ghlClients||[]).slice(0,5).forEach(c=>{const name=c?.contactName||c?.contact?.name||c?.name||c?.email||"Contact";const isWon=c?.status==="won";const isLost=c?.status==="lost";const icon=isWon?"✅":isLost?"❌":"👤";const label=isWon?"Deal gagné":isLost?"Deal perdu":"Nouveau prospect";items.push({ts:c.dateAdded||c.createdAt||c.updatedAt||"",icon,desc:`${label} - ${name}`,amt:isWon?pf(c?.value):0,color:isWon?"#34d399":isLost?"#f87171":"#60a5fa",socId:s.id,type:isWon?"won":isLost?"lost":"lead"});});(gd[s.id]?.calendarEvents||[]).slice(0,3).forEach(e=>{items.push({ts:e?.startTime||"",icon:"📞",desc:`Appel planifié - ${e?.title||e?.contactName||"RDV"}`,amt:0,color:"#a78bfa",socId:s.id,type:"call"});});});items.sort((a,b)=>new Date(b.ts)-new Date(a.ts));return items.slice(0,50);},[actS,sb,gd]);
 
  // Auto-scroll feed on new items
  useEffect(()=>{if(feed.length>prevFeedLen.current&&feedRef.current){feedRef.current.scrollTop=0;}prevFeedLen.current=feed.length;},[feed.length]);
 
  const filteredFeed=useMemo(()=>{let f=feed.filter(x=>inRange(x.ts));if(feedTypeFilter!=="all")f=f.filter(x=>x.type===feedTypeFilter);return f;},[feed,feedTypeFilter,timeRange]);
 
- const aiTickerItems=useMemo(()=>{const items=[];let totalIn=0,totalOut=0;allActS.forEach(s=>{const sn=s?.nom||s?.name||"";const logo=s?.logoUrl||"";const color=s?.brandColor||s?.color||"#FFAA00";const opps=gd[s.id]?.opportunities||[];const newP=opps.filter(o=>!o.status&&inRange(o.dateAdded||o.createdAt||"")).length;const calls=(gd[s.id]?.calendarEvents||[]).filter(e=>inRange(e?.startTime||"")).length;const excl=EXCLUDED_ACCOUNTS[s.id]||[];let socIn=0,socOut=0;(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];if(leg&&excl.includes(leg.account_id))return false;return inRange(tx.created_at||tx.createdAt||"");}).forEach(tx=>{const amt=pf(tx.legs?.[0]?.amount||tx?.amount);if(amt>0)socIn+=amt;else socOut+=Math.abs(amt);});totalIn+=socIn;totalOut+=socOut;const won=opps.filter(o=>o.status==="won"&&inRange(o.updatedAt||"")).length;const lost=opps.filter(o=>o.status==="lost"&&inRange(o.updatedAt||"")).length;const bits=[];if(newP>0)bits.push(`👤 +${newP} prospect${newP>1?"s":""}`);if(calls>0)bits.push(`📞 ${calls} appel${calls>1?"s":""}`);if(socIn>0)bits.push(`🤑 +${fmt(socIn)}€`);if(socOut>0)bits.push(`🔻 -${fmt(socOut)}€`);if(won>0)bits.push(`✅ ${won} deal gagné`);if(lost>0)bits.push(`❌ ${lost} deal perdu`);if(bits.length>0)items.push({sn,logo,color,text:bits.join(" · ")});});const margin=totalIn-totalOut;if(totalIn>0||totalOut>0)items.push({sn:"Global",logo:"",color:"#FFAA00",text:`📊 Solde : ${margin>=0?"+":""}${fmt(margin)}€`});return items;},[allActS,gd,sb,timeRange]);
+ const aiTickerItems=useMemo(()=>{const items=[];let totalIn=0,totalOut=0;actS.forEach(s=>{const sn=s?.nom||s?.name||"";const logo=s?.logoUrl||"";const color=s?.brandColor||s?.color||"#FFAA00";const opps=gd[s.id]?.opportunities||[];const newP=opps.filter(o=>!o.status&&inRange(o.dateAdded||o.createdAt||"")).length;const calls=(gd[s.id]?.calendarEvents||[]).filter(e=>inRange(e?.startTime||"")).length;const excl=EXCLUDED_ACCOUNTS[s.id]||[];let socIn=0,socOut=0;(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];if(leg&&excl.includes(leg.account_id))return false;return inRange(tx.created_at||tx.createdAt||"");}).forEach(tx=>{const amt=pf(tx.legs?.[0]?.amount||tx?.amount);if(amt>0)socIn+=amt;else socOut+=Math.abs(amt);});totalIn+=socIn;totalOut+=socOut;const won=opps.filter(o=>o.status==="won"&&inRange(o.updatedAt||"")).length;const lost=opps.filter(o=>o.status==="lost"&&inRange(o.updatedAt||"")).length;const bits=[];if(newP>0)bits.push(`👤 +${newP} prospect${newP>1?"s":""}`);if(calls>0)bits.push(`📞 ${calls} appel${calls>1?"s":""}`);if(socIn>0)bits.push(`🤑 +${fmt(socIn)}€`);if(socOut>0)bits.push(`🔻 -${fmt(socOut)}€`);if(won>0)bits.push(`✅ ${won} deal gagné`);if(lost>0)bits.push(`❌ ${lost} deal perdu`);if(bits.length>0)items.push({sn,logo,color,text:bits.join(" · ")});});const margin=totalIn-totalOut;if(totalIn>0||totalOut>0)items.push({sn:"Global",logo:"",color:"#FFAA00",text:`📊 Solde : ${margin>=0?"+":""}${fmt(margin)}€`});return items;},[actS,gd,sb,timeRange]);
 
  const clock=(tz)=>{try{return now.toLocaleTimeString("fr-FR",{timeZone:tz,hour:"2-digit",minute:"2-digit",second:"2-digit"});}catch{return"--:--:--";}};
  const sparkline=(vals)=>{if(!vals||vals.length<2)return null;const mx=Math.max(...vals,1);const pts=vals.map((v,i)=>`${i*(60/(vals.length-1))},${28-v/mx*24}`).join(" ");return <svg width="60" height="28" style={{display:"block"}}><polyline points={pts} fill="none" stroke="#FFAA00" strokeWidth="1.5" opacity=".7"/></svg>;};
- const caHist=useMemo(()=>(allM||[]).slice(-7).map(m=>allActS.reduce((a,s)=>a+pf(gr(reps,s.id,m)?.ca),0)),[allM,allActS,reps]);
- const mrrHist=useMemo(()=>(allM||[]).slice(-7).map(m=>allActS.reduce((a,s)=>a+pf(gr(reps,s.id,m)?.mrr),0)),[allM,allActS,reps]);
+ const caHist=useMemo(()=>(allM||[]).slice(-7).map(m=>actS.reduce((a,s)=>a+pf(gr(reps,s.id,m)?.ca),0)),[allM,actS,reps]);
+ const mrrHist=useMemo(()=>(allM||[]).slice(-7).map(m=>actS.reduce((a,s)=>a+pf(gr(reps,s.id,m)?.mrr),0)),[allM,actS,reps]);
 
  // Heatmap data: société × last 7 days
- const heatmapData=useMemo(()=>{const numDays=timeFilter==="1j"?1:timeFilter==="7j"?7:timeFilter==="30j"?30:new Date().getDate();const days=[];for(let i=numDays-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}return{days,rows:allActS.map(s=>{const sn=s?.nom||s?.name||"";const cells=days.map(day=>{const txs=(sb[s.id]?.transactions||[]).filter(tx=>(tx.created_at||tx.createdAt||"").slice(0,10)===day);const amt=txs.reduce((a,tx)=>a+pf(tx.legs?.[0]?.amount),0);const leads=(gd[s.id]?.ghlClients||[]).filter(c=>(c.dateAdded||c.createdAt||"").slice(0,10)===day).length;const activity=amt/100+leads;return{day,amt,leads,activity};});return{id:s.id,name:sn,color:s?.color||"#FFAA00",cells};})  };},[allActS,sb,gd]);
+ const heatmapData=useMemo(()=>{const numDays=timeFilter==="1j"?1:timeFilter==="7j"?7:timeFilter==="30j"?30:new Date().getDate();const days=[];for(let i=numDays-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}return{days,rows:actS.map(s=>{const sn=s?.nom||s?.name||"";const cells=days.map(day=>{const txs=(sb[s.id]?.transactions||[]).filter(tx=>(tx.created_at||tx.createdAt||"").slice(0,10)===day);const amt=txs.reduce((a,tx)=>a+pf(tx.legs?.[0]?.amount),0);const leads=(gd[s.id]?.ghlClients||[]).filter(c=>(c.dateAdded||c.createdAt||"").slice(0,10)===day).length;const activity=amt/100+leads;return{day,amt,leads,activity};});return{id:s.id,name:sn,color:s?.color||"#FFAA00",cells};})  };},[actS,sb,gd]);
 
  // Timeline data
- const timelineEvents=useMemo(()=>{const evts=[];allActS.forEach(s=>{const sn=s?.nom||s?.name||"";const col=s?.color||"#FFAA00";(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="won").forEach(o=>{evts.push({ts:o.updatedAt||o.createdAt,type:"won",label:`Deal gagné — ${o.name||o.contact?.name||""}`,soc:sn,color:"#34d399",dotColor:col,amt:pf(o?.value)});});(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="lost").forEach(o=>{evts.push({ts:o.updatedAt||o.createdAt,type:"lost",label:`Deal perdu — ${o.name||""}`,soc:sn,color:"#f87171",dotColor:col});});(sb[s.id]?.transactions||[]).slice(0,5).forEach(tx=>{const leg=tx.legs?.[0];if(leg&&pf(leg.amount)>0)evts.push({ts:tx.created_at||tx.createdAt,type:"payment",label:`Paiement — ${leg.description||tx.reference||""}`,soc:sn,color:"#34d399",dotColor:col,amt:pf(leg.amount)});});(gd[s.id]?.calendarEvents||[]).slice(0,3).forEach(e=>{evts.push({ts:e?.startTime,type:"call",label:`Appel — ${e?.title||"RDV"}`,soc:sn,color:"#a78bfa",dotColor:col});});});return evts.filter(e=>e.ts&&inRange(e.ts)).sort((a,b)=>new Date(b.ts)-new Date(a.ts)).slice(0,30);},[allActS,gd,sb,timeRange]);
+ const timelineEvents=useMemo(()=>{const evts=[];actS.forEach(s=>{const sn=s?.nom||s?.name||"";const col=s?.color||"#FFAA00";(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="won").forEach(o=>{evts.push({ts:o.updatedAt||o.createdAt,type:"won",label:`Deal gagné — ${o.name||o.contact?.name||""}`,soc:sn,color:"#34d399",dotColor:col,amt:pf(o?.value)});});(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="lost").forEach(o=>{evts.push({ts:o.updatedAt||o.createdAt,type:"lost",label:`Deal perdu — ${o.name||""}`,soc:sn,color:"#f87171",dotColor:col});});(sb[s.id]?.transactions||[]).slice(0,5).forEach(tx=>{const leg=tx.legs?.[0];if(leg&&pf(leg.amount)>0)evts.push({ts:tx.created_at||tx.createdAt,type:"payment",label:`Paiement — ${leg.description||tx.reference||""}`,soc:sn,color:"#34d399",dotColor:col,amt:pf(leg.amount)});});(gd[s.id]?.calendarEvents||[]).slice(0,3).forEach(e=>{evts.push({ts:e?.startTime,type:"call",label:`Appel — ${e?.title||"RDV"}`,soc:sn,color:"#a78bfa",dotColor:col});});});return evts.filter(e=>e.ts&&inRange(e.ts)).sort((a,b)=>new Date(b.ts)-new Date(a.ts)).slice(0,30);},[actS,gd,sb,timeRange]);
 
- const views=[{k:"global",l:"🌍 Global"},{k:"pipeline",l:"📊 Pipeline"},{k:"activity",l:"📡 Activité"}];
+ const views=[];
  const timeFilters=[{k:"1j",l:"1j"},{k:"7j",l:"7j"},{k:"30j",l:"30j"},{k:"mois",l:"Mois"}];
 
  const pill=(active,onClick,label)=><button key={label} onClick={onClick} style={{padding:"5px 14px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",border:active?"1px solid #FFAA00":"1px solid rgba(255,255,255,.1)",background:active?"rgba(255,170,0,.15)":"rgba(255,255,255,.04)",color:active?"#FFAA00":"#71717a",transition:"all .2s"}}>{label}</button>;
@@ -204,7 +203,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
   </div>
   <div style={GC}>
    <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Sociétés</div>
-   <div style={{fontSize:22,fontWeight:900,color:"#e4e4e7",fontFamily:FONT_TITLE}}>{allActS.length}</div>
+   <div style={{fontSize:22,fontWeight:900,color:"#e4e4e7",fontFamily:FONT_TITLE}}>{actS.length}</div>
   </div>
   {/* Revenue vs Expenses bar */}
   <div style={GC}>
@@ -259,7 +258,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
 
  const renderFeed=(full)=><div style={{...GC,overflow:"hidden",display:"flex",flexDirection:"column",padding:0,...(full?{flex:1}:{})}}>
   <div style={{padding:"14px 16px 8px",borderBottom:"1px solid rgba(255,255,255,.06)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
-   <span style={{fontSize:11,fontWeight:700,color:"#FFAA00",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE}}>📡 Live Activity</span>
+   <span style={{fontSize:11,fontWeight:700,color:"#FFAA00",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE}}>📡 Fil d'Actualité</span>
    <div style={{display:"flex",gap:4}}>{feedTypeButtons.map(b=><button key={b.k} onClick={()=>setFeedTypeFilter(b.k)} style={{padding:"2px 8px",borderRadius:10,fontSize:10,border:feedTypeFilter===b.k?"1px solid #FFAA00":"1px solid rgba(255,255,255,.06)",background:feedTypeFilter===b.k?"rgba(255,170,0,.12)":"transparent",color:feedTypeFilter===b.k?"#FFAA00":"#71717a",cursor:"pointer"}}>{b.icon}</button>)}</div>
   </div>
   <div ref={feedRef} style={{flex:1,overflow:"auto",padding:"8px 12px"}}>
@@ -293,7 +292,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
 
  // Compare view
  const renderCompare=()=>{
-  const opts=allActS.map(s=>({id:s.id,name:s?.nom||s?.name||""}));
+  const opts=actS.map(s=>({id:s.id,name:s?.nom||s?.name||""}));
   const a=socCards.find(s=>s.id===compareA)||socCards[0];
   const b=socCards.find(s=>s.id===compareB)||socCards[1];
   const metrics=[{k:"ca",l:"CA",color:"#FFAA00"},{k:"prosp",l:"Prospects",color:"#60a5fa"},{k:"pipVal",l:"Pipeline",color:"#a78bfa"},{k:"bal",l:"Solde",color:"#34d399"},{k:"mrr",l:"MRR",color:"#34d399"}];
@@ -347,16 +346,6 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
  </div>;
 
  const renderMainContent=()=>{
-  if(view==="activity")return <div style={{flex:1,display:"grid",gridTemplateColumns:"1fr",gap:16,padding:16,overflow:"hidden",minHeight:0}}>{renderFeed(true)}</div>;
-  if(view==="pipeline")return <div style={{flex:1,display:"grid",gridTemplateColumns:"280px 1fr",gap:16,padding:16,overflow:"hidden",minHeight:0}}>
-   <div style={{display:"flex",flexDirection:"column",gap:12,overflow:"auto"}}>
-    <div style={GC}><div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Total Prospects</div><div style={{fontSize:32,fontWeight:900,color:"#60a5fa",fontFamily:FONT_TITLE}}>{totalProspects}</div><div style={{fontSize:10,color:deltaProspects>=0?"#34d399":"#f87171",marginTop:4}}>{deltaProspects>=0?"+":""}{deltaProspects} {periodLabel}</div></div>
-    <div style={GC}><div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Pipeline</div><div style={{fontSize:26,fontWeight:900,color:"#a78bfa",fontFamily:FONT_TITLE}}>{fmt(animatedVals.pipeline)}€</div></div>
-    <div style={GC}><div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Conversion</div><div style={{fontSize:26,fontWeight:900,color:"#34d399",fontFamily:FONT_TITLE}}>{convRate}%</div><div style={{fontSize:10,color:"#71717a",marginTop:4}}>{totalWon} gagnés / {totalOpps} total • Moy: {fmt(avgDeal)}€</div></div>
-   </div>
-   {renderSocCards()}
-  </div>;
-  // default: global (also handles detail/finance/heatmap/compare/timeline fallback)
   return <div className="pulse-grid" style={{flex:1,display:"grid",gridTemplateColumns:"280px 1fr 300px",gap:16,padding:16,overflow:"hidden",minHeight:0}}>
    <div className="pulse-left">{renderKPIs()}</div>
    <div className="pulse-center">{renderSocCards()}</div>
@@ -391,9 +380,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
     {/* Today's payments badge */}
     {rangePayments>0&&<span style={{fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:10,background:"#34d39922",border:"1px solid #34d39944",color:"#34d399"}}>💰 +{fmt(rangePayments)}€ {periodLabel}</span>}
    </div>
-   <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-    {views.map((v,i)=>pill(view===v.k,()=>setView(v.k),v.l))}
-   </div>
+   <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}></div>
    <div style={{display:"flex",alignItems:"center",gap:16}}>
     <button onClick={()=>setSoundOn(p=>!p)} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",color:soundOn?"#FFAA00":"#71717a"}}>{soundOn?"🔊":"🔇"}</button>
     <div style={{display:"flex",gap:12,fontSize:11,fontFamily:"monospace",color:"#71717a"}}>
