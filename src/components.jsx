@@ -12,8 +12,9 @@ import {
 } from "./shared.jsx";
 
 
-// Re-export non-lazy components from chunk files (lazy ones imported directly in App.jsx)
-export { LiveFeed, PredictionsCard } from "./components/PulseScreen.jsx";
+// Import + re-export from chunk files
+import { PredictionsCard, LiveFeed } from "./components/PulseScreen.jsx";
+export { PredictionsCard, LiveFeed };
 export { categorizeTransaction, BankingTransactions, SocBankWidget } from "./components/Banking.jsx";
 // TabCRM is lazy-loaded directly; AICoPilot is lazy-loaded directly; PulseScreen is lazy-loaded directly; BankingPanel is lazy-loaded directly
 export { AIWeeklyCoach } from "./components/AI.jsx";
