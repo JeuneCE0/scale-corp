@@ -4057,7 +4057,7 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
   {pTab===9&&<ErrorBoundary label="Clients"><ClientsUnifiedPanel soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices} stripeData={stripeData}/></ErrorBoundary>}
   {pTab===14&&<ErrorBoundary label="Conversations"><ConversationsPanel soc={soc}/></ErrorBoundary>}
   {pTab===13&&<ErrorBoundary label="Rapports"><RapportsPanel soc={soc} socBankData={socBankData} ghlData={ghlData} clients={clients} reps={reps} allM={allM} hold={hold}/></ErrorBoundary>}
-  {pTab===15&&<ErrorBoundary label="Agenda"><AgendaPanel soc={soc} ghlData={ghlData}/></ErrorBoundary>}
+  {pTab===11&&<ErrorBoundary label="Agenda"><AgendaPanel soc={soc} ghlData={ghlData}/></ErrorBoundary>}
   {pTab===12&&<SocSettingsPanel soc={soc} save={save} socs={socs} clients={clients}/>}
   {pTab===1&&<ErrorBoundary label="Activité"><ActivitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
   {pTab===2&&<ErrorBoundary label="Sales"><SalesPanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
@@ -4531,115 +4531,6 @@ export const SB_ADMIN=[
  {id:"pulse",icon:"⚡",label:"PULSE",tab:99,accent:"#FFAA00"},
 ];
 
-/* ===== AGENDA PANEL ===== */
-export function AgendaPanel({soc,ghlData}){
- const[viewMode,setViewMode]=useState("week");
- const[currentDate,setCurrentDate]=useState(new Date());
- const[showModal,setShowModal]=useState(false);
- const[modalData,setModalData]=useState({title:"",start:"",end:"",email:""});
- const[dragEvt,setDragEvt]=useState(null);
- const calEvts=ghlData?.[soc.id]?.calendarEvents||[];
- const socKey=soc.ghlLocationId||soc.id;
-
- const weekStart=useMemo(()=>{const d=new Date(currentDate);d.setDate(d.getDate()-d.getDay()+1);d.setHours(0,0,0,0);return d;},[currentDate]);
- const weekDays=useMemo(()=>Array.from({length:7},(_,i)=>{const d=new Date(weekStart);d.setDate(d.getDate()+i);return d;}),[weekStart]);
- const monthStart=useMemo(()=>new Date(currentDate.getFullYear(),currentDate.getMonth(),1),[currentDate]);
- const monthDays=useMemo(()=>{const days=[];const first=new Date(monthStart);const startDay=first.getDay()||7;for(let i=1-startDay;i<=42-(startDay);i++){const d=new Date(monthStart);d.setDate(d.getDate()+i-1+1);days.push(d);if(days.length>=35&&d.getMonth()!==monthStart.getMonth())break;}return days.slice(0,42);},[monthStart]);
-
- const eventsForDay=(d)=>{const ds=d.toISOString().slice(0,10);return calEvts.filter(e=>(e.startTime||"").startsWith(ds));};
- const nav=(dir)=>{const d=new Date(currentDate);if(viewMode==="week")d.setDate(d.getDate()+dir*7);else d.setMonth(d.getMonth()+dir);setCurrentDate(d);};
- const fmtTime=(iso)=>{try{return new Date(iso).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});}catch{return"";}};
- const fmtDay=(d)=>d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric"});
- const fmtMonth=(d)=>d.toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
- const isToday=(d)=>d.toISOString().slice(0,10)===new Date().toISOString().slice(0,10);
-
- const createEvent=async()=>{if(!modalData.title||!modalData.start)return;
-  try{await fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"calendar_create_event",locationId:socKey,title:modalData.title,startTime:new Date(modalData.start).toISOString(),endTime:modalData.end?new Date(modalData.end).toISOString():new Date(new Date(modalData.start).getTime()+3600000).toISOString(),email:modalData.email||undefined})});showToast("✅ RDV créé","success");}catch{showToast("❌ Erreur création RDV","error");}
-  setShowModal(false);setModalData({title:"",start:"",end:"",email:""});};
- const deleteEvent=async(evtId)=>{try{await fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"calendar_delete_event",locationId:socKey,eventId:evtId})});showToast("🗑️ RDV supprimé","success");}catch{showToast("❌ Erreur","error");}};
- const moveEvent=async(evtId,newDate)=>{const evt=calEvts.find(e=>e.id===evtId);if(!evt)return;
-  const oldStart=new Date(evt.startTime);const oldEnd=new Date(evt.endTime||oldStart.getTime()+3600000);const diff=newDate.getTime()-new Date(oldStart.toISOString().slice(0,10)).getTime();
-  try{await fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"calendar_update_event",locationId:socKey,eventId:evtId,startTime:new Date(oldStart.getTime()+diff).toISOString(),endTime:new Date(oldEnd.getTime()+diff).toISOString()})});showToast("📅 RDV déplacé","success");}catch{showToast("❌ Erreur","error");}};
- const genMeetLink=()=>{const code=Math.random().toString(36).slice(2,12);return`https://meet.google.com/${code.slice(0,3)}-${code.slice(3,7)}-${code.slice(7)}`;};
-
- const hours=Array.from({length:14},(_,i)=>i+7);
- const evtStyle={padding:"3px 6px",borderRadius:6,background:"linear-gradient(135deg,#14b8a622,#14b8a633)",border:"1px solid #14b8a655",marginBottom:2,cursor:"grab",fontSize:9};
-
- return <Sect title="📅 Agenda" sub="Calendrier & rendez-vous" right={<div style={{display:"flex",gap:4,alignItems:"center"}}>
-  <Btn small v={viewMode==="week"?"primary":"ghost"} onClick={()=>setViewMode("week")}>Semaine</Btn>
-  <Btn small v={viewMode==="month"?"primary":"ghost"} onClick={()=>setViewMode("month")}>Mois</Btn>
-  <Btn small onClick={()=>{setModalData({title:"",start:"",end:"",email:""});setShowModal(true);}}>+ RDV</Btn>
- </div>}>
-  {/* Navigation */}
-  <div className="glass-card-static" style={{padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-   <button onClick={()=>nav(-1)} style={{background:"none",border:"none",color:C.acc,cursor:"pointer",fontSize:18,padding:4}}>‹</button>
-   <span style={{fontWeight:800,fontSize:13,color:C.t,fontFamily:FONT_TITLE}}>{viewMode==="week"?`Semaine du ${fmtDay(weekStart)}`:`${fmtMonth(monthStart)}`}</span>
-   <button onClick={()=>nav(1)} style={{background:"none",border:"none",color:C.acc,cursor:"pointer",fontSize:18,padding:4}}>›</button>
-  </div>
-
-  {/* Week view */}
-  {viewMode==="week"&&<div className="glass-card-static" style={{padding:0,overflow:"auto"}}>
-   <div style={{display:"grid",gridTemplateColumns:`60px repeat(7,1fr)`,minWidth:700}}>
-    <div style={{padding:8,borderBottom:`1px solid ${C.brd}`,borderRight:`1px solid ${C.brd}`}}/>
-    {weekDays.map((d,i)=><div key={i} style={{padding:"8px 4px",textAlign:"center",borderBottom:`1px solid ${C.brd}`,borderRight:i<6?`1px solid ${C.brd}`:"none",background:isToday(d)?"rgba(255,170,0,.08)":"transparent"}}>
-     <div style={{fontSize:9,fontWeight:700,color:isToday(d)?C.acc:C.td,textTransform:"uppercase"}}>{d.toLocaleDateString("fr-FR",{weekday:"short"})}</div>
-     <div style={{fontSize:14,fontWeight:900,color:isToday(d)?C.acc:C.t}}>{d.getDate()}</div>
-    </div>)}
-    {hours.map(h=><Fragment key={h}>
-     <div style={{padding:"4px 8px",fontSize:9,color:C.td,fontWeight:600,borderRight:`1px solid ${C.brd}`,borderBottom:`1px solid ${C.brd}22`,textAlign:"right"}}>{String(h).padStart(2,"0")}:00</div>
-     {weekDays.map((d,di)=>{const dayEvts=eventsForDay(d).filter(e=>{const eh=new Date(e.startTime).getHours();return eh===h;});
-      return <div key={di} style={{padding:2,borderRight:di<6?`1px solid ${C.brd}`:"none",borderBottom:`1px solid ${C.brd}22`,minHeight:36,background:isToday(d)?"rgba(255,170,0,.03)":"transparent"}}
-       onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(dragEvt){const target=new Date(d);target.setHours(h,0,0,0);moveEvent(dragEvt,target);setDragEvt(null);}}}>
-       {dayEvts.map(ev=><div key={ev.id} draggable onDragStart={()=>setDragEvt(ev.id)} style={evtStyle}>
-        <div style={{fontWeight:700,color:"#14b8a6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fmtTime(ev.startTime)} {ev.title||ev.contactName||"RDV"}</div>
-        {ev.contactName&&<div style={{color:C.td,fontSize:8}}>{ev.contactName}</div>}
-        <button onClick={(e2)=>{e2.stopPropagation();deleteEvent(ev.id);}} style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:8,padding:0}}>🗑️</button>
-       </div>)}
-      </div>;})}
-    </Fragment>)}
-   </div>
-  </div>}
-
-  {/* Month view */}
-  {viewMode==="month"&&<div className="glass-card-static" style={{padding:8}}>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1}}>
-    {["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"].map(d=><div key={d} style={{padding:6,textAlign:"center",fontSize:9,fontWeight:700,color:C.td}}>{d}</div>)}
-    {monthDays.map((d,i)=>{const inMonth=d.getMonth()===monthStart.getMonth();const evts=eventsForDay(d);
-     return <div key={i} style={{padding:4,minHeight:70,border:`1px solid ${C.brd}22`,borderRadius:6,background:isToday(d)?"rgba(255,170,0,.06)":inMonth?"transparent":"rgba(0,0,0,.2)",opacity:inMonth?1:.4}}
-      onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(dragEvt){const target=new Date(d);target.setHours(9,0,0,0);moveEvent(dragEvt,target);setDragEvt(null);}}}>
-      <div style={{fontSize:11,fontWeight:isToday(d)?900:600,color:isToday(d)?C.acc:C.t,marginBottom:2}}>{d.getDate()}</div>
-      {evts.slice(0,3).map(ev=><div key={ev.id} draggable onDragStart={()=>setDragEvt(ev.id)} style={{padding:"1px 4px",borderRadius:4,background:"#14b8a622",border:"1px solid #14b8a644",marginBottom:1,fontSize:8,color:"#14b8a6",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"grab"}}>
-       {fmtTime(ev.startTime)} {ev.contactName||ev.title||"RDV"}
-      </div>)}
-      {evts.length>3&&<div style={{fontSize:7,color:C.td,textAlign:"center"}}>+{evts.length-3}</div>}
-     </div>;})}
-   </div>
-  </div>}
-
-  {/* Modal création RDV */}
-  {showModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999}} onClick={()=>setShowModal(false)}>
-   <div className="fade-up glass-card-static" style={{padding:24,borderRadius:16,maxWidth:400,width:"90%"}} onClick={e=>e.stopPropagation()}>
-    <div style={{fontWeight:800,fontSize:14,color:C.t,marginBottom:16,fontFamily:FONT_TITLE}}>📅 Nouveau rendez-vous</div>
-    <div style={{display:"flex",flexDirection:"column",gap:10}}>
-     <input value={modalData.title} onChange={e=>setModalData(p=>({...p,title:e.target.value}))} placeholder="Titre du RDV" style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/>
-     <div style={{display:"flex",gap:8}}>
-      <div style={{flex:1}}><label style={{fontSize:9,color:C.td,fontWeight:600}}>Début</label><input type="datetime-local" value={modalData.start} onChange={e=>setModalData(p=>({...p,start:e.target.value}))} style={{width:"100%",padding:"8px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/></div>
-      <div style={{flex:1}}><label style={{fontSize:9,color:C.td,fontWeight:600}}>Fin</label><input type="datetime-local" value={modalData.end} onChange={e=>setModalData(p=>({...p,end:e.target.value}))} style={{width:"100%",padding:"8px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/></div>
-     </div>
-     <input value={modalData.email} onChange={e=>setModalData(p=>({...p,email:e.target.value}))} placeholder="Email participant (optionnel)" style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/>
-     <div style={{display:"flex",gap:8}}>
-      <Btn small onClick={()=>{const link=genMeetLink();setModalData(p=>({...p,title:(p.title?p.title+" — ":"")+link}));showToast("🔗 Lien Meet ajouté","success");}}>🎥 Google Meet</Btn>
-     </div>
-     <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:8}}>
-      <Btn small v="ghost" onClick={()=>setShowModal(false)}>Annuler</Btn>
-      <Btn small onClick={createEvent}>Créer le RDV</Btn>
-     </div>
-    </div>
-   </div>
-  </div>}
- </Sect>;
-}
-
 export const SB_PORTEUR=[
  {id:"dashboard",icon:"📊",label:"Dashboard",tab:0,accent:C.acc},
  {id:"activite",icon:"⚡",label:"Activité",tab:1,accent:C.b},
@@ -4649,7 +4540,7 @@ export const SB_PORTEUR=[
  {id:"conversations",icon:"💬",label:"Conversations",tab:14,accent:C.b},
  {id:"bank",icon:"🏦",label:"Banque",tab:5,accent:C.g},
  {id:"rapports",icon:"📋",label:"Rapports",tab:13,accent:C.v},
- {id:"agenda",icon:"📅",label:"Agenda",tab:15,accent:"#14b8a6"},
+ {id:"agenda",icon:"📅",label:"Agenda",tab:11,accent:"#14b8a6"},
  {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
 ];
 
