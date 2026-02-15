@@ -3058,11 +3058,12 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
     <div><div style={{fontSize:20,fontWeight:900,color:C.b}}>{ghlStats.openDeals}</div><div style={{fontSize:9,color:C.td}}>Deals actifs</div></div>
     <div><div style={{fontSize:20,fontWeight:900,color:C.g}}>{ghlStats.wonDeals}</div><div style={{fontSize:9,color:C.td}}>Gagnés</div></div>
    </div>
-   {ghlStages.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-    {ghlStages.map((stage,i)=>{const count=ghlOpps.filter(o=>o.stage===stage).length;
-     return <span key={i} style={{padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:600,background:GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]+"22",color:GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length],border:`1px solid ${GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]}33`}}>{stage}: {count}</span>;
-    })}
-   </div>}
+   {ghlStages.length>0&&(()=>{const withCount=ghlStages.map((stage,i)=>({stage,count:ghlOpps.filter(o=>o.stage===stage).length,i})).filter(s=>s.count>0);
+    return withCount.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+     {withCount.slice(0,5).map(({stage,count,i})=><span key={i} style={{padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:600,background:GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]+"22",color:GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length],border:`1px solid ${GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]}33`}}>{stage}: {count}</span>)}
+     {withCount.length>5&&<span style={{padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:600,color:C.td}}>+{withCount.length-5} autres</span>}
+    </div>;
+   })()}
   </div>}
   {/* Top Clients */}
   {(()=>{
