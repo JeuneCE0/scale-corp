@@ -30,6 +30,7 @@ import {
 } from "./components.jsx";
 import { GlobalSearch } from "./components/GlobalSearch.jsx";
 import { SkeletonDashboard, SkeletonKPI, SkeletonCard, SkeletonTable, SkeletonStyles } from "./components/Skeletons.jsx";
+import { POLISH_CSS, ToastProvider, useToast, setGlobalToast, showToast, PageTransition, Breadcrumbs, AnimatedThemeToggle, PullToRefresh, ConfettiBurst, OnboardingTour, EmptyState } from "./ui-polish.jsx";
 
 /* LAZY-LOADED HEAVY VIEWS */
 // Lazy-loaded components — imported directly from chunk files (not via components.jsx barrel)
@@ -43,7 +44,7 @@ function LazyFallback() {
   return <SkeletonDashboard />;
 }
 
-export default function App(){
+function AppInner(){
  const[loaded,setLoaded]=useState(false);const[role,setRole]=useState(null);const[theme,setThemeState]=useState(getTheme);
  const toggleTheme=useCallback(()=>{const t=getTheme()==="dark"?"light":"dark";applyTheme(t);setThemeState(t);},[]);
 
@@ -215,17 +216,17 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  const toggleAction=(id)=>{saveAJ(actions.map(a=>a.id===id?{...a,done:!a.done}:a),null);};
  const[adminMobileMenu,setAdminMobileMenu]=useState(false);
  const deleteAction=(id)=>{saveAJ(actions.filter(a=>a.id!==id),null);};
- if(!loaded)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}><style>{CSS}</style><div style={{width:40,height:40,border:"3px solid rgba(255,255,255,.06)",borderTopColor:C.acc,borderRadius:"50%",animation:"sp 1s linear infinite",boxShadow:"0 0 20px rgba(255,170,0,.15)"}}/></div>;
+ if(!loaded)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}><style>{CSS}{POLISH_CSS}</style><div style={{width:40,height:40,border:"3px solid rgba(255,255,255,.06)",borderTopColor:C.acc,borderRadius:"50%",animation:"sp 1s linear infinite",boxShadow:"0 0 20px rgba(255,170,0,.15)"}}/></div>;
  /* HASH-BASED ROUTES: War Room & Widget (public, no login) */
  const hash=window.location.hash;
- if(hash.startsWith("#widget/")){const wSocId=hash.replace("#widget/","");return <><style>{CSS}</style><WidgetRenderer socId={wSocId} socs={socs} clients={clients}/></>;}
- if(hash==="#pulse")return <><style>{CSS}</style><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>{window.location.hash="";window.location.reload();}}/></Suspense></>;
- if(hash.startsWith("#portal/")){const parts=hash.replace("#portal/","").split("/");return <><style>{CSS}</style><ClientPortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients} ghlData={ghlData}/></>;}
- if(hash.startsWith("#board/")){const bPin=hash.replace("#board/","");return <><style>{CSS}</style><InvestorBoard socs={socs} reps={reps} allM={allM} hold={hold} pin={bPin}/></>;}
+ if(hash.startsWith("#widget/")){const wSocId=hash.replace("#widget/","");return <><style>{CSS}{POLISH_CSS}</style><WidgetRenderer socId={wSocId} socs={socs} clients={clients}/></>;}
+ if(hash==="#pulse")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>{window.location.hash="";window.location.reload();}}/></Suspense></>;
+ if(hash.startsWith("#portal/")){const parts=hash.replace("#portal/","").split("/");return <><style>{CSS}{POLISH_CSS}</style><ClientPortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients} ghlData={ghlData}/></>;}
+ if(hash.startsWith("#board/")){const bPin=hash.replace("#board/","");return <><style>{CSS}{POLISH_CSS}</style><InvestorBoard socs={socs} reps={reps} allM={allM} hold={hold} pin={bPin}/></>;}
 
  /* Onboarding removed */;
  if(!role)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT,padding:16}}>
-  <style>{CSS}</style>
+  <style>{CSS}{POLISH_CSS}</style>
   {/* TUTORIAL OVERLAY ON LOGIN */}
   {false&&<div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(0,0,0,.6)",backdropFilter:"blur(3px)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}>
    <div className="si glass-modal" style={{borderRadius:20,padding:0,width:500,maxWidth:"92vw",overflow:"hidden"}}>
@@ -244,7 +245,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </div>
    </div>
   </div>}
-  <button onClick={toggleTheme} style={{position:"fixed",top:16,right:16,width:36,height:36,borderRadius:18,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}}>{getTheme()==="light"?"🌙":"☀️"}</button>
+  <div style={{position:"fixed",top:16,right:16,zIndex:100}}><AnimatedThemeToggle onToggle={toggleTheme}/></div>
   <div className="si glass-modal" style={{borderRadius:20,padding:28,width:340,maxWidth:"100%"}}>
    <div style={{textAlign:"center",marginBottom:24}}>
     <div className="fl glow-accent-strong" style={{width:64,height:64,background:"transparent",borderRadius:12,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:10,overflow:"hidden"}}>{hold.brand?.logoUrl?<img loading="lazy" src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}}/>:(hold.brand?.logoLetter||"E")}</div>
@@ -287,14 +288,14 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </div>
    </div>
   </div>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData}/></></ErrorBoundary>;}
- if(showPulse)return <><style>{CSS}</style><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>setShowPulse(false)}/></Suspense></>;
+ if(showPulse)return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>setShowPulse(false)}/></Suspense></>;
  if(meeting)return <MeetingMode socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} clients={clients} onExit={()=>setMeeting(false)}/>;
  /* ADMIN → Porteur View Override */
  if(adminSocView){const asoc=socs.find(s=>s.id===adminSocView);if(asoc)return <SocieteView key={asoc.id} soc={asoc} reps={reps} allM={allM} save={save} onLogout={()=>setAdminSocView(null)} onTour={()=>{}} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[asoc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData} adminBack={()=>setAdminSocView(null)}/>;}
  let hc;try{hc=calcH(socs,reps,hold,cM2);}catch(e){hc={tIn:0,dispo:0,pf:0};console.error("calcH error:",e);}const pending=socs.filter(s=>{const r=gr(reps,s.id,cM2);return r&&!r.ok;});
  const missing=actS.filter(s=>!gr(reps,s.id,cM2));const lateActions=actions.filter(a=>!a.done&&a.deadline<cM2);
  return <div className="glass-bg" style={{display:"flex",minHeight:"100vh",fontFamily:FONT,color:C.t}}>
-  <style>{CSS}</style>
+  <style>{CSS}{POLISH_CSS}</style>
   <SkeletonStyles/>
   <GlobalSearch open={showSearch} onClose={()=>setShowSearch(false)} clients={clients} socs={socs} socBank={socBank} ghlData={ghlData} onNavigate={handleSearchNav}/>
   {missedRecap&&<div className="fi" style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)"}} onClick={()=>setMissedRecap(null)}>
@@ -334,7 +335,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   <div className="sidebar-desktop"><Sidebar items={SB_ADMIN} activeTab={tab} setTab={setTab} brandTitle={hold.brand?.name||"L'INCUBATEUR ECS"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>{setRole(null);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");}} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand} extra={<div style={{display:"flex",flexDirection:"column",gap:2}}>
    {hold.slack?.enabled&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 4px"}}><span style={{width:5,height:5,borderRadius:3,background:C.g}}/>
     <span style={{fontSize:8,color:C.td}}>{SLACK_MODES[hold.slack?.mode]?.icon} Slack connecté</span>
-    {missing.length>0&&<button onClick={async()=>{const results=[];for(const s of missing){const r=await slackSend(hold.slack,buildReminderSlackMsg(s,"report",deadline(cM2)));results.push({nom:s.nom,ok:r.ok});}const ok=results.filter(r=>r.ok).length;alert(`📤 ${ok}/${results.length} rappels envoyés`);}} style={{marginLeft:"auto",fontSize:8,color:C.o,background:C.oD,border:"none",borderRadius:4,padding:"2px 5px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>🔔 {missing.length}</button>}
+    {missing.length>0&&<button onClick={async()=>{const results=[];for(const s of missing){const r=await slackSend(hold.slack,buildReminderSlackMsg(s,"report",deadline(cM2)));results.push({nom:s.nom,ok:r.ok});}const ok=results.filter(r=>r.ok).length;showToast(`📤 ${ok}/${results.length} rappels envoyés`, 'success');}} style={{marginLeft:"auto",fontSize:8,color:C.o,background:C.oD,border:"none",borderRadius:4,padding:"2px 5px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>🔔 {missing.length}</button>}
    </div>}
    <button onClick={()=>setMeeting(true)} style={{width:"100%",display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:6,border:`1px solid ${"#a78bfa"}22`,background:"#a78bfa"+"0a",color:"#a78bfa",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT,textAlign:"left"}}>
     <span>📋</span><span>Mode Réunion</span>
@@ -352,6 +353,8 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </button>
   </div>
   <div style={{padding:"16px 22px 50px",maxWidth:1000,margin:"0 auto"}}>
+  <Breadcrumbs tab={tab} isAdmin={true} onNavigate={setTab}/>
+  <PageTransition tabKey={tab}>
   {tab===0&&<>
    {isOffline&&<OfflineBanner/>}
    {smartAlerts.length>0&&<div data-tour="admin-alerts" style={{marginBottom:12}}>
@@ -716,7 +719,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     <Toggle on={hold.slack?.notifyReminders!==false} onToggle={()=>setHold({...hold,slack:{...hold.slack,notifyReminders:!hold.slack?.notifyReminders}})} label="🔔 Rappels auto"/>
     </div>
     </div>
-    <div style={{marginTop:8}}><Btn small v="secondary" onClick={async()=>{const r=await slackSend(hold.slack,{text:`🧪 Test ${hold.brand?.name||"Scale Corp"} — Slack est bien connecté ! 🎉`,blocks:[{type:"section",text:{type:"mrkdwn",text:`🧪 *Test ${hold.brand?.name||"Scale Corp"}*\n\nSlack est bien connecté ! Les notifications de rapports et pulses arriveront ici.\n\n_Mode: ${SLACK_MODES[hold.slack?.mode]?.l}_`}}]});alert(r.ok?"✅ Message envoyé avec succès !":"❌ Erreur: "+(r.error||"échec"));}}>🧪 Envoyer un test</Btn></div>
+    <div style={{marginTop:8}}><Btn small v="secondary" onClick={async()=>{const r=await slackSend(hold.slack,{text:`🧪 Test ${hold.brand?.name||"Scale Corp"} — Slack est bien connecté ! 🎉`,blocks:[{type:"section",text:{type:"mrkdwn",text:`🧪 *Test ${hold.brand?.name||"Scale Corp"}*\n\nSlack est bien connecté ! Les notifications de rapports et pulses arriveront ici.\n\n_Mode: ${SLACK_MODES[hold.slack?.mode]?.l}_`}}]});showToast(r.ok?"✅ Message envoyé avec succès !":"❌ Erreur: "+(r.error||"échec"), r.ok?"success":"error");}}>🧪 Envoyer un test</Btn></div>
     </>}
    </div>
    <div style={{marginTop:12,padding:"12px 14px",background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`}}>
@@ -915,6 +918,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </Sect>
    <div style={{marginTop:12}}><Btn onClick={()=>{save(null,null,hold);}}>💾 Sauvegarder les paramètres</Btn></div>
   </>}
+  </PageTransition>
   </div>
   </div>
  </div>;
@@ -981,3 +985,7 @@ function AnalytiqueTab({socs,reps,allM}){
 }
 // cache-bust 1771110009
 // v1771111679
+
+export default function App() {
+  return <ToastProvider><AppInner /></ToastProvider>;
+}
