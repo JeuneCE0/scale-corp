@@ -15,7 +15,7 @@ import {
   mkPrefill, mkRevolutDemo, mkSocRevDemo, ml, nextM, normalizeStr, pct, pf, prevM, project, qCA, qLabel, qMonths, qOf,
   refreshInvoiceStatuses, revFinancials, runway, sGet, sSet, sbAuthHeaders, sbGet, sbList, sbUpsert, simH, sinceLbl,
   sinceMonths, slackBotSend, slackMention, slackSend, slackWebhookSend, storeCall, subMonthly, syncFromSupabase,
-  syncGHLForSoc, syncRevolut, syncSocRevolut, syncStripeData, teamMonthly, uid,
+  syncGHLForSoc, syncRevolut, syncSocRevolut, syncStripeData, teamMonthly, uid, gr,
 } from "./shared.jsx";
 
 /* UI COMPONENTS */
