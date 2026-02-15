@@ -404,10 +404,11 @@ export async function syncGHLForSoc(soc){
  const allPipelines=pipData.pipelines||[];
  if(allPipelines.length===0){const cached=cacheGet(cacheKey);return cached||null;}
  // Fetch opportunities, contacts and calendar in parallel
- const [oppResults,ctData,evData]=await Promise.all([
+ const [oppResults,ctData,evData,convData]=await Promise.all([
   Promise.all(allPipelines.map(pip=>fetchGHL("opportunities",loc,{pipeline_id:pip.id}).then(d=>({pip,d})))),
   fetchGHL("contacts_list",loc),
-  fetchGHL("calendar_events",loc,{startTime:Date.now()-365*24*60*60*1000,endTime:Date.now()})
+  fetchGHL("calendar_events",loc,{startTime:Date.now()-365*24*60*60*1000,endTime:Date.now()}),
+  fetchGHL("conversations_list",loc)
  ]);
  let allMappedOpps=[];const allPipelinesMeta=[];
  for(const{pip,d:oppData2} of oppResults){
@@ -446,6 +447,7 @@ export async function syncGHLForSoc(soc){
  const calEvents=evData?.events||[];
  const result={
   pipelines:allPipelinesMeta,opportunities:mappedOpps,ghlClients,calendarEvents:calEvents,
+  conversations:(convData?.conversations||[]).map(c=>({id:c.id,contactId:c.contactId,contactName:c.contactName||c.fullName||"Sans nom",lastMsg:c.lastMessageBody||"",lastMsgDate:c.lastMessageDate||c.dateUpdated,unread:c.unreadCount||0,type:c.type||"",locationId:loc})),
   stats:{totalLeads:mappedOpps.length,openDeals:open2.length,wonDeals:won.length,
    lostDeals:mappedOpps.filter(o=>o.status==="lost").length,pipelineValue:open2.reduce((a,o)=>a+o.value,0),
    wonValue:won.reduce((a,o)=>a+o.value,0),conversionRate:mappedOpps.length>0?Math.round(won.length/mappedOpps.length*100):0,

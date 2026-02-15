@@ -13,6 +13,27 @@ import {
 
 import { KPI, PBar, Btn, Sect } from "../components.jsx";
 
+function RecentConversations({socs,ghlData,selSoc}){
+ const convs=useMemo(()=>{
+  const ids=selSoc==="all"?socs.map(s=>s.id):[selSoc];
+  const all=[];
+  ids.forEach(id=>{const d=ghlData[id];if(!d||!d.conversations)return;const s=socs.find(x=>x.id===id);d.conversations.forEach(c=>{all.push({...c,socId:id,socName:s?.nom||id,socColor:s?.color||C.b});});});
+  return all.sort((a,b)=>new Date(b.lastMsgDate||0)-new Date(a.lastMsgDate||0)).slice(0,15);
+ },[ghlData,selSoc,socs]);
+ if(convs.length===0)return null;
+ return <Sect title="💬 Conversations récentes" sub={`${convs.length} dernières`}>
+  {convs.map((c,i)=><a key={c.id} href={`https://app.gohighlevel.com/v2/location/${c.locationId}/conversations`} target="_blank" rel="noopener noreferrer" className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:C.card,borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3,textDecoration:"none",color:"inherit",cursor:"pointer"}}>
+   <div style={{width:28,height:28,borderRadius:14,background:c.socColor+"22",color:c.socColor,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:11,flexShrink:0}}>{(c.contactName||"?")[0].toUpperCase()}</div>
+   <div style={{flex:1,minWidth:0}}>
+    <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.contactName}</span><span style={{width:5,height:5,borderRadius:3,background:c.socColor,flexShrink:0}}/><span style={{fontSize:9,color:C.td}}>{c.socName}</span></div>
+    <div style={{fontSize:10,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(c.lastMsg||"Pas de message").slice(0,80)}</div>
+   </div>
+   {c.lastMsgDate&&<span style={{fontSize:9,color:C.tm,flexShrink:0}}>{ago(c.lastMsgDate)}</span>}
+   {c.unread>0&&<span style={{fontSize:9,padding:"1px 5px",borderRadius:8,background:C.b,color:"#fff",fontWeight:700,flexShrink:0}}>{c.unread}</span>}
+  </a>)}
+ </Sect>;
+}
+
 /* GHL CRM TAB */
 export function TabCRM({socs,ghlData,onSync}){
  const[selSoc,setSelSoc]=useState("all");
@@ -91,6 +112,7 @@ export function TabCRM({socs,ghlData,onSync}){
   {sources.length>0&&<Sect title="Sources de leads">
    <div className="fu d1" style={{height:160,background:C.card,borderRadius:12,border:`1px solid ${C.brd}`,padding:"14px 6px 6px 0"}}><ResponsiveContainer><BarChart data={sources} layout="vertical"><CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis type="number" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/><YAxis type="category" dataKey="source" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} width={90}/><Tooltip contentStyle={{background:C.card2,border:`1px solid ${C.brd}`,borderRadius:10,fontSize:11}}/><Bar dataKey="count" fill={C.b} radius={[0,3,3,0]} name="Leads"/></BarChart></ResponsiveContainer></div>
   </Sect>}
+  <RecentConversations socs={actS} ghlData={ghlData} selSoc={selSoc}/>
   <Sect title="Opportunités récentes" sub={`${opps.length} au total`}>
    {opps.slice(0,12).map((o,i)=>{const s=socs.find(x=>x.id===o.socId);
     return <div key={o.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:C.card,borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3}}>
