@@ -2507,9 +2507,21 @@ export function PulseDashWidget({soc,existing,savePulse,hold}){
  </div>;
 }
 export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePulse,hold,clients,stripeData}){
- const cm=curM();const report=gr(reps,soc.id,cm);
+ const cmNow=curM();
+ const[selectedMonth,setSelectedMonth]=useState(cmNow);
+ const cm=selectedMonth;
+ const report=gr(reps,soc.id,cm);
  const bankData=socBank?.[soc.id];const acc2=soc.brandColor||soc.color||C.acc;
  const excluded=EXCLUDED_ACCOUNTS[soc.id]||[];
+ // Available months
+ const availableMonths=useMemo(()=>{
+  const months=new Set(allM||[]);
+  months.add(cmNow);
+  if(bankData?.transactions)bankData.transactions.forEach(t=>{if(t.created_at){const d=new Date(t.created_at);months.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);}});
+  if(bankData?.monthly)Object.keys(bankData.monthly).forEach(m=>months.add(m));
+  return[...months].sort().reverse();
+ },[allM,bankData,cmNow]);
+ const isCurrentMonth=cm===cmNow;
  // Bank financials
  const bankFinancials=useMemo(()=>{
   if(!bankData?.transactions)return{income:0,expense:0,incomeTxs:[],expenseTxs:[]};
@@ -2619,8 +2631,19 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
   <div style={{fontSize:22,fontWeight:900,color:accent||C.t,lineHeight:1}}>{value}</div>
   {sub&&<div style={{marginTop:4,fontSize:9,fontWeight:600,color:C.td}}>{sub}</div>}
  </div>;
+ const selS2={background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,color:C.t,padding:"6px 10px",fontSize:11,fontFamily:FONT,outline:"none",cursor:"pointer"};
  return <div className="fu">
-  {/* Conseil du jour IA — removed */}
+  {/* Month selector */}
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+   <div style={{display:"flex",alignItems:"center",gap:6}}>
+    <button onClick={()=>{const idx=availableMonths.indexOf(cm);if(idx<availableMonths.length-1)setSelectedMonth(availableMonths[idx+1]);}} style={{background:"none",border:`1px solid ${C.brd}`,borderRadius:8,color:C.td,cursor:"pointer",padding:"6px 10px",fontSize:14,fontFamily:FONT}}>‹</button>
+    <select value={cm} onChange={e=>setSelectedMonth(e.target.value)} style={selS2}>
+     {availableMonths.map(m=><option key={m} value={m}>{ml(m)}{m===cmNow?" (actuel)":""}</option>)}
+    </select>
+    <button onClick={()=>{const idx=availableMonths.indexOf(cm);if(idx>0)setSelectedMonth(availableMonths[idx-1]);}} style={{background:"none",border:`1px solid ${C.brd}`,borderRadius:8,color:C.td,cursor:"pointer",padding:"6px 10px",fontSize:14,fontFamily:FONT}}>›</button>
+   </div>
+   {!isCurrentMonth&&<button onClick={()=>setSelectedMonth(cmNow)} style={{background:C.accD,border:`1px solid ${C.acc}33`,borderRadius:8,color:C.acc,cursor:"pointer",padding:"5px 12px",fontSize:10,fontWeight:600,fontFamily:FONT}}>Mois actuel</button>}
+  </div>
   {/* Prévisionnel */}
   {prevu>0&&<div className="glass-card-static" style={{padding:20,marginBottom:16}}>
     <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>📊 PRÉVISIONNEL</div>
@@ -2637,7 +2660,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
    <div style={secTitle}><span style={{color:acc2}}>💰</span><span style={{color:C.t}}>FINANCES</span></div>
    <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:16}}>
     <div className="glass-card-static" style={kpiCard}>
-     <div style={{color:C.td,fontSize:8,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:FONT_TITLE}}>CA du mois</div>
+     <div style={{color:C.td,fontSize:8,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:FONT_TITLE}}>CA {ml(cm)}</div>
      <div style={{fontSize:22,fontWeight:900,color:acc2,lineHeight:1,cursor:"pointer"}} onClick={()=>setShowIncome(!showIncome)}>{fmt(ca)}€</div>
      <div style={{fontSize:8,color:C.acc,cursor:"pointer",marginTop:4}} onClick={()=>setShowIncome(!showIncome)}>{showIncome?"▲ masquer":"▼ détails"}</div>
      {showIncome&&<div className="slide-down" style={{marginTop:8,textAlign:"left",maxHeight:140,overflow:"auto"}}>
@@ -3327,9 +3350,9 @@ export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData
   // Montant mensuel perdu cumulé
   const perdusMensuel=perdusOpps.reduce((acc,o)=>acc+(o.value||0),0);
   return{
-   "Attente signature":{opps:attenteOpps,value:attenteOpps.reduce((a,o)=>a+(o.value||0),0),color:"#60a5fa",icon:"✍️"},
-   "Clients":{opps:clientsOpps,value:clientsCumul,color:C.g,icon:"✅"},
-   "Perdus":{opps:perdusOpps,value:perdusMensuel,color:C.r,icon:"❌"}
+   "Attente signature":{opps:attenteOpps,value:attenteOpps.reduce((a,o)=>a+(o.value||0),0),color:"#60a5fa",icon:"✍️",valueSub:"Valeur des opportunités"},
+   "Clients":{opps:clientsOpps,value:clientsCumul,color:C.g,icon:"✅",valueSub:"Encaissés cumulés"},
+   "Perdus":{opps:perdusOpps,value:perdusMensuel,color:C.r,icon:"❌",valueSub:"Mensuel perdu cumulé"}
   };
  },[opps,txs]);
  // Find pipeline stage for a client
@@ -3340,7 +3363,9 @@ export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData
     {Object.entries(simplifiedPipeline).map(([cat,data])=><div key={cat} className="fade-up" style={{background:"rgba(14,14,22,.4)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",border:`1px solid ${data.color}33`,borderRadius:14,overflow:"hidden"}}>
      <div style={{padding:"12px 14px",background:`${data.color}15`,borderBottom:`2px solid ${data.color}55`}}>
       <div style={{fontWeight:800,fontSize:12,color:data.color}}>{data.icon} {cat}</div>
-      <div style={{fontSize:10,color:C.td,marginTop:2}}>{data.opps.length} opportunité{data.opps.length>1?"s":""} · <strong style={{color:data.color}}>{fmt(data.value)}€</strong></div>
+      <div style={{fontSize:10,color:C.td,marginTop:2}}>{data.opps.length} opportunité{data.opps.length>1?"s":""}</div>
+      <div style={{fontWeight:900,fontSize:18,color:data.color,marginTop:4}}>{fmt(data.value)}€</div>
+      <div style={{fontSize:8,color:C.td}}>{data.valueSub}</div>
      </div>
      <div style={{padding:8,maxHeight:320,overflowY:"auto"}}>
       {data.opps.map(o=><div key={o.id} className="glass-card-static" style={{padding:10,marginBottom:4,cursor:"pointer",borderLeft:`3px solid ${data.color}`}} onClick={()=>{const cl=(clients||[]).find(c=>(c.name||"").toLowerCase()===(o.name||o.contact?.name||"").toLowerCase());if(cl)setSelClient(cl);}}>
@@ -3358,6 +3383,16 @@ export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
    <div><h2 style={{color:C.t,fontSize:13,fontWeight:800,margin:0,fontFamily:FONT_TITLE}}>👥 CLIENTS</h2><p style={{color:C.td,fontSize:10,margin:"1px 0 0"}}>Portefeuille & conversations</p></div>
    <div style={{display:"flex",gap:4}}><Btn small v={viewMode==="list"?"primary":"ghost"} onClick={()=>setViewMode("list")}>📋 Liste</Btn><Btn small v={viewMode==="kanban"?"primary":"ghost"} onClick={()=>setViewMode("kanban")}>🔄 Kanban</Btn></div>
+  </div>
+  {/* Pipeline summary cards */}
+  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+   {Object.entries(simplifiedPipeline).map(([cat,data])=><div key={cat} className="glass-card-static" style={{padding:16,textAlign:"center",borderTop:`3px solid ${data.color}`}}>
+    <div style={{fontSize:16,marginBottom:4}}>{data.icon}</div>
+    <div style={{fontWeight:800,fontSize:11,color:data.color,marginBottom:2}}>{cat}</div>
+    <div style={{fontWeight:900,fontSize:22,color:data.color,lineHeight:1}}>{fmt(data.value)}€</div>
+    <div style={{fontSize:8,color:C.td,marginTop:4}}>{data.valueSub}</div>
+    <div style={{fontSize:9,color:C.td,marginTop:2}}>{data.opps.length} opportunité{data.opps.length>1?"s":""}</div>
+   </div>)}
   </div>
   <div style={{display:"flex",gap:12}}>
    <div style={{flex:1,minWidth:0}}>

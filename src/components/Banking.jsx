@@ -153,6 +153,7 @@ export function SocBankWidget({bankData,onSync,soc}){
  const[txFilter,setTxFilter]=useState("all");
  const[searchTx,setSearchTx]=useState("");
  const[advancedMode,setAdvancedMode]=useState(false);
+ const[selectedMonth,setSelectedMonth]=useState(curM());
  const[txCatOverrides,setTxCatOverrides]=useState(()=>{try{return JSON.parse(localStorage.getItem(`scTxCat_${soc?.id}`)||"{}");}catch{return{};}});
  const[catDropdown,setCatDropdown]=useState(null);
  const[catDropPos,setCatDropPos]=useState(null);
@@ -168,20 +169,43 @@ export function SocBankWidget({bankData,onSync,soc}){
  const{accounts:allAccounts,transactions:allTransactions,balance,monthly,lastSync,isDemo}=bankData;
  const excl=EXCLUDED_ACCOUNTS[soc?.id]||[];
  const transactions=allTransactions.filter(t=>!isExcludedTx(t,excl));
- const cm=curM(),pm2=prevM(cm);
- const cmData=monthly?.[cm],pmData=monthly?.[pm2];
- const now2=new Date();const mStart=new Date(now2.getFullYear(),now2.getMonth(),1);
- const monthTx=transactions.filter(tx=>{const leg=tx.legs?.[0];if(!leg)return false;return new Date(tx.created_at)>=mStart;});
- const entriesMois=cmData?.income||0;
- const sortiesMois=cmData?.expense||0;
+ const cm=curM();
+ // Available months from transactions
+ const availableMonths=useMemo(()=>{
+  const months=new Set();
+  if(monthly)Object.keys(monthly).forEach(m=>months.add(m));
+  transactions.forEach(t=>{if(t.created_at){const d=new Date(t.created_at);months.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);}});
+  months.add(cm);
+  return[...months].sort().reverse();
+ },[monthly,transactions,cm]);
+ const selM=selectedMonth;
+ const prevSelM=prevM(selM);
+ const selData=monthly?.[selM];const prevSelData=monthly?.[prevSelM];
+ const monthTx=transactions.filter(tx=>{const leg=tx.legs?.[0];if(!leg)return false;return(tx.created_at||"").startsWith(selM);});
+ const entriesMois=selData?.income||monthTx.filter(t=>(t.legs?.[0]?.amount||0)>0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0);
+ const sortiesMois=selData?.expense||Math.abs(monthTx.filter(t=>(t.legs?.[0]?.amount||0)<0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0));
+ const isCurrentMonth=selM===cm;
  // Filter logic
  let filteredTx=txFilter==="in"?monthTx.filter(tx=>(tx.legs?.[0]?.amount||0)>0):txFilter==="out"?monthTx.filter(tx=>(tx.legs?.[0]?.amount||0)<0):monthTx;
  if(searchTx.trim()){const q=searchTx.toLowerCase();filteredTx=filteredTx.filter(tx=>{const leg=tx.legs?.[0];const desc=(leg?.description||tx.reference||"").toLowerCase();return desc.includes(q);});}
  if(advancedMode&&txFilter!=="all"&&txFilter!=="in"&&txFilter!=="out"){filteredTx=filteredTx.filter(tx=>getCat(tx).id===txFilter);}
  const catColors={"revenus":C.g,"loyer":"#f59e0b","pub":"#ec4899","abonnements":C.b,"equipe":C.o,"transfert":"#6366f1","dividendes":"#7c3aed","autres":C.td};
  const catIconMap={"revenus":"💰","loyer":"🏠","pub":"📢","abonnements":"💻","equipe":"👤","transfert":"📤","dividendes":"🏛️","autres":"📦"};
+ const selS2={background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,color:C.t,padding:"6px 10px",fontSize:11,fontFamily:FONT,outline:"none",cursor:"pointer"};
  return <>
   {isDemo&&<div className="fu" style={{background:C.oD,border:`1px solid ${C.o}22`,borderRadius:10,padding:"6px 12px",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{color:C.o,fontSize:10,fontWeight:600}}>⚠ Demo — Ajoute le token Revolut via l'admin</span><Btn small v="ghost" onClick={onSync} style={{fontSize:9}}>↻</Btn></div>}
+  {/* Month selector */}
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+   <div style={{display:"flex",alignItems:"center",gap:6}}>
+    <button onClick={()=>{const idx=availableMonths.indexOf(selM);if(idx<availableMonths.length-1)setSelectedMonth(availableMonths[idx+1]);}} style={{background:"none",border:`1px solid ${C.brd}`,borderRadius:8,color:C.td,cursor:"pointer",padding:"6px 10px",fontSize:14,fontFamily:FONT}}>‹</button>
+    <select value={selM} onChange={e=>setSelectedMonth(e.target.value)} style={selS2}>
+     {availableMonths.map(m=><option key={m} value={m}>{ml(m)}{m===cm?" (actuel)":""}</option>)}
+    </select>
+    <button onClick={()=>{const idx=availableMonths.indexOf(selM);if(idx>0)setSelectedMonth(availableMonths[idx-1]);}} style={{background:"none",border:`1px solid ${C.brd}`,borderRadius:8,color:C.td,cursor:"pointer",padding:"6px 10px",fontSize:14,fontFamily:FONT}}>›</button>
+   </div>
+   {!isCurrentMonth&&<button onClick={()=>setSelectedMonth(cm)} style={{background:C.accD,border:`1px solid ${C.acc}33`,borderRadius:8,color:C.acc,cursor:"pointer",padding:"5px 12px",fontSize:10,fontWeight:600,fontFamily:FONT}}>Mois actuel</button>}
+   {!isDemo&&isCurrentMonth&&<Btn small v="secondary" onClick={onSync}>↻ Actualiser</Btn>}
+  </div>
   {/* 3 KPI cards */}
   <div className="rg3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
    <div className="glass-card-static" style={{padding:20,textAlign:"center"}}>
@@ -190,14 +214,14 @@ export function SocBankWidget({bankData,onSync,soc}){
     <div style={{color:C.tm,fontSize:9,marginTop:4}}>Sync {ago(lastSync)}</div>
    </div>
    <div className="glass-card-static" style={{padding:20,textAlign:"center"}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:6,fontFamily:FONT_TITLE}}>ENTRÉES CE MOIS</div>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:6,fontFamily:FONT_TITLE}}>ENTRÉES {ml(selM).toUpperCase()}</div>
     <div style={{fontWeight:900,fontSize:26,color:C.g,lineHeight:1}}>+{fmt(entriesMois)}€</div>
-    {pmData&&<div style={{fontSize:9,fontWeight:600,marginTop:4,color:entriesMois>=pmData.income?C.g:C.r}}>{entriesMois>=pmData.income?"↑":"↓"} {fmt(Math.abs(entriesMois-pmData.income))}€ vs N-1</div>}
+    {prevSelData&&<div style={{fontSize:9,fontWeight:600,marginTop:4,color:entriesMois>=(prevSelData.income||0)?C.g:C.r}}>{entriesMois>=(prevSelData.income||0)?"↑":"↓"} {fmt(Math.abs(entriesMois-(prevSelData.income||0)))}€ vs {ml(prevSelM)}</div>}
    </div>
    <div className="glass-card-static" style={{padding:20,textAlign:"center"}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:6,fontFamily:FONT_TITLE}}>SORTIES CE MOIS</div>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:6,fontFamily:FONT_TITLE}}>SORTIES {ml(selM).toUpperCase()}</div>
     <div style={{fontWeight:900,fontSize:26,color:C.r,lineHeight:1}}>-{fmt(sortiesMois)}€</div>
-    {pmData&&<div style={{fontSize:9,fontWeight:600,marginTop:4,color:sortiesMois<=pmData.expense?C.g:C.r}}>{sortiesMois<=pmData.expense?"↓":"↑"} {fmt(Math.abs(sortiesMois-pmData.expense))}€ vs N-1</div>}
+    {prevSelData&&<div style={{fontSize:9,fontWeight:600,marginTop:4,color:sortiesMois<=(prevSelData.expense||0)?C.g:C.r}}>{sortiesMois<=(prevSelData.expense||0)?"↓":"↑"} {fmt(Math.abs(sortiesMois-(prevSelData.expense||0)))}€ vs {ml(prevSelM)}</div>}
    </div>
   </div>
   {/* Filter tabs + search + advanced toggle */}
