@@ -21,7 +21,7 @@ function checkRate(ip) {
 }
 
 // --- Whitelists ---
-const TABLES = ['users','societies','client_data','meta_ads','sales_data','reports','tx_categories','user_settings','holding'];
+const TABLES = ['users','societies','client_data','meta_ads','sales_data','reports','tx_categories','user_settings','holding','society_info'];
 const ACTIONS = ['get','list','upsert','delete'];
 
 // --- Sanitize: reject suspicious PostgREST filter values ---
