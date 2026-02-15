@@ -4180,6 +4180,7 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
   {pTab===3&&<ErrorBoundary label="Publicité"><PublicitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
   </div>
   </div>
+  <MobileBottomNav items={SB_PORTEUR} activeTab={pTab} setTab={setPTab}/>
  </div>;
 }
 /* ADMIN VALROW */
@@ -4670,7 +4671,7 @@ export function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onT
 
  return <aside data-tour={`${dataTourPrefix}-nav`} className="glass-sidebar" style={{width:210,minWidth:210,height:"100vh",position:"sticky",top:0,display:"flex",flexDirection:"column",fontFamily:FONT,overflow:"hidden",zIndex:50}}>
   <div style={{padding:"16px 14px 14px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",gap:9}}>
-   <div style={{width:30,height:30,background:brand?.logoUrl?"transparent":`linear-gradient(135deg,${brand?.accentColor||C.acc},#FF9D00)`,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:13,color:"#0a0a0f",boxShadow:`0 2px 8px ${(brand?.accentColor||C.acc)}44`,flexShrink:0,overflow:"hidden"}}>{brand?.logoUrl?<img src={brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(brand?.logoLetter||brandTitle?.[0]||"S")}</div>
+   <div style={{width:30,height:30,background:brand?.logoUrl?"transparent":`linear-gradient(135deg,${brand?.accentColor||C.acc},#FF9D00)`,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:13,color:"#0a0a0f",boxShadow:`0 2px 8px ${(brand?.accentColor||C.acc)}44`,flexShrink:0,overflow:"hidden"}}>{brand?.logoUrl?<img src={brand.logoUrl} alt={brandTitle||"Logo"} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:(brand?.logoLetter||brandTitle?.[0]||"S")}</div>
    <div style={{minWidth:0}}><div style={{fontWeight:800,fontSize:12,letterSpacing:.5,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontFamily:FONT_TITLE}}>{brandTitle}</div><div style={{fontSize:8,color:C.td}}>{brandSub}</div></div>
   </div>
   <nav style={{flex:1,overflow:"auto",padding:"8px 6px 8px 6px"}}>
@@ -4842,7 +4843,7 @@ export function WidgetCard({soc,clientCount,theme}){
  const txt=isDark?"#e4e4e7":"#1a1a1a";const sub=isDark?"#71717a":"#666";const brd=isDark?"rgba(255,255,255,.08)":"rgba(0,0,0,.08)";
  return <div style={{width:280,padding:16,background:bg,backdropFilter:"blur(20px)",border:`1px solid ${brd}`,borderRadius:14,boxShadow:"0 8px 32px rgba(0,0,0,.2)"}}>
   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-   {soc.logoUrl?<img src={soc.logoUrl} alt="" style={{width:32,height:32,borderRadius:8,objectFit:"cover"}}/>:
+   {soc.logoUrl?<img src={soc.logoUrl} alt={soc.nom||"Logo société"} style={{width:32,height:32,borderRadius:8,objectFit:"cover"}}/>:
     <div style={{width:32,height:32,borderRadius:8,background:(soc.brandColor||soc.color)+"22",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:soc.brandColor||soc.color}}>{(soc.nom||"?")[0]}</div>}
    <div><div style={{fontWeight:800,fontSize:13,color:txt,fontFamily:FONT_TITLE}}>{soc.nom}</div><div style={{fontSize:9,color:sub}}>{soc.act}</div></div>
   </div>
