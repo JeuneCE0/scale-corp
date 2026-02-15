@@ -3257,9 +3257,9 @@ export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData
  useEffect(()=>{
   if(!selClient)return;setConvoLoading(true);setConvos([]);setConvoMsgs([]);
   const contactId=selClient.ghlId||selClient.id;
-  fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_list",locationId:socKey,contactId})}).then(r=>r.json()).then(d=>{setConvos(d.conversations||d||[]);
-   if((d.conversations||d||[]).length>0){const c=(d.conversations||d)[0];
-    fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_messages",locationId:socKey,conversationId:c.id})}).then(r2=>r2.json()).then(d2=>setConvoMsgs(d2.messages||d2||[])).catch(()=>{});}
+  fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_list",locationId:socKey,contactId})}).then(r=>r.json()).then(d=>{const cvs=Array.isArray(d.conversations)?d.conversations:Array.isArray(d)?d:[];setConvos(cvs);
+   if(cvs.length>0){const c=cvs[0];
+    fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_messages",locationId:socKey,conversationId:c.id})}).then(r2=>r2.json()).then(d2=>{const msgs=Array.isArray(d2.messages)?d2.messages:Array.isArray(d2)?d2:[];setConvoMsgs(msgs);}).catch(()=>{});}
   }).catch(()=>{}).finally(()=>setConvoLoading(false));
  },[selClient,socKey]);
  const sendMsg=()=>{if(!msgInput.trim()||!selClient||convos.length===0)return;
