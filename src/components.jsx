@@ -4518,7 +4518,7 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
 export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,savePulse,socBankData,syncSocBank,okrs,saveOkrs,kb,saveKb,socs,subs,saveSubs,team,saveTeam,clients,saveClients,ghlData,invoices,saveInvoices,hold,onTour,onThemeToggle,stripeData,adminBack}){
  const cM2=curM();const[pTab,setPTab]=useState(0);const[mo,setMo]=useState(cM2);
  const[f,setF]=useState(()=>gr(reps,soc.id,cM2)||{...BF});const[done,setDone]=useState(false);const[showPub,setShowPub]=useState(false);const[jText,setJText]=useState("");
- const[showWarRoom,setShowWarRoom]=useState(false);const[autoPilotOn,setAutoPilotOn]=useState(()=>{try{return!!JSON.parse(localStorage.getItem(`autopilot_on_${soc.id}`));}catch{return false;}});
+
  useEffect(()=>{const ex=gr(reps,soc.id,mo)||{...BF};setF(ex);setShowPub(!!pf(ex.pub));setDone(false);},[mo,soc.id]);
  const ex=gr(reps,soc.id,mo),ca=pf(f.ca),ch=pf(f.charges),marge=ca-ch;
  const prestaP=pf(f.prestataireAmount||0);const remontee=(soc.pT==="ca"?ca:Math.max(0,ca-prestaP))*soc.pP/100;
@@ -4576,14 +4576,11 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
   {celebMs&&<CelebrationOverlay milestone={celebMs} onClose={()=>setCelebMs(null)}/>}
   <div style={{padding:"16px 16px 16px",maxWidth:680,margin:"0 auto"}}>
   {/* === PORTEUR DASHBOARD (pTab 0) === */}
-  {showWarRoom&&<WarRoom soc={soc} reps={reps} allM={allM} ghlData={ghlData} clients={clients} socBank={socBankData?{[soc.id]:socBankData}:{}} socs={socs} onClose={()=>setShowWarRoom(false)}/>}
   {pTab===0&&<><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-   <button onClick={()=>setShowWarRoom(true)} style={{padding:"6px 14px",borderRadius:8,border:"1px solid rgba(255,170,0,.25)",background:"rgba(255,170,0,.08)",color:"#FFAA00",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,boxShadow:"0 0 12px rgba(255,170,0,.1)"}}>🎮 War Room</button>
-   <button onClick={()=>{const v=!autoPilotOn;setAutoPilotOn(v);try{localStorage.setItem(`autopilot_on_${soc.id}`,JSON.stringify(v));sSet(`autopilot_on_${soc.id}`,v);}catch{}}} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${autoPilotOn?"rgba(52,211,153,.3)":"rgba(255,255,255,.1)"}`,background:autoPilotOn?"rgba(52,211,153,.1)":"transparent",color:autoPilotOn?"#34d399":"#71717a",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>🔄 Auto-Pilot {autoPilotOn?"ON":"OFF"}</button>
   </div>
   <PredictionsCard soc={soc} reps={reps} allM={allM} clients={clients} ghlData={ghlData} socBank={socBankData?{[soc.id]:socBankData}:{}}/>
   <PorteurDashboard soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}} ghlData={ghlData} setPTab={setPTab} soc2={soc} clients={clients} pulses={pulses} savePulse={savePulse} hold={hold} stripeData={stripeData}/>
-  {autoPilotOn&&<AutoPilotSection soc={soc} clients={clients} ghlData={ghlData} socBank={socBankData?{[soc.id]:socBankData}:{}} reps={reps}/>}</>}
+  </>}
   {pTab===5&&<><SocBankWidget bankData={socBankData} onSync={()=>syncSocBank(soc.id)} soc={soc}/>
    <SubsTeamPanel socs={[soc]} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId={soc.id} reps={reps} socBankData={socBankData}/>
   </>}
@@ -5165,197 +5162,6 @@ export function AdminClientsTab({clients,socs}){
   {sorted.length>30&&<div style={{color:C.td,fontSize:10,textAlign:"center",padding:8}}>… et {sorted.length-30} autres clients</div>}
  </>;
 }
-export function WarRoom({soc,reps,allM,ghlData,clients,socBank,socs,onClose,readOnly}){
- const cm=curM();const r=gr(reps,soc.id,cm);
- const ca=r?pf(r.ca):0;const leads=r?pf(r.leads):0;const deals=r?pf(r.leadsClos):0;const pipeline=r?pf(r.pipeline):0;
- const[sprint,setSprint]=useState(()=>{try{const s=JSON.parse(localStorage.getItem(`warroom_sprint_${soc.id}`));return s||null;}catch{return null;}});
- const[showSetSprint,setShowSetSprint]=useState(false);
- const[spTitle,setSpTitle]=useState("");const[spTarget,setSpTarget]=useState("");const[spCurrent,setSpCurrent]=useState("");const[spDays,setSpDays]=useState("7");
- const[soundOn,setSoundOn]=useState(false);
- const[tick,setTick]=useState(0);
- useEffect(()=>{const iv=setInterval(()=>setTick(t=>t+1),1000);return()=>clearInterval(iv);},[]);
- const saveSprint=(sp)=>{setSprint(sp);try{localStorage.setItem(`warroom_sprint_${soc.id}`,JSON.stringify(sp));sSet(`warroom_sprint_${soc.id}`,sp);}catch{}};
- const createSprint=()=>{const dl=new Date();dl.setDate(dl.getDate()+parseInt(spDays||7));const sp={title:spTitle,target:parseInt(spTarget)||1,current:parseInt(spCurrent)||0,deadline:dl.toISOString(),socId:soc.id,createdAt:new Date().toISOString()};saveSprint(sp);setShowSetSprint(false);};
- const countdown=useMemo(()=>{if(!sprint?.deadline)return null;const diff=new Date(sprint.deadline)-Date.now();if(diff<=0)return{d:0,h:0,m:0,s:0,expired:true};return{d:Math.floor(diff/864e5),h:Math.floor((diff%864e5)/36e5),m:Math.floor((diff%36e5)/6e4),s:Math.floor((diff%6e4)/1e3),expired:false};},[sprint,tick]);
- const spPct=sprint?Math.min(100,Math.round((sprint.current/Math.max(1,sprint.target))*100)):0;
- // Activity stream
- const activities=useMemo(()=>{const acts=[];const gd=ghlData?.[soc.id];
-  (gd?.opportunities||[]).slice(-5).forEach(o=>acts.push({icon:o.status==="won"?"🏆":"📌",text:`${o.name} — ${o.status==="won"?"Deal gagné":"En cours"}`,date:o.updatedAt||o.createdAt}));
-  (gd?.calendarEvents||[]).slice(-3).forEach(e=>acts.push({icon:"📞",text:`Appel: ${e.title||e.calendarName||"RDV"}`,date:e.startTime}));
-  const txns=(socBank?.[soc.id]?.transactions||[]).slice(0,3);
-  txns.forEach(t=>{const leg=t.legs?.[0];if(leg&&leg.amount>0)acts.push({icon:"💰",text:`Paiement reçu: ${fmt(leg.amount)}€`,date:t.created_at});});
-  return acts.sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,8);
- },[ghlData,socBank,soc.id]);
- const shareUrl=`${window.location.origin}${window.location.pathname}#warroom/${soc.id}`;
- const neonGlow="0 0 20px rgba(255,170,0,.3),0 0 60px rgba(255,170,0,.1)";
- const glassPanel={background:"rgba(14,14,22,.7)",backdropFilter:"blur(20px)",border:"1px solid rgba(255,170,0,.15)",borderRadius:16,padding:16,boxShadow:neonGlow};
- return <div style={{position:"fixed",inset:0,zIndex:2000,background:"#06060b",fontFamily:FONT,color:"#e4e4e7",overflow:"auto"}}>
-  <style>{`@keyframes neonPulse{0%,100%{text-shadow:0 0 10px rgba(255,170,0,.5)}50%{text-shadow:0 0 20px rgba(255,170,0,.8),0 0 40px rgba(255,170,0,.3)}}
-@keyframes ringProgress{from{stroke-dashoffset:283}to{stroke-dashoffset:var(--ring-off,283)}}
-@keyframes tickerScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-.wr-kpi{transition:all .3s;animation:neonPulse 2s ease infinite}`}</style>
-  {/* Top bar */}
-  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 20px",borderBottom:"1px solid rgba(255,170,0,.15)"}}>
-   <div style={{display:"flex",alignItems:"center",gap:10}}>
-    <span style={{fontSize:20}}>🎮</span>
-    <span style={{fontWeight:900,fontSize:18,fontFamily:FONT_TITLE,color:"#FFAA00",textShadow:"0 0 20px rgba(255,170,0,.5)"}}>WAR ROOM</span>
-    <span style={{fontSize:11,color:"#71717a"}}>· {soc.nom}</span>
-   </div>
-   <div style={{display:"flex",alignItems:"center",gap:8}}>
-    <button onClick={()=>setSoundOn(!soundOn)} style={{background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"4px 10px",fontSize:10,color:soundOn?"#FFAA00":"#71717a",cursor:"pointer",fontFamily:FONT}}>{soundOn?"🔊":"🔇"} Son</button>
-    {!readOnly&&<button onClick={()=>{navigator.clipboard?.writeText(shareUrl);}} style={{background:"rgba(255,170,0,.1)",border:"1px solid rgba(255,170,0,.2)",borderRadius:8,padding:"4px 10px",fontSize:10,color:"#FFAA00",cursor:"pointer",fontFamily:FONT}}>📤 Partager</button>}
-    <button onClick={onClose} style={{background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"4px 10px",fontSize:10,color:"#e4e4e7",cursor:"pointer",fontFamily:FONT}}>✕ Fermer</button>
-   </div>
-  </div>
-  {/* KPI Ticker */}
-  <div className="rg4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,padding:"14px 20px"}}>
-   {[{l:"CA",v:`${fmt(ca)}€`,c:"#FFAA00"},{l:"Leads",v:leads,c:"#60a5fa"},{l:"Deals",v:deals,c:"#34d399"},{l:"Pipeline",v:`${fmt(pipeline)}€`,c:"#a78bfa"}].map(k=>
-    <div key={k.l} className="wr-kpi" style={{...glassPanel,textAlign:"center",padding:"12px 8px"}}>
-     <div style={{fontSize:9,color:"#71717a",fontWeight:700,letterSpacing:1,marginBottom:4}}>{k.l}</div>
-     <div style={{fontSize:22,fontWeight:900,color:k.c,textShadow:`0 0 15px ${k.c}66`}}>{k.v}</div>
-    </div>)}
-  </div>
-  {/* Main content */}
-  <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,padding:"0 20px 20px"}}>
-   {/* Focus Mode - Sprint Ring */}
-   <div style={{...glassPanel,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:260}}>
-    <svg width="160" height="160" viewBox="0 0 100 100">
-     <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,170,0,.1)" strokeWidth="6"/>
-     <circle cx="50" cy="50" r="45" fill="none" stroke="#FFAA00" strokeWidth="6" strokeLinecap="round" strokeDasharray="283" style={{"--ring-off":283-283*spPct/100,strokeDashoffset:283-283*spPct/100,filter:"drop-shadow(0 0 8px rgba(255,170,0,.5))",transition:"stroke-dashoffset 1s ease"}} transform="rotate(-90 50 50)"/>
-     <text x="50" y="46" textAnchor="middle" fill="#FFAA00" fontSize="22" fontWeight="900" fontFamily={FONT}>{sprint?sprint.current:0}</text>
-     <text x="50" y="60" textAnchor="middle" fill="#71717a" fontSize="8" fontFamily={FONT}>/ {sprint?sprint.target:0}</text>
-    </svg>
-    {sprint&&<div style={{marginTop:10,textAlign:"center"}}>
-     <div style={{fontWeight:700,fontSize:13,color:"#e4e4e7",marginBottom:4}}>{sprint.title}</div>
-     {countdown&&!countdown.expired&&<div style={{fontSize:12,color:"#FFAA00",fontWeight:600}}>{countdown.d}j {String(countdown.h).padStart(2,"0")}:{String(countdown.m).padStart(2,"0")}:{String(countdown.s).padStart(2,"0")}</div>}
-     {countdown?.expired&&<div style={{fontSize:12,color:"#f87171",fontWeight:700}}>⏰ Temps écoulé !</div>}
-     {!readOnly&&<div style={{display:"flex",gap:6,marginTop:8,justifyContent:"center"}}>
-      <button onClick={()=>{const ns={...sprint,current:Math.min(sprint.target,sprint.current+1)};saveSprint(ns);}} style={{background:"rgba(52,211,153,.15)",border:"1px solid rgba(52,211,153,.3)",borderRadius:6,padding:"4px 12px",fontSize:10,color:"#34d399",cursor:"pointer",fontFamily:FONT}}>+1</button>
-      <button onClick={()=>{const ns={...sprint,current:Math.max(0,sprint.current-1)};saveSprint(ns);}} style={{background:"rgba(248,113,113,.1)",border:"1px solid rgba(248,113,113,.2)",borderRadius:6,padding:"4px 8px",fontSize:10,color:"#f87171",cursor:"pointer",fontFamily:FONT}}>-1</button>
-     </div>}
-    </div>}
-    {!sprint&&!readOnly&&<button onClick={()=>setShowSetSprint(true)} style={{marginTop:12,background:"rgba(255,170,0,.12)",border:"1px solid rgba(255,170,0,.25)",borderRadius:8,padding:"8px 16px",fontSize:11,color:"#FFAA00",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>🎯 Lancer un Sprint</button>}
-    {!sprint&&readOnly&&<div style={{marginTop:12,fontSize:11,color:"#71717a"}}>Aucun sprint actif</div>}
-   </div>
-   {/* Activity Stream */}
-   <div style={{...glassPanel,maxHeight:320,overflow:"auto"}}>
-    <div style={{fontSize:9,color:"#71717a",fontWeight:700,letterSpacing:1,marginBottom:10}}>📡 ACTIVITÉ EN DIRECT</div>
-    {activities.length===0&&<div style={{color:"#71717a",fontSize:11,textAlign:"center",padding:20}}>Aucune activité récente</div>}
-    {activities.map((a,i)=><div key={i} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid rgba(255,255,255,.04)"}}>
-     <span style={{fontSize:14}}>{a.icon}</span>
-     <span style={{flex:1,fontSize:10,color:"#e4e4e7"}}>{a.text}</span>
-     <span style={{fontSize:8,color:"#71717a",whiteSpace:"nowrap"}}>{a.date?ago(a.date):""}</span>
-    </div>)}
-   </div>
-  </div>
-  {/* Sprint setup modal */}
-  {showSetSprint&&<div className="fi" onClick={()=>setShowSetSprint(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:2100,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)"}}>
-   <div className="si" onClick={e=>e.stopPropagation()} style={{...glassPanel,width:380,maxWidth:"90vw"}}>
-    <div style={{fontWeight:800,fontSize:14,marginBottom:12,color:"#FFAA00"}}>🎯 Nouveau Sprint Challenge</div>
-    <Inp label="Titre" value={spTitle} onChange={setSpTitle} placeholder="Ex: Signe 3 clients en 7 jours"/>
-    <Inp label="Objectif (nombre)" value={spTarget} onChange={setSpTarget} type="number" placeholder="3"/>
-    <Inp label="Progression actuelle" value={spCurrent} onChange={setSpCurrent} type="number" placeholder="0"/>
-    <Inp label="Durée (jours)" value={spDays} onChange={setSpDays} type="number" placeholder="7"/>
-    <div style={{display:"flex",gap:8,marginTop:12}}>
-     <Btn onClick={createSprint}>🚀 Lancer</Btn>
-     <Btn v="secondary" onClick={()=>setShowSetSprint(false)}>Annuler</Btn>
-    </div>
-   </div>
-  </div>}
- </div>;
-}
-
-/* 6. AUTO-PILOT MODE */
-/* 6. AUTO-PILOT MODE */
-export function AutoPilotSection({soc,clients,ghlData,socBank,reps}){
- const[settings,setSettings]=useState(()=>{try{return JSON.parse(localStorage.getItem(`autopilot_${soc.id}`))||{};}catch{return{};}});
- const[queue,setQueue]=useState(()=>{try{return JSON.parse(localStorage.getItem(`autopilot_queue_${soc.id}`))||[];}catch{return[];}});
- const saveSettings=(s)=>{setSettings(s);try{localStorage.setItem(`autopilot_${soc.id}`,JSON.stringify(s));sSet(`autopilot_${soc.id}`,s);}catch{}};
- const saveQueue=(q)=>{setQueue(q);try{localStorage.setItem(`autopilot_queue_${soc.id}`,JSON.stringify(q));sSet(`autopilot_queue_${soc.id}`,q);}catch{}};
- const cm=curM();const now=Date.now();
- // Generate follow-ups
- const relances=useMemo(()=>{const msgs=[];
-  const myClients=(clients||[]).filter(c=>c.socId===soc.id);
-  // Clients impayés >30j
-  const overdueClients=myClients.filter(c=>{
-   if(c.status!=="active")return false;
-   const bd=socBank?.[soc.id];if(!bd?.transactions)return false;
-   const cn3=(c.name||"").toLowerCase().trim();
-   const recent=bd.transactions.some(t=>{const leg=t.legs?.[0];return leg&&leg.amount>0&&new Date(t.created_at).getTime()>now-30*864e5&&(leg.description||t.reference||"").toLowerCase().includes(cn3);});
-   return !recent&&clientMonthlyRevenue(c)>0;
-  });
-  overdueClients.forEach(c=>{const rev=clientMonthlyRevenue(c);msgs.push({id:`rel_pay_${c.id}`,type:"payment",client:c.name,template:`Bonjour ${c.name}, nous n'avons pas reçu votre paiement de ${fmt(rev)}€ pour ce mois. Pourriez-vous vérifier de votre côté ? Merci !`,icon:"💳",priority:"high"});});
-  // Leads non contactés >48h
-  const gd=ghlData?.[soc.id];
-  (gd?.opportunities||[]).filter(o=>o.status==="open"&&new Date(o.createdAt).getTime()<now-48*36e5).slice(0,5).forEach(o=>{msgs.push({id:`rel_lead_${o.id}`,type:"lead",client:o.name,template:`Bonjour ${o.name}, suite à votre demande, je souhaitais prendre quelques minutes pour échanger sur vos besoins. Êtes-vous disponible cette semaine ?`,icon:"📞",priority:"medium"});});
-  return msgs;
- },[clients,soc.id,ghlData,socBank]);
- // Smart scheduling
- const slots=useMemo(()=>{const sugg=[];const days=["Lundi","Mardi","Mercredi","Jeudi","Vendredi"];
-  const gd=ghlData?.[soc.id];const events=gd?.calendarEvents||[];
-  const pendingLeads=(gd?.opportunities||[]).filter(o=>o.status==="open").slice(0,3);
-  pendingLeads.forEach((o,i)=>{const day=days[(new Date().getDay()+i+1)%5];const hour=14+i;sugg.push({id:`slot_${i}`,day,hour:`${hour}h-${hour+1}h`,client:o.name});});
-  return sugg;
- },[ghlData,soc.id]);
- const approveMsg=(id)=>{const existing=queue.find(q=>q.id===id);if(existing)return;const rel=relances.find(r=>r.id===id);if(rel)saveQueue([...queue,{...rel,status:"approved",approvedAt:new Date().toISOString()}]);};
- const ignoreMsg=(id)=>{saveQueue(queue.filter(q=>q.id!==id));};
- return <div style={{marginTop:16}}>
-  <Sect title="🔄 Auto-Pilot" sub="Relances et suggestions automatiques">
-   {/* Relances automatiques */}
-   <Card style={{padding:14,marginBottom:10}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📨 RELANCES SUGGÉRÉES</div>
-    {relances.length===0&&<div style={{color:C.td,fontSize:11,textAlign:"center",padding:12}}>✅ Rien à relancer pour le moment</div>}
-    {relances.map((r,i)=>{const inQueue=queue.find(q=>q.id===r.id);
-     return <div key={r.id} className={`fu d${Math.min(i+1,8)}`} style={{padding:"10px 12px",background:C.bg,borderRadius:10,border:`1px solid ${r.priority==="high"?C.r+"33":C.brd}`,marginBottom:6}}>
-      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-       <span style={{fontSize:14}}>{r.icon}</span>
-       <span style={{fontWeight:700,fontSize:11,flex:1}}>{r.client}</span>
-       <span style={{fontSize:8,padding:"2px 6px",borderRadius:4,background:r.priority==="high"?C.rD:C.oD,color:r.priority==="high"?C.r:C.o,fontWeight:700}}>{r.priority==="high"?"Urgent":"Normal"}</span>
-      </div>
-      <div style={{fontSize:10,color:C.td,lineHeight:1.4,padding:"6px 8px",background:C.card,borderRadius:6,marginBottom:6,fontStyle:"italic"}}>"{r.template}"</div>
-      {inQueue?<span style={{fontSize:9,color:C.g,fontWeight:600}}>✅ Approuvé</span>:
-       <div style={{display:"flex",gap:6}}>
-        <button onClick={()=>approveMsg(r.id)} style={{padding:"3px 10px",borderRadius:6,border:`1px solid ${C.g}33`,background:C.gD,color:C.g,fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>✅ Approuver</button>
-        <button style={{padding:"3px 10px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:9,cursor:"pointer",fontFamily:FONT}}>✏️ Modifier</button>
-        <button onClick={()=>ignoreMsg(r.id)} style={{padding:"3px 10px",borderRadius:6,border:`1px solid ${C.r}22`,background:C.rD,color:C.r,fontSize:9,cursor:"pointer",fontFamily:FONT}}>❌ Ignorer</button>
-       </div>}
-     </div>;})}
-   </Card>
-   {/* Smart Scheduling */}
-   <Card style={{padding:14,marginBottom:10}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📅 CRÉNEAUX SUGGÉRÉS</div>
-    {slots.length===0&&<div style={{color:C.td,fontSize:11,textAlign:"center",padding:12}}>Pas de suggestions pour le moment</div>}
-    {slots.map(s=><div key={s.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:C.bg,borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:4}}>
-     <span style={{fontSize:12}}>📞</span>
-     <span style={{flex:1,fontSize:10}}>Créneau libre : <strong>{s.day} {s.hour}</strong> — Suggéré pour relancer <strong style={{color:C.acc}}>{s.client}</strong></span>
-     <button style={{padding:"3px 10px",borderRadius:6,border:`1px solid ${C.b}33`,background:C.bD,color:C.b,fontSize:9,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>Planifier</button>
-    </div>)}
-   </Card>
-   {/* Weekly Auto-Report */}
-   <Card style={{padding:14}}>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8}}>📊 RAPPORT HEBDO AUTO</div>
-     <button onClick={()=>{const ns={...settings,autoReport:!settings.autoReport};saveSettings(ns);}} style={{padding:"3px 10px",borderRadius:12,border:`1px solid ${settings.autoReport?C.g+"33":C.brd}`,background:settings.autoReport?C.gD:"transparent",color:settings.autoReport?C.g:C.td,fontSize:9,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>{settings.autoReport?"✅ Activé":"Activer"}</button>
-    </div>
-    <div style={{padding:"10px 12px",background:C.bg,borderRadius:8,border:`1px solid ${C.brd}`,fontSize:10,color:C.td,lineHeight:1.5}}>
-     <div style={{fontWeight:700,color:C.t,marginBottom:4}}>Aperçu du rapport :</div>
-     <div>📈 CA ce mois : <strong style={{color:C.acc}}>{fmt(pf(gr(reps,soc.id,cm)?.ca))}€</strong></div>
-     <div>👥 Clients actifs : <strong>{(clients||[]).filter(c=>c.socId===soc.id&&c.status==="active").length}</strong></div>
-     <div>📞 Leads en cours : <strong>{pf(gr(reps,soc.id,cm)?.leads)}</strong></div>
-     <div>✅ Deals conclus : <strong style={{color:C.g}}>{pf(gr(reps,soc.id,cm)?.leadsClos)}</strong></div>
-     <div style={{marginTop:4,fontSize:9,color:C.tm}}>Généré automatiquement chaque lundi</div>
-    </div>
-    {queue.length>0&&<div style={{marginTop:8}}>
-     <div style={{color:C.td,fontSize:9,fontWeight:700,marginBottom:4}}>📤 FILE D'ATTENTE ({queue.length})</div>
-     {queue.map(q=><div key={q.id} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 6px",fontSize:9,borderBottom:`1px solid ${C.brd}08`}}>
-      <span>{q.icon}</span><span style={{flex:1}}>{q.client}</span><span style={{color:C.g,fontWeight:600}}>Prêt à envoyer</span>
-     </div>)}
-    </div>}
-   </Card>
-  </Sect>
- </div>;
-}
-
 /* 7. SYNERGIES AUTOMATIQUES */
 /* 7. SYNERGIES AUTOMATIQUES */
 export function SynergiesAutoPanel({socs,reps,clients,ghlData}){
@@ -5570,11 +5376,7 @@ export function InvestorBoard({socs,reps,allM,hold,pin:inputPin}){
  </div>;
 }
 
-export function WarRoomReadOnly({socId,socs,reps,allM,ghlData,clients,socBank}){
- const soc=socs.find(s=>s.id===socId);
- if(!soc)return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#06060b",fontFamily:FONT,color:"#71717a"}}>Société introuvable</div>;
- return <WarRoom soc={soc} reps={reps} allM={allM} ghlData={ghlData} clients={clients} socBank={socBank} socs={socs} onClose={()=>{window.location.hash="";window.location.reload();}} readOnly/>;
-}
+
 
 /* MAIN APP */
 
