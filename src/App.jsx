@@ -216,7 +216,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  const toggleAction=(id)=>{saveAJ(actions.map(a=>a.id===id?{...a,done:!a.done}:a),null);};
  const[adminMobileMenu,setAdminMobileMenu]=useState(false);
  const deleteAction=(id)=>{saveAJ(actions.filter(a=>a.id!==id),null);};
- if(!loaded)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}><style>{CSS}{POLISH_CSS}</style><div style={{width:40,height:40,border:"3px solid rgba(255,255,255,.06)",borderTopColor:C.acc,borderRadius:"50%",animation:"sp 1s linear infinite",boxShadow:"0 0 20px rgba(255,170,0,.15)"}}/></div>;
+ if(!loaded)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}><style>{CSS}{POLISH_CSS}</style><div style={{width:40,height:40,border:"3px solid var(--sc-w06)",borderTopColor:C.acc,borderRadius:"50%",animation:"sp 1s linear infinite",boxShadow:"0 0 20px rgba(255,170,0,.15)"}}/></div>;
  /* HASH-BASED ROUTES: War Room & Widget (public, no login) */
  const hash=window.location.hash;
  if(hash.startsWith("#widget/")){const wSocId=hash.replace("#widget/","");return <><style>{CSS}{POLISH_CSS}</style><WidgetRenderer socId={wSocId} socs={socs} clients={clients}/></>;}
@@ -324,7 +324,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </div>
   </div>}
   {false&&role==="admin"&&<TutorialOverlay steps={TOUR_ADMIN} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={setTab}/>}
-  <div className="mobile-header" style={{display:"none",position:"fixed",top:0,left:0,right:0,zIndex:100,background:"rgba(14,14,22,.8)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,.06)",padding:"10px 16px",alignItems:"center",gap:10}}>
+  <div className="mobile-header" style={{display:"none",position:"fixed",top:0,left:0,right:0,zIndex:100,background:"var(--sc-card-a8)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid var(--sc-w06)",padding:"10px 16px",alignItems:"center",gap:10}}>
    <button onClick={()=>setAdminMobileMenu(!adminMobileMenu)} style={{background:"none",border:"none",fontSize:20,color:C.t,cursor:"pointer",padding:4}}>☰</button>
    <span style={{flex:1,fontWeight:800,fontSize:14,fontFamily:FONT_TITLE,color:C.acc}}>⚡ {hold.brand?.name||"L'INCUBATEUR ECS"}</span>
    <button onClick={toggleTheme} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",padding:4,color:C.td}}>{getTheme()==="light"?"🌙":"☀️"}</button>
@@ -349,7 +349,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     {socs.filter(s=>s.stat==="active"||s.stat==="lancement").map(s=><option key={s.id} value={s.id}>{s.nom} — {s.porteur}</option>)}
    </select>
    <button onClick={()=>setShowSearch(true)} style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:11,fontWeight:600,fontFamily:FONT,cursor:"pointer",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",gap:5}}>
-    <span>🔍</span><span>Rechercher</span><kbd style={{fontSize:9,padding:"1px 4px",borderRadius:3,background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.08)",color:C.tm}}>⌘K</kbd>
+    <span>🔍</span><span>Rechercher</span><kbd style={{fontSize:9,padding:"1px 4px",borderRadius:3,background:"var(--sc-w06)",border:"1px solid var(--sc-w08)",color:C.tm}}>⌘K</kbd>
    </button>
   </div>
   <div style={{padding:"16px 22px 50px",maxWidth:1000,margin:"0 auto"}}>

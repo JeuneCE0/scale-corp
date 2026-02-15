@@ -148,7 +148,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
 
  const pill=(active,onClick,label)=><button key={label} onClick={onClick} style={{padding:"5px 14px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",border:active?"1px solid #FFAA00":"1px solid rgba(255,255,255,.1)",background:active?"rgba(255,170,0,.15)":"rgba(255,255,255,.04)",color:active?"#FFAA00":"#71717a",transition:"all .2s"}}>{label}</button>;
 
- const GC={background:"rgba(255,255,255,.04)",backdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,.08)",borderRadius:16,padding:20};
+ const GC={background:"var(--sc-w04)",backdropFilter:"blur(20px)",border:"1px solid var(--sc-w08)",borderRadius:16,padding:20};
  const GCglow={...GC,animation:"card-glow 3s ease infinite"};
  const GChover={...GC,transition:"all .25s ease",cursor:"pointer"};
 
@@ -183,59 +183,59 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
 
  const renderKPIs=()=><div style={{display:"flex",flexDirection:"column",gap:12,overflow:"auto"}}>
   <div style={GC}>
-   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>CA Total</div>
+   <div style={{fontSize:10,color:C.td,textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>CA Total</div>
    <div style={{fontSize:32,fontWeight:900,color:"#FFAA00",fontFamily:FONT_TITLE}}>{fmt(animatedVals.ca)}€</div>
    <div style={{fontSize:10,color:totalCA>=prevCA?"#34d399":"#f87171",marginTop:4}}>{totalCA>=prevCA?"↑":"↓"} vs M-1 ({fmt(prevCA)}€)</div>
    {sparkline(caHist)}
   </div>
   <div style={GC}>
-   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Prospects</div>
+   <div style={{fontSize:10,color:C.td,textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Prospects</div>
    <div style={{fontSize:28,fontWeight:900,color:"#60a5fa",fontFamily:FONT_TITLE}}>{totalProspects}</div>
    <div style={{fontSize:10,color:deltaProspects>=0?"#34d399":"#f87171",marginTop:4}}>{deltaProspects>=0?"↑":"↓"} {deltaProspects>=0?"+":""}{deltaProspects} {periodLabel} (préc: {prospectsPrevRange})</div>
   </div>
   <div style={GC}>
-   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Pipeline</div>
+   <div style={{fontSize:10,color:C.td,textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Pipeline</div>
    <div style={{fontSize:24,fontWeight:900,color:"#a78bfa",fontFamily:FONT_TITLE}}>{fmt(animatedVals.pipeline)}€</div>
   </div>
   <div style={GC}>
-   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Conversion</div>
+   <div style={{fontSize:10,color:C.td,textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Conversion</div>
    <div style={{fontSize:22,fontWeight:900,color:"#34d399",fontFamily:FONT_TITLE}}>{convRate}%</div>
-   <div style={{fontSize:10,color:"#71717a",marginTop:4}}>Deal moy: {fmt(avgDeal)}€</div>
+   <div style={{fontSize:10,color:C.td,marginTop:4}}>Deal moy: {fmt(avgDeal)}€</div>
   </div>
   <div style={GC}>
-   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>💰 Solde Actuel</div>
+   <div style={{fontSize:10,color:C.td,textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>💰 Solde Actuel</div>
    <div style={{fontSize:24,fontWeight:900,color:totalSolde>=0?"#34d399":"#f87171",fontFamily:FONT_TITLE}}>{fmt(totalSolde)}€</div>
-   <div style={{fontSize:9,color:"#71717a",marginTop:4}}>Hors cagnottes exclues</div>
+   <div style={{fontSize:9,color:C.td,marginTop:4}}>Hors cagnottes exclues</div>
   </div>
   <div style={GC}>
-   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>✅ Contrats Signés</div>
+   <div style={{fontSize:10,color:C.td,textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>✅ Contrats Signés</div>
    <div style={{display:"flex",alignItems:"baseline",gap:8}}>
     <div style={{fontSize:24,fontWeight:900,color:"#34d399",fontFamily:FONT_TITLE}}>{contratsSigned.count}</div>
     <div style={{fontSize:14,fontWeight:700,color:"#34d39988",fontFamily:FONT_TITLE}}>{fmt(contratsSigned.value)}€</div>
    </div>
-   <div style={{fontSize:9,color:"#71717a",marginTop:4}}>{periodLabel}</div>
+   <div style={{fontSize:9,color:C.td,marginTop:4}}>{periodLabel}</div>
   </div>
   <div style={GC}>
-   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>⏳ En Attente Signature</div>
+   <div style={{fontSize:10,color:C.td,textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>⏳ En Attente Signature</div>
    <div style={{display:"flex",alignItems:"baseline",gap:8}}>
     <div style={{fontSize:24,fontWeight:900,color:"#FFAA00",fontFamily:FONT_TITLE}}>{contratsPending.count}</div>
     <div style={{fontSize:14,fontWeight:700,color:"#FFAA0088",fontFamily:FONT_TITLE}}>{fmt(contratsPending.value)}€</div>
    </div>
-   <div style={{fontSize:9,color:"#71717a",marginTop:4}}>{periodLabel}</div>
+   <div style={{fontSize:9,color:C.td,marginTop:4}}>{periodLabel}</div>
   </div>
   <div style={GC}>
-   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>📞 Appels Bookés</div>
+   <div style={{fontSize:10,color:C.td,textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>📞 Appels Bookés</div>
    <div style={{fontSize:24,fontWeight:900,color:"#a78bfa",fontFamily:FONT_TITLE}}>{totalCallsBooked}</div>
-   <div style={{fontSize:9,color:"#71717a",marginTop:4}}>{periodLabel}</div>
+   <div style={{fontSize:9,color:C.td,marginTop:4}}>{periodLabel}</div>
   </div>
   {/* Revenue vs Expenses bar */}
   <div style={GC}>
-   <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Revenus / Dépenses</div>
-   <div style={{height:12,borderRadius:6,overflow:"hidden",background:"rgba(255,255,255,.06)",display:"flex"}}>
+   <div style={{fontSize:10,color:C.td,textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:8}}>Revenus / Dépenses</div>
+   <div style={{height:12,borderRadius:6,overflow:"hidden",background:"var(--sc-w06)",display:"flex"}}>
     <div style={{width:`${totalRevenues+totalExpenses>0?(totalRevenues/(totalRevenues+totalExpenses))*100:50}%`,background:"#34d399",transition:"width .5s"}}/>
     <div style={{flex:1,background:"#f87171"}}/>
    </div>
-   <div style={{display:"flex",justifyContent:"space-between",marginTop:4,fontSize:9,color:"#71717a"}}><span style={{color:"#34d399"}}>{fK(totalRevenues)}€</span><span style={{color:"#f87171"}}>{fK(totalExpenses)}€</span></div>
+   <div style={{display:"flex",justifyContent:"space-between",marginTop:4,fontSize:9,color:C.td}}><span style={{color:"#34d399"}}>{fK(totalRevenues)}€</span><span style={{color:"#f87171"}}>{fK(totalExpenses)}€</span></div>
   </div>
  </div>;
 
@@ -245,7 +245,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
    <div style={{width:120,height:120,borderRadius:"50%",background:donutGradient,position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
     <div style={{width:80,height:80,borderRadius:"50%",background:"#030308",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column"}}>
      <div style={{fontSize:14,fontWeight:900,color:"#FFAA00",fontFamily:FONT_TITLE}}>{fmt(totalCA)}€</div>
-     <div style={{fontSize:8,color:"#71717a"}}>CA Total</div>
+     <div style={{fontSize:8,color:C.td}}>CA Total</div>
     </div>
    </div>
    <div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:6,justifyContent:"center"}}>{donutData.map(d=><span key={d.name} style={{fontSize:8,color:d.color}}>● {d.name}</span>)}</div>
@@ -257,7 +257,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
      {/* Status pulsing dot */}
      <div style={{width:8,height:8,borderRadius:"50%",background:s.statusRaw==="active"?"#34d399":s.statusRaw==="lancement"?"#FFAA00":"#f87171",animation:"status-pulse 2s ease infinite",color:s.statusRaw==="active"?"#34d39944":s.statusRaw==="lancement"?"#FFAA0044":"#f8717144",flexShrink:0}}/>
      {s.logoUrl?<img loading="lazy" src={s.logoUrl} alt="" style={{width:24,height:24,borderRadius:8,objectFit:"contain"}}/>:<div style={{width:24,height:24,borderRadius:8,background:(s.brandColor||s.color||"#FFAA00")+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:s.brandColor||s.color||"#FFAA00"}}>{(s.name||"?")[0]}</div>}
-     <div style={{fontWeight:800,fontSize:13,fontFamily:FONT_TITLE,color:"#e4e4e7"}}>{s.name}</div>
+     <div style={{fontWeight:800,fontSize:13,fontFamily:FONT_TITLE,color:C.t}}>{s.name}</div>
     </div>
     <div style={{display:"flex",alignItems:"center",gap:6}}>
      {/* Health score badge */}
@@ -265,14 +265,14 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
      <span style={{fontSize:16,color:s.trend==="↑"?"#34d399":s.trend==="↓"?"#f87171":"#71717a"}}>{s.trend}</span>
     </div>
    </div>
-   {s.porteur&&<div style={{fontSize:10,color:"#71717a",marginBottom:6}}>👤 {s.porteur}</div>}
+   {s.porteur&&<div style={{fontSize:10,color:C.td,marginBottom:6}}>👤 {s.porteur}</div>}
    <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-    <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>CA</div><div style={{fontSize:15,fontWeight:700,color:"#FFAA00"}}>{fK(s.ca)}€</div></div>
-    <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Prospects</div><div style={{fontSize:15,fontWeight:700,color:"#60a5fa"}}>{s.prosp}</div></div>
-    <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Pipeline</div><div style={{fontSize:13,fontWeight:600,color:"#a78bfa"}}>{fK(s.pipVal)}€</div></div>
-    <div><div style={{fontSize:9,color:"#71717a",textTransform:"uppercase"}}>Solde</div><div style={{fontSize:13,fontWeight:600,color:"#34d399"}}>{fK(s.bal)}€</div></div>
+    <div><div style={{fontSize:9,color:C.td,textTransform:"uppercase"}}>CA</div><div style={{fontSize:15,fontWeight:700,color:"#FFAA00"}}>{fK(s.ca)}€</div></div>
+    <div><div style={{fontSize:9,color:C.td,textTransform:"uppercase"}}>Prospects</div><div style={{fontSize:15,fontWeight:700,color:"#60a5fa"}}>{s.prosp}</div></div>
+    <div><div style={{fontSize:9,color:C.td,textTransform:"uppercase"}}>Pipeline</div><div style={{fontSize:13,fontWeight:600,color:"#a78bfa"}}>{fK(s.pipVal)}€</div></div>
+    <div><div style={{fontSize:9,color:C.td,textTransform:"uppercase"}}>Solde</div><div style={{fontSize:13,fontWeight:600,color:"#34d399"}}>{fK(s.bal)}€</div></div>
    </div>
-   {s.lastAct&&<div style={{fontSize:9,color:"#71717a",marginTop:6}}>⏱ {ago(s.lastAct)}</div>}
+   {s.lastAct&&<div style={{fontSize:9,color:C.td,marginTop:6}}>⏱ {ago(s.lastAct)}</div>}
    {sparkline(caHist)}
   </div>)}
  </div>;
@@ -280,18 +280,18 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
  const feedTypeButtons=[{k:"all",l:"Tout",icon:"📡"},{k:"payment",l:"Paiements",icon:"💰"},{k:"lead",l:"Prospects",icon:"👤"},{k:"call",l:"Appels",icon:"📞"},{k:"won",l:"Gagnés",icon:"✅"},{k:"lost",l:"Perdus",icon:"❌"}];
 
  const renderFeed=(full)=><div style={{...GC,overflow:"hidden",display:"flex",flexDirection:"column",padding:0,...(full?{flex:1}:{})}}>
-  <div style={{padding:"14px 16px 8px",borderBottom:"1px solid rgba(255,255,255,.06)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
+  <div style={{padding:"14px 16px 8px",borderBottom:"1px solid var(--sc-w06)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
    <span style={{fontSize:11,fontWeight:700,color:"#FFAA00",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE}}>📡 Fil d'Actualité</span>
    <div style={{display:"flex",gap:4}}>{feedTypeButtons.map(b=><button key={b.k} onClick={()=>setFeedTypeFilter(b.k)} style={{padding:"2px 8px",borderRadius:10,fontSize:10,border:feedTypeFilter===b.k?"1px solid #FFAA00":"1px solid rgba(255,255,255,.06)",background:feedTypeFilter===b.k?"rgba(255,170,0,.12)":"transparent",color:feedTypeFilter===b.k?"#FFAA00":"#71717a",cursor:"pointer"}}>{b.icon}</button>)}</div>
   </div>
   <div ref={feedRef} style={{flex:1,overflow:"auto",padding:"8px 12px"}}>
-   {filteredFeed.length===0&&<div style={{color:"#71717a",fontSize:11,textAlign:"center",padding:20}}>Aucune activité récente</div>}
-   {filteredFeed.map((f,i)=><div key={i} className={`pulse-feed-item${i===0?" pulse-feed-new":""}`} style={{padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,.03)",display:"flex",gap:8,alignItems:"flex-start",fontSize:11}}>
+   {filteredFeed.length===0&&<div style={{color:C.td,fontSize:11,textAlign:"center",padding:20}}>Aucune activité récente</div>}
+   {filteredFeed.map((f,i)=><div key={i} className={`pulse-feed-item${i===0?" pulse-feed-new":""}`} style={{padding:"8px 0",borderBottom:"1px solid var(--sc-w04)",display:"flex",gap:8,alignItems:"flex-start",fontSize:11}}>
     {(()=>{const fs=allActS.find(x=>x.id===f.socId);return fs?.logoUrl?<img loading="lazy" src={fs.logoUrl} alt="" style={{width:16,height:16,borderRadius:5,objectFit:"contain",flexShrink:0,marginTop:1}}/>:<div style={{width:16,height:16,borderRadius:5,background:(fs?.brandColor||fs?.color||f.color)+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:900,color:fs?.brandColor||fs?.color||f.color,flexShrink:0,marginTop:1}}>{(fs?.nom||"?")[0]}</div>;})()}
     <span>{f.icon}</span>
     <div style={{flex:1}}>
-     <div style={{color:"#e4e4e7",lineHeight:1.3}}>{f.desc}</div>
-     <div style={{color:"#71717a",fontSize:9,marginTop:2}}>{f.ts?ago(f.ts):""}</div>
+     <div style={{color:C.t,lineHeight:1.3}}>{f.desc}</div>
+     <div style={{color:C.td,fontSize:9,marginTop:2}}>{f.ts?ago(f.ts):""}</div>
     </div>
     {f.amt?<span style={{color:f.color,fontWeight:700,whiteSpace:"nowrap"}}>{f.amt>0?"+":""}{fmt(f.amt)}€</span>:null}
    </div>)}
@@ -304,9 +304,9 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
    <div style={{fontSize:12,fontWeight:800,color:"#FFAA00",fontFamily:FONT_TITLE,marginBottom:16}}>🗺️ HEATMAP ACTIVITÉ — {periodLabel.toUpperCase()}</div>
    <div style={{display:"grid",gridTemplateColumns:`120px repeat(${heatmapData.days.length},1fr)`,gap:4,alignItems:"center"}}>
     <div/>
-    {heatmapData.days.map(d=><div key={d} style={{fontSize:9,color:"#71717a",textAlign:"center",fontFamily:"monospace"}}>{d.slice(5)}</div>)}
+    {heatmapData.days.map(d=><div key={d} style={{fontSize:9,color:C.td,textAlign:"center",fontFamily:"monospace"}}>{d.slice(5)}</div>)}
     {heatmapData.rows.map((row,ri)=><React.Fragment key={row.id}>
-     <div style={{fontSize:11,color:"#e4e4e7",fontWeight:600,fontFamily:FONT_TITLE,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{row.name}</div>
+     <div style={{fontSize:11,color:C.t,fontWeight:600,fontFamily:FONT_TITLE,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{row.name}</div>
      {row.cells.map((c,ci)=>{const maxAct=Math.max(...heatmapData.rows.flatMap(r=>r.cells.map(x=>x.activity)),1);const intensity=c.activity/maxAct;const bg=intensity>0.6?"#34d399":intensity>0.3?"#FFAA00":intensity>0?"#f8717188":"rgba(255,255,255,.04)";return <div key={ci} style={{width:"100%",aspectRatio:"1",borderRadius:4,background:bg,opacity:Math.max(0.2,intensity),animation:`heatcell-pop .3s ease ${(ri*7+ci)*0.03}s both`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:"#fff",fontWeight:600}}>{c.amt>0?fK(c.amt):c.leads>0?c.leads:""}</div>;})}
     </React.Fragment>)}
    </div>
@@ -323,26 +323,26 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
    <div style={{...GC}}>
     <div style={{fontSize:12,fontWeight:800,color:"#FFAA00",fontFamily:FONT_TITLE,marginBottom:16}}>⚖️ COMPARAISON</div>
     <div style={{display:"flex",gap:12,marginBottom:20}}>
-     <select value={compareA||opts[0]?.id||""} onChange={e=>setCompareA(e.target.value)} style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,color:"#e4e4e7",padding:"6px 12px",fontSize:11,fontFamily:FONT}}>
+     <select value={compareA||opts[0]?.id||""} onChange={e=>setCompareA(e.target.value)} style={{background:"var(--sc-w06)",border:"1px solid var(--sc-w08)",borderRadius:8,color:C.t,padding:"6px 12px",fontSize:11,fontFamily:FONT}}>
       {opts.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}
      </select>
      <span style={{color:"#FFAA00",fontWeight:900,alignSelf:"center"}}>VS</span>
-     <select value={compareB||opts[1]?.id||""} onChange={e=>setCompareB(e.target.value)} style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,color:"#e4e4e7",padding:"6px 12px",fontSize:11,fontFamily:FONT}}>
+     <select value={compareB||opts[1]?.id||""} onChange={e=>setCompareB(e.target.value)} style={{background:"var(--sc-w06)",border:"1px solid var(--sc-w08)",borderRadius:8,color:C.t,padding:"6px 12px",fontSize:11,fontFamily:FONT}}>
       {opts.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}
      </select>
     </div>
     {a&&b&&metrics.map(m=>{const va=a[m.k]||0;const vb=b[m.k]||0;const mx=Math.max(va,vb,1);return <div key={m.k} style={{marginBottom:14}}>
-     <div style={{fontSize:10,color:"#71717a",textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:6}}>{m.l}</div>
+     <div style={{fontSize:10,color:C.td,textTransform:"uppercase",letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:6}}>{m.l}</div>
      <div style={{display:"flex",alignItems:"center",gap:8}}>
-      <span style={{fontSize:11,color:"#e4e4e7",fontWeight:700,width:60,textAlign:"right"}}>{fK(va)}</span>
-      <div style={{flex:1,height:16,borderRadius:8,background:"rgba(255,255,255,.04)",overflow:"hidden",display:"flex"}}>
+      <span style={{fontSize:11,color:C.t,fontWeight:700,width:60,textAlign:"right"}}>{fK(va)}</span>
+      <div style={{flex:1,height:16,borderRadius:8,background:"var(--sc-w04)",overflow:"hidden",display:"flex"}}>
        <div style={{width:`${(va/mx)*50}%`,background:m.color,borderRadius:"8px 0 0 8px",transition:"width .5s"}}/>
        <div style={{width:2,background:"#030308"}}/>
        <div style={{width:`${(vb/mx)*50}%`,background:m.color+"88",borderRadius:"0 8px 8px 0",transition:"width .5s",marginLeft:"auto"}}/>
       </div>
-      <span style={{fontSize:11,color:"#e4e4e7",fontWeight:700,width:60}}>{fK(vb)}</span>
+      <span style={{fontSize:11,color:C.t,fontWeight:700,width:60}}>{fK(vb)}</span>
      </div>
-     <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#71717a",marginTop:2}}><span>{a.name}</span><span>{b.name}</span></div>
+     <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:C.td,marginTop:2}}><span>{a.name}</span><span>{b.name}</span></div>
     </div>;})}
    </div>
   </div>;
@@ -356,14 +356,14 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
     <div style={{position:"absolute",left:8,top:0,bottom:0,width:2,background:"rgba(255,170,0,.15)"}}/>
     {timelineEvents.map((ev,i)=><div key={i} style={{position:"relative",marginBottom:16,paddingLeft:20,animation:`slide-in .3s ease ${i*0.05}s both`}}>
      <div style={{position:"absolute",left:-4,top:4,width:12,height:12,borderRadius:"50%",background:ev.dotColor,border:"2px solid #030308",zIndex:1}}/>
-     <div style={{fontSize:9,color:"#71717a",fontFamily:"monospace",marginBottom:2}}>{ev.ts?new Date(ev.ts).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):""}</div>
-     <div style={{fontSize:12,color:"#e4e4e7",fontWeight:600}}>{ev.label}</div>
+     <div style={{fontSize:9,color:C.td,fontFamily:"monospace",marginBottom:2}}>{ev.ts?new Date(ev.ts).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):""}</div>
+     <div style={{fontSize:12,color:C.t,fontWeight:600}}>{ev.label}</div>
      <div style={{display:"flex",gap:8,marginTop:2}}>
       <span style={{fontSize:9,fontWeight:700,color:ev.color,background:ev.color+"18",padding:"1px 6px",borderRadius:4}}>{ev.soc}</span>
       {ev.amt?<span style={{fontSize:9,fontWeight:700,color:"#34d399"}}>+{fmt(ev.amt)}€</span>:null}
      </div>
     </div>)}
-    {timelineEvents.length===0&&<div style={{color:"#71717a",fontSize:11,padding:20,textAlign:"center"}}>Aucun événement</div>}
+    {timelineEvents.length===0&&<div style={{color:C.td,fontSize:11,padding:20,textAlign:"center"}}>Aucun événement</div>}
    </div>
   </div>
  </div>;
@@ -376,7 +376,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
   </div>;
  };
 
- return <div style={{position:"fixed",inset:0,zIndex:9999,background:"#030308",fontFamily:FONT,color:"#e4e4e7",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+ return <div style={{position:"fixed",inset:0,zIndex:9999,background:"#030308",fontFamily:FONT,color:C.t,overflow:"hidden",display:"flex",flexDirection:"column"}}>
   <style>{PULSE_CSS}</style>
   {/* BREATHING GLOW */}
   <div style={{position:"fixed",inset:0,background:"radial-gradient(ellipse at 50% 50%, rgba(255,170,0,.03), transparent 70%)",animation:"breathing 8s ease infinite",zIndex:0,pointerEvents:"none"}}/>
@@ -397,7 +397,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
    {toasts.map(t=><div key={t.id} className="pulse-toast" style={{padding:"10px 18px",borderRadius:10,background:t.color+"22",border:`1px solid ${t.color}44`,color:t.color,fontSize:12,fontWeight:600,backdropFilter:"blur(12px)",display:"flex",alignItems:"center",gap:8}}>{t.soc?(t.soc.logoUrl?<img loading="lazy" src={t.soc.logoUrl} alt="" style={{width:18,height:18,borderRadius:6,objectFit:"contain"}}/>:<div style={{width:18,height:18,borderRadius:6,background:(t.soc.brandColor||t.soc.color||t.color)+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:t.soc.brandColor||t.soc.color||t.color}}>{(t.soc.nom||t.soc.name||"?")[0]}</div>):null}{t.msg}</div>)}
   </div>
   {/* TOP BAR */}
-  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 24px",borderBottom:"1px solid rgba(255,255,255,.06)",flexShrink:0,zIndex:1,position:"relative"}}>
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 24px",borderBottom:"1px solid var(--sc-w06)",flexShrink:0,zIndex:1,position:"relative"}}>
    <div style={{display:"flex",alignItems:"center",gap:10}}>
     <span style={{fontSize:22,animation:refreshing?"pulse-glow 1.5s ease infinite":"none",fontFamily:FONT_TITLE,fontWeight:900,color:"#FFAA00",letterSpacing:2}}>⚡ PULSE</span>
     {/* Today's payments badge */}
@@ -406,15 +406,15 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}></div>
    <div style={{display:"flex",alignItems:"center",gap:16}}>
     <button onClick={()=>setSoundOn(p=>!p)} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",color:soundOn?"#FFAA00":"#71717a"}}>{soundOn?"🔊":"🔇"}</button>
-    <div style={{display:"flex",gap:12,fontSize:11,fontFamily:"monospace",color:"#71717a"}}>
+    <div style={{display:"flex",gap:12,fontSize:11,fontFamily:"monospace",color:C.td}}>
      <span>🇦🇪 {clock("Asia/Dubai")}</span><span>🇫🇷 {clock("Europe/Paris")}</span><span>🇹🇭 {clock("Asia/Bangkok")}</span>
     </div>
-    <button onClick={onClose} style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,color:"#71717a",fontSize:16,width:32,height:32,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+    <button onClick={onClose} style={{background:"var(--sc-w06)",border:"1px solid var(--sc-w08)",borderRadius:8,color:C.td,fontSize:16,width:32,height:32,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
    </div>
   </div>
   {/* FILTER BAR */}
-  <div style={{display:"flex",gap:8,padding:"6px 24px",borderBottom:"1px solid rgba(255,255,255,.04)",flexShrink:0,zIndex:1,position:"relative",alignItems:"center"}}>
-   <select value={socFilter} onChange={e=>setSocFilter(e.target.value)} style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,color:"#e4e4e7",padding:"4px 10px",fontSize:11,fontFamily:FONT,cursor:"pointer"}}>
+  <div style={{display:"flex",gap:8,padding:"6px 24px",borderBottom:"1px solid var(--sc-w04)",flexShrink:0,zIndex:1,position:"relative",alignItems:"center"}}>
+   <select value={socFilter} onChange={e=>setSocFilter(e.target.value)} style={{background:"var(--sc-w06)",border:"1px solid var(--sc-w08)",borderRadius:8,color:C.t,padding:"4px 10px",fontSize:11,fontFamily:FONT,cursor:"pointer"}}>
     <option value="all">Toutes les sociétés</option>
     {allActS.map(s=><option key={s.id} value={s.id}>{s?.nom||s?.name||s.id}</option>)}
    </select>
@@ -426,14 +426,14 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
   {/* MAIN CONTENT */}
   {renderMainContent()}
   {/* BOTTOM AI TICKER */}
-  <div style={{borderTop:"1px solid rgba(255,255,255,.06)",padding:"6px 0",overflow:"hidden",flexShrink:0,background:"rgba(255,170,0,.03)",zIndex:1,position:"relative",minHeight:28}}>
+  <div style={{borderTop:"1px solid var(--sc-w06)",padding:"6px 0",overflow:"hidden",flexShrink:0,background:"rgba(255,170,0,.03)",zIndex:1,position:"relative",minHeight:28}}>
    {aiTickerItems.length>0?<div style={{display:"flex",animation:"ticker-scroll 35s linear infinite",whiteSpace:"nowrap",alignItems:"center"}}>
     {[0,1].map(dup=><Fragment key={dup}>{aiTickerItems.map((t,i)=><span key={`${dup}-${i}`} style={{display:"inline-flex",alignItems:"center",gap:5,marginRight:32,fontSize:11,fontFamily:FONT,color:"#FFAA00"}}>
      {t.logo?<img loading="lazy" src={t.logo} style={{width:14,height:14,borderRadius:3,objectFit:"cover",flexShrink:0}}/>:<span style={{width:14,height:14,borderRadius:3,background:t.color+"33",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7,fontWeight:900,color:t.color,flexShrink:0}}>{(t.sn||"?")[0]}</span>}
-     <span style={{fontWeight:700,color:"#e4e4e7"}}>{t.sn}</span>
+     <span style={{fontWeight:700,color:C.t}}>{t.sn}</span>
      <span>{t.text}</span>
     </span>)}</Fragment>)}
-   </div>:<div style={{display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#71717a",fontFamily:FONT,height:"100%"}}>🤖 Aucune activité sur cette période</div>}
+   </div>:<div style={{display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:C.td,fontFamily:FONT,height:"100%"}}>🤖 Aucune activité sur cette période</div>}
   </div>
  </div>;
 }

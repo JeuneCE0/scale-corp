@@ -88,6 +88,15 @@ button{transition:transform .15s ease,opacity .15s ease,box-shadow .15s ease}
 
 /* Page body transition */
 body{transition:background-color .3s ease,color .3s ease}
+
+/* Light mode overrides */
+[data-theme="light"] .tour-tooltip{background:rgba(255,255,255,.95);border-color:rgba(255,170,0,.3);box-shadow:0 12px 40px rgba(0,0,0,.15)}
+[data-theme="light"] .tour-tooltip-arrow{background:rgba(255,255,255,.95);border-color:rgba(255,170,0,.3)}
+[data-theme="light"] .tour-dot{background:rgba(0,0,0,.15)}
+[data-theme="light"] .breadcrumbs{color:rgba(0,0,0,.4)}
+[data-theme="light"] .breadcrumbs .bc-link:hover{color:rgba(0,0,0,.7)}
+[data-theme="light"] .ptr-indicator{color:rgba(0,0,0,.5)}
+[data-theme="light"] .ptr-spinner{border-color:rgba(0,0,0,.1);border-top-color:rgba(255,170,0,.8)}
 `;
 
 // ─── 2. TOAST SYSTEM ───

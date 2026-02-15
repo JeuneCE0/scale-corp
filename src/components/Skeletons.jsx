@@ -16,7 +16,7 @@ const shimmerBg = {
 
 const glassBase = {
   borderRadius: 14,
-  border: '1px solid rgba(255,255,255,.06)',
+  border: '1px solid var(--sc-w06)',
   backdropFilter: 'blur(12px)',
   WebkitBackdropFilter: 'blur(12px)',
 };
@@ -35,9 +35,9 @@ export function SkeletonCard({ width, height = 120, style }) {
       padding: 14,
       ...style,
     }}>
-      <div style={{ ...shimmerBg, height: 10, width: '40%', borderRadius: 4, marginBottom: 10, background: 'rgba(255,255,255,.04)' }} />
-      <div style={{ ...shimmerBg, height: 22, width: '60%', borderRadius: 4, marginBottom: 8, background: 'rgba(255,255,255,.04)' }} />
-      <div style={{ ...shimmerBg, height: 8, width: '80%', borderRadius: 4, background: 'rgba(255,255,255,.04)' }} />
+      <div style={{ ...shimmerBg, height: 10, width: '40%', borderRadius: 4, marginBottom: 10, background: 'var(--sc-w04)' }} />
+      <div style={{ ...shimmerBg, height: 22, width: '60%', borderRadius: 4, marginBottom: 8, background: 'var(--sc-w04)' }} />
+      <div style={{ ...shimmerBg, height: 8, width: '80%', borderRadius: 4, background: 'var(--sc-w04)' }} />
     </div>
   );
 }
@@ -52,9 +52,9 @@ export function SkeletonKPI({ style }) {
       minWidth: 120,
       ...style,
     }}>
-      <div style={{ height: 9, width: '50%', borderRadius: 3, marginBottom: 8, background: 'rgba(255,255,255,.04)' }} />
-      <div style={{ height: 28, width: '40%', borderRadius: 4, marginBottom: 6, background: 'rgba(255,255,255,.06)' }} />
-      <div style={{ height: 8, width: '65%', borderRadius: 3, background: 'rgba(255,255,255,.03)' }} />
+      <div style={{ height: 9, width: '50%', borderRadius: 3, marginBottom: 8, background: 'var(--sc-w04)' }} />
+      <div style={{ height: 28, width: '40%', borderRadius: 4, marginBottom: 6, background: 'var(--sc-w06)' }} />
+      <div style={{ height: 8, width: '65%', borderRadius: 3, background: 'var(--sc-w04)' }} />
     </div>
   );
 }
@@ -63,7 +63,7 @@ export function SkeletonTable({ rows = 5, cols = 4, style }) {
   return (
     <div style={{ ...glassBase, padding: 14, ...style }}>
       {/* Header */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--sc-w06)' }}>
         {Array.from({ length: cols }).map((_, i) => (
           <div key={i} style={{ ...shimmerBg, height: 10, flex: 1, borderRadius: 3 }} />
         ))}

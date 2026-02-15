@@ -28,7 +28,7 @@ export function Badge({s}){const m={active:[C.gD,C.g,"Active"],lancement:[C.oD,C
 export function IncubBadge({incub}){if(!incub)return null;const lbl=sinceLbl(incub);return <span style={{background:C.vD,color:C.v,padding:"2px 7px",borderRadius:20,fontSize:9,fontWeight:600}}>📅 {lbl}</span>;}
 export function GradeBadge({grade,color,size="sm"}){const s=size==="lg"?{w:32,h:32,fs:16,r:9,bw:2}:{w:22,h:22,fs:11,r:6,bw:1.5};return <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:s.w,height:s.h,borderRadius:s.r,background:color+"15",color,fontWeight:900,fontSize:s.fs,border:`${s.bw}px solid ${color}33`,flexShrink:0}}>{grade}</span>;}
 export function KPI({label,value,sub,accent,small,delay=0,icon}){
- return <div className={`fu d${delay} glass-card-static`} style={{padding:small?"10px 12px":"16px 18px",flex:"1 1 130px",minWidth:small?90:120,transition:"all .3s cubic-bezier(.4,0,.2,1)"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${accent||C.acc}33`;e.currentTarget.style.boxShadow=`0 0 20px ${(accent||C.acc)}15`;e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,.06)";e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,.3)";e.currentTarget.style.transform="translateY(0)";}}>
+ return <div className={`fu d${delay} glass-card-static`} style={{padding:small?"10px 12px":"16px 18px",flex:"1 1 130px",minWidth:small?90:120,transition:"all .3s cubic-bezier(.4,0,.2,1)"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${accent||C.acc}33`;e.currentTarget.style.boxShadow=`0 0 20px ${(accent||C.acc)}15`;e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--sc-w06)";e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,.3)";e.currentTarget.style.transform="translateY(0)";}}>
   <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}>{icon&&<span style={{fontSize:11}}>{icon}</span>}<span style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,textTransform:"uppercase",fontFamily:FONT_TITLE}}>{label}</span></div>
   <div style={{fontSize:small?16:28,fontWeight:900,color:accent||C.t,lineHeight:1.1}}>{value}</div>
   {sub&&<div style={{color:C.td,fontSize:9,marginTop:3}}>{sub}</div>}
@@ -42,7 +42,7 @@ export function Btn({children,onClick,v="primary",small,style:sx,disabled,full})
 export function Inp({label,value,onChange,type="text",placeholder,suffix,textarea,small,note,onKeyDown}){
  return <div style={{marginBottom:small?6:10}}>
   {label&&<label style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:3,letterSpacing:.3}}>{label}</label>}
-  <div className="glass-input" style={{display:"flex",alignItems:"center",borderRadius:10,overflow:"hidden"}} onFocus={e=>{e.currentTarget.style.borderColor="rgba(255,170,0,.3)";e.currentTarget.style.boxShadow="0 0 16px rgba(255,170,0,.08)";}} onBlur={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,.06)";e.currentTarget.style.boxShadow="none";}}>
+  <div className="glass-input" style={{display:"flex",alignItems:"center",borderRadius:10,overflow:"hidden"}} onFocus={e=>{e.currentTarget.style.borderColor="rgba(255,170,0,.3)";e.currentTarget.style.boxShadow="0 0 16px rgba(255,170,0,.08)";}} onBlur={e=>{e.currentTarget.style.borderColor="var(--sc-w06)";e.currentTarget.style.boxShadow="none";}}>
    {textarea?<textarea value={value||""} onChange={e=>onChange(e.target.value)} placeholder={placeholder} rows={2} style={{flex:1,background:"transparent",border:"none",color:C.t,padding:"7px 10px",fontSize:12,fontFamily:FONT,outline:"none",resize:"vertical"}}/>
     :<input type={type} value={value==null?"":value} onChange={e=>onChange(e.target.value)} onKeyDown={onKeyDown} placeholder={placeholder} style={{flex:1,background:"transparent",border:"none",color:C.t,padding:small?"6px 10px":"8px 10px",fontSize:12,fontFamily:FONT,outline:"none",width:"100%"}}/>}
    {suffix&&<span style={{padding:"0 8px 0 2px",color:C.td,fontSize:11,flexShrink:0}}>{suffix}</span>}
@@ -100,7 +100,7 @@ export function MeetingMode({socs,reps,hold,actions,pulses,allM,clients=[],onExi
  const fmtT=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
  return <div className="glass-bg" style={{minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}</style>
-  <div style={{background:"rgba(14,14,22,.7)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,.06)",padding:"14px 20px"}}>
+  <div style={{background:"var(--sc-card-a7)",backdropFilter:"blur(20px)",borderBottom:"1px solid var(--sc-w06)",padding:"14px 20px"}}>
    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
     <div><div style={{color:C.acc,fontSize:10,fontWeight:700,letterSpacing:2}}>MODE RÉUNION</div><h1 style={{margin:0,fontSize:18,fontWeight:900}}>{hold?.brand?.name||"Scale Corp"} — {ml(cM2)}</h1></div>
     <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -1224,7 +1224,7 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
   <div style={{marginBottom:10}}>
    <div style={{position:"relative",marginBottom:8}}>
     <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:14,color:C.td}}>🔍</span>
-    <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un client ou prospect..." style={{width:"100%",padding:"10px 12px 10px 36px",borderRadius:10,border:`1px solid ${search?C.acc+"66":C.brd}`,background:"rgba(14,14,22,0.4)",color:C.t,fontSize:12,fontFamily:FONT,outline:"none",boxSizing:"border-box",transition:"border-color .2s"}}/>
+    <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un client ou prospect..." style={{width:"100%",padding:"10px 12px 10px 36px",borderRadius:10,border:`1px solid ${search?C.acc+"66":C.brd}`,background:"var(--sc-card-a4)",color:C.t,fontSize:12,fontFamily:FONT,outline:"none",boxSizing:"border-box",transition:"border-color .2s"}}/>
     {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:14}}>✕</button>}
    </div>
    <div style={{display:"flex",gap:6,marginBottom:8}}>
@@ -2114,24 +2114,31 @@ export function genPorteurNotifications(soc,reps,socBank,ghlData,clients,allM){
  if(bankData?.transactions){
   bankData.transactions.filter(t=>{const leg=t.legs?.[0];if(!leg||isExcludedTx(t,excluded))return false;return leg.amount>100;}).slice(0,3).forEach(t=>{
    const leg=t.legs?.[0];
-   notifs.push({id:"tx_"+t.id,icon:"💰",msg:`Paiement reçu: +${fmt(leg.amount)}€`,time:t.created_at,type:"success"});
+   notifs.push({id:"tx_"+t.id,icon:"💰",msg:`Paiement reçu: +${fmt(leg.amount)}€`,time:t.created_at,type:"success",tab:5});
   });
  }
  // CA trend
- if(prevCa>0&&ca>prevCa){const pctG=Math.round((ca-prevCa)/prevCa*100);notifs.push({id:"ca_trend",icon:"📈",msg:`CA en hausse de ${pctG}% vs mois dernier`,time:new Date().toISOString(),type:"success"});}
+ if(prevCa>0&&ca>prevCa){const pctG=Math.round((ca-prevCa)/prevCa*100);notifs.push({id:"ca_trend",icon:"📈",msg:`CA en hausse de ${pctG}% vs mois dernier`,time:new Date().toISOString(),type:"success",tab:0});}
  // Low treasury
- if(balance>0&&balance<2000)notifs.push({id:"treso_low",icon:"⚠️",msg:`Trésorerie basse: ${fmt(balance)}€`,time:new Date().toISOString(),type:"warning"});
+ if(balance>0&&balance<2000)notifs.push({id:"treso_low",icon:"⚠️",msg:`Trésorerie basse: ${fmt(balance)}€`,time:new Date().toISOString(),type:"warning",tab:5});
  // Won deals from GHL
  const gd=ghlData?.[soc.id];
- if(gd?.stats?.wonDeals>0)notifs.push({id:"deals_won",icon:"🎯",msg:`${gd.stats.wonDeals} deal${gd.stats.wonDeals>1?"s":""} gagné${gd.stats.wonDeals>1?"s":""}!`,time:gd.lastSync||new Date().toISOString(),type:"success"});
+ if(gd?.stats?.wonDeals>0)notifs.push({id:"deals_won",icon:"🎯",msg:`${gd.stats.wonDeals} deal${gd.stats.wonDeals>1?"s":""} gagné${gd.stats.wonDeals>1?"s":""}!`,time:gd.lastSync||new Date().toISOString(),type:"success",tab:2});
  // Commitment ending soon
  (clients||[]).filter(c=>c.socId===soc.id&&c.status==="active").forEach(c=>{
   const rem=commitmentRemaining(c);
-  if(rem!==null&&rem<=2&&rem>0)notifs.push({id:"commit_"+c.id,icon:"📅",msg:`Fin d'engagement proche: ${c.name} (${rem} mois)`,time:new Date().toISOString(),type:"warning"});
+  if(rem!==null&&rem<=2&&rem>0)notifs.push({id:"commit_"+c.id,icon:"📅",msg:`Fin d'engagement proche: ${c.name} (${rem} mois)`,time:new Date().toISOString(),type:"warning",tab:9});
  });
+ // Upcoming RDVs today
+ const calEvts=gd?.calendarEvents||[];const todayStr=new Date().toISOString().slice(0,10);
+ const todayEvts=calEvts.filter(e=>(e.startTime||"").startsWith(todayStr)&&new Date(e.startTime)>new Date());
+ if(todayEvts.length>0)notifs.push({id:"rdv_today",icon:"📅",msg:`${todayEvts.length} RDV aujourd'hui`,time:new Date().toISOString(),type:"info",tab:11});
+ // New leads recently
+ const ghlCl=gd?.ghlClients||[];const recent24h=ghlCl.filter(c=>new Date(c.at||0).getTime()>Date.now()-864e5);
+ if(recent24h.length>0)notifs.push({id:"new_leads_24h",icon:"🟢",msg:`${recent24h.length} nouveau${recent24h.length>1?"x":""} lead${recent24h.length>1?"s":""}`,time:new Date().toISOString(),type:"info",tab:2});
  return notifs.sort((a,b)=>new Date(b.time)-new Date(a.time));
 }
-export function NotificationCenter({notifications,open,onClose}){
+export function NotificationCenter({notifications,open,onClose,onNavigate}){
  const[readIds,setReadIds]=useState(()=>{try{return JSON.parse(localStorage.getItem("notif_read")||"[]");}catch{return[];}});
  const[dismissedIds,setDismissedIds]=useState(()=>{try{return JSON.parse(localStorage.getItem("notif_dismissed")||"[]");}catch{return[];}});
  const markRead=(id)=>{const n=[...new Set([...readIds,id])];setReadIds(n);localStorage.setItem("notif_read",JSON.stringify(n));};
@@ -2139,28 +2146,32 @@ export function NotificationCenter({notifications,open,onClose}){
  const dismiss=(id)=>{const n=[...new Set([...dismissedIds,id])];setDismissedIds(n);localStorage.setItem("notif_dismissed",JSON.stringify(n));};
  const clearAll=()=>{const n=[...new Set([...dismissedIds,...visible.map(x=>x.id)])];setDismissedIds(n);localStorage.setItem("notif_dismissed",JSON.stringify(n));};
  const visible=notifications.filter(n=>!dismissedIds.includes(n.id));
+ const handleClick=(n)=>{markRead(n.id);if(n.tab!=null&&onNavigate){onNavigate(n.tab);onClose();}};
  if(!open)return null;
- return <div className="fi" onClick={onClose} style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.4)"}}>
-  <div onClick={e=>e.stopPropagation()} style={{position:"fixed",top:0,right:0,width:340,maxWidth:"90vw",height:"100vh",background:"rgba(14,14,22,.85)",backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",borderLeft:"1px solid rgba(255,255,255,.06)",boxShadow:"-4px 0 40px rgba(0,0,0,.5)",animation:"slideInRight .3s ease",overflowY:"auto",padding:20}}>
+ return <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.4)",animation:"fadeIn .2s ease"}}>
+  <div onClick={e=>e.stopPropagation()} style={{position:"fixed",top:0,right:0,width:360,maxWidth:"92vw",height:"100vh",background:C.card,borderLeft:`1px solid ${C.brd}`,boxShadow:"-8px 0 40px rgba(0,0,0,.3)",animation:"slideInRight .25s cubic-bezier(.22,1,.36,1)",overflowY:"auto",padding:"20px 16px"}}>
    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
     <h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t,fontFamily:FONT_TITLE}}>🔔 Notifications</h3>
-    <Btn v="ghost" small onClick={onClose}>✕</Btn>
+    <button onClick={onClose} style={{background:"none",border:`1px solid ${C.brd}`,borderRadius:8,color:C.td,cursor:"pointer",fontSize:12,padding:"4px 10px",fontFamily:FONT}}>✕</button>
    </div>
-   {visible.length>0&&<div style={{display:"flex",gap:6,marginBottom:12}}>
-    <Btn small v="ghost" onClick={markAllRead}>✓ Tout marquer comme lu</Btn>
-    <Btn small v="ghost" onClick={clearAll}>🗑 Effacer tout</Btn>
+   {visible.length>0&&<div style={{display:"flex",gap:6,marginBottom:14}}>
+    <button onClick={markAllRead} style={{padding:"5px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:"transparent",color:C.td,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=C.card2;e.currentTarget.style.color=C.t;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.td;}}>✓ Tout lu</button>
+    <button onClick={clearAll} style={{padding:"5px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:"transparent",color:C.td,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=C.rD;e.currentTarget.style.color=C.r;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.td;}}>🗑 Tout effacer</button>
    </div>}
-   {visible.length===0&&<div style={{textAlign:"center",padding:30,color:C.td}}><div style={{fontSize:28,marginBottom:8}}>✅</div><div style={{fontSize:12}}>Aucune notification</div></div>}
+   {visible.length===0&&<div style={{textAlign:"center",padding:40,color:C.td}}><div style={{fontSize:32,marginBottom:10}}>✅</div><div style={{fontSize:13,fontWeight:600}}>Aucune notification</div><div style={{fontSize:10,marginTop:4,opacity:.7}}>Tu es à jour !</div></div>}
    {visible.map((n,i)=>{
-    const bgMap={success:C.gD,warning:C.oD,info:C.bD};const cMap={success:C.g,warning:C.o,info:C.b};
-    const isRead=readIds.includes(n.id);
-    return <div key={n.id} onClick={()=>markRead(n.id)} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",background:bgMap[n.type]||C.card2,border:`1px solid ${(cMap[n.type]||C.brd)}18`,borderRadius:10,marginBottom:6,opacity:isRead?0.5:1,cursor:"pointer",transition:"opacity .2s"}}>
-     <span style={{fontSize:18,flexShrink:0,marginTop:1}}>{n.icon}</span>
+    const cMap={success:C.g,warning:C.o,info:C.b};const accent=cMap[n.type]||C.b;
+    const isRead=readIds.includes(n.id);const hasNav=n.tab!=null;
+    return <div key={n.id} onClick={()=>handleClick(n)} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"12px 14px",background:isRead?"transparent":accent+"08",border:`1px solid ${isRead?C.brd:accent+"22"}`,borderRadius:12,marginBottom:8,opacity:isRead?0.55:1,cursor:hasNav?"pointer":"default",transition:"all .25s cubic-bezier(.22,1,.36,1)",transform:"translateX(0)"}} onMouseEnter={e=>{if(hasNav){e.currentTarget.style.transform="translateX(-2px)";e.currentTarget.style.borderColor=accent+"55";e.currentTarget.style.boxShadow=`0 2px 12px ${accent}15`;}}} onMouseLeave={e=>{e.currentTarget.style.transform="translateX(0)";e.currentTarget.style.borderColor=isRead?C.brd:accent+"22";e.currentTarget.style.boxShadow="none";}}>
+     <div style={{width:36,height:36,borderRadius:10,background:accent+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{n.icon}</div>
      <div style={{flex:1,minWidth:0}}>
-      <div style={{fontSize:12,fontWeight:600,color:C.t,lineHeight:1.4}}>{n.msg}</div>
-      <div style={{fontSize:9,color:C.td,marginTop:3}}>{ago(n.time)}</div>
+      <div style={{fontSize:12,fontWeight:isRead?500:700,color:C.t,lineHeight:1.4}}>{n.msg}</div>
+      <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4}}>
+       <span style={{fontSize:9,color:C.td}}>{ago(n.time)}</span>
+       {hasNav&&!isRead&&<span style={{fontSize:8,fontWeight:700,color:accent,background:accent+"15",padding:"1px 6px",borderRadius:4}}>Voir →</span>}
+      </div>
      </div>
-     <button onClick={e=>{e.stopPropagation();dismiss(n.id);}} aria-label="Fermer la notification" style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0,lineHeight:1}}>✕</button>
+     <button onClick={e=>{e.stopPropagation();dismiss(n.id);}} aria-label="Fermer" style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0,lineHeight:1,transition:"color .15s"}} onMouseEnter={e=>e.currentTarget.style.color=C.r} onMouseLeave={e=>e.currentTarget.style.color=C.td}>✕</button>
     </div>;
    })}
   </div>
@@ -2365,28 +2376,39 @@ export function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
    if(ql.match(/qui.*pay|qui.*rapport/))return `💰 **Revenus clients ce mois**\n\n${activeCl.slice(0,8).map(c=>`• ${c.name} — ${fmt(clientMonthlyRevenue(c))}€/mois`).join("\n")||"Aucun client."}`;
    if(ql.match(/quand.*prochain|quand.*rdv/)){const now=new Date();const next2=calEvts.filter(e=>new Date(e.startTime||0)>now).sort((a,b)=>new Date(a.startTime)-new Date(b.startTime))[0];return next2?`📅 Prochain RDV : **${new Date(next2.startTime).toLocaleDateString("fr-FR")} ${new Date(next2.startTime).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}** — ${next2.title||"RDV"}`:"📅 Aucun RDV prévu.";}
   }
-  return `🤖 Je n'ai pas compris ta question.\n\nEssaie :\n• « combien de clients actifs »\n• « CA ce mois »\n• « qui n'a pas payé »\n• « prochains RDV »\n• « résumé »\n• « aide » pour voir toutes les commandes`;
+  // Fuzzy fallback — try to match keywords
+  const keywords={client:["client","clients"],vente:["vente","ventes","chiffre"],argent:["argent","paiement","paye","encaisse"],rdv:["rdv","rendez","meeting","call","appel"],lead:["lead","leads","prospect"],dépense:["depense","depenses","cout","charge"]};
+  for(const[cat,words] of Object.entries(keywords)){
+   if(words.some(w=>ql.includes(w))){
+    if(cat==="client")return computeAnswer("combien de clients actifs");
+    if(cat==="vente"||cat==="argent")return computeAnswer("CA ce mois");
+    if(cat==="rdv")return computeAnswer("prochains RDV");
+    if(cat==="lead")return computeAnswer("combien de leads");
+    if(cat==="dépense")return computeAnswer("dépenses");
+   }
+  }
+  return `🤖 Je n'ai pas trouvé de réponse exacte pour "${q.slice(0,40)}${q.length>40?"...":""}"\n\n💡 **Essaie** :\n• « résumé » — Vue d'ensemble\n• « CA ce mois » — Chiffre d'affaires\n• « analyse » — Analyse complète\n• « risques » — Clients à risque\n• « impayés » — Qui n'a pas payé\n• « pipeline » — État du pipeline\n• « aide » — Toutes les commandes`;
  };
- const SUGGESTIONS=[{q:"Résumé",icon:"📋"},{q:"CA ce mois",icon:"📊"},{q:"Impayés",icon:"💸"},{q:"RDV",icon:"📅"},{q:"Objectif",icon:"🎯"},{q:"Alertes",icon:"⚠️"}];
+ const SUGGESTIONS=[{q:"Résumé",icon:"📋"},{q:"Analyse",icon:"🔍"},{q:"CA ce mois",icon:"📊"},{q:"Impayés",icon:"💸"},{q:"Pipeline",icon:"🔄"},{q:"Risques",icon:"⚠️"},{q:"Prochains RDV",icon:"📅"},{q:"Top clients",icon:"🏅"}];
  const ask=(q)=>{
   if(!q.trim())return;
   const trimmed=q.trim();
   setMsgs(prev=>{const n=[...prev,{role:"user",content:trimmed}];return n.length>20?n.slice(-20):n;});
   setTyping(true);setInputVal("");
   const answer=computeAnswer(trimmed);
-  setTimeout(()=>{setTyping(false);setMsgs(prev=>{const newMsgs=[...prev,{role:"assistant",content:answer}];const capped=newMsgs.length>20?newMsgs.slice(-20):newMsgs;setRevealIdx(capped.length-1);setRevealLen(0);return capped;});},800);
+  setTimeout(()=>{setTyping(false);setMsgs(prev=>{const newMsgs=[...prev,{role:"assistant",content:answer}];const capped=newMsgs.length>20?newMsgs.slice(-20):newMsgs;setRevealIdx(capped.length-1);setRevealLen(0);return capped;});},400);
  };
  useEffect(()=>{
   if(revealIdx<0||revealIdx>=msgs.length)return;
   const full=msgs[revealIdx]?.content||"";
   if(revealLen>=full.length){setRevealIdx(-1);return;}
-  const t=setTimeout(()=>setRevealLen(prev=>Math.min(prev+3,full.length)),15);
+  const t=setTimeout(()=>setRevealLen(prev=>Math.min(prev+6,full.length)),8);
   return()=>clearTimeout(t);
  },[revealIdx,revealLen,msgs]);
  useEffect(()=>{ref.current?.scrollTo({top:ref.current.scrollHeight,behavior:"smooth"});},[msgs,revealLen,typing]);
  useEffect(()=>{if(open)setTimeout(()=>inputRef.current?.focus(),300);},[open]);
  if(!open)return <div onClick={()=>setOpen(true)} style={{position:"fixed",bottom:24,right:24,width:56,height:56,borderRadius:28,background:`linear-gradient(135deg,${C.v},${C.acc})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 20px ${C.acc}44`,zIndex:800,fontSize:24,animation:"fl 3s ease-in-out infinite",transition:"transform .2s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>🤖</div>;
- return <div style={{position:"fixed",bottom:24,right:24,width:420,maxWidth:"92vw",height:550,maxHeight:"80vh",background:"rgba(14,14,22,.9)",backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",border:"1px solid rgba(255,255,255,.08)",borderRadius:20,boxShadow:"0 12px 48px rgba(0,0,0,.5)",zIndex:800,display:"flex",flexDirection:"column",animation:"slideInUp .3s ease",overflow:"hidden"}}>
+ return <div style={{position:"fixed",bottom:24,right:24,width:420,maxWidth:"92vw",height:550,maxHeight:"80vh",background:"var(--sc-card-a9)",backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",border:"1px solid var(--sc-w08)",borderRadius:20,boxShadow:"0 12px 48px rgba(0,0,0,.5)",zIndex:800,display:"flex",flexDirection:"column",animation:"slideInUp .3s ease",overflow:"hidden"}}>
   <div style={{padding:"14px 18px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",justifyContent:"space-between",background:`linear-gradient(135deg,${C.card2},${C.card})`}}>
    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:20}}>🤖</span><div><div style={{fontWeight:800,fontSize:13,color:C.t}}>Assistant IA</div><div style={{fontSize:9,color:C.td}}>{soc.nom} · Tape "aide" pour les commandes</div></div></div>
    <div style={{display:"flex",gap:4}}>
@@ -2413,10 +2435,10 @@ export function PorteurAIChat({soc,reps,allM,socBank,ghlData,clients}){
     <span className="typing-dots"><span></span><span></span><span></span></span>
    </div>}
   </div>
-  <div style={{padding:"10px 14px",borderTop:`1px solid ${C.brd}`,background:"rgba(6,6,11,.5)"}}>
+  <div style={{padding:"10px 14px",borderTop:`1px solid ${C.brd}`,background:"var(--sc-input-a5)"}}>
    {msgs.length>0&&<div style={{display:"flex",gap:4,marginBottom:8,flexWrap:"wrap"}}>{SUGGESTIONS.map((q,i)=><button key={i} onClick={()=>ask(q.q)} style={{padding:"2px 8px",borderRadius:12,fontSize:8,fontWeight:600,border:`1px solid ${C.brd}`,background:"transparent",color:C.td,cursor:"pointer",fontFamily:FONT,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.acc;e.currentTarget.style.color=C.acc;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.brd;e.currentTarget.style.color=C.td;}}>{q.icon} {q.q}</button>)}</div>}
    <div style={{display:"flex",gap:8,alignItems:"center"}}>
-    <input ref={inputRef} value={inputVal} onChange={e=>setInputVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();ask(inputVal);}}} placeholder="Posez votre question..." style={{flex:1,padding:"10px 14px",borderRadius:12,border:`1px solid ${C.brd}`,background:"rgba(6,6,11,.6)",backdropFilter:"blur(10px)",color:C.t,fontSize:12,fontFamily:FONT,outline:"none",transition:"border-color .2s"}} onFocus={e=>e.target.style.borderColor=C.acc+"66"} onBlur={e=>e.target.style.borderColor=C.brd}/>
+    <input ref={inputRef} value={inputVal} onChange={e=>setInputVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();ask(inputVal);}}} placeholder="Posez votre question..." style={{flex:1,padding:"10px 14px",borderRadius:12,border:`1px solid ${C.brd}`,background:"var(--sc-input-a6)",backdropFilter:"blur(10px)",color:C.t,fontSize:12,fontFamily:FONT,outline:"none",transition:"border-color .2s"}} onFocus={e=>e.target.style.borderColor=C.acc+"66"} onBlur={e=>e.target.style.borderColor=C.brd}/>
     <button onClick={()=>ask(inputVal)} disabled={!inputVal.trim()} style={{width:38,height:38,borderRadius:12,border:"none",background:inputVal.trim()?`linear-gradient(135deg,${C.acc},#FF9D00)`:`${C.card2}`,color:inputVal.trim()?"#0a0a0f":C.td,fontSize:16,cursor:inputVal.trim()?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .2s",flexShrink:0}}>↑</button>
    </div>
   </div>
@@ -2839,7 +2861,8 @@ export function AgendaPanel({soc,ghlData}){
  const[viewMode,setViewMode]=useState("week");
  const[currentDate,setCurrentDate]=useState(new Date());
  const[showModal,setShowModal]=useState(false);
- const[modalData,setModalData]=useState({title:"",start:"",end:"",email:""});
+ const[modalData,setModalData]=useState({title:"",start:"",end:"",emails:[""],isEdit:false,eventId:null});
+ const[viewEvt,setViewEvt]=useState(null);
  const[dragEvt,setDragEvt]=useState(null);
  const calEvts=ghlData?.[soc.id]?.calendarEvents||[];
  const socKey=soc.ghlLocationId||soc.id;
@@ -2856,10 +2879,20 @@ export function AgendaPanel({soc,ghlData}){
  const fmtMonth2=(d)=>d.toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
  const isToday=(d)=>d.toISOString().slice(0,10)===new Date().toISOString().slice(0,10);
 
+ const validEmails=()=>modalData.emails.filter(e=>e.trim()&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim()));
  const createEvent=async()=>{if(!modalData.title||!modalData.start)return;
-  try{await fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"calendar_create_event",locationId:socKey,title:modalData.title,startTime:new Date(modalData.start).toISOString(),endTime:modalData.end?new Date(modalData.end).toISOString():new Date(new Date(modalData.start).getTime()+3600000).toISOString(),email:modalData.email||undefined})});showToast("✅ RDV créé","success");}catch{showToast("❌ Erreur création RDV","error");}
-  setShowModal(false);setModalData({title:"",start:"",end:"",email:""});};
- const deleteEvent=async(evtId)=>{try{await fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"calendar_delete_event",locationId:socKey,eventId:evtId})});showToast("🗑️ RDV supprimé","success");}catch{showToast("❌ Erreur","error");}};
+  if(validEmails().length===0){showToast("⚠️ Au moins un email participant valide est requis","warning");return;}
+  const emailList=validEmails();
+  try{await fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"calendar_create_event",locationId:socKey,title:modalData.title,startTime:new Date(modalData.start).toISOString(),endTime:modalData.end?new Date(modalData.end).toISOString():new Date(new Date(modalData.start).getTime()+3600000).toISOString(),email:emailList[0],attendees:emailList})});showToast("✅ RDV créé","success");}catch{showToast("❌ Erreur création RDV","error");}
+  setShowModal(false);setModalData({title:"",start:"",end:"",emails:[""],isEdit:false,eventId:null});};
+ const updateEvent=async()=>{if(!modalData.title||!modalData.start||!modalData.eventId)return;
+  const emailList=validEmails();
+  try{await fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"calendar_update_event",locationId:socKey,eventId:modalData.eventId,title:modalData.title,startTime:new Date(modalData.start).toISOString(),endTime:modalData.end?new Date(modalData.end).toISOString():new Date(new Date(modalData.start).getTime()+3600000).toISOString(),email:emailList[0]||undefined,attendees:emailList.length>0?emailList:undefined})});showToast("✅ RDV modifié","success");}catch{showToast("❌ Erreur modification","error");}
+  setShowModal(false);setModalData({title:"",start:"",end:"",emails:[""],isEdit:false,eventId:null});};
+ const openEventDetail=(ev)=>setViewEvt(ev);
+ const openEditFromView=()=>{if(!viewEvt)return;const st=new Date(viewEvt.startTime);const en=viewEvt.endTime?new Date(viewEvt.endTime):new Date(st.getTime()+3600000);
+  setModalData({title:viewEvt.title||viewEvt.contactName||"",start:new Date(st.getTime()-st.getTimezoneOffset()*60000).toISOString().slice(0,16),end:new Date(en.getTime()-en.getTimezoneOffset()*60000).toISOString().slice(0,16),emails:[viewEvt.contactEmail||viewEvt.email||""],isEdit:true,eventId:viewEvt.id});setViewEvt(null);setShowModal(true);};
+ const deleteEvent=async(evtId)=>{try{await fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"calendar_delete_event",locationId:socKey,eventId:evtId})});showToast("🗑️ RDV supprimé","success");}catch{showToast("❌ Erreur","error");}setViewEvt(null);};
  const moveEvent=async(evtId,newDate)=>{const evt=calEvts.find(e=>e.id===evtId);if(!evt)return;
   const oldStart=new Date(evt.startTime);const oldEnd=new Date(evt.endTime||oldStart.getTime()+3600000);const diff=newDate.getTime()-new Date(oldStart.toISOString().slice(0,10)).getTime();
   try{await fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"calendar_update_event",locationId:socKey,eventId:evtId,startTime:new Date(oldStart.getTime()+diff).toISOString(),endTime:new Date(oldEnd.getTime()+diff).toISOString()})});showToast("📅 RDV déplacé","success");}catch{showToast("❌ Erreur","error");}};
@@ -2871,7 +2904,7 @@ export function AgendaPanel({soc,ghlData}){
  return <Sect title="📅 Agenda" sub="Calendrier & rendez-vous" right={<div style={{display:"flex",gap:4,alignItems:"center"}}>
   <Btn small v={viewMode==="week"?"primary":"ghost"} onClick={()=>setViewMode("week")}>Semaine</Btn>
   <Btn small v={viewMode==="month"?"primary":"ghost"} onClick={()=>setViewMode("month")}>Mois</Btn>
-  <Btn small onClick={()=>{setModalData({title:"",start:"",end:"",email:""});setShowModal(true);}}>+ RDV</Btn>
+  <Btn small onClick={()=>{setModalData({title:"",start:"",end:"",emails:[""],isEdit:false,eventId:null});setShowModal(true);}}>+ RDV</Btn>
  </div>}>
   {/* Navigation */}
   <div className="glass-card-static" style={{padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -2893,10 +2926,9 @@ export function AgendaPanel({soc,ghlData}){
      {weekDays.map((d,di)=>{const dayEvts=eventsForDay(d).filter(e=>{const eh=new Date(e.startTime).getHours();return eh===h;});
       return <div key={di} style={{padding:2,borderRight:di<6?`1px solid ${C.brd}`:"none",borderBottom:`1px solid ${C.brd}22`,minHeight:36,background:isToday(d)?"rgba(255,170,0,.03)":"transparent"}}
        onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(dragEvt){const target=new Date(d);target.setHours(h,0,0,0);moveEvent(dragEvt,target);setDragEvt(null);}}}>
-       {dayEvts.map(ev=><div key={ev.id} draggable onDragStart={()=>setDragEvt(ev.id)} style={evtStyle}>
+       {dayEvts.map(ev=><div key={ev.id} draggable onDragStart={()=>setDragEvt(ev.id)} onClick={()=>openEventDetail(ev)} style={{...evtStyle,cursor:"pointer",transition:"all .15s"}} onMouseEnter={e=>e.currentTarget.style.background="linear-gradient(135deg,#14b8a633,#14b8a644)"} onMouseLeave={e=>e.currentTarget.style.background="linear-gradient(135deg,#14b8a622,#14b8a633)"}>
         <div style={{fontWeight:700,color:"#14b8a6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fmtTime(ev.startTime)} {ev.title||ev.contactName||"RDV"}</div>
         {ev.contactName&&<div style={{color:C.td,fontSize:8}}>{ev.contactName}</div>}
-        <button onClick={(e2)=>{e2.stopPropagation();deleteEvent(ev.id);}} style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:8,padding:0}}>🗑️</button>
        </div>)}
       </div>;})}
     </Fragment>)}
@@ -2911,7 +2943,7 @@ export function AgendaPanel({soc,ghlData}){
      return <div key={i} style={{padding:4,minHeight:70,border:`1px solid ${C.brd}22`,borderRadius:6,background:isToday(d)?"rgba(255,170,0,.06)":inMonth?"transparent":"rgba(0,0,0,.2)",opacity:inMonth?1:.4}}
       onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(dragEvt){const target=new Date(d);target.setHours(9,0,0,0);moveEvent(dragEvt,target);setDragEvt(null);}}}>
       <div style={{fontSize:11,fontWeight:isToday(d)?900:600,color:isToday(d)?C.acc:C.t,marginBottom:2}}>{d.getDate()}</div>
-      {evts.slice(0,3).map(ev=><div key={ev.id} draggable onDragStart={()=>setDragEvt(ev.id)} style={{padding:"1px 4px",borderRadius:4,background:"#14b8a622",border:"1px solid #14b8a644",marginBottom:1,fontSize:8,color:"#14b8a6",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"grab"}}>
+      {evts.slice(0,3).map(ev=><div key={ev.id} draggable onDragStart={()=>setDragEvt(ev.id)} onClick={(e)=>{e.stopPropagation();openEventDetail(ev);}} style={{padding:"1px 4px",borderRadius:4,background:"#14b8a622",border:"1px solid #14b8a644",marginBottom:1,fontSize:8,color:"#14b8a6",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"pointer",transition:"background .15s"}} onMouseEnter={e2=>e2.currentTarget.style.background="#14b8a633"} onMouseLeave={e2=>e2.currentTarget.style.background="#14b8a622"}>
        {fmtTime(ev.startTime)} {ev.contactName||ev.title||"RDV"}
       </div>)}
       {evts.length>3&&<div style={{fontSize:7,color:C.td,textAlign:"center"}}>+{evts.length-3}</div>}
@@ -2919,23 +2951,67 @@ export function AgendaPanel({soc,ghlData}){
    </div>
   </div>}
 
-  {/* Modal création RDV */}
+  {/* Modal view event detail */}
+  {viewEvt&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999}} onClick={()=>setViewEvt(null)}>
+   <div className="fade-up glass-card-static" style={{padding:24,borderRadius:16,maxWidth:420,width:"90%"}} onClick={e=>e.stopPropagation()}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+     <div style={{fontWeight:800,fontSize:14,color:C.t,fontFamily:FONT_TITLE}}>📅 Détails du RDV</div>
+     <button onClick={()=>setViewEvt(null)} style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:16}}>✕</button>
+    </div>
+    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+     <div style={{padding:12,background:C.card2,borderRadius:10,border:`1px solid ${C.brd}`}}>
+      <div style={{fontWeight:800,fontSize:14,color:"#14b8a6",marginBottom:4}}>{viewEvt.title||viewEvt.contactName||"RDV"}</div>
+      {viewEvt.contactName&&<div style={{fontSize:11,color:C.t,display:"flex",alignItems:"center",gap:4}}>👤 {viewEvt.contactName}</div>}
+      {(viewEvt.contactEmail||viewEvt.email)&&<div style={{fontSize:10,color:C.td,display:"flex",alignItems:"center",gap:4}}>📧 {viewEvt.contactEmail||viewEvt.email}</div>}
+      {viewEvt.contactPhone&&<div style={{fontSize:10,color:C.td,display:"flex",alignItems:"center",gap:4}}>📱 {viewEvt.contactPhone}</div>}
+     </div>
+     <div style={{display:"flex",gap:10}}>
+      <div style={{flex:1,padding:10,background:C.card2,borderRadius:8,border:`1px solid ${C.brd}`}}>
+       <div style={{fontSize:8,color:C.td,fontWeight:600,marginBottom:2}}>DÉBUT</div>
+       <div style={{fontSize:12,fontWeight:700,color:C.t}}>{viewEvt.startTime?new Date(viewEvt.startTime).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"}):""}</div>
+       <div style={{fontSize:11,color:C.acc}}>{fmtTime(viewEvt.startTime)}</div>
+      </div>
+      <div style={{flex:1,padding:10,background:C.card2,borderRadius:8,border:`1px solid ${C.brd}`}}>
+       <div style={{fontSize:8,color:C.td,fontWeight:600,marginBottom:2}}>FIN</div>
+       <div style={{fontSize:12,fontWeight:700,color:C.t}}>{viewEvt.endTime?new Date(viewEvt.endTime).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"}):""}</div>
+       <div style={{fontSize:11,color:C.acc}}>{viewEvt.endTime?fmtTime(viewEvt.endTime):""}</div>
+      </div>
+     </div>
+     {viewEvt.status&&<div style={{padding:"6px 10px",borderRadius:8,background:viewEvt.status.toLowerCase().includes("confirm")?C.gD:viewEvt.status.toLowerCase().match(/cancel|no.show/)?C.rD:C.bD,border:`1px solid ${viewEvt.status.toLowerCase().includes("confirm")?C.g+"33":viewEvt.status.toLowerCase().match(/cancel|no.show/)?C.r+"33":C.b+"33"}`}}>
+      <span style={{fontSize:10,fontWeight:700,color:viewEvt.status.toLowerCase().includes("confirm")?C.g:viewEvt.status.toLowerCase().match(/cancel|no.show/)?C.r:C.b}}>{viewEvt.status}</span>
+     </div>}
+     {viewEvt.calendarName&&<div style={{fontSize:9,color:C.td}}>📅 {viewEvt.calendarName}</div>}
+     <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
+      <Btn small v="ghost" onClick={()=>{deleteEvent(viewEvt.id);}} style={{color:C.r}}>🗑 Supprimer</Btn>
+      <Btn small onClick={openEditFromView}>✏️ Modifier</Btn>
+     </div>
+    </div>
+   </div>
+  </div>}
+  {/* Modal création/édition RDV */}
   {showModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999}} onClick={()=>setShowModal(false)}>
-   <div className="fade-up glass-card-static" style={{padding:24,borderRadius:16,maxWidth:400,width:"90%"}} onClick={e=>e.stopPropagation()}>
-    <div style={{fontWeight:800,fontSize:14,color:C.t,marginBottom:16,fontFamily:FONT_TITLE}}>📅 Nouveau rendez-vous</div>
+   <div className="fade-up glass-card-static" style={{padding:24,borderRadius:16,maxWidth:440,width:"90%"}} onClick={e=>e.stopPropagation()}>
+    <div style={{fontWeight:800,fontSize:14,color:C.t,marginBottom:16,fontFamily:FONT_TITLE}}>📅 {modalData.isEdit?"Modifier le":"Nouveau"} rendez-vous</div>
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
-     <input value={modalData.title} onChange={e=>setModalData(p=>({...p,title:e.target.value}))} placeholder="Titre du RDV" style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/>
+     <input value={modalData.title} onChange={e=>setModalData(p=>({...p,title:e.target.value}))} placeholder="Titre du RDV *" style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/>
      <div style={{display:"flex",gap:8}}>
-      <div style={{flex:1}}><label style={{fontSize:9,color:C.td,fontWeight:600}}>Début</label><input type="datetime-local" value={modalData.start} onChange={e=>setModalData(p=>({...p,start:e.target.value}))} style={{width:"100%",padding:"8px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/></div>
+      <div style={{flex:1}}><label style={{fontSize:9,color:C.td,fontWeight:600}}>Début *</label><input type="datetime-local" value={modalData.start} onChange={e=>setModalData(p=>({...p,start:e.target.value}))} style={{width:"100%",padding:"8px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/></div>
       <div style={{flex:1}}><label style={{fontSize:9,color:C.td,fontWeight:600}}>Fin</label><input type="datetime-local" value={modalData.end} onChange={e=>setModalData(p=>({...p,end:e.target.value}))} style={{width:"100%",padding:"8px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/></div>
      </div>
-     <input value={modalData.email} onChange={e=>setModalData(p=>({...p,email:e.target.value}))} placeholder="Email participant (optionnel)" style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/>
+     <div>
+      <label style={{fontSize:9,color:C.td,fontWeight:600,display:"flex",alignItems:"center",gap:4,marginBottom:4}}>Participants (email) * <span style={{color:C.r,fontSize:8}}>requis</span></label>
+      {modalData.emails.map((email,ei)=><div key={ei} style={{display:"flex",gap:6,marginBottom:4}}>
+       <input value={email} onChange={e=>{const n=[...modalData.emails];n[ei]=e.target.value;setModalData(p=>({...p,emails:n}));}} placeholder={`email${ei>0?" "+(ei+1):""} @...`} type="email" style={{flex:1,padding:"8px 12px",borderRadius:8,border:`1px solid ${email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)?C.r:C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
+       {modalData.emails.length>1&&<button onClick={()=>{const n=modalData.emails.filter((_,j)=>j!==ei);setModalData(p=>({...p,emails:n}));}} style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:14,padding:"0 4px"}}>✕</button>}
+      </div>)}
+      <button onClick={()=>setModalData(p=>({...p,emails:[...p.emails,""]}))} style={{background:"none",border:`1px dashed ${C.brd}`,borderRadius:8,color:C.acc,cursor:"pointer",fontSize:10,fontWeight:600,padding:"4px 12px",fontFamily:FONT,width:"100%",marginTop:2}}>+ Ajouter un participant</button>
+     </div>
      <div style={{display:"flex",gap:8}}>
       <Btn small onClick={()=>{const link=genMeetLink();setModalData(p=>({...p,title:(p.title?p.title+" — ":"")+link}));showToast("🔗 Lien Meet ajouté","success");}}>🎥 Google Meet</Btn>
      </div>
      <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:8}}>
       <Btn small v="ghost" onClick={()=>setShowModal(false)}>Annuler</Btn>
-      <Btn small onClick={createEvent}>Créer le RDV</Btn>
+      <Btn small onClick={modalData.isEdit?updateEvent:createEvent}>{modalData.isEdit?"💾 Sauvegarder":"Créer le RDV"}</Btn>
      </div>
     </div>
    </div>
@@ -2993,10 +3069,10 @@ export function ConversationsPanel({soc}){
 
  if(!socKey)return <div style={{padding:30,textAlign:"center"}}><div style={{fontSize:32,marginBottom:8}}>📡</div><div style={{fontWeight:700,fontSize:13,marginBottom:6,color:C.t}}>GHL non configuré</div><div style={{color:C.td,fontSize:11}}>Ajoute l'ID GoHighLevel (Location ID) dans les paramètres de cette société pour activer les conversations.</div></div>;
 
- const listPanel=<div style={{width:"100%",maxWidth:320,minHeight:0,overflow:"hidden",padding:0,display:"flex",flexDirection:"column",flexShrink:0,background:"rgba(14,14,22,.5)",borderRight:`1px solid ${C.brd}`}}>
+ const listPanel=<div style={{width:"100%",maxWidth:320,minHeight:0,overflow:"hidden",padding:0,display:"flex",flexDirection:"column",flexShrink:0,background:"var(--sc-card-a5)",borderRight:`1px solid ${C.brd}`}}>
   {/* Search */}
   <div style={{padding:"12px 12px 0"}}>
-   <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Rechercher..." style={{width:"100%",padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:"rgba(255,255,255,.04)",color:C.t,fontSize:11,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/>
+   <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Rechercher..." style={{width:"100%",padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:"var(--sc-w04)",color:C.t,fontSize:11,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/>
   </div>
   {/* Channel tabs */}
   <div style={{display:"flex",gap:0,padding:"0 4px",marginTop:8,borderBottom:`1px solid ${C.brd}`,overflowX:"auto",scrollbarWidth:"none",msOverflowStyle:"none"}}>
@@ -3006,7 +3082,7 @@ export function ConversationsPanel({soc}){
   <div style={{flex:1,overflow:"auto"}}>
    {loading&&<div style={{padding:20,textAlign:"center",color:C.td,fontSize:11}}>Chargement...</div>}
    {!loading&&sorted.length===0&&!error&&<div style={{padding:30,textAlign:"center",color:C.td}}><div style={{fontSize:28,marginBottom:6}}>💬</div><div style={{fontSize:11}}>Aucune conversation pour le moment</div><div style={{fontSize:10,marginTop:4,opacity:.7}}>Les nouvelles conversations apparaîtront ici</div></div>}
-   {sorted.map((c,i)=>{const unread=c.unreadCount||0;const name=c.contactName||c.fullName||c.email||"Contact";const typeIcon=MSG_TYPE_LABEL(c.type||c.lastMessageType);const active=selConvo?.id===c.id;const bgCol=avatarColor(name);return <div key={c.id||i} className="conv-contact-item" role="button" tabIndex={0} aria-label={`Conversation avec ${name}${unread>0?`, ${unread} non lu${unread>1?"s":""}`:""}`} onClick={()=>loadMsgs(c)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();loadMsgs(c);}}} style={{padding:"10px 12px",borderBottom:`1px solid rgba(255,255,255,.04)`,cursor:"pointer",background:"transparent",borderLeft:active?`3px solid ${C.acc}`:"3px solid transparent",transition:"all .15s",display:"flex",alignItems:"center",gap:10}}>
+   {sorted.map((c,i)=>{const unread=c.unreadCount||0;const name=c.contactName||c.fullName||c.email||"Contact";const typeIcon=MSG_TYPE_LABEL(c.type||c.lastMessageType);const active=selConvo?.id===c.id;const bgCol=avatarColor(name);return <div key={c.id||i} className="conv-contact-item" role="button" tabIndex={0} aria-label={`Conversation avec ${name}${unread>0?`, ${unread} non lu${unread>1?"s":""}`:""}`} onClick={()=>loadMsgs(c)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();loadMsgs(c);}}} style={{padding:"10px 12px",borderBottom:`1px solid var(--sc-w04)`,cursor:"pointer",background:"transparent",borderLeft:active?`3px solid ${C.acc}`:"3px solid transparent",transition:"all .15s",display:"flex",alignItems:"center",gap:10}}>
     {/* Avatar */}
     <div style={{position:"relative",flexShrink:0}}>
      <div style={{width:38,height:38,borderRadius:19,background:bgCol,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:700,color:"#fff"}}>{avatarLetter(name)}</div>
@@ -3029,7 +3105,7 @@ export function ConversationsPanel({soc}){
 
  const SEND_CHANNELS=[{k:"SMS",icon:"📱"},{k:"Email",icon:"📧"},{k:"WhatsApp",icon:"💬"}];
 
- const threadPanel=<div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,minHeight:0,overflow:"hidden",background:"rgba(14,14,22,.3)"}}>
+ const threadPanel=<div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,minHeight:0,overflow:"hidden",background:"var(--sc-card-a3)"}}>
   {!selConvo&&<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8,color:C.td}}>
    <div style={{fontSize:48,opacity:.3}}>💬</div><div style={{fontSize:14,fontWeight:600,opacity:.5}}>Sélectionnez une conversation</div>
   </div>}
@@ -3041,14 +3117,14 @@ export function ConversationsPanel({soc}){
     <div style={{flex:1,minWidth:0}}>
      <div style={{display:"flex",alignItems:"center",gap:6}}>
       <span style={{fontWeight:700,fontSize:13,color:C.t}}>{selConvo.contactName||selConvo.fullName||"Contact"}</span>
-      <span style={{fontSize:9,padding:"1px 6px",borderRadius:6,background:"rgba(255,255,255,.06)",color:C.td}}>{MSG_TYPE_LABEL(selConvo.type||selConvo.lastMessageType)} {MSG_TYPE_NAME[selConvo.type||selConvo.lastMessageType]||""}</span>
+      <span style={{fontSize:9,padding:"1px 6px",borderRadius:6,background:"var(--sc-w06)",color:C.td}}>{MSG_TYPE_LABEL(selConvo.type||selConvo.lastMessageType)} {MSG_TYPE_NAME[selConvo.type||selConvo.lastMessageType]||""}</span>
      </div>
      <div style={{display:"flex",gap:4,marginTop:3,flexWrap:"wrap"}}>
-      {selConvo.phone&&<span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:"rgba(255,255,255,.05)",color:C.td}}>📱 {selConvo.phone}</span>}
-      {(selConvo.email||selConvo.contactEmail)&&<span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:"rgba(255,255,255,.05)",color:C.td}}>📧 {selConvo.email||selConvo.contactEmail}</span>}
+      {selConvo.phone&&<span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:"var(--sc-w05)",color:C.td}}>📱 {selConvo.phone}</span>}
+      {(selConvo.email||selConvo.contactEmail)&&<span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:"var(--sc-w05)",color:C.td}}>📧 {selConvo.email||selConvo.contactEmail}</span>}
      </div>
     </div>
-    <a href={`https://app.gohighlevel.com/v2/location/${socKey}/conversations/${selConvo.id}`} target="_blank" rel="noopener noreferrer" style={{fontSize:10,padding:"5px 10px",borderRadius:8,background:"rgba(255,255,255,.06)",color:C.acc,textDecoration:"none",fontWeight:600,flexShrink:0}}>GHL ↗</a>
+    <a href={`https://app.gohighlevel.com/v2/location/${socKey}/conversations/${selConvo.id}`} target="_blank" rel="noopener noreferrer" style={{fontSize:10,padding:"5px 10px",borderRadius:8,background:"var(--sc-w06)",color:C.acc,textDecoration:"none",fontWeight:600,flexShrink:0}}>GHL ↗</a>
    </div>
    {/* Messages */}
    <div style={{flex:1,overflow:"auto",padding:14}}>
@@ -3061,7 +3137,7 @@ export function ConversationsPanel({soc}){
       </div>
      </div>;
      return <div key={m.id||i} style={{display:"flex",justifyContent:out?"flex-end":"flex-start",marginBottom:10,animation:"convFadeIn .3s ease"}}>
-     <div style={{maxWidth:"72%",padding:"10px 14px",borderRadius:out?"16px 16px 4px 16px":"16px 16px 16px 4px",background:out?"linear-gradient(135deg,#FFBF00,#FF9D00)":"rgba(255,255,255,.04)",color:out?"#0a0a0f":C.t,fontSize:12,lineHeight:"1.5"}}>
+     <div style={{maxWidth:"72%",padding:"10px 14px",borderRadius:out?"16px 16px 4px 16px":"16px 16px 16px 4px",background:out?"linear-gradient(135deg,#FFBF00,#FF9D00)":"var(--sc-w04)",color:out?"#0a0a0f":C.t,fontSize:12,lineHeight:"1.5"}}>
       {channelName&&<div style={{marginBottom:4}}><span style={{fontSize:8,padding:"2px 6px",borderRadius:8,background:out?"rgba(0,0,0,.1)":pillBg,color:out?"rgba(0,0,0,.55)":pillColor,fontWeight:700}}>{channelIcon} {channelName}</span></div>}
       {m.meta?.email?.subject&&<div style={{fontWeight:700,fontSize:12,marginBottom:4,color:out?"rgba(0,0,0,.75)":C.t}}>{m.meta.email.subject}</div>}
       <div style={{whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{m.body||m.text||"—"}</div>
@@ -3075,8 +3151,8 @@ export function ConversationsPanel({soc}){
     <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
      {SEND_CHANNELS.map(ch=><button key={ch.k} onClick={()=>setSendType(ch.k)} style={{width:28,height:28,borderRadius:8,border:sendType===ch.k?`2px solid ${C.acc}`:`1px solid ${C.brd}`,background:sendType===ch.k?"rgba(255,170,0,.12)":"transparent",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,transition:"all .15s"}}>{ch.icon}</button>)}
     </div>
-    <textarea value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}} placeholder="Message..." rows={2} style={{flex:1,padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:"rgba(255,255,255,.04)",color:C.t,fontSize:12,fontFamily:FONT,outline:"none",resize:"none",minHeight:44,maxHeight:120,lineHeight:"1.5"}}/>
-    <button className="conv-send-btn" onClick={sendMsg} disabled={sending||!msgInput.trim()} style={{width:38,height:38,borderRadius:10,border:"none",background:(!msgInput.trim()||sending)?"rgba(255,255,255,.06)":"linear-gradient(135deg,#FFBF00,#FF9D00)",color:(!msgInput.trim()||sending)?"rgba(255,255,255,.2)":"#0a0a0f",fontSize:16,cursor:(!msgInput.trim()||sending)?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .2s"}}>{sending?"⏳":"➤"}</button>
+    <textarea value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}} placeholder="Message..." rows={2} style={{flex:1,padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:"var(--sc-w04)",color:C.t,fontSize:12,fontFamily:FONT,outline:"none",resize:"none",minHeight:44,maxHeight:120,lineHeight:"1.5"}}/>
+    <button className="conv-send-btn" onClick={sendMsg} disabled={sending||!msgInput.trim()} style={{width:38,height:38,borderRadius:10,border:"none",background:(!msgInput.trim()||sending)?"var(--sc-w06)":"linear-gradient(135deg,#FFBF00,#FF9D00)",color:(!msgInput.trim()||sending)?C.tm:"#0a0a0f",fontSize:16,cursor:(!msgInput.trim()||sending)?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .2s"}}>{sending?"⏳":"➤"}</button>
    </div>
    {sentOk&&<div style={{padding:"4px 8px",textAlign:"center",fontSize:10,color:C.g,background:C.gD}}>✓ Message envoyé</div>}
   </>}
@@ -3091,7 +3167,7 @@ export function ConversationsPanel({soc}){
   <style>{`
    @keyframes convFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
    @keyframes convBounce{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}
-   .conv-contact-item:hover{background:rgba(255,255,255,.04)!important}
+   .conv-contact-item:hover{background:var(--sc-w04)!important}
    .conv-typing span{display:inline-block;width:6px;height:6px;border-radius:50%;background:${C.td};margin:0 2px;animation:convBounce 1.4s infinite ease-in-out both}.conv-typing span:nth-child(1){animation-delay:-.32s}.conv-typing span:nth-child(2){animation-delay:-.16s}
    .conv-root *::-webkit-scrollbar{width:4px}.conv-root *::-webkit-scrollbar-track{background:transparent}.conv-root *::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
    .conv-send-btn:active{transform:scale(.92)}
@@ -3143,7 +3219,7 @@ export function TodoPanel({soc,ghlData,socBankData,clients}){
    <Btn small onClick={addTask}>+ Ajouter</Btn>
   </div>
   {sorted.length===0&&<Card><div style={{textAlign:"center",padding:20,color:C.td,fontSize:12}}>Aucune tâche</div></Card>}
-  {sorted.map(t=>{const done=doneIds.includes(t.id);return <div key={t.id} className="fu" style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:done?C.card:"rgba(14,14,22,.6)",borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3}}>
+  {sorted.map(t=>{const done=doneIds.includes(t.id);return <div key={t.id} className="fu" style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:done?C.card:"var(--sc-card-a6)",borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3}}>
    <div onClick={()=>toggleDone(t.id)} style={{width:18,height:18,borderRadius:5,border:`2px solid ${done?C.g:C.brd}`,background:done?C.gD:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{done&&<span style={{color:C.g,fontSize:11}}>✓</span>}</div>
    <span style={{fontSize:12,flexShrink:0}}>{priorityIcon[t.priority]||"🟢"}</span>
    <div style={{flex:1,fontSize:12,fontWeight:done?400:600,color:done?C.td:C.t,textDecoration:done?"line-through":"none"}}>{t.text}</div>
@@ -3209,7 +3285,7 @@ export function RessourcesPanel({soc,clients}){
   </Card>
   {Object.entries(byClient).map(([clientId,items])=>{const cl=myCl.find(c=>c.id===clientId);return <div key={clientId} style={{marginBottom:12}}>
    <div style={{fontSize:11,fontWeight:700,color:C.t,marginBottom:4}}>{cl?`👤 ${cl.name}`:"📁 Général"}</div>
-   {items.map(r=><div key={r.id} className="fu" style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:"rgba(14,14,22,.6)",borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3}}>
+   {items.map(r=><div key={r.id} className="fu" style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:"var(--sc-card-a6)",borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3}}>
     <span style={{fontSize:14}}>{typeIcons[r.type]||"🔗"}</span>
     <div style={{flex:1,minWidth:0}}>
      <a href={r.url} target="_blank" rel="noopener noreferrer" style={{fontWeight:600,fontSize:11,color:C.b,textDecoration:"none"}}>{r.title}</a>
@@ -3283,7 +3359,7 @@ export function ActivitePanel({soc,ghlData,socBankData,clients}){
     <input type="datetime-local" value={newDeadline} onChange={e=>setNewDeadline(e.target.value)} style={{padding:"7px 8px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none",minWidth:140}}/>
     <Btn small onClick={addTask}>+</Btn>
    </div>
-   {sorted.map(t=>{const done=doneIds.includes(t.id);return <div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:done?"transparent":"rgba(14,14,22,.6)",borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3,opacity:done?.5:1}}>
+   {sorted.map(t=>{const done=doneIds.includes(t.id);return <div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:done?"transparent":"var(--sc-card-a6)",borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3,opacity:done?.5:1}}>
     <div onClick={()=>toggleDone(t.id)} style={{width:16,height:16,borderRadius:4,border:`2px solid ${done?C.g:C.brd}`,background:done?C.gD:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{done&&<span style={{color:C.g,fontSize:9}}>✓</span>}</div>
     <span style={{fontSize:11,flexShrink:0}}>{priorityIcon[t.priority]||"🟢"}</span>
     <div style={{flex:1,fontSize:11,fontWeight:done?400:600,color:done?C.td:C.t,textDecoration:done?"line-through":"none"}}>{t.text}</div>
@@ -3350,7 +3426,7 @@ export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData
   // Montant mensuel perdu cumulé
   const perdusMensuel=perdusOpps.reduce((acc,o)=>acc+(o.value||0),0);
   return{
-   "Attente signature":{opps:attenteOpps,value:attenteOpps.reduce((a,o)=>a+(o.value||0),0),color:"#60a5fa",icon:"✍️",valueSub:"Valeur des opportunités"},
+   "Valorisation Prospects":{opps:attenteOpps,value:attenteOpps.reduce((a,o)=>a+(o.value||0),0),color:"#60a5fa",icon:"✍️",valueSub:"Valeur des opportunités"},
    "Clients":{opps:clientsOpps,value:clientsCumul,color:C.g,icon:"✅",valueSub:"Encaissés cumulés"},
    "Perdus":{opps:perdusOpps,value:perdusMensuel,color:C.r,icon:"❌",valueSub:"Mensuel perdu cumulé"}
   };
@@ -3360,7 +3436,7 @@ export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData
  if(viewMode==="kanban"){
   return <Sect title="👥 Clients" sub="Vue Pipeline simplifiée" right={<div style={{display:"flex",gap:4}}><Btn small v={viewMode==="list"?"primary":"ghost"} onClick={()=>setViewMode("list")}>📋 Liste</Btn><Btn small v={viewMode==="kanban"?"primary":"ghost"} onClick={()=>setViewMode("kanban")}>🔄 Kanban</Btn></div>}>
    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:12}}>
-    {Object.entries(simplifiedPipeline).map(([cat,data])=><div key={cat} className="fade-up" style={{background:"rgba(14,14,22,.4)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",border:`1px solid ${data.color}33`,borderRadius:14,overflow:"hidden"}}>
+    {Object.entries(simplifiedPipeline).map(([cat,data])=><div key={cat} className="fade-up" style={{background:"var(--sc-card-a4)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",border:`1px solid ${data.color}33`,borderRadius:14,overflow:"hidden"}}>
      <div style={{padding:"12px 14px",background:`${data.color}15`,borderBottom:`2px solid ${data.color}55`}}>
       <div style={{fontWeight:800,fontSize:12,color:data.color}}>{data.icon} {cat}</div>
       <div style={{fontSize:10,color:C.td,marginTop:2}}>{data.opps.length} opportunité{data.opps.length>1?"s":""}</div>
@@ -3398,7 +3474,7 @@ export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData
    <div style={{flex:1,minWidth:0}}>
     <ClientsPanelSafe soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices} stripeData={stripeData} onSelectClient={setSelClient}/>
    </div>
-   {selClient&&<div className="si" style={{width:340,flexShrink:0,background:"rgba(14,14,22,.6)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,.08)",borderRadius:16,padding:16,maxHeight:"80vh",overflowY:"auto",position:"sticky",top:20}}>
+   {selClient&&<div className="si" style={{width:340,flexShrink:0,background:"var(--sc-card-a6)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid var(--sc-w08)",borderRadius:16,padding:16,maxHeight:"80vh",overflowY:"auto",position:"sticky",top:20}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
      <div style={{fontWeight:800,fontSize:14,color:C.t}}>{selClient.name||"Client"}</div>
      <button onClick={()=>setSelClient(null)} style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:14}}>✕</button>
@@ -3418,7 +3494,7 @@ export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData
     {!convoLoading&&convoMsgs.length===0&&<div style={{color:C.td,fontSize:10,padding:8}}>Aucune conversation</div>}
     <div style={{maxHeight:250,overflowY:"auto",marginBottom:8}}>
      {convoMsgs.map((m,i)=><div key={i} style={{display:"flex",justifyContent:m.direction==="outbound"?"flex-end":"flex-start",marginBottom:4}}>
-      <div style={{maxWidth:"85%",padding:"6px 10px",borderRadius:10,background:m.direction==="outbound"?"linear-gradient(135deg,#FFBF00,#FF9D00)":"rgba(255,255,255,.06)",color:m.direction==="outbound"?"#0a0a0f":C.t,fontSize:10}}>
+      <div style={{maxWidth:"85%",padding:"6px 10px",borderRadius:10,background:m.direction==="outbound"?"linear-gradient(135deg,#FFBF00,#FF9D00)":"var(--sc-w06)",color:m.direction==="outbound"?"#0a0a0f":C.t,fontSize:10}}>
        <div>{m.body||m.text||"—"}</div>
        <div style={{fontSize:7,color:m.direction==="outbound"?"rgba(0,0,0,.5)":C.tm,marginTop:1}}>{m.dateAdded?ago(m.dateAdded):""}</div>
       </div>
@@ -3467,6 +3543,7 @@ export function HealthBadge({score}){
 /* ===== SALES PANEL ===== */
 /* ===== SALES PANEL ===== */
 export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
+ const[salesCat,setSalesCat]=useState("overview");
  const cm=curM();const pm2=prevM(cm);
  const gd=ghlData?.[soc.id];const calEvts=gd?.calendarEvents||[];const opps=gd?.opportunities||[];const ghlCl=gd?.ghlClients||[];
  const bankData=socBankData;const myClients=(clients||[]).filter(c=>c.socId===soc.id&&c.status==="active");
@@ -3551,11 +3628,15 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
   {label:"Panier moyen",value:`${fmt(panierMoyen)}€`,icon:"🛒",color:C.v},
   {label:"Cycle moyen",value:cycleDays>0?`${cycleDays}j`:"—",icon:"⏱️",color:C.o},
  ];
+ const SALES_CATS=[{id:"overview",label:"Vue d'ensemble",icon:"📊"},{id:"pipeline",label:"Pipeline",icon:"🎯"},{id:"charts",label:"Graphiques",icon:"📈"},{id:"performance",label:"Performance",icon:"🏅"},{id:"data",label:"Données",icon:"📋"}];
  return <div className="fu">
-  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
    <div><div style={{fontSize:9,fontWeight:700,color:C.acc,letterSpacing:1.5,fontFamily:FONT_TITLE}}>📞 SALES — {soc.nom}</div><div style={{fontSize:11,color:C.td,marginTop:2}}>Données GHL × Meta × Revolut</div></div>
+   <select value={salesCat} onChange={e=>setSalesCat(e.target.value)} style={{padding:"8px 14px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.card,color:C.t,fontSize:12,fontWeight:600,fontFamily:FONT,cursor:"pointer",outline:"none",minWidth:160}}>
+    {SALES_CATS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
+   </select>
   </div>
-  {/* KPIs */}
+  {/* KPIs - always visible */}
   <div className="kpi-grid-responsive" style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:16}}>
    {kpis.map((k,i)=><div key={i} className="fade-up glass-card-static" style={{padding:"10px 6px",textAlign:"center",animationDelay:`${i*0.03}s`}}>
     <div style={{fontSize:14,marginBottom:2}}>{k.icon}</div>
@@ -3564,7 +3645,7 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    </div>)}
   </div>
   {/* Pipeline Kanban */}
-  {stages.length>0&&<div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.2s",overflow:"auto"}}>
+  {(salesCat==="overview"||salesCat==="pipeline")&&stages.length>0&&<div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.2s",overflow:"auto"}}>
    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>📊 PIPELINE KANBAN</div>
    <div style={{display:"flex",gap:10,minWidth:stages.length*180}}>
     {stages.map((stage,si)=>{const stageOpps=openOpps.filter(o=>o.stage===stage);const stageVal=stageOpps.reduce((a,o)=>a+(o.value||0),0);
@@ -3587,8 +3668,8 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
     })}
    </div>
   </div>}
-  {/* Charts 2-col */}
-  <div style={{display:"grid",gridTemplateColumns:"1fr",gap:12,marginBottom:20}}>
+  {/* Charts */}
+  {(salesCat==="overview"||salesCat==="charts")&&<div style={{display:"grid",gridTemplateColumns:"1fr",gap:12,marginBottom:20}}>
    {/* Evolution leads/appels/ventes */}
    <div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.25s"}}>
     <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📈 LEADS / APPELS / VENTES — 6 MOIS</div>
@@ -3665,9 +3746,9 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
      })}
     </div>
    </div>}
-  </div>
+  </div>}
   {/* Performance Closer */}
-  {closers.length>0&&<div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.55s"}}>
+  {(salesCat==="overview"||salesCat==="performance")&&closers.length>0&&<div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.55s"}}>
    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>🏅 PERFORMANCE CLOSER{closers.length>1?"S":""}</div>
    {closers.length>1?<table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
     <thead><tr style={{borderBottom:`2px solid ${C.brd}`}}>
@@ -3690,7 +3771,7 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    </div>}
   </div>}
   {/* Dernières activités */}
-  <div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.6s"}}>
+  {(salesCat==="overview"||salesCat==="performance")&&<div className="fade-up glass-card-static" style={{padding:18,marginBottom:20,animationDelay:"0.6s"}}>
    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📜 DERNIÈRES ACTIVITÉS SALES</div>
    {activities.length===0?<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Aucune activité récente</div>:
     activities.map((a,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i<activities.length-1?`1px solid ${C.brd}`:"none"}}>
@@ -3699,14 +3780,14 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
      <span style={{fontSize:9,color:C.td,flexShrink:0}}>{a.date?ago(a.date):""}</span>
     </div>)
    }
-  </div>
+  </div>}
   {/* Cross-referencing */}
-  {totalAdSpend>0&&<div className="fade-up glass-card-static" style={{padding:16,marginBottom:20,animationDelay:"0.65s",borderLeft:`3px solid ${C.v}`}}>
+  {(salesCat==="overview"||salesCat==="data")&&totalAdSpend>0&&<div className="fade-up glass-card-static" style={{padding:16,marginBottom:20,animationDelay:"0.65s",borderLeft:`3px solid ${C.v}`}}>
    <div style={{fontSize:9,fontWeight:700,color:C.v,letterSpacing:1,marginBottom:6,fontFamily:FONT_TITLE}}>🔗 CROISEMENT DONNÉES</div>
    <div style={{fontSize:11,color:C.t,fontWeight:600}}>Budget pub: {fmt(totalAdSpend)}€ → {totalLeads} leads → {totalCallsAll} appels → {wonAll.length} clients = CPL {totalLeads>0?(totalAdSpend/totalLeads).toFixed(2):"-"}€, CPA {wonAll.length>0?(totalAdSpend/wonAll.length).toFixed(2):"-"}€</div>
   </div>}
   {/* Data Table */}
-  <div className="fade-up glass-card-static" style={{padding:18,overflow:"auto",animationDelay:"0.7s"}}>
+  {(salesCat==="overview"||salesCat==="data")&&<div className="fade-up glass-card-static" style={{padding:18,overflow:"auto",animationDelay:"0.7s"}}>
    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📋 TABLEAU RÉCAPITULATIF — 12 MOIS</div>
    <table style={{width:"100%",borderCollapse:"collapse",fontSize:10,minWidth:900}}>
     <thead><tr style={{borderBottom:`2px solid ${C.brd}`}}>
@@ -3716,7 +3797,7 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
     </tr></thead>
     <tbody>
      {salesData.map((d,i)=>{const nsRate=d.totalCalls>0?Math.round(d.noShow/d.totalCalls*100):0;const clRate=d.stratCalls>0?Math.round(d.wonCount/d.stratCalls*100):0;const pm2=d.wonCount>0?Math.round(d.wonVal/d.wonCount):0;
-      return <tr key={d.mo} style={{borderBottom:`1px solid ${C.brd}`,background:i%2===0?"transparent":"rgba(255,255,255,.015)"}}>
+      return <tr key={d.mo} style={{borderBottom:`1px solid ${C.brd}`,background:i%2===0?"transparent":"var(--sc-w015)"}}>
        <td style={{padding:"6px 4px",fontWeight:700,color:C.t,fontSize:10}}>{ml(d.mo)}</td>
        <td style={{padding:"6px 4px",textAlign:"right",fontWeight:600}}>{d.leads||"—"}</td>
        <td style={{padding:"6px 4px",textAlign:"right",fontWeight:600}}>{d.totalCalls||"—"}</td>
@@ -3744,7 +3825,7 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
      </tr>
     </tbody>
    </table>
-  </div>
+  </div>}
  </div>;
 }
 
@@ -3976,7 +4057,7 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
      )}
     </tr></thead>
     <tbody>
-     {metaData.map((d,i)=><tr key={d.mo} style={{borderBottom:`1px solid ${C.brd}`,background:i%2===0?"transparent":"rgba(255,255,255,.015)"}}>
+     {metaData.map((d,i)=><tr key={d.mo} style={{borderBottom:`1px solid ${C.brd}`,background:i%2===0?"transparent":"var(--sc-w015)"}}>
       <td style={{padding:"6px 4px",fontWeight:700,color:C.t,fontSize:10}}>{ml(d.mo)}</td>
       <td style={{padding:"6px 4px",textAlign:"right",color:"#f472b6",fontWeight:600}}>{d.spend>0?`${fmt(d.spend)}€`:"—"}</td>
       <td style={{padding:"6px 4px",textAlign:"right"}}>{d.impressions>0?fK(d.impressions):"—"}</td>
@@ -4050,9 +4131,9 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
  const porteurNotifs=useMemo(()=>genPorteurNotifications(soc,reps,socBankData?{[soc.id]:socBankData}:{},ghlData,clients,allM),[soc,reps,socBankData,ghlData,clients,allM]);
  return <div className="glass-bg" style={{display:"flex",minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}</style>
-  <NotificationCenter notifications={porteurNotifs} open={notifOpen} onClose={()=>setNotifOpen(false)}/>
+  <NotificationCenter notifications={porteurNotifs} open={notifOpen} onClose={()=>setNotifOpen(false)} onNavigate={setPTab}/>
   {/* Mobile Header */}
-  <div className="mobile-header" style={{display:"none",position:"fixed",top:0,left:0,right:0,zIndex:100,background:"rgba(14,14,22,.8)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,.06)",padding:"10px 16px",alignItems:"center",gap:10}}>
+  <div className="mobile-header" style={{display:"none",position:"fixed",top:0,left:0,right:0,zIndex:100,background:"var(--sc-card-a8)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid var(--sc-w06)",padding:"10px 16px",alignItems:"center",gap:10}}>
    <button onClick={()=>setMobileMenuOpen(!mobileMenuOpen)} style={{background:"none",border:"none",fontSize:20,color:C.t,cursor:"pointer",padding:4}}>☰</button>
    <div style={{flex:1,fontWeight:800,fontSize:13,fontFamily:FONT_TITLE,color:soc.brandColor||soc.color}}>{soc.nom}</div>
    <button onClick={onThemeToggle} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",padding:4,color:C.td}}>{getTheme()==="light"?"🌙":"☀️"}</button>
@@ -4557,14 +4638,14 @@ export const SB_ADMIN=[
 
 export const SB_PORTEUR=[
  {id:"dashboard",icon:"📊",label:"Dashboard",tab:0,accent:C.acc},
- {id:"activite",icon:"⚡",label:"Activité",tab:1,accent:C.b},
+ {id:"bank",icon:"🏦",label:"Finances",tab:5,accent:C.g},
  {id:"sales",icon:"📞",label:"Sales",tab:2,accent:"#34d399"},
  {id:"publicite",icon:"📣",label:"Publicité",tab:3,accent:"#f472b6"},
  {id:"clients",icon:"👥",label:"Clients",tab:9,accent:C.o},
- {id:"conversations",icon:"💬",label:"Conversations",tab:14,accent:C.b},
- {id:"bank",icon:"🏦",label:"Banque",tab:5,accent:C.g},
- {id:"rapports",icon:"📋",label:"Rapports",tab:13,accent:C.v},
  {id:"agenda",icon:"📅",label:"Agenda",tab:11,accent:"#14b8a6"},
+ {id:"activite",icon:"✅",label:"Tâches",tab:1,accent:C.b},
+ {id:"conversations",icon:"💬",label:"Conversations",tab:14,accent:C.b},
+ {id:"rapports",icon:"📋",label:"Rapports",tab:13,accent:C.v},
  {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
 ];
 
@@ -4778,7 +4859,7 @@ export function WidgetRenderer({socId,socs,clients}){
 export function ClientPortal({socId,clientId,socs,clients,ghlData}){
  const soc=socs.find(s=>s.id===socId);
  const client=(clients||[]).find(c=>c.id===clientId&&c.socId===socId);
- if(!soc||!client)return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#06060b",fontFamily:FONT,color:"#71717a"}}>Portail introuvable</div>;
+ if(!soc||!client)return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:C.bg,fontFamily:FONT,color:C.td}}>Portail introuvable</div>;
  const gd=ghlData?.[socId];
  const calEvts=(gd?.calendarEvents||[]).filter(e=>new Date(e.startTime||0)>new Date()).sort((a,b)=>new Date(a.startTime)-new Date(b.startTime));
  const nextCall=calEvts[0];

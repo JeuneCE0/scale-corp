@@ -125,14 +125,14 @@ export function GlobalSearch({ open, onClose, clients, socs, socBank, ghlData, o
     }}>
       <div onClick={e => e.stopPropagation()} style={{
         width: 520, maxWidth: '92vw', maxHeight: '60vh',
-        background: 'rgba(14,14,22,.92)', border: '1px solid rgba(255,255,255,.08)',
+        background: 'var(--sc-card-a9)', border: '1px solid var(--sc-w08)',
         borderRadius: 18, overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,.6)',
         backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)',
       }}>
         {/* Search input */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10, padding: '14px 18px',
-          borderBottom: '1px solid rgba(255,255,255,.06)',
+          borderBottom: '1px solid var(--sc-w06)',
         }}>
           <span style={{ fontSize: 16, opacity: 0.5 }}>🔍</span>
           <input
@@ -147,7 +147,7 @@ export function GlobalSearch({ open, onClose, clients, socs, socBank, ghlData, o
           />
           <kbd style={{
             fontSize: 10, padding: '2px 6px', borderRadius: 4,
-            background: 'rgba(255,255,255,.06)', color: C.td, border: '1px solid rgba(255,255,255,.08)',
+            background: 'var(--sc-w06)', color: C.td, border: '1px solid var(--sc-w08)',
           }}>ESC</kbd>
         </div>
 
@@ -166,7 +166,7 @@ export function GlobalSearch({ open, onClose, clients, socs, socBank, ghlData, o
                 display: 'flex', alignItems: 'center', gap: 10, padding: '10px 18px',
                 cursor: 'pointer', transition: 'background .1s',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,.04)'}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--sc-w04)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               <span style={{ fontSize: 16, width: 28, textAlign: 'center' }}>{r.icon}</span>
@@ -191,7 +191,7 @@ export function GlobalSearch({ open, onClose, clients, socs, socBank, ghlData, o
               <div style={{ marginBottom: 8 }}>Tape au moins 2 caractères pour chercher</div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
                 {['Clients', 'Sociétés', 'Prospects', 'Transactions'].map(t => (
-                  <span key={t} style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, background: 'rgba(255,255,255,.04)', color: C.td }}>
+                  <span key={t} style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, background: 'var(--sc-w04)', color: C.td }}>
                     {t}
                   </span>
                 ))}
