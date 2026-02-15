@@ -7767,6 +7767,19 @@ export default function App(){
  const smartAlerts=useMemo(()=>calcSmartAlerts(socs,reps,actions,pulses,allM,socBank,ghlData),[socs,reps,actions,pulses,allM,socBank,ghlData]);
  // Dynamic favicon title
  useEffect(()=>{document.title=smartAlerts.length>0?`(${smartAlerts.length}) L'Incubateur ECS`:"L'Incubateur ECS";},[smartAlerts.length]);
+ // "What you missed" recap on login
+ const[missedRecap,setMissedRecap]=useState(null);
+ useEffect(()=>{if(!role)return;const key="sc_last_login_"+role;const lastTs=localStorage.getItem(key);const now=Date.now();localStorage.setItem(key,String(now));if(!lastTs)return;const since=parseInt(lastTs);const elapsed=now-since;if(elapsed<60000)return;// Skip if <1min
+  const events=[];const sinceDate=new Date(since);
+  // Bank events
+  (socs||[]).forEach(s=>{const txs=(socBank?.[s.id]?.transactions||[]).filter(tx=>{const d=new Date(tx.created_at||tx.createdAt||0);return d>sinceDate;});txs.forEach(tx=>{const leg=tx.legs?.[0];const amt=pf(leg?.amount||tx?.amount);const desc=leg?.description||tx?.reference||"Transaction";events.push({type:amt>0?"💰":"📤",text:`${s.nom||s.name||"?"} : ${desc}`,value:amt?`${amt>0?"+":""}${fmt(amt)}€`:"",ts:tx.created_at||tx.createdAt,color:amt>0?"#34d399":"#f87171"});});});
+  // GHL events
+  (socs||[]).forEach(s=>{const g=ghlData?.[s.id];(g?.opportunities||[]).forEach(o=>{const d=new Date(o.updatedAt||o.createdAt||0);if(d<=sinceDate)return;if(o.status==="won")events.push({type:"✅",text:`${s.nom||s.name} : Deal gagné - ${o.contact?.name||o.name||""}`,value:o.value?`${fmt(pf(o.value))}€`:"",ts:o.updatedAt||o.createdAt,color:"#34d399"});else if(o.status==="lost")events.push({type:"❌",text:`${s.nom||s.name} : Deal perdu - ${o.contact?.name||o.name||""}`,ts:o.updatedAt||o.createdAt,color:"#f87171"});else events.push({type:"👤",text:`${s.nom||s.name} : Nouveau prospect - ${o.contact?.name||o.name||""}`,ts:o.dateAdded||o.createdAt,color:"#60a5fa"});});(g?.calendarEvents||[]).filter(e=>new Date(e.startTime||0)>sinceDate).forEach(e=>{events.push({type:"📞",text:`${s.nom||s.name} : ${e.title||e.contactName||"Appel"}`,ts:e.startTime,color:"#a78bfa"});});});
+  events.sort((a,b)=>new Date(b.ts||0)-new Date(a.ts||0));
+  const hrs=Math.round(elapsed/3600000);const mins=Math.round(elapsed/60000);
+  const absentLabel=hrs>=24?`${Math.round(hrs/24)}j`:hrs>=1?`${hrs}h`:`${mins}min`;
+  if(events.length>0)setMissedRecap({events:events.slice(0,20),total:events.length,absent:absentLabel});
+ },[role]);
  const loginEmail2=useCallback(async()=>{if(!loginEmail.trim()||!loginPass.trim()){setLErr("Email et mot de passe requis");return;}setAuthLoading(true);setLErr("");try{const r=await fetch("/api/auth?action=login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:loginEmail.trim(),password:loginPass})});const d=await r.json();if(!r.ok){setLErr(d.error_description||d.msg||d.error||"Identifiants incorrects");setShake(true);setTimeout(()=>setShake(false),500);return;}localStorage.setItem("sc_auth_token",d.access_token);if(d.refresh_token)localStorage.setItem("sc_auth_refresh",d.refresh_token);setAuthUser(d.user);const meta=d.user?.user_metadata||{};const rid=meta.role==="admin"?"admin":(meta.society_id||"admin");setRole(rid);setLErr("");_storeToken="auth";_currentSocId=rid;localStorage.setItem("sc_store_token","auth");if(!onboarded)setShowTour(true);syncFromSupabase(rid).then(()=>{}).catch(()=>{});}catch(e){setLErr("Erreur de connexion");setShake(true);setTimeout(()=>setShake(false),500);}finally{setAuthLoading(false);}},[loginEmail,loginPass,onboarded]);
  const login=useCallback(async()=>{async function hashPin(p){const e=new TextEncoder().encode(p);const h=await crypto.subtle.digest('SHA-256',e);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 const doLogin=(rid)=>{setRole(rid);setLErr("");_storeToken=pin;_currentSocId=rid;localStorage.setItem("sc_store_token",pin);if(!onboarded)setShowTour(true);syncFromSupabase(rid).then(()=>{}).catch(()=>{});};
@@ -7833,7 +7846,28 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  </div>;
  if(role!=="admin"){const soc=socs.find(s=>s.id===role);if(!soc)return null;
   const porteurSetTab=(t)=>{const btn=document.querySelector(`[data-tour="porteur-tab-${t}"]`);if(btn)btn.click();};
-  return <ErrorBoundary label="Vue Porteur"><SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData}/></ErrorBoundary>;}
+  return <ErrorBoundary label="Vue Porteur"><>{missedRecap&&<div className="fi" style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)"}} onClick={()=>setMissedRecap(null)}>
+   <div onClick={e=>e.stopPropagation()} style={{width:420,maxHeight:"80vh",background:C.card,border:`1px solid ${C.brd}`,borderRadius:20,overflow:"hidden",backdropFilter:"blur(20px)"}}>
+    <div style={{padding:"20px 24px",borderBottom:`1px solid ${C.brd}`,background:`linear-gradient(135deg,${C.acc}11,transparent)`}}>
+     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div><div style={{fontSize:18,fontWeight:900,fontFamily:FONT_TITLE,color:C.acc}}>👋 Bon retour !</div>
+       <div style={{fontSize:11,color:C.td,marginTop:2}}>Absent {missedRecap.absent} • {missedRecap.total} événement{missedRecap.total>1?"s":""}</div></div>
+      <button onClick={()=>setMissedRecap(null)} style={{background:"none",border:"none",fontSize:18,color:C.td,cursor:"pointer"}}>✕</button>
+     </div>
+    </div>
+    <div style={{padding:"12px 20px",maxHeight:"60vh",overflowY:"auto"}}>
+     {missedRecap.events.map((e,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 0",borderBottom:`1px solid ${C.brd}08`}}>
+      <span style={{fontSize:16,flexShrink:0}}>{e.type}</span>
+      <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,color:C.t,lineHeight:1.4}}>{e.text}</div>
+       {e.ts&&<div style={{fontSize:9,color:C.td,marginTop:2}}>{new Date(e.ts).toLocaleString("fr-FR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</div>}</div>
+      {e.value&&<span style={{fontSize:13,fontWeight:800,color:e.color,whiteSpace:"nowrap"}}>{e.value}</span>}
+     </div>)}
+    </div>
+    <div style={{padding:"12px 20px",borderTop:`1px solid ${C.brd}`,textAlign:"center"}}>
+     <button onClick={()=>setMissedRecap(null)} style={{padding:"8px 24px",borderRadius:10,border:"none",background:`linear-gradient(135deg,${C.acc},#FF9D00)`,color:"#000",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:FONT}}>C'est noté 👊</button>
+    </div>
+   </div>
+  </div>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData}/></></ErrorBoundary>;}
  if(showPulse)return <><style>{CSS}</style><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>setShowPulse(false)}/></>;
  if(meeting)return <MeetingMode socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} onExit={()=>setMeeting(false)}/>;
  /* ADMIN → Porteur View Override */
@@ -7843,6 +7877,31 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  const[adminMobileMenu,setAdminMobileMenu]=useState(false);
  return <div className="glass-bg" style={{display:"flex",minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}</style>
+  {missedRecap&&<div className="fi" style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)"}} onClick={()=>setMissedRecap(null)}>
+   <div onClick={e=>e.stopPropagation()} style={{width:460,maxHeight:"80vh",background:C.card,border:`1px solid ${C.brd}`,borderRadius:20,overflow:"hidden",backdropFilter:"blur(20px)"}}>
+    <div style={{padding:"20px 24px",borderBottom:`1px solid ${C.brd}`,background:`linear-gradient(135deg,${C.acc}11,transparent)`}}>
+     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div><div style={{fontSize:18,fontWeight:900,fontFamily:FONT_TITLE,color:C.acc}}>👋 Bon retour !</div>
+       <div style={{fontSize:11,color:C.td,marginTop:2}}>Absent {missedRecap.absent} • {missedRecap.total} événement{missedRecap.total>1?"s":""}</div></div>
+      <button onClick={()=>setMissedRecap(null)} style={{background:"none",border:"none",fontSize:18,color:C.td,cursor:"pointer"}}>✕</button>
+     </div>
+    </div>
+    <div style={{padding:"12px 20px",maxHeight:"60vh",overflowY:"auto"}}>
+     {missedRecap.events.map((e,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 0",borderBottom:`1px solid ${C.brd}08`}}>
+      <span style={{fontSize:16,flexShrink:0}}>{e.type}</span>
+      <div style={{flex:1,minWidth:0}}>
+       <div style={{fontSize:12,color:C.t,lineHeight:1.4}}>{e.text}</div>
+       {e.ts&&<div style={{fontSize:9,color:C.td,marginTop:2}}>{new Date(e.ts).toLocaleString("fr-FR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</div>}
+      </div>
+      {e.value&&<span style={{fontSize:13,fontWeight:800,color:e.color,whiteSpace:"nowrap"}}>{e.value}</span>}
+     </div>)}
+     {missedRecap.total>20&&<div style={{textAlign:"center",color:C.td,fontSize:10,padding:8}}>+ {missedRecap.total-20} autres événements</div>}
+    </div>
+    <div style={{padding:"12px 20px",borderTop:`1px solid ${C.brd}`,textAlign:"center"}}>
+     <button onClick={()=>setMissedRecap(null)} style={{padding:"8px 24px",borderRadius:10,border:"none",background:`linear-gradient(135deg,${C.acc},#FF9D00)`,color:"#000",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:FONT}}>C'est noté 👊</button>
+    </div>
+   </div>
+  </div>}
   {false&&role==="admin"&&<TutorialOverlay steps={TOUR_ADMIN} onFinish={()=>setShowTour(false)} onSkip={()=>setShowTour(false)} setActiveTab={setTab}/>}
   <div className="mobile-header" style={{display:"none",position:"fixed",top:0,left:0,right:0,zIndex:100,background:"rgba(14,14,22,.8)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,.06)",padding:"10px 16px",alignItems:"center",gap:10}}>
    <button onClick={()=>setAdminMobileMenu(!adminMobileMenu)} style={{background:"none",border:"none",fontSize:20,color:C.t,cursor:"pointer",padding:4}}>☰</button>
