@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Fragment, Suspense, lazy } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Area, AreaChart, Legend, Line, LineChart, ComposedChart, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
 import * as U from "./utils/index.jsx";
-const { C, C_DARK, C_LIGHT, getTheme, applyTheme, MN, curM, ml, fmt, fK, pct, clamp, prevM, nextM, pf, gr, FONT, FONT_TITLE, BF, deadline, qOf, qMonths, qLabel, ago, uid, curW, MOODS, sinceLbl, sinceMonths, CSS, DS, DH, DEAL_STAGES, DEMO_JOURNAL, DEMO_ACTIONS, DEMO_PULSES, DEMO_DEALS, DEMO_OKRS, DEMO_SYNERGIES, DEMO_SUBS, DEMO_TEAM, DEMO_CLIENTS, SYN_TYPES, SYN_STATUS, SUB_CATS, SLACK_MODES, EXCLUDED_ACCOUNTS, CURR_SYMBOLS, REV_ENVS, GHL_BASE, STRIPE_PROXY, STORE_URL, ErrorBoundary, mkPrefill, autoGenerateReport, autoCategorize, autoDetectSubscriptions, subMonthly, clientMonthlyRevenue, clientTotalValue, commitmentEnd, commitmentRemaining, generateInvoices, refreshInvoiceStatuses, ghlCreateInvoice, ghlSendInvoice, mkDemoInvoices, teamMonthly, normalizeStr, fuzzyMatch, matchSubsToRevolut, deduplicatedCharges, mkGHLDemo, ghlUpdateContact, ghlCreateContact, fetchGHL, syncGHLForSoc, slackWebhookSend, slackBotSend, slackSend, slackMention, buildPulseSlackMsg, buildReportSlackMsg, buildReminderSlackMsg, buildValidationSlackMsg, checkAndSendReminders, fetchStripe, syncStripeData, getStripeChargesForClient, getStripeTotal, mkRevolutDemo, fetchRevolut, syncRevolut, mkSocRevDemo, syncSocRevolut, revFinancials, storeCall, sbAuthHeaders, sbUpsert, sbGet, sbList, sGet, sSet, syncFromSupabase, fetchHoldingFromSB, fetchSocietiesFromSB, calcH, simH, healthScore, leadScore, leadScoreColor, leadScoreLabel, qCA, getAlerts, buildFeed, project, runway, calcLeaderboard, buildAIContext, calcMilestoneData, calcMilestones, calcSmartAlerts, genInsights, calcBenchmark, getPlaybooks, calcClientHealthScore, genPorteurNotifications, BILL_TYPES, CLIENT_STATUS, curQ, AUTO_CAT_MAP, categorizeTransaction, DEMO_KB } = U;
+const { C, C_DARK, C_LIGHT, getTheme, applyTheme, MN, curM, ml, fmt, fK, pct, clamp, prevM, nextM, pf, gr, FONT, FONT_TITLE, BF, deadline, qOf, qMonths, qLabel, ago, uid, curW, MOODS, sinceLbl, sinceMonths, CSS, DS, DH, DEAL_STAGES, DEMO_JOURNAL, DEMO_ACTIONS, DEMO_PULSES, DEMO_DEALS, DEMO_OKRS, DEMO_SYNERGIES, DEMO_SUBS, DEMO_TEAM, DEMO_CLIENTS, SYN_TYPES, SYN_STATUS, SUB_CATS, SLACK_MODES, EXCLUDED_ACCOUNTS, CURR_SYMBOLS, REV_ENVS, GHL_BASE, STRIPE_PROXY, STORE_URL, ErrorBoundary, mkPrefill, autoGenerateReport, autoCategorize, autoDetectSubscriptions, subMonthly, clientMonthlyRevenue, clientTotalValue, commitmentEnd, commitmentRemaining, generateInvoices, refreshInvoiceStatuses, ghlCreateInvoice, ghlSendInvoice, mkDemoInvoices, teamMonthly, normalizeStr, fuzzyMatch, matchSubsToRevolut, deduplicatedCharges, mkGHLDemo, ghlUpdateContact, ghlCreateContact, fetchGHL, syncGHLForSoc, slackWebhookSend, slackBotSend, slackSend, slackMention, buildPulseSlackMsg, buildReportSlackMsg, buildReminderSlackMsg, buildValidationSlackMsg, checkAndSendReminders, fetchStripe, syncStripeData, getStripeChargesForClient, getStripeTotal, mkRevolutDemo, fetchRevolut, syncRevolut, mkSocRevDemo, syncSocRevolut, revFinancials, storeCall, sbAuthHeaders, sbUpsert, sbGet, sbList, sGet, sSet, syncFromSupabase, fetchHoldingFromSB, fetchSocietiesFromSB, calcH, simH, healthScore, leadScore, leadScoreColor, leadScoreLabel, qCA, getAlerts, buildFeed, project, runway, calcLeaderboard, buildAIContext, calcMilestoneData, calcMilestones, calcSmartAlerts, genInsights, calcBenchmark, getPlaybooks, calcClientHealthScore, genPorteurNotifications, BILL_TYPES, CLIENT_STATUS, curQ, AUTO_CAT_MAP, categorizeTransaction, DEMO_KB, cachedSyncGHLForSoc, cachedSyncRevolut, cachedSyncSocRevolut, cachedSyncStripeData, cacheInvalidate } = U;
 import { Badge, IncubBadge, GradeBadge, KPI, PBar, Btn, Inp, Sel, Sect, Card, Modal, CTip, Toggle, ActionItem } from "./components/ui.jsx";
 import { MilestonesWall, MilestonesCompact, MilestoneCount, AICoPilot, PulseForm, PulseOverview, BankingPanel, BankingTransactions, TabCRM, SocBankWidget, SynergiesPanel, KnowledgeBase, RiskMatrix, GamificationPanel, InboxUnifiee, ParcoursClientVisuel, BenchmarkRadar, SmartAlertsPanel, SubsTeamPanel, SubsTeamBadge, ChallengesPanel, AIWeeklyCoach, RapportsPanel, DealFlow, MeetingMode, CohortAnalysis, CHALLENGE_TEMPLATES } from "./components/features.jsx";
 import { Sidebar, OnboardingWizard, TutorialOverlay, ObInp, ObTextArea, ObSelect, ObCheck, ObTag } from "./components/navigation.jsx";
@@ -139,7 +139,7 @@ export default function App(){
   let newData={};
   if(hasKeys){
    for(const s of socs.filter(x=>x.ghlLocationId||x.ghlKey)){
-    const d=await syncGHLForSoc(s);
+    const d=await cachedSyncGHLForSoc(s);
     if(d)newData[s.id]=d;
    }
   }
@@ -170,14 +170,14 @@ export default function App(){
  },[loaded,syncGHL]);
  const syncRev=useCallback(async()=>{
   let data=null;
-  data=await syncRevolut("eco");
+  data=await cachedSyncRevolut("eco");
   if(!data)data=mkRevolutDemo();
   setRevData(data);await sSet("scAv",data);
  },[]);
  const syncSocBank=useCallback(async(socId)=>{
   const s=socs.find(x=>x.id===socId);if(!s)return;
   let data=null;
-  if(s.revolutCompany){data=await syncSocRevolut(s);}
+  if(s.revolutCompany){data=await cachedSyncSocRevolut(s);}
   if(!data)data=mkSocRevDemo(s);
   const nb={...socBank,[socId]:data};setSocBank(nb);await sSet("scAb",nb);
  },[socs,socBank]);
@@ -185,7 +185,7 @@ export default function App(){
   const nb={};
   for(const s of socs.filter(x=>["active","lancement"].includes(x.stat)&&x.id!=="eco")){
    let data=null;
-   if(s.revolutCompany){data=await syncSocRevolut(s);}
+   if(s.revolutCompany){data=await cachedSyncSocRevolut(s);}
    if(!data)data=mkSocRevDemo(s);
    nb[s.id]=data;
   }
@@ -193,7 +193,7 @@ export default function App(){
  },[socs]);
  useEffect(()=>{
   if(!loaded)return;
-  const doSync=async()=>{try{await syncRev();await syncAllSocBanks();const sd=await syncStripeData();if(sd)setStripeData(sd);}catch(e){console.warn("Auto-sync failed:",e);}};
+  const doSync=async()=>{try{await syncRev();await syncAllSocBanks();const sd=await cachedSyncStripeData();if(sd)setStripeData(sd);}catch(e){console.warn("Auto-sync failed:",e);}};
   doSync();
   const id=setInterval(doSync,60000);
   return()=>clearInterval(id);

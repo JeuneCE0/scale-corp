@@ -1,4 +1,5 @@
 import React from "react";
+import { cachedFetch, cacheInvalidate } from "./cache.js";
 export const C_DARK={bg:"#06060b",card:"#0e0e16",card2:"#131320",brd:"#1a1a2c",brdL:"#24243a",acc:"#FFAA00",accD:"rgba(255,170,0,.12)",g:"#34d399",gD:"rgba(52,211,153,.1)",r:"#f87171",rD:"rgba(248,113,113,.1)",o:"#fb923c",oD:"rgba(251,146,60,.1)",b:"#60a5fa",bD:"rgba(96,165,250,.1)",t:"#e4e4e7",td:"#71717a",tm:"#3f3f50",v:"#a78bfa",vD:"rgba(167,139,250,.1)"};
 export const C_LIGHT={bg:"#f5f5f5",card:"#ffffff",card2:"#f0f0f0",brd:"#e0e0e0",brdL:"#d0d0d0",acc:"#FFAA00",accD:"#FFF3D6",g:"#22c55e",gD:"#dcfce7",r:"#ef4444",rD:"#fee2e2",b:"#3b82f6",bD:"#dbeafe",o:"#f97316",oD:"#fff7ed",v:"#8b5cf6",vD:"#ede9fe",t:"#1a1a1a",td:"#666666",tm:"#999999"};
 export let C=C_DARK;
@@ -1067,3 +1068,28 @@ export function genPorteurNotifications(soc,reps,socBank,ghlData,clients,allM){
  });
  return notifs.sort((a,b)=>new Date(b.time)-new Date(a.time));
 }
+
+// ============================================================
+// Cached API wrappers — TTL-based in-memory cache
+// GHL: 30s (auto-syncs every 30s), Revolut/Stripe: 60s
+// ============================================================
+export async function cachedSyncGHLForSoc(soc) {
+  if (!soc.ghlLocationId) return null;
+  return cachedFetch(`ghl_${soc.id}`, () => syncGHLForSoc(soc), 30000);
+}
+
+export async function cachedSyncRevolut(company) {
+  if (!company) return null;
+  return cachedFetch(`rev_${company}`, () => syncRevolut(company), 60000);
+}
+
+export async function cachedSyncSocRevolut(soc) {
+  if (!soc.revolutCompany) return null;
+  return cachedFetch(`rev_soc_${soc.id}`, () => syncSocRevolut(soc), 60000);
+}
+
+export async function cachedSyncStripeData() {
+  return cachedFetch('stripe_data', () => syncStripeData(), 60000);
+}
+
+export { cacheInvalidate };
