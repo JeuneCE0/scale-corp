@@ -2600,18 +2600,38 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
   return Object.entries(catTotals).map(([name,value])=>({name,value:Math.round(value)})).sort((a,b)=>b.value-a.value);
  },[bankData,cm,excluded,getCatForTx]);
  const PIE_COLORS=[C.r,C.o,C.b,C.v,"#ec4899","#14b8a6",C.acc,"#8b5cf6"];
- // Top 5 clients
+ // Top 5 clients with cumul, duration, avg
  const top5Clients=useMemo(()=>{
-  const withRev=myClients.map(c=>{const rev=clientMonthlyRevenue(c);const start=c.startDate?new Date(c.startDate):null;const dur=start?Math.round((Date.now()-start.getTime())/864e5/30):null;return{...c,revenue:rev,durationMonths:dur};}).sort((a,b)=>b.revenue-a.revenue).slice(0,5);
+  const allCl=[...myClients,...churnedClients];
+  const withRev=allCl.map(c=>{
+   const rev=clientMonthlyRevenue(c);
+   const startDate=c.startDate||c.at||c.createdAt||c.dateAdded;
+   const start=startDate?new Date(startDate):null;
+   const durMonths=start?Math.max(1,Math.round((Date.now()-start.getTime())/864e5/30)):null;
+   // Cumul from bank transactions
+   const cn=(c.name||"").toLowerCase().trim();const excl2=EXCLUDED_ACCOUNTS[soc.id]||[];
+   const matchedTxs=(bankData?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;if(excl2.includes(leg.account_id))return false;const desc=(leg.description||tx.reference||"").toLowerCase();return cn.length>2&&desc.includes(cn);});
+   const cumul=matchedTxs.reduce((a,tx)=>a+(tx.legs?.[0]?.amount||0),0);
+   const avgMonthly=durMonths?Math.round(cumul/durMonths):rev;
+   return{...c,revenue:rev,durationMonths:durMonths,cumul:Math.round(cumul),avgMonthly,domain:c.domain||""};
+  }).filter(c=>c.cumul>0||c.revenue>0).sort((a,b)=>b.cumul-a.cumul).slice(0,5);
   if(withRev.length>0)return withRev;
-  return wonOpps.sort((a,b)=>(b.value||0)-(a.value||0)).slice(0,5).map(o=>({name:o.name||o.contact?.name||"—",revenue:o.value||0,durationMonths:null,billing:{type:"fixed"}}));
- },[myClients,wonOpps]);
- // Funnel data
+  return wonOpps.sort((a,b)=>(b.value||0)-(a.value||0)).slice(0,5).map(o=>({name:o.name||o.contact?.name||"—",revenue:o.value||0,durationMonths:null,cumul:o.value||0,avgMonthly:o.value||0,domain:"",billing:{type:"fixed"}}));
+ },[myClients,churnedClients,wonOpps,bankData,soc.id]);
+ // Funnel data — 4 fixed stages
  const funnelData=useMemo(()=>{
-  const stages=gd?.pipelines?.[0]?.stages||[];
-  if(stages.length===0)return[];
-  return stages.map((s,i)=>{const count=ghlOpps.filter(o=>o.stage===s&&o.status==="open").length;return{stage:s,count,color:GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]};}).filter(s=>s.count>0);
- },[gd,ghlOpps]);
+  const allStages=gd?.pipelines?.[0]?.stages||[];
+  const totalLeads=ghlCl.length;
+  const stratCalls2=calEvts.filter(e=>!/int[eé]g/i.test(e.title||"")&&!/int[eé]g/i.test(e.calendarName||"")).length;
+  const integCalls2=calEvts.filter(e=>/int[eé]g/i.test(e.title||"")||/int[eé]g/i.test(e.calendarName||"")).length;
+  const clientsActifs=myClients.length;
+  return[
+   {stage:"Prospect",count:totalLeads,color:"#60a5fa",icon:"👤"},
+   {stage:"Appel Découverte",count:stratCalls2,color:C.acc,icon:"📞"},
+   {stage:"Appel Intégration",count:integCalls2,color:C.v,icon:"🤝"},
+   {stage:"Client",count:clientsActifs,color:C.g,icon:"✅"}
+  ];
+ },[gd,ghlCl,calEvts,myClients]);
  // Meta Ads data
  const metaAds=useMemo(()=>{try{return JSON.parse(localStorage.getItem(`metaAds_${soc.id}_${cm}`));}catch{return null;}},[soc.id,cm]);
  // Conseil du jour IA
@@ -2732,34 +2752,37 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
      <span style={{width:24,height:24,borderRadius:8,background:i===0?"linear-gradient(135deg,#FFBF00,#FF9D00)":i===1?"linear-gradient(135deg,#c0c0c0,#a0a0a0)":i===2?"linear-gradient(135deg,#cd7f32,#a0622e)":C.card2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:i<3?"#0a0a0f":C.td,flexShrink:0}}>{i+1}</span>
      <div style={{flex:1,minWidth:0}}>
       <div style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name||"—"}</div>
-      <div style={{fontSize:9,color:C.td}}>
-       {c.durationMonths!==null?`${c.durationMonths} mois`:""}
-       {c.billing?.type?` · ${c.billing.type==="fixed"?"Fixe":c.billing.type==="percent"?"%":"Mixte"}`:""} 
+      <div style={{fontSize:9,color:C.td,display:"flex",gap:6,flexWrap:"wrap"}}>
+       {c.durationMonths!==null&&<span>📅 {c.durationMonths} mois</span>}
+       {c.domain&&<span>🏢 {c.domain}</span>}
+       <span>~{fmt(c.avgMonthly)}€/mois</span>
       </div>
      </div>
      <div style={{textAlign:"right"}}>
-      <div style={{fontWeight:800,fontSize:13,color:acc2}}>{fmt(c.revenue)}€</div>
-      <div style={{fontSize:8,color:C.td}}>/mois</div>
+      <div style={{fontWeight:800,fontSize:13,color:acc2}}>{fmt(c.cumul)}€</div>
+      <div style={{fontSize:8,color:C.td}}>cumulé</div>
      </div>
     </div>)}
    </div>}
-   {/* Funnel de conversion */}
-   {funnelData.length>0&&<div className="glass-card-static" style={{padding:18}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>🔄 FUNNEL DE CONVERSION</div>
-    <div style={{display:"flex",flexDirection:"column",gap:0}}>
-     {funnelData.map((f,i)=>{const maxW=funnelData[0].count||1;const w=Math.max(25,Math.round(f.count/maxW*100));const conv=i>0&&funnelData[i-1].count>0?Math.round(f.count/funnelData[i-1].count*100):null;
+   {/* Funnel de conversion — horizontal */}
+   <div className="glass-card-static" style={{padding:18}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>🔄 FUNNEL DE CONVERSION</div>
+    <div style={{display:"flex",alignItems:"center",gap:0}}>
+     {funnelData.map((f,i)=>{const conv=i>0&&funnelData[i-1].count>0?Math.round(f.count/funnelData[i-1].count*100):null;
       return <Fragment key={i}>
-       {i>0&&<div style={{fontSize:9,color:C.td,fontWeight:700,textAlign:"center",padding:"3px 0"}}>↓ <span style={{color:conv>=50?C.g:conv>=25?C.o:C.r,fontWeight:800}}>{conv}%</span></div>}
-       <div style={{width:`${w}%`,margin:"0 auto",background:`linear-gradient(135deg,${f.color}18,${f.color}30)`,border:`1px solid ${f.color}55`,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-         <span style={{fontWeight:900,fontSize:18,color:f.color}}>{f.count}</span>
-         <span style={{fontSize:10,color:C.td,fontWeight:600}}>{f.stage}</span>
-        </div>
+       {i>0&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"0 4px",flexShrink:0}}>
+        <span style={{fontSize:14,color:C.td}}>→</span>
+        {conv!==null&&<span style={{fontSize:8,fontWeight:800,color:conv>=50?C.g:conv>=25?C.o:C.r}}>{conv}%</span>}
+       </div>}
+       <div style={{flex:1,background:`linear-gradient(135deg,${f.color}18,${f.color}30)`,border:`1px solid ${f.color}55`,borderRadius:12,padding:"14px 10px",textAlign:"center"}}>
+        <div style={{fontSize:16,marginBottom:4}}>{f.icon}</div>
+        <div style={{fontWeight:900,fontSize:22,color:f.color}}>{f.count}</div>
+        <div style={{fontSize:9,color:C.td,fontWeight:600,marginTop:2}}>{f.stage}</div>
        </div>
       </Fragment>;
      })}
     </div>
-   </div>}
+   </div>
   </div>
 
   {/* ===== BANDEAU 3 — PUBLICITÉ ===== */}
