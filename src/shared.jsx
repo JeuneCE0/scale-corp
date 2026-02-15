@@ -14,7 +14,7 @@ export const pct=(a,b)=>b?Math.round(a/b*100):0;
 export const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 export const prevM=m=>{const[y,mo]=m.split("-").map(Number);const d=new Date(y,mo-2,1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;};
 export const nextM=m=>{const[y,mo]=m.split("-").map(Number);const d=new Date(y,mo,1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;};
-export const pf=v=>parseFloat(v)||0;const gr=(reps,id,m)=>reps[`${id}_${m}`]||null;
+export const pf=v=>parseFloat(v)||0;export const gr=(reps,id,m)=>reps[`${id}_${m}`]||null;
 export const FONT="'Teachers',sans-serif";
 export const FONT_TITLE="'Eurostile','Square721 BT','Arial Black',sans-serif";
 export const BF={ca:"",charges:"",chargesOps:"",salaire:"",formation:"",clients:"",churn:"",pub:"",leads:"",leadsContact:"",leadsClos:"",notes:"",mrr:"",pipeline:"",tresoSoc:""};
