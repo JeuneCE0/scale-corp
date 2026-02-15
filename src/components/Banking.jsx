@@ -27,6 +27,7 @@ export function categorizeTransaction(tx){
  if(/loyer|rent/.test(ref))return TX_CATEGORIES[2];
  if(/facebook|google ads|meta ads|meta|tiktok|pub/.test(ref))return TX_CATEGORIES[3];
  if(/lecosysteme|l.{0,2}ecosyst[eè]me/i.test(ref))return TX_CATEGORIES[4];
+ if(/company.*pro.*plan|plan.*fee/i.test(ref))return TX_CATEGORIES[4];
  if(/stripe|notion|slack|ghl|zapier|skool|adobe|figma|revolut|gohighlevel|highlevel|canva|chatgpt|openai|anthropic|vercel|github|zoom|brevo|make\.com|clickup|airtable/.test(ref))return TX_CATEGORIES[4];
  if(/lucien|salaire|salary|freelance|prestataire|prestation/.test(ref))return TX_CATEGORIES[5];
  if(tx.type==="transfer")return TX_CATEGORIES[6];
