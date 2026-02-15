@@ -674,6 +674,7 @@ export function CohortAnalysis({socs,reps,allM}){
 export function SubsTeamPanel({socs,subs,saveSubs,team,saveTeam,socId,reps,isCompact,socBankData,revData}){
  const[editSub,setEditSub]=useState(null);const[editTm,setEditTm]=useState(null);const[showRecon,setShowRecon]=useState(false);
  const[catFilter,setCatFilter]=useState("all");const[autoSubs,setAutoSubs]=useState([]);
+ const[dismissedAuto,setDismissedAuto]=useState(()=>{try{return JSON.parse(localStorage.getItem(`scDismissedSubs_${socId}`)||"[]");}catch{return[];}});
  const cM2=curM();
  const bankData0=socId==="all"?null:(socId==="holding"?revData:socBankData);
  const detectSubs=useCallback(()=>{const detected=autoDetectSubscriptions(bankData0,socId);setAutoSubs(detected);},[bankData0,socId]);
@@ -697,7 +698,6 @@ export function SubsTeamPanel({socs,subs,saveSubs,team,saveTeam,socId,reps,isCom
  const addSub=()=>{const ns={id:uid(),socId:socId==="all"?"holding":socId,name:"",amount:0,freq:"monthly",cat:"logiciel",start:new Date().toISOString().slice(0,10),notes:""};setEditSub(ns);};
  const addTm=()=>{const nt={id:uid(),socId:socId==="all"?"holding":socId,name:"",role:"",payType:"fixed",amount:0,notes:""};setEditTm(nt);};
  const saveSub=(s)=>{const idx=subs.findIndex(x=>x.id===s.id);if(idx>=0){const ns=[...subs];ns[idx]=s;saveSubs(ns);}else saveSubs([...subs,s]);setEditSub(null);};
- const[dismissedAuto,setDismissedAuto]=useState(()=>{try{return JSON.parse(localStorage.getItem(`scDismissedSubs_${socId}`)||"[]");}catch{return[];}});
  const deleteSub=(id)=>{saveSubs(subs.filter(s=>s.id!==id));const next=[...dismissedAuto,id];setDismissedAuto(next);try{localStorage.setItem(`scDismissedSubs_${socId}`,JSON.stringify(next));}catch{} setAutoSubs(a=>a.filter(s=>s.id!==id));};
  const saveTm2=(t)=>{const idx=team.findIndex(x=>x.id===t.id);if(idx>=0){const nt=[...team];nt[idx]=t;saveTeam(nt);}else saveTeam([...team,t]);setEditTm(null);};
  const deleteTm=(id)=>saveTeam(team.filter(t=>t.id!==id));
