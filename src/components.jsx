@@ -1212,7 +1212,7 @@ export function CohortAnalysis({socs,reps,allM}){
  </Sect>;
 }
 /* 4. CHALLENGES INTER-SOCIÉTÉS */
-const CHALLENGE_TEMPLATES=[
+export const CHALLENGE_TEMPLATES=[
  {id:"c_double",title:"🔥 Doublé",desc:"Doubler son CA vs mois dernier",metric:"ca_growth",target:100,unit:"%",icon:"🔥"},
  {id:"c_margin",title:"💎 Marge d'or",desc:"Atteindre 60%+ de marge",metric:"margin",target:60,unit:"%",icon:"💎"},
  {id:"c_pipeline",title:"🎯 Pipeline monstre",desc:"Pipeline > 2× CA",metric:"pipeline_ratio",target:200,unit:"%",icon:"🎯"},
@@ -5464,7 +5464,7 @@ export function OnboardingWizard({onComplete,onSkip,hold}){
 }
 
 /* TUTORIAL SYSTEM — SPOTLIGHT TOUR */
-const TOUR_ADMIN=[
+export const TOUR_ADMIN=[
  {target:"admin-nav",tab:0,title:"Navigation",icon:"🧭",desc:"La sidebar à gauche organise la plateforme en 6 sections clés : Dashboard, Portfolio, Finance, Commercial, AI Copilot et Ressources. Cliquez sur une section pour déplier ses sous-modules. Tout est accessible en un clic.",pos:"right",highlight:C.acc},
  {target:"admin-kpis",tab:0,title:"KPIs en temps réel",icon:"💰",desc:"Vue instantanée de la santé financière du groupe. CA total, marge nette, rémunération des fondateurs, disponible et trésorerie. Ces chiffres se recalculent automatiquement à chaque rapport soumis par une société.",pos:"bottom",highlight:C.acc},
  {target:"admin-alerts",tab:0,title:"Alertes intelligentes",icon:"🔔",desc:"Le système détecte automatiquement les risques : rapports en retard, trésorerie basse, chute de CA, actions non terminées. Chaque alerte est priorisée par criticité (danger, warning, info).",pos:"bottom",highlight:C.o},
@@ -5481,7 +5481,7 @@ const TOUR_ADMIN=[
  {target:"admin-tab-13",tab:13,title:"Charges & Équipe",icon:"🔄",desc:"Section Finance > Charges : centralisez abonnements et membres d'équipe de chaque société. Coût mensuel total, répartition par catégorie.",pos:"right",highlight:C.r},
 ];
 
-const TOUR_PORTEUR=[
+export const TOUR_PORTEUR=[
  {target:"porteur-nav",tab:10,title:"Votre espace",icon:"🧭",desc:"La sidebar organise vos modules : Accueil (vue d'ensemble), Rapport, Performance, Suivi, Banque, Clients et Ressources.",pos:"right",highlight:C.acc},
  {target:"porteur-tab-10",tab:10,title:"Accueil",icon:"◉",desc:"Votre tableau de bord personnel : nudges d'actions à faire, KPIs du mois, évolution du CA, trophées et activité récente. Tout en un coup d'œil.",pos:"right",highlight:C.acc},
  {target:"porteur-tab-0",tab:0,title:"Rapport mensuel",icon:"📊",desc:"Renseignez CA, charges, clients et trésorerie chaque mois. Les champs avancés (détail charges, funnel, pub) sont dans des sections dépliables.",pos:"right",highlight:C.o},
@@ -5598,7 +5598,7 @@ export function TutorialOverlay({steps,onFinish,onSkip,setActiveTab}){
 }
 
 /* SIDEBAR NAVIGATION */
-const SB_ADMIN=[
+export const SB_ADMIN=[
  {id:"dash",icon:"◉",label:"Dashboard",tab:0,accent:C.acc},
  {id:"societes",icon:"🏢",label:"Sociétés",tab:1,accent:C.b},
  {id:"finances",icon:"💰",label:"Finances",tab:2,accent:C.g},
@@ -5611,7 +5611,7 @@ const SB_ADMIN=[
  {id:"pulse",icon:"⚡",label:"PULSE",tab:99,accent:"#FFAA00"},
 ];
 
-const SB_PORTEUR=[
+export const SB_PORTEUR=[
  {id:"dashboard",icon:"📊",label:"Dashboard",tab:0,accent:C.acc},
  {id:"activite",icon:"⚡",label:"Activité",tab:1,accent:C.b},
  {id:"sales",icon:"📞",label:"Sales",tab:2,accent:"#34d399"},

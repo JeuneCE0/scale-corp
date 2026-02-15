@@ -25,6 +25,7 @@ import {
   MilestonesCompact, Modal, OnboardingWizard, PBar, PulseOverview, PulseScreen, RiskMatrix, Sect, Sel, Sidebar, SmartAlertsPanel,
   SocieteView, SubsTeamBadge, SubsTeamPanel, SynergiesAutoPanel, SynergiesPanel, TabCRM, Toggle, TutorialOverlay, ValRow,
   WarRoomReadOnly, WidgetEmbed, WidgetRenderer, calcSmartAlerts,
+  SB_ADMIN, SB_PORTEUR, TOUR_ADMIN, TOUR_PORTEUR, CHALLENGE_TEMPLATES,
 } from "./components.jsx";
 
 export default function App(){
