@@ -31,8 +31,20 @@ export function TabCRM({socs,ghlData,onSync}){
  },[ghlData,selSoc,actS]);
  const stages=useMemo(()=>{
   const ids=selSoc==="all"?actS.map(s=>s.id):[selSoc];
-  const st=new Set();ids.forEach(id=>{const d=ghlData[id];if(!d)return;((d.opportunities||[])).forEach(o=>st.add(o.stage));});
-  return[...st];
+  const counts={};ids.forEach(id=>{const d=ghlData[id];if(!d)return;((d.opportunities||[])).forEach(o=>{counts[o.stage]=(counts[o.stage]||0)+1;});});
+  // Sort by count desc, show top 6 + group the rest into "Autres"
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  if(sorted.length<=7)return sorted.map(s=>s[0]);
+  const top=sorted.slice(0,6).map(s=>s[0]);
+  top.push("Autres");
+  return top;
+ },[ghlData,selSoc,actS]);
+ const otherStages=useMemo(()=>{
+  const ids=selSoc==="all"?actS.map(s=>s.id):[selSoc];
+  const counts={};ids.forEach(id=>{const d=ghlData[id];if(!d)return;((d.opportunities||[])).forEach(o=>{counts[o.stage]=(counts[o.stage]||0)+1;});});
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  if(sorted.length<=7)return new Set();
+  return new Set(sorted.slice(6).map(s=>s[0]));
  },[ghlData,selSoc,actS]);
  const sources=useMemo(()=>{
   const ids=selSoc==="all"?actS.map(s=>s.id):[selSoc];
@@ -57,7 +69,7 @@ export function TabCRM({socs,ghlData,onSync}){
    <KPI label="Leads total" value={String(aggStats.tLeads)} accent={C.b} delay={1}/><KPI label="Pipeline ouvert" value={`${fmt(aggStats.pVal)}€`} accent={C.acc} delay={2}/><KPI label="Deals gagnés" value={`${fmt(aggStats.wVal)}€`} accent={C.g} delay={3}/><KPI label="Conversion" value={`${aggStats.conv}%`} accent={aggStats.conv>=30?C.g:aggStats.conv>=15?C.o:C.r} delay={4}/>
   </div>
   <Sect title="Funnel" sub="Répartition par étape">
-   {stages.map((st,i)=>{const stOpps=opps.filter(o=>o.stage===st);const val=stOpps.reduce((a,o)=>a+o.value,0);const w=aggStats.tLeads>0?Math.round(stOpps.length/aggStats.tLeads*100):0;
+   {stages.map((st,i)=>{const stOpps=st==="Autres"?opps.filter(o=>otherStages.has(o.stage)):opps.filter(o=>o.stage===st);const val=stOpps.reduce((a,o)=>a+o.value,0);const w=aggStats.tLeads>0?Math.round(stOpps.length/aggStats.tLeads*100):0;
     return <div key={st} className={`fu d${Math.min(i+1,8)}`} style={{marginBottom:4}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
     <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:2,background:GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]}}/><span style={{fontWeight:600,fontSize:12}}>{st}</span></div>
