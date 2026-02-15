@@ -5566,7 +5566,7 @@ function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    </div>
   </div>}
   {/* Charts 2-col */}
-  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+  <div style={{display:"grid",gridTemplateColumns:"1fr",gap:12,marginBottom:20}}>
    {/* Evolution leads/appels/ventes */}
    <div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.25s"}}>
     <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📈 LEADS / APPELS / VENTES — 6 MOIS</div>
@@ -5814,7 +5814,7 @@ function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    </div>)}
   </div>
   {/* Charts 2-col */}
-  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+  <div style={{display:"grid",gridTemplateColumns:"1fr",gap:12,marginBottom:20}}>
    {/* Budget vs Leads vs Revenue */}
    <div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.2s"}}>
     <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📈 BUDGET VS LEADS VS REVENUE</div>
