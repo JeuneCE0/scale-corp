@@ -3493,7 +3493,7 @@ export function ConversationsPanel({soc}){
   fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_list",locationId:socKey})}).then(r=>{if(!r.ok)throw new Error("API error");return r.json();}).then(d=>{setConvos(Array.isArray(d.conversations)?d.conversations:Array.isArray(d)?d:[]);}).catch(()=>{if(!quiet)setError("Impossible de charger les conversations");}).finally(()=>{if(!quiet)setLoading(false);});
  },[socKey]);
 
- useEffect(()=>{fetchConvos(false);listPollRef.current=setInterval(()=>fetchConvos(true),60000);return()=>clearInterval(listPollRef.current);},[fetchConvos]);
+ useEffect(()=>{fetchConvos(false);listPollRef.current=setInterval(()=>fetchConvos(true),30000);return()=>clearInterval(listPollRef.current);},[fetchConvos]);
 
  const loadMsgs=useCallback((c)=>{setSelConvo(c);setMsgs([]);setMsgsLoading(true);setMobileShowThread(true);setSendType(c.type||c.lastMessageType||"SMS");shouldScrollRef.current=true;
   fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_messages",locationId:socKey,conversationId:c.id})}).then(r=>r.json()).then(d=>{const raw=d.messages;const m=Array.isArray(raw)?raw:Array.isArray(raw?.messages)?raw.messages:Array.isArray(d)?d:[];setMsgs(m.slice().reverse());}).catch(()=>setMsgs([])).finally(()=>setMsgsLoading(false));
@@ -3501,7 +3501,7 @@ export function ConversationsPanel({soc}){
 
  // Poll messages every 30s
  useEffect(()=>{clearInterval(msgsPollRef.current);if(!selConvo)return;
-  msgsPollRef.current=setInterval(()=>{fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_messages",locationId:socKey,conversationId:selConvo.id})}).then(r=>r.json()).then(d=>{const raw=d.messages;const m=Array.isArray(raw)?raw:Array.isArray(raw?.messages)?raw.messages:Array.isArray(d)?d:[];setMsgs(m.slice().reverse());}).catch(()=>{});},30000);
+  msgsPollRef.current=setInterval(()=>{fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"conversations_messages",locationId:socKey,conversationId:selConvo.id})}).then(r=>r.json()).then(d=>{const raw=d.messages;const m=Array.isArray(raw)?raw:Array.isArray(raw?.messages)?raw.messages:Array.isArray(d)?d:[];setMsgs(m.slice().reverse());}).catch(()=>{});},5000);
   return()=>clearInterval(msgsPollRef.current);
  },[selConvo,socKey]);
 
