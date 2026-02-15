@@ -3516,94 +3516,121 @@ export function ConversationsPanel({soc}){
  const sorted=useMemo(()=>[...filtered].sort((a,b)=>new Date(b.lastMessageDate||b.dateUpdated||0)-new Date(a.lastMessageDate||a.dateUpdated||0)),[filtered]);
  const totalUnread=convos.reduce((a,c)=>a+(c.unreadCount||0),0);
 
- if(!socKey)return <Sect title="💬 Conversations" sub="Messages GHL"><div className="glass-card-static" style={{padding:30,textAlign:"center"}}><div style={{fontSize:32,marginBottom:8}}>📡</div><div style={{fontWeight:700,fontSize:13,marginBottom:6,color:C.t}}>GHL non configuré</div><div style={{color:C.td,fontSize:11}}>Ajoute l'ID GoHighLevel (Location ID) dans les paramètres de cette société pour activer les conversations.</div></div></Sect>;
+ // Avatar color from name hash
+ const avatarColor=(name)=>{let h=0;for(let i=0;i<(name||"").length;i++){h=name.charCodeAt(i)+((h<<5)-h);}const colors=["#6366f1","#ec4899","#14b8a6","#f59e0b","#8b5cf6","#06b6d4","#ef4444","#22c55e","#3b82f6","#f97316"];return colors[Math.abs(h)%colors.length];};
+ const avatarLetter=(name)=>(name||"?")[0].toUpperCase();
 
- const listPanel=<div className="glass-card-static" style={{width:"100%",maxWidth:280,overflow:"hidden",padding:0,display:"flex",flexDirection:"column",flexShrink:0}}>
-  <div style={{padding:"10px 10px 6px",borderBottom:`1px solid ${C.brd}`}}>
-   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-    <span style={{fontWeight:700,fontSize:12}}>Conversations</span>
-    {totalUnread>0&&<span style={{fontSize:9,padding:"2px 7px",borderRadius:10,background:C.b,color:"#fff",fontWeight:700}}>{totalUnread}</span>}
-   </div>
-   <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Rechercher..." style={{width:"100%",padding:"6px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/>
-   <div style={{display:"flex",gap:3,marginTop:6,flexWrap:"wrap"}}>{[{k:"all",l:"Tous",icon:"💬"},{k:"PHONE",l:"SMS",icon:"📱"},{k:"EMAIL",l:"Email",icon:"📧"},{k:"INSTAGRAM",l:"Insta",icon:"📸"},{k:"FB",l:"Messenger",icon:"👤"},{k:"WHATSAPP",l:"WA",icon:"💬"}].map(ch=>{const count=ch.k==="all"?convos.length:convos.filter(c=>(c.type||c.lastMessageType||"").toUpperCase().includes(ch.k)).length;return <button key={ch.k} onClick={()=>setChannelFilter(ch.k)} style={{padding:"3px 7px",borderRadius:6,border:`1px solid ${channelFilter===ch.k?C.acc+"66":C.brd}`,background:channelFilter===ch.k?C.accD:"transparent",color:channelFilter===ch.k?C.acc:C.td,fontSize:9,fontWeight:600,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:2,opacity:count>0||ch.k==="all"?1:0.4}}><span style={{fontSize:10}}>{ch.icon}</span>{ch.l}{count>0&&ch.k!=="all"?` (${count})`:""}</button>;})}</div>
+ const CHANNELS=[{k:"all",icon:"💬"},{k:"PHONE",icon:"📱"},{k:"EMAIL",icon:"📧"},{k:"INSTAGRAM",icon:"📸"},{k:"FB",icon:"👤"},{k:"WHATSAPP",icon:"💬"}];
+ const channelCount=(k)=>k==="all"?convos.length:convos.filter(c=>(c.type||c.lastMessageType||"").toUpperCase().includes(k)).length;
+
+ if(!socKey)return <div style={{padding:30,textAlign:"center"}}><div style={{fontSize:32,marginBottom:8}}>📡</div><div style={{fontWeight:700,fontSize:13,marginBottom:6,color:C.t}}>GHL non configuré</div><div style={{color:C.td,fontSize:11}}>Ajoute l'ID GoHighLevel (Location ID) dans les paramètres de cette société pour activer les conversations.</div></div>;
+
+ const listPanel=<div style={{width:"100%",maxWidth:320,overflow:"hidden",padding:0,display:"flex",flexDirection:"column",flexShrink:0,background:"rgba(14,14,22,.5)",borderRight:`1px solid ${C.brd}`}}>
+  {/* Search */}
+  <div style={{padding:"12px 12px 0"}}>
+   <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Rechercher..." style={{width:"100%",padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:"rgba(255,255,255,.04)",color:C.t,fontSize:11,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/>
   </div>
+  {/* Channel tabs */}
+  <div style={{display:"flex",gap:0,padding:"0 4px",marginTop:8,borderBottom:`1px solid ${C.brd}`,overflowX:"auto",scrollbarWidth:"none",msOverflowStyle:"none"}}>
+   {CHANNELS.map(ch=>{const cnt=channelCount(ch.k);const active=channelFilter===ch.k;return <button key={ch.k} onClick={()=>setChannelFilter(ch.k)} style={{padding:"8px 12px",border:"none",borderBottom:active?`2px solid ${C.acc}`:"2px solid transparent",background:"transparent",color:active?C.acc:C.td,fontSize:12,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:3,flexShrink:0,transition:"color .15s",opacity:cnt>0||ch.k==="all"?1:0.35}}><span>{ch.icon}</span><span style={{fontSize:9,fontWeight:700}}>{cnt}</span></button>;})}
+  </div>
+  {/* Contact list */}
   <div style={{flex:1,overflow:"auto"}}>
    {loading&&<div style={{padding:20,textAlign:"center",color:C.td,fontSize:11}}>Chargement...</div>}
    {!loading&&sorted.length===0&&!error&&<div style={{padding:20,textAlign:"center",color:C.td,fontSize:11}}>Aucune conversation</div>}
-   {sorted.map((c,i)=>{const unread=c.unreadCount||0;const typeIcon=MSG_TYPE_LABEL(c.type||c.lastMessageType);return <div key={c.id||i} onClick={()=>loadMsgs(c)} style={{padding:"10px 12px",borderBottom:`1px solid ${C.brd}`,cursor:"pointer",background:selConvo?.id===c.id?"rgba(255,170,0,.08)":"transparent",transition:"background .15s"}} onMouseEnter={e=>{if(selConvo?.id!==c.id)e.currentTarget.style.background=C.card2;}} onMouseLeave={e=>{if(selConvo?.id!==c.id)e.currentTarget.style.background="transparent";}}>
-    <div style={{display:"flex",alignItems:"center",gap:4}}>
-     <span style={{fontSize:10,flexShrink:0}}>{typeIcon}</span>
-     <div style={{fontWeight:unread?800:600,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{c.contactName||c.fullName||c.email||"Contact"}</div>
-     {unread>0&&<span style={{fontSize:8,padding:"1px 5px",borderRadius:8,background:C.b,color:"#fff",fontWeight:700,flexShrink:0}}>{unread}</span>}
+   {sorted.map((c,i)=>{const unread=c.unreadCount||0;const name=c.contactName||c.fullName||c.email||"Contact";const typeIcon=MSG_TYPE_LABEL(c.type||c.lastMessageType);const active=selConvo?.id===c.id;const bgCol=avatarColor(name);return <div key={c.id||i} onClick={()=>loadMsgs(c)} style={{padding:"10px 12px",borderBottom:`1px solid rgba(255,255,255,.04)`,cursor:"pointer",background:"transparent",borderLeft:active?`3px solid ${C.acc}`:"3px solid transparent",transition:"border-color .15s",display:"flex",alignItems:"center",gap:10}}>
+    {/* Avatar */}
+    <div style={{position:"relative",flexShrink:0}}>
+     <div style={{width:38,height:38,borderRadius:19,background:bgCol,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:700,color:"#fff"}}>{avatarLetter(name)}</div>
+     <span style={{position:"absolute",bottom:-1,right:-1,fontSize:10,lineHeight:1}}>{typeIcon}</span>
     </div>
-    <div style={{fontSize:9,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:2}}>{c.lastMessageBody||c.snippet||"—"}</div>
-    <div style={{fontSize:8,color:C.tm,marginTop:1}}>{fmtDate(c.lastMessageDate||c.dateUpdated)}</div>
+    {/* Content */}
+    <div style={{flex:1,minWidth:0}}>
+     <div style={{display:"flex",alignItems:"center",gap:4}}>
+      <div style={{fontWeight:unread?800:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,color:C.t}}>{name}</div>
+      <span style={{fontSize:9,color:C.tm,flexShrink:0,whiteSpace:"nowrap"}}>{fmtDate(c.lastMessageDate||c.dateUpdated)}</span>
+     </div>
+     <div style={{display:"flex",alignItems:"center",gap:4,marginTop:2}}>
+      <div style={{fontSize:10,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{c.lastMessageBody||c.snippet||"—"}</div>
+      {unread>0&&<span style={{width:unread>9?"auto":8,height:8,minWidth:8,padding:unread>9?"0 4px":0,borderRadius:8,background:"#ef4444",color:"#fff",fontSize:7,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,lineHeight:1}}>{unread>1?unread:""}</span>}
+     </div>
+    </div>
    </div>;})}
   </div>
  </div>;
 
- const threadPanel=<div className="glass-card-static" style={{flex:1,display:"flex",flexDirection:"column",padding:0,minWidth:0}}>
+ const SEND_CHANNELS=[{k:"SMS",icon:"📱"},{k:"Email",icon:"📧"},{k:"WhatsApp",icon:"💬"}];
+
+ const threadPanel=<div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,background:"rgba(14,14,22,.3)"}}>
   {!selConvo&&<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8,color:C.td}}>
-   <div style={{fontSize:40}}>💬</div><div style={{fontSize:13,fontWeight:600}}>Sélectionnez une conversation</div><div style={{fontSize:10}}>Choisissez un contact dans la liste</div>
+   <div style={{fontSize:48,opacity:.3}}>💬</div><div style={{fontSize:14,fontWeight:600,opacity:.5}}>Sélectionnez une conversation</div>
   </div>}
   {selConvo&&<>
-   <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",gap:8}}>
-    <div className="conv-back-btn" style={{display:"none",cursor:"pointer",fontSize:16,marginRight:4}} onClick={()=>setMobileShowThread(false)}>←</div>
+   {/* Contact header */}
+   <div style={{padding:"10px 16px",borderBottom:`1px solid ${C.brd}`,display:"flex",alignItems:"center",gap:10}}>
+    <div className="conv-back-btn" style={{display:"none",cursor:"pointer",fontSize:20,marginRight:2,color:C.acc}} onClick={()=>setMobileShowThread(false)}>←</div>
+    <div style={{width:34,height:34,borderRadius:17,background:avatarColor(selConvo.contactName||selConvo.fullName||"C"),display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#fff",flexShrink:0}}>{avatarLetter(selConvo.contactName||selConvo.fullName||"C")}</div>
     <div style={{flex:1,minWidth:0}}>
-     <div style={{fontWeight:700,fontSize:12}}>{selConvo.contactName||selConvo.fullName||"Contact"}</div>
-     <div style={{fontSize:9,color:C.td,display:"flex",gap:8,flexWrap:"wrap"}}>
-      {selConvo.phone&&<span>📱 {selConvo.phone}</span>}
-      {selConvo.email&&<span>📧 {selConvo.email}</span>}
-      {selConvo.contactEmail&&!selConvo.email&&<span>📧 {selConvo.contactEmail}</span>}
+     <div style={{display:"flex",alignItems:"center",gap:6}}>
+      <span style={{fontWeight:700,fontSize:13,color:C.t}}>{selConvo.contactName||selConvo.fullName||"Contact"}</span>
+      <span style={{fontSize:9,padding:"1px 6px",borderRadius:6,background:"rgba(255,255,255,.06)",color:C.td}}>{MSG_TYPE_LABEL(selConvo.type||selConvo.lastMessageType)} {MSG_TYPE_NAME[selConvo.type||selConvo.lastMessageType]||""}</span>
+     </div>
+     <div style={{display:"flex",gap:4,marginTop:3,flexWrap:"wrap"}}>
+      {selConvo.phone&&<span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:"rgba(255,255,255,.05)",color:C.td}}>📱 {selConvo.phone}</span>}
+      {(selConvo.email||selConvo.contactEmail)&&<span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:"rgba(255,255,255,.05)",color:C.td}}>📧 {selConvo.email||selConvo.contactEmail}</span>}
      </div>
     </div>
-    <a href={`https://app.gohighlevel.com/v2/location/${socKey}/conversations/${selConvo.id}`} target="_blank" rel="noopener noreferrer" style={{fontSize:9,padding:"4px 8px",borderRadius:6,background:C.card2,color:C.b,textDecoration:"none",fontWeight:600,flexShrink:0}}>Ouvrir GHL ↗</a>
+    <a href={`https://app.gohighlevel.com/v2/location/${socKey}/conversations/${selConvo.id}`} target="_blank" rel="noopener noreferrer" style={{fontSize:10,padding:"5px 10px",borderRadius:8,background:"rgba(255,255,255,.06)",color:C.acc,textDecoration:"none",fontWeight:600,flexShrink:0}}>GHL ↗</a>
    </div>
-   <div style={{flex:1,overflow:"auto",padding:10}}>
+   {/* Messages */}
+   <div style={{flex:1,overflow:"auto",padding:14}}>
     {msgsLoading&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>⏳ Chargement des messages...</div>}
     {!msgsLoading&&msgs.length===0&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Aucun message</div>}
-    {msgs.map((m,i)=>{const out=(m.direction||m.meta?.email?.direction||m.source)==="outbound"||m.source==="workflow"||m.source==="app";const mType=m.type||m.messageType||"";const sys=isSystemMsg(m);const channelIcon=MSG_TYPE_LABEL(m.messageType||mType);const channelName=MSG_TYPE_NAME[m.messageType||mType]||"";
-     if(sys)return <div key={m.id||i} style={{display:"flex",justifyContent:"center",marginBottom:6}}>
-      <div style={{maxWidth:"80%",padding:"6px 12px",borderRadius:10,background:"rgba(113,113,122,.12)",border:`1px solid rgba(113,113,122,.15)`,fontSize:10,color:C.td,textAlign:"center",fontStyle:"italic"}}>
-       <span style={{fontSize:9}}>⚙️</span> {m.body||m.text||"—"} <span style={{fontSize:8,opacity:.7}}>· {fmtDate(m.dateAdded)}</span>
+    {msgs.map((m,i)=>{const out=(m.direction||m.meta?.email?.direction||m.source)==="outbound"||m.source==="workflow"||m.source==="app";const mType=m.type||m.messageType||"";const sys=isSystemMsg(m);const channelIcon=MSG_TYPE_LABEL(m.messageType||mType);const channelName=MSG_TYPE_NAME[m.messageType||mType]||"";const channelColors={SMS:"#3b82f6",Email:"#8b5cf6",WhatsApp:"#22c55e",Instagram:"#ec4899",Messenger:"#3b82f6","Live Chat":"#06b6d4",Appel:"#f59e0b",Système:"#6b7280"};const pillBg=(channelColors[channelName]||"#6b7280")+"22";const pillColor=channelColors[channelName]||"#6b7280";
+     if(sys)return <div key={m.id||i} style={{display:"flex",justifyContent:"center",marginBottom:10,animation:"convFadeIn .3s ease"}}>
+      <div style={{maxWidth:"70%",padding:"4px 14px",borderRadius:20,background:"rgba(113,113,122,.08)",fontSize:10,color:C.td,textAlign:"center",fontStyle:"italic"}}>
+       ⚙️ {m.body||m.text||"—"} <span style={{fontSize:8,opacity:.6}}>· {fmtDate(m.dateAdded)}</span>
       </div>
      </div>;
-     return <div key={m.id||i} style={{display:"flex",justifyContent:out?"flex-end":"flex-start",marginBottom:6}}>
-     <div style={{maxWidth:"75%",padding:"8px 12px",borderRadius:out?"12px 12px 2px 12px":"12px 12px 12px 2px",background:out?"linear-gradient(135deg,#FFBF00,#FF9D00)":"rgba(255,255,255,.06)",color:out?"#0a0a0f":C.t,fontSize:11}}>
-      {channelName&&<div style={{fontSize:8,color:out?"rgba(0,0,0,.45)":C.tm,marginBottom:2,fontWeight:700,display:"flex",alignItems:"center",gap:3}}><span>{channelIcon}</span><span>{channelName}</span>{m.meta?.email?.subject&&<span style={{fontWeight:400,opacity:.8}}>· {m.meta.email.subject}</span>}</div>}
+     return <div key={m.id||i} style={{display:"flex",justifyContent:out?"flex-end":"flex-start",marginBottom:10,animation:"convFadeIn .3s ease"}}>
+     <div style={{maxWidth:"72%",padding:"10px 14px",borderRadius:out?"16px 16px 4px 16px":"16px 16px 16px 4px",background:out?"linear-gradient(135deg,#FFBF00,#FF9D00)":"rgba(255,255,255,.04)",color:out?"#0a0a0f":C.t,fontSize:12,lineHeight:"1.5"}}>
+      {channelName&&<div style={{marginBottom:4}}><span style={{fontSize:8,padding:"2px 6px",borderRadius:8,background:out?"rgba(0,0,0,.1)":pillBg,color:out?"rgba(0,0,0,.55)":pillColor,fontWeight:700}}>{channelIcon} {channelName}</span></div>}
+      {m.meta?.email?.subject&&<div style={{fontWeight:700,fontSize:12,marginBottom:4,color:out?"rgba(0,0,0,.75)":C.t}}>{m.meta.email.subject}</div>}
       <div style={{whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{m.body||m.text||"—"}</div>
-      <div style={{fontSize:8,color:out?"rgba(0,0,0,.5)":C.tm,marginTop:2,textAlign:"right"}}>{fmtDate(m.dateAdded)}</div>
+      <div style={{fontSize:8,color:out?"rgba(0,0,0,.45)":C.tm,marginTop:4,textAlign:"right"}}>{fmtDate(m.dateAdded)}</div>
      </div>
     </div>;})}
     <div ref={msgsEndRef}/>
    </div>
-   <div style={{padding:8,borderTop:`1px solid ${C.brd}`,display:"flex",gap:6,alignItems:"flex-end"}}>
-    <select value={sendType} onChange={e=>setSendType(e.target.value)} style={{padding:"6px 4px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:9,fontFamily:FONT,flexShrink:0}}>
-     <option value="SMS">📱 SMS</option><option value="Email">📧 Email</option><option value="WhatsApp">💬 WhatsApp</option>
-    </select>
-    <textarea value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}} placeholder="Écrire un message... (Entrée = envoyer, Shift+Entrée = retour à la ligne)" rows={3} style={{flex:1,padding:"10px 14px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none",resize:"vertical",minHeight:60,maxHeight:150,lineHeight:"1.5"}}/>
-    <Btn small onClick={sendMsg} disabled={sending||!msgInput.trim()}>{sending?"⏳":"Envoyer"}</Btn>
+   {/* Compose */}
+   <div style={{padding:"8px 12px",borderTop:`1px solid ${C.brd}`,display:"flex",gap:8,alignItems:"flex-end"}}>
+    <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
+     {SEND_CHANNELS.map(ch=><button key={ch.k} onClick={()=>setSendType(ch.k)} style={{width:28,height:28,borderRadius:8,border:sendType===ch.k?`2px solid ${C.acc}`:`1px solid ${C.brd}`,background:sendType===ch.k?"rgba(255,170,0,.12)":"transparent",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,transition:"all .15s"}}>{ch.icon}</button>)}
+    </div>
+    <textarea value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}} placeholder="Message..." rows={2} style={{flex:1,padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:"rgba(255,255,255,.04)",color:C.t,fontSize:12,fontFamily:FONT,outline:"none",resize:"none",minHeight:44,maxHeight:120,lineHeight:"1.5"}}/>
+    <button onClick={sendMsg} disabled={sending||!msgInput.trim()} style={{width:38,height:38,borderRadius:10,border:"none",background:(!msgInput.trim()||sending)?"rgba(255,255,255,.06)":"linear-gradient(135deg,#FFBF00,#FF9D00)",color:(!msgInput.trim()||sending)?"rgba(255,255,255,.2)":"#0a0a0f",fontSize:16,cursor:(!msgInput.trim()||sending)?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .2s"}}>{sending?"⏳":"➤"}</button>
    </div>
-   {sentOk&&<div style={{padding:"4px 8px",textAlign:"center",fontSize:10,color:C.g,background:C.gD,borderRadius:"0 0 8px 8px"}}>✓ Message envoyé</div>}
+   {sentOk&&<div style={{padding:"4px 8px",textAlign:"center",fontSize:10,color:C.g,background:C.gD}}>✓ Message envoyé</div>}
   </>}
  </div>;
 
- return <Sect title="💬 Conversations" sub={`Messages GHL${totalUnread>0?` · ${totalUnread} non lu${totalUnread>1?"s":""}`:""}`}>
-  {error&&<div style={{padding:"8px 12px",background:C.rD,border:`1px solid ${C.r}33`,borderRadius:8,marginBottom:8,fontSize:11,color:C.r}}>{error}</div>}
-  <div className="conv-layout" style={{display:"flex",gap:8,height:"calc(100vh - 200px)",minHeight:500,maxHeight:800}}>
+ return <div style={{height:"calc(100vh - 120px)",minHeight:500,display:"flex",flexDirection:"column"}}>
+  {error&&<div style={{padding:"8px 12px",background:C.rD,border:`1px solid ${C.r}33`,borderRadius:8,marginBottom:0,fontSize:11,color:C.r}}>{error}</div>}
+  <div className="conv-layout" style={{display:"flex",flex:1,overflow:"hidden",borderRadius:12,border:`1px solid ${C.brd}`,background:"rgba(14,14,22,.4)"}}>
    <div className="conv-list-wrap">{listPanel}</div>
    <div className="conv-thread-wrap" style={{flex:1,display:"flex",minWidth:0}}>{threadPanel}</div>
   </div>
   <style>{`
+   @keyframes convFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
    @media(max-width:640px){
     .conv-layout{flex-direction:column;height:auto!important;}
     .conv-list-wrap{display:${mobileShowThread&&selConvo?"none":"block"}!important;width:100%!important;}
-    .conv-list-wrap .glass-card-static{max-width:100%!important;height:400px;}
+    .conv-list-wrap>div{max-width:100%!important;height:400px;}
     .conv-thread-wrap{display:${!mobileShowThread||!selConvo?"none":"flex"}!important;min-height:400px;}
     .conv-back-btn{display:block!important;}
    }
   `}</style>
- </Sect>;
+ </div>;
 }
 
 /* ===== TODO PANEL ===== */
