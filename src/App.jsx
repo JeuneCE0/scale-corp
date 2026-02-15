@@ -6,9 +6,25 @@ import { Badge, IncubBadge, GradeBadge, KPI, PBar, Btn, Inp, Sel, Sect, Card, Mo
 import { MilestonesWall, MilestonesCompact, MilestoneCount, AICoPilot, PulseForm, PulseOverview, BankingPanel, BankingTransactions, TabCRM, SocBankWidget, SynergiesPanel, KnowledgeBase, RiskMatrix, GamificationPanel, InboxUnifiee, ParcoursClientVisuel, BenchmarkRadar, SmartAlertsPanel, SubsTeamPanel, SubsTeamBadge, ChallengesPanel, AIWeeklyCoach, RapportsPanel, DealFlow, MeetingMode, CohortAnalysis, CHALLENGE_TEMPLATES } from "./components/features.jsx";
 import { Sidebar, OnboardingWizard, TutorialOverlay, ObInp, ObTextArea, ObSelect, ObCheck, ObTag } from "./components/navigation.jsx";
 import { SocieteView, ValRow, TabSimulateur } from "./views/SocieteView.jsx";
-import { AdminClientsTab, WarRoom, AutoPilotSection, SynergiesAutoPanel, WidgetEmbed, WidgetCard, WidgetRenderer, PulseScreen, LiveFeed, ReplayMensuel, PredictionsCard, ClientPortal, InvestorBoard, WarRoomReadOnly } from "./views/AdminComponents.jsx";
+// AdminComponents is lazy-loaded for code splitting
+const LazyAdminClientsTab = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.AdminClientsTab })));
+const LazyWidgetEmbed = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.WidgetEmbed })));
+const LazyWidgetCard = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.WidgetCard })));
 import { LeaderboardCard, PulseDashWidget } from "./views/PorteurDashboard.jsx";
 import { UserAccessPanel, AnalytiqueTab } from "./views/UserAccess.jsx";
+
+// Lazy-loaded heavy views
+const LazyPulseScreen = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.PulseScreen })));
+const LazyWidgetRenderer = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.WidgetRenderer })));
+const LazyWarRoomReadOnly = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.WarRoomReadOnly })));
+const LazyClientPortal = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.ClientPortal })));
+const LazyInvestorBoard = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.InvestorBoard })));
+const LazyWarRoom = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.WarRoom })));
+const LazySynergiesAutoPanel = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.SynergiesAutoPanel })));
+const LazyAutoPilotSection = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.AutoPilotSection })));
+const LazyLiveFeed = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.LiveFeed })));
+const LazyReplayMensuel = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.ReplayMensuel })));
+const LazyPredictionsCard = lazy(() => import("./views/AdminComponents.jsx").then(m => ({ default: m.PredictionsCard })));
 
 // Loading spinner for lazy-loaded views
 function GlassSpinner() {
@@ -238,11 +254,11 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  if(!loaded)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}><style>{CSS}</style><div style={{width:40,height:40,border:"3px solid rgba(255,255,255,.06)",borderTopColor:C.acc,borderRadius:"50%",animation:"sp 1s linear infinite",boxShadow:"0 0 20px rgba(255,170,0,.15)"}}/></div>;
  /* HASH-BASED ROUTES: War Room & Widget (public, no login) */
  const hash=window.location.hash;
- if(hash.startsWith("#widget/")){const wSocId=hash.replace("#widget/","");return <><style>{CSS}</style><WidgetRenderer socId={wSocId} socs={socs} clients={clients}/></>;}
- if(hash.startsWith("#warroom/")){const wrSocId=hash.replace("#warroom/","");return <><style>{CSS}</style><WarRoomReadOnly socId={wrSocId} socs={socs} reps={reps} allM={allM} ghlData={ghlData} clients={clients} socBank={socBank}/></>;}
- if(hash==="#pulse")return <><style>{CSS}</style><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>{window.location.hash="";window.location.reload();}}/></>;
- if(hash.startsWith("#portal/")){const parts=hash.replace("#portal/","").split("/");return <><style>{CSS}</style><ClientPortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients} ghlData={ghlData}/></>;}
- if(hash.startsWith("#board/")){const bPin=hash.replace("#board/","");return <><style>{CSS}</style><InvestorBoard socs={socs} reps={reps} allM={allM} hold={hold} pin={bPin}/></>;}
+ if(hash.startsWith("#widget/")){const wSocId=hash.replace("#widget/","");return <><style>{CSS}</style><Suspense fallback={<GlassSpinner/>}><LazyWidgetRenderer socId={wSocId} socs={socs} clients={clients}/></Suspense></>;}
+ if(hash.startsWith("#warroom/")){const wrSocId=hash.replace("#warroom/","");return <><style>{CSS}</style><Suspense fallback={<GlassSpinner/>}><LazyWarRoomReadOnly socId={wrSocId} socs={socs} reps={reps} allM={allM} ghlData={ghlData} clients={clients} socBank={socBank}/></Suspense></>;}
+ if(hash==="#pulse")return <><style>{CSS}</style><Suspense fallback={<GlassSpinner/>}><LazyPulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>{window.location.hash="";window.location.reload();}}/></Suspense></>;
+ if(hash.startsWith("#portal/")){const parts=hash.replace("#portal/","").split("/");return <><style>{CSS}</style><Suspense fallback={<GlassSpinner/>}><LazyClientPortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients} ghlData={ghlData}/></Suspense></>;}
+ if(hash.startsWith("#board/")){const bPin=hash.replace("#board/","");return <><style>{CSS}</style><Suspense fallback={<GlassSpinner/>}><LazyInvestorBoard socs={socs} reps={reps} allM={allM} hold={hold} pin={bPin}/></Suspense></>;}
 
  /* ONBOARDING (optional, non-blocking) */
  if(showOnboarding)return <OnboardingWizard hold={hold} onSkip={()=>setShowOnboarding(false)} onComplete={async(formData)=>{try{await sSet("scOnboarded",true);await sSet("scObData",formData);}catch{}setObData(formData);setOnboarded(true);setShowOnboarding(false);setShowTour(true);}}/>;
@@ -310,7 +326,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </div>
    </div>
   </div>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData}/></></ErrorBoundary>;}
- if(showPulse)return <><style>{CSS}</style><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>setShowPulse(false)}/></>;
+ if(showPulse)return <><style>{CSS}</style><Suspense fallback={<GlassSpinner/>}><LazyPulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>setShowPulse(false)}/></Suspense></>;
  if(meeting)return <MeetingMode socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} onExit={()=>setMeeting(false)}/>;
  /* ADMIN → Porteur View Override */
  if(adminSocView){const asoc=socs.find(s=>s.id===adminSocView);if(asoc)return <SocieteView key={asoc.id} soc={asoc} reps={reps} allM={allM} save={save} onLogout={()=>setAdminSocView(null)} onTour={()=>{}} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[asoc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData} adminBack={()=>setAdminSocView(null)}/>;}
@@ -636,7 +652,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </>;
    })()}
   </>}
-  {tab===3&&<AdminClientsTab clients={clients} socs={socs}/>}
+  {tab===3&&<Suspense fallback={<div/>}><LazyAdminClientsTab clients={clients} socs={socs}/></Suspense>}
   {tab===4&&(()=>{
    const holdSubs=subs.filter(s=>s.socId==="holding");const holdTeam=team.filter(t=>t.socId==="holding");
    const holdSubsM=holdSubs.reduce((a,s)=>a+subMonthly(s),0);
@@ -939,7 +955,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </Card>
    </div>
    <Sect title="📱 Widgets Porteur" sub="Embed pour chaque société">
-    {actS.filter(s=>s.id!=="eco").map(s=><WidgetEmbed key={s.id} soc={s} clients={clients}/>)}
+    {actS.filter(s=>s.id!=="eco").map(s=><Suspense fallback={<div/>}><LazyWidgetEmbed key={s.id} soc={s} clients={clients}/></Suspense>)}
    </Sect>
    <div style={{marginTop:12}}><Btn onClick={()=>{save(null,null,hold);}}>💾 Sauvegarder les paramètres</Btn></div>
   </>}
