@@ -2182,6 +2182,17 @@ export function SocSettingsPanel({soc,save,socs,clients}){
     Réclamation CNIL : <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" style={{color:C.acc}}>www.cnil.fr</a>
    </div>
   </Card>
+  {/* 🔀 Data Lineage (dev/niche) */}
+  <Card style={{padding:16,marginTop:12}}>
+   {(()=>{const[showLineage,setShowLineage]=useState(false);return <>
+    <div onClick={()=>setShowLineage(!showLineage)} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",userSelect:"none"}}>
+     <span style={{fontSize:16}}>🔀</span>
+     <div style={{flex:1}}><div style={{fontWeight:800,fontSize:13,color:C.t}}>Data Lineage</div><div style={{fontSize:10,color:C.td}}>Traçabilité des flux de données (dev)</div></div>
+     <span style={{fontSize:12,color:C.td,transition:"transform .2s",transform:showLineage?"rotate(180deg)":"rotate(0deg)"}}>▼</span>
+    </div>
+    {showLineage&&<div style={{marginTop:12}}><ErrorBoundary label="Data Lineage"><DataLineage socs={socs} socId={soc.id}/></ErrorBoundary></div>}
+   </>;})()}
+  </Card>
   <Btn onClick={doSave}>💾 Sauvegarder</Btn>
  </Sect>;
 }
@@ -4791,7 +4802,6 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
   {pTab===1&&<ErrorBoundary label="Activité"><ActivitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
   {pTab===2&&<ErrorBoundary label="Sales"><SalesPanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
   {pTab===3&&<ErrorBoundary label="Publicité"><PublicitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
-  {pTab===23&&<ErrorBoundary label="Data Lineage"><DataLineage socs={socs} socId={soc.id}/></ErrorBoundary>}
   </div>
   </div>
   {/* Mobile AI Fullscreen Panel */}
@@ -5267,7 +5277,6 @@ export const SB_ADMIN=[
  {id:"pub",icon:"📣",label:"Publicité",tab:16,accent:"#f472b6"},
  {id:"rapports",icon:"📋",label:"Rapports",tab:17,accent:C.v},
  {id:"access",icon:"🔐",label:"Accès",tab:14,accent:"#f59e0b"},
- {id:"lineage",icon:"🔀",label:"Data Lineage",tab:19,accent:"#14b8a6"},
  {id:"params",icon:"⚙️",label:"Paramètres",tab:18,accent:C.td},
  {id:"pulse",icon:"⚡",label:"PULSE",tab:99,accent:"#FFAA00"},
 ];
@@ -5283,7 +5292,6 @@ export const SB_PORTEUR=[
  {id:"agenda",icon:"📅",label:"Agenda",tab:11,accent:"#14b8a6"},
  {id:"sante",icon:"🩺",label:"Santé",tab:22,accent:C.g},
  {id:"rapports",icon:"📋",label:"Rapports",tab:13,accent:C.v},
- {id:"lineage",icon:"🔀",label:"Data Lineage",tab:23,accent:"#14b8a6"},
  {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
 ];
 

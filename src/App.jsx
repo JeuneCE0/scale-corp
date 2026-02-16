@@ -919,9 +919,19 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     {actS.filter(s=>s.id!=="eco").map(s=><WidgetEmbed key={s.id} soc={s} clients={clients}/>)}
    </Sect>
    <RGPDSettingsPanel role={role} socs={socs} reps={reps} clients={clients} team={team} invoices={invoices} actions={actions} journal={journal} subs={subs}/>
+   {/* 🔀 Data Lineage (dev/niche) */}
+   <Card style={{padding:16,marginTop:12}}>
+    <details style={{cursor:"pointer"}}>
+     <summary style={{display:"flex",alignItems:"center",gap:8,listStyle:"none",userSelect:"none"}}>
+      <span style={{fontSize:16}}>🔀</span>
+      <div style={{flex:1}}><div style={{fontWeight:700,fontSize:12}}>Data Lineage</div><div style={{fontSize:9,color:C.td}}>Traçabilité des flux de données (dev)</div></div>
+      <span style={{fontSize:10,color:C.td}}>▼</span>
+     </summary>
+     <div style={{marginTop:12}}><Suspense fallback={<LazyFallback/>}><DataLineage socs={socs}/></Suspense></div>
+    </details>
+   </Card>
    <div style={{marginTop:12}}><Btn onClick={()=>{save(null,null,hold);}}>💾 Sauvegarder les paramètres</Btn></div>
   </>}
-  {tab===19&&<Suspense fallback={<LazyFallback/>}><DataLineage socs={socs}/></Suspense>}
   </PageTransition>
   </div>
   </div>

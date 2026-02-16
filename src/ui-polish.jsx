@@ -283,13 +283,12 @@ const TAB_NAMES_ADMIN = {
   0: "Dashboard", 1: "Sociétés", 2: "Rapports", 3: "Clients", 4: "Facturation",
   5: "AI Copilot", 6: "Deal Flow", 7: "CRM", 8: "Banking", 10: "Synergies",
   11: "Knowledge Base", 13: "Abonnements", 14: "Accès", 15: "Holding", 16: "Marque",
-  17: "Intégrations", 18: "Publicité", 19: "Data Lineage",
+  17: "Intégrations", 18: "Publicité",
 };
 
 const TAB_NAMES_PORTEUR = {
   0: "Dashboard", 1: "Analytique", 2: "Rapports", 3: "Clients", 4: "Conversations",
   5: "Facturation", 6: "AI Coach", 7: "Abonnements", 8: "Banking", 9: "Knowledge Base",
-  23: "Data Lineage",
 };
 
 export function Breadcrumbs({ tab, isAdmin, socName, onNavigate }) {
