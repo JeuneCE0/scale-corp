@@ -3049,6 +3049,8 @@ export function AgendaPanel({soc,ghlData}){
   const oldStart=new Date(evt.startTime);const oldEnd=new Date(evt.endTime||oldStart.getTime()+3600000);const diff=newDate.getTime()-new Date(oldStart.toISOString().slice(0,10)).getTime();
   try{await fetch("/api/ghl",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"calendar_update_event",locationId:socKey,eventId:evtId,startTime:new Date(oldStart.getTime()+diff).toISOString(),endTime:new Date(oldEnd.getTime()+diff).toISOString()})});showToast("📅 RDV déplacé","success");}catch{showToast("❌ Erreur","error");}};
  const genMeetLink=()=>{const code=Math.random().toString(36).slice(2,12);return`https://meet.google.com/${code.slice(0,3)}-${code.slice(3,7)}-${code.slice(7)}`;};
+const extractMeetLink=(evt)=>{if(!evt)return null;if(evt.meetingLocation&&/meet\.google\.com/i.test(evt.meetingLocation))return evt.meetingLocation.trim();if(evt.locationUrl&&/meet\.google\.com/i.test(evt.locationUrl))return evt.locationUrl.trim();if(evt.location&&/meet\.google\.com/i.test(evt.location))return evt.location.match(/https?:\/\/meet\.google\.com\/[a-z0-9-]+/i)?.[0]||null;const t=evt.title||"";const m=t.match(/https?:\/\/meet\.google\.com\/[a-z0-9-]+/i);return m?m[0]:null;};
+const displayTitle=(evt)=>{if(!evt)return"RDV";const t=evt.title||evt.contactName||"RDV";return t.replace(/\s*—?\s*https?:\/\/meet\.google\.com\/[a-z0-9-]+/i,"").trim()||evt.contactName||"RDV";};
 
  const hours=Array.from({length:14},(_,i)=>i+7);
  const evtStyle={padding:"3px 6px",borderRadius:6,background:"linear-gradient(135deg,#14b8a622,#14b8a633)",border:"1px solid #14b8a655",marginBottom:2,cursor:"grab",fontSize:9};
@@ -3079,7 +3081,7 @@ export function AgendaPanel({soc,ghlData}){
       {dayEvts.map(ev=><div key={ev.id} onClick={()=>openEventDetail(ev)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:"linear-gradient(135deg,#14b8a612,#14b8a622)",border:"1px solid #14b8a633",borderRadius:10,marginBottom:4,cursor:"pointer"}}>
        <div style={{fontWeight:800,fontSize:12,color:"#14b8a6",flexShrink:0,minWidth:42}}>{fmtTime(ev.startTime)}</div>
        <div style={{flex:1,minWidth:0}}>
-        <div style={{fontWeight:700,fontSize:12,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ev.title||ev.contactName||"RDV"}</div>
+        <div style={{fontWeight:700,fontSize:12,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}>{displayTitle(ev)}{extractMeetLink(ev)&&<span title="Google Meet" style={{fontSize:12,flexShrink:0}}>🎥</span>}</div>
         {ev.contactName&&<div style={{fontSize:10,color:C.td}}>{ev.contactName}</div>}
        </div>
        {ev.status&&<span style={{fontSize:8,fontWeight:700,padding:"2px 6px",borderRadius:6,background:ev.status.toLowerCase().includes("confirm")?C.gD:C.rD,color:ev.status.toLowerCase().includes("confirm")?C.g:C.r}}>{ev.status.toLowerCase().includes("confirm")?"Confirmé":"Annulé"}</span>}
@@ -3101,7 +3103,7 @@ export function AgendaPanel({soc,ghlData}){
        return <div key={di} style={{padding:2,borderRight:di<6?`1px solid ${C.brd}`:"none",borderBottom:`1px solid ${C.brd}22`,minHeight:36,background:isToday(d)?"rgba(255,170,0,.03)":"transparent"}}
         onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(dragEvt){const target=new Date(d);target.setHours(h,0,0,0);moveEvent(dragEvt,target);setDragEvt(null);}}}>
         {dayEvts.map(ev=><div key={ev.id} draggable onDragStart={()=>setDragEvt(ev.id)} onClick={()=>openEventDetail(ev)} style={{...evtStyle,cursor:"pointer",transition:"all .15s"}} onMouseEnter={e=>e.currentTarget.style.background="linear-gradient(135deg,#14b8a633,#14b8a644)"} onMouseLeave={e=>e.currentTarget.style.background="linear-gradient(135deg,#14b8a622,#14b8a633)"}>
-         <div style={{fontWeight:700,color:"#14b8a6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fmtTime(ev.startTime)} {ev.title||ev.contactName||"RDV"}</div>
+         <div style={{fontWeight:700,color:"#14b8a6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fmtTime(ev.startTime)} {displayTitle(ev)}{extractMeetLink(ev)?" 🎥":""}</div>
          {ev.contactName&&<div style={{color:C.td,fontSize:8}}>{ev.contactName}</div>}
         </div>)}
        </div>;})}
@@ -3120,7 +3122,7 @@ export function AgendaPanel({soc,ghlData}){
       onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(dragEvt){const target=new Date(d);target.setHours(9,0,0,0);moveEvent(dragEvt,target);setDragEvt(null);}}}>
       <div style={{fontSize:11,fontWeight:isToday(d)?900:600,color:isToday(d)?C.acc:C.t,marginBottom:2}}>{d.getDate()}</div>
       {evts.slice(0,3).map(ev=><div key={ev.id} draggable onDragStart={()=>setDragEvt(ev.id)} onClick={(e)=>{e.stopPropagation();openEventDetail(ev);}} style={{padding:"1px 4px",borderRadius:4,background:"#14b8a622",border:"1px solid #14b8a644",marginBottom:1,fontSize:8,color:"#14b8a6",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"pointer",transition:"background .15s"}} onMouseEnter={e2=>e2.currentTarget.style.background="#14b8a633"} onMouseLeave={e2=>e2.currentTarget.style.background="#14b8a622"}>
-       {fmtTime(ev.startTime)} {ev.contactName||ev.title||"RDV"}
+       {fmtTime(ev.startTime)} {ev.contactName||displayTitle(ev)}{extractMeetLink(ev)?" 🎥":""}
       </div>)}
       {evts.length>3&&<div style={{fontSize:7,color:C.td,textAlign:"center"}}>+{evts.length-3}</div>}
      </div>;})}
@@ -3136,10 +3138,11 @@ export function AgendaPanel({soc,ghlData}){
     </div>
     <div style={{display:"flex",flexDirection:"column",gap:12}}>
      <div style={{padding:12,background:C.card2,borderRadius:10,border:`1px solid ${C.brd}`}}>
-      <div style={{fontWeight:800,fontSize:14,color:"#14b8a6",marginBottom:4}}>{viewEvt.title||viewEvt.contactName||"RDV"}</div>
+      <div style={{fontWeight:800,fontSize:14,color:"#14b8a6",marginBottom:4}}>{displayTitle(viewEvt)}</div>
       {viewEvt.contactName&&<div style={{fontSize:11,color:C.t,display:"flex",alignItems:"center",gap:4}}>👤 {viewEvt.contactName}</div>}
       {(viewEvt.contactEmail||viewEvt.email)&&<div style={{fontSize:10,color:C.td,display:"flex",alignItems:"center",gap:4}}>📧 {viewEvt.contactEmail||viewEvt.email}</div>}
       {viewEvt.contactPhone&&<div style={{fontSize:10,color:C.td,display:"flex",alignItems:"center",gap:4}}>📱 {viewEvt.contactPhone}</div>}
+      {extractMeetLink(viewEvt)&&<a href={extractMeetLink(viewEvt)} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:6,padding:"6px 12px",borderRadius:8,background:"linear-gradient(135deg,#00897B22,#00897B44)",border:"1px solid #00897B55",color:"#26a69a",fontSize:11,fontWeight:700,fontFamily:FONT,textDecoration:"none",cursor:"pointer",transition:"all .2s"}} onMouseEnter={e=>{e.currentTarget.style.background="linear-gradient(135deg,#00897B33,#00897B55)";e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.background="linear-gradient(135deg,#00897B22,#00897B44)";e.currentTarget.style.transform="translateY(0)";}}><span style={{fontSize:14}}>🎥</span> Rejoindre Google Meet</a>}
      </div>
      <div style={{display:"flex",gap:10}}>
       <div style={{flex:1,padding:10,background:C.card2,borderRadius:8,border:`1px solid ${C.brd}`}}>
