@@ -16,7 +16,7 @@ import {
   mkPrefill, mkRevolutDemo, mkSocRevDemo, ml, nextM, normalizeStr, pct, pf, prevM, project, qCA, qLabel, qMonths, qOf,
   refreshInvoiceStatuses, revFinancials, runway, sGet, sSet, sbAuthHeaders, sbGet, sbList, sbUpsert, simH, sinceLbl,
   sinceMonths, slackBotSend, slackMention, slackSend, slackWebhookSend, storeCall, subMonthly, syncFromSupabase,
-  syncGHLForSoc, syncRevolut, syncSocRevolut, syncStripeData, teamMonthly, uid, gr,
+  syncGHLForSoc, syncRevolut, syncSocRevolut, syncStripeData, teamMonthly, uid, gr, logLineage,
 } from "./shared.jsx";
 
 /* UI COMPONENTS */
@@ -47,7 +47,7 @@ function LazyFallback() {
 }
 
 function AppInner(){
- const[loaded,setLoaded]=useState(false);const[role,setRole]=useState(null);const[theme,setThemeState]=useState(getTheme);
+ const[loaded,setLoaded]=useState(false);const[role,setRole]=useState(null);const[porteurSocIds,setPorteurSocIds]=useState([]);const[theme,setThemeState]=useState(getTheme);
  const toggleTheme=useCallback(()=>{const t=getTheme()==="dark"?"light":"dark";applyTheme(t);setThemeState(t);},[]);
 
  const[socs,setSocs]=useState([]);const[reps,setReps]=useState({});const[hold,setHold]=useState(DH);
@@ -81,7 +81,7 @@ function AppInner(){
    /* onboarding removed */
    setLoaded(true);
    // Session persistence: check stored auth token
-   try{const tk=localStorage.getItem("sc_auth_token");if(tk){fetch("/api/auth?action=me",{headers:{Authorization:"Bearer "+tk}}).then(r2=>r2.ok?r2.json():null).then(u=>{if(u&&u.id){setAuthUser(u);const meta=u.user_metadata||{};if(meta.role==="admin"){setRole("admin");setStoreToken("auth");setCurrentSocId("admin");syncFromSupabase("admin").catch(()=>{});}else if(meta.society_id){setRole(meta.society_id);setStoreToken("auth");setCurrentSocId(meta.society_id);syncFromSupabase(meta.society_id).catch(()=>{});}}}).catch(()=>{});}}catch{}
+   try{const tk=localStorage.getItem("sc_auth_token");if(tk){fetch("/api/auth?action=me",{headers:{Authorization:"Bearer "+tk}}).then(r2=>r2.ok?r2.json():null).then(u=>{if(u&&u.id){setAuthUser(u);const meta=u.user_metadata||{};if(meta.role==="admin"){setRole("admin");setStoreToken("auth");setCurrentSocId("admin");syncFromSupabase("admin").catch(()=>{});}else{const sids=Array.isArray(meta.society_ids)&&meta.society_ids.length>0?meta.society_ids:meta.society_id?[meta.society_id]:[];const primarySid=sids[0]||"";if(primarySid){setPorteurSocIds(sids);setRole(primarySid);setStoreToken("auth");setCurrentSocId(primarySid);syncFromSupabase(primarySid).catch(()=>{})}}}}).catch(()=>{});}}catch{}
    })();},[]);
  const scChannel=useRef(null);
  useEffect(()=>{try{scChannel.current=new BroadcastChannel("scale-corp-sync");scChannel.current.onmessage=async(e)=>{if(e.data?.type==="socs-updated"){try{const sbSocs=await fetchSocietiesFromSB();if(sbSocs&&sbSocs.length>0)setSocs(prev=>{const sbMap=Object.fromEntries(sbSocs.map(x=>[x.id,x]));return prev.map(sc=>sbMap[sc.id]?{...sc,...sbMap[sc.id]}:sc);});}catch{}}if(e.data?.type==="hold-updated"){try{const sbHold=await fetchHoldingFromSB();if(sbHold)setHold(sbHold);}catch{}}};}catch{}return()=>{try{scChannel.current?.close();}catch{}};},[]);
@@ -204,7 +204,7 @@ function AppInner(){
   const absentLabel=hrs>=24?`${Math.round(hrs/24)}j`:hrs>=1?`${hrs}h`:`${mins}min`;
   if(events.length>0)setMissedRecap({events:events.slice(0,20),total:events.length,absent:absentLabel});
  },[role]);
- const loginEmail2=useCallback(async()=>{if(!loginEmail.trim()||!loginPass.trim()){setLErr("Email et mot de passe requis");return;}setAuthLoading(true);setLErr("");try{const r=await fetch("/api/auth?action=login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:loginEmail.trim(),password:loginPass})});const d=await r.json();if(!r.ok){setLErr(d.error_description||d.msg||d.error||"Identifiants incorrects");setShake(true);setTimeout(()=>setShake(false),500);return;}localStorage.setItem("sc_auth_token",d.access_token);if(d.refresh_token)localStorage.setItem("sc_auth_refresh",d.refresh_token);setAuthUser(d.user);const meta=d.user?.user_metadata||{};const rid=meta.role==="admin"?"admin":(meta.society_id||"admin");setRole(rid);setLErr("");setStoreToken("auth");setCurrentSocId(rid);localStorage.setItem("sc_store_token","auth");syncFromSupabase(rid).then(()=>{}).catch(()=>{});}catch(e){setLErr("Erreur de connexion");setShake(true);setTimeout(()=>setShake(false),500);}finally{setAuthLoading(false);}},[loginEmail,loginPass]);
+ const loginEmail2=useCallback(async()=>{if(!loginEmail.trim()||!loginPass.trim()){setLErr("Email et mot de passe requis");return;}setAuthLoading(true);setLErr("");try{const r=await fetch("/api/auth?action=login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:loginEmail.trim(),password:loginPass})});const d=await r.json();if(!r.ok){setLErr(d.error_description||d.msg||d.error||"Identifiants incorrects");setShake(true);setTimeout(()=>setShake(false),500);return;}localStorage.setItem("sc_auth_token",d.access_token);if(d.refresh_token)localStorage.setItem("sc_auth_refresh",d.refresh_token);setAuthUser(d.user);const meta=d.user?.user_metadata||{};if(meta.role==="admin"){setRole("admin");setLErr("");setStoreToken("auth");setCurrentSocId("admin");localStorage.setItem("sc_store_token","auth");syncFromSupabase("admin").then(()=>{}).catch(()=>{});}else{const sids=Array.isArray(meta.society_ids)&&meta.society_ids.length>0?meta.society_ids:meta.society_id?[meta.society_id]:[];const primarySid=sids[0]||"";setPorteurSocIds(sids);setRole(primarySid||"admin");setLErr("");setStoreToken("auth");setCurrentSocId(primarySid||"admin");localStorage.setItem("sc_store_token","auth");syncFromSupabase(primarySid||"admin").then(()=>{}).catch(()=>{});}}catch(e){setLErr("Erreur de connexion");setShake(true);setTimeout(()=>setShake(false),500);}finally{setAuthLoading(false);}},[loginEmail,loginPass]);
  const login=useCallback(async()=>{async function hashPin(p){const e=new TextEncoder().encode(p);const h=await crypto.subtle.digest('SHA-256',e);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 const doLogin=(rid)=>{setRole(rid);setLErr("");setStoreToken(pin);setCurrentSocId(rid);localStorage.setItem("sc_store_token",pin);syncFromSupabase(rid).then(()=>{}).catch(()=>{});};
 // Admin check
@@ -268,13 +268,15 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  </div>;
  if(role!=="admin"){const soc=socs.find(s=>s.id===role);if(!soc)return null;
   const porteurSetTab=(t)=>{const btn=document.querySelector(`[data-tour="porteur-tab-${t}"]`);if(btn)btn.click();};
+  const switchSoc=(newSocId)=>{setRole(newSocId);setCurrentSocId(newSocId);syncFromSupabase(newSocId).catch(()=>{});};
+  const otherSocs=porteurSocIds.length>1?porteurSocIds.map(sid=>socs.find(s=>s.id===sid)).filter(Boolean):[];
   return <ErrorBoundary label="Vue Porteur"><>{missedRecap&&<div className="fi" style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)"}} onClick={()=>setMissedRecap(null)}>
    <div onClick={e=>e.stopPropagation()} style={{width:420,maxWidth:"95vw",maxHeight:"80vh",background:C.card,border:`1px solid ${C.brd}`,borderRadius:20,overflow:"hidden",backdropFilter:"blur(20px)"}}>
     <div style={{padding:"20px 24px",borderBottom:`1px solid ${C.brd}`,background:`linear-gradient(135deg,${C.acc}11,transparent)`}}>
      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-      <div><div style={{fontSize:18,fontWeight:900,fontFamily:FONT_TITLE,color:C.acc}}>👋 Bon retour !</div>
-       <div style={{fontSize:11,color:C.td,marginTop:2}}>Absent {missedRecap.absent} • {missedRecap.total} événement{missedRecap.total>1?"s":""}</div></div>
-      <button onClick={()=>setMissedRecap(null)} style={{background:"none",border:"none",fontSize:18,color:C.td,cursor:"pointer"}}>✕</button>
+      <div><div style={{fontSize:18,fontWeight:900,fontFamily:FONT_TITLE,color:C.acc}}>Bon retour !</div>
+       <div style={{fontSize:11,color:C.td,marginTop:2}}>Absent {missedRecap.absent} {"\u00b7"} {missedRecap.total} evenement{missedRecap.total>1?"s":""}</div></div>
+      <button onClick={()=>setMissedRecap(null)} style={{background:"none",border:"none",fontSize:18,color:C.td,cursor:"pointer"}}>x</button>
      </div>
     </div>
     <div style={{padding:"12px 20px",maxHeight:"60vh",overflowY:"auto"}}>
@@ -286,10 +288,17 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
      </div>)}
     </div>
     <div style={{padding:"12px 20px",borderTop:`1px solid ${C.brd}`,textAlign:"center"}}>
-     <button onClick={()=>setMissedRecap(null)} style={{padding:"8px 24px",borderRadius:10,border:"none",background:`linear-gradient(135deg,${C.acc},#FF9D00)`,color:"#000",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:FONT}}>C'est noté 👊</button>
+     <button onClick={()=>setMissedRecap(null)} style={{padding:"8px 24px",borderRadius:10,border:"none",background:`linear-gradient(135deg,${C.acc},#FF9D00)`,color:"#000",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:FONT}}>C'est note</button>
     </div>
    </div>
-  </div>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData}/><ConsentBanner/></></ErrorBoundary>;}
+  </div>}
+  {/* Society Switcher for multi-project porteurs */}
+  {otherSocs.length>1&&<div style={{position:"fixed",top:8,right:8,zIndex:9990}}>
+   <select value={role} onChange={e=>switchSoc(e.target.value)} style={{padding:"6px 28px 6px 10px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.card,color:C.t,fontSize:11,fontWeight:700,fontFamily:FONT,cursor:"pointer",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",boxShadow:"0 2px 12px rgba(0,0,0,.2)",appearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23999' stroke-width='1.5' fill='none'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 10px center"}} aria-label="Changer de projet">
+    {otherSocs.map(s=><option key={s.id} value={s.id}>{s.nom}</option>)}
+   </select>
+  </div>}
+  <SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setPorteurSocIds([]);setShowTour(false);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData}/><ConsentBanner/></></ErrorBoundary>;}
  if(showPulse)return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>setShowPulse(false)}/></Suspense></>;
  if(meeting)return <MeetingMode socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} clients={clients} onExit={()=>setMeeting(false)}/>;
  /* ADMIN → Porteur View Override */
@@ -918,7 +927,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    <Sect title="📱 Widgets Porteur" sub="Embed pour chaque société">
     {actS.filter(s=>s.id!=="eco").map(s=><WidgetEmbed key={s.id} soc={s} clients={clients}/>)}
    </Sect>
-   <RGPDSettingsPanel role={role} socs={socs} reps={reps} clients={clients} team={team} invoices={invoices} actions={actions} journal={journal} subs={subs}/>
+   <RGPDSettingsPanel role={role} socs={socs} reps={reps} clients={clients} team={team} invoices={invoices} actions={actions} journal={journal} subs={subs} porteurSocIds={porteurSocIds}/>
    {/* 🔀 Data Lineage (dev/niche) */}
    <Card style={{padding:16,marginTop:12}}>
     <details style={{cursor:"pointer"}}>
@@ -944,43 +953,78 @@ function UserAccessPanel({socs}){
  const[users,setUsers]=useState([]);const[loading,setLoading]=useState(true);const[showAdd,setShowAdd]=useState(false);
  const[addEmail,setAddEmail]=useState("");const[addName,setAddName]=useState("");const[addPass,setAddPass]=useState("");const[addRole,setAddRole]=useState("porteur");const[addSoc,setAddSoc]=useState("");const[addErr,setAddErr]=useState("");const[addLoading,setAddLoading]=useState(false);
  const[pwModal,setPwModal]=useState(null);const[newPw,setNewPw]=useState("");const[delConfirm,setDelConfirm]=useState(null);
+ const[accessModal,setAccessModal]=useState(null);const[accessIds,setAccessIds]=useState([]);const[accessSaving,setAccessSaving]=useState(false);
  const loadUsers=useCallback(async()=>{setLoading(true);try{const r=await fetch("/api/auth?action=list_users");const d=await r.json();setUsers(d.users||[]);}catch{}setLoading(false);},[]);
  useEffect(()=>{loadUsers();},[loadUsers]);
  const doAdd=async()=>{if(!addEmail||!addPass){setAddErr("Email et mot de passe requis");return;}setAddLoading(true);setAddErr("");try{const r=await fetch("/api/auth?action=signup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:addEmail,password:addPass,name:addName,role:addRole,society_id:addSoc})});const d=await r.json();if(!r.ok){setAddErr(d.msg||d.error||"Erreur");return;}setShowAdd(false);setAddEmail("");setAddName("");setAddPass("");setAddRole("porteur");setAddSoc("");loadUsers();}catch{setAddErr("Erreur réseau");}finally{setAddLoading(false);}};
  const doUpdatePw=async()=>{if(!newPw||!pwModal)return;try{const r=await fetch("/api/auth?action=update_password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:pwModal,password:newPw})});if(r.ok){setPwModal(null);setNewPw("");}}catch{}};
  const doDelete=async(uid2)=>{try{await fetch("/api/auth?action=delete_user",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:uid2})});setDelConfirm(null);loadUsers();}catch{}};
- const socName=(sid)=>{const s=socs.find(x=>x.id===sid);return s?s.nom:sid||"—";};
- return <><Sect title="👥 Gestion des accès" sub="Utilisateurs Supabase Auth" right={<div style={{display:"flex",gap:6}}><Btn small v="secondary" onClick={loadUsers}>↻</Btn><Btn small onClick={()=>setShowAdd(true)}>+ Ajouter un porteur</Btn></div>}>
+ const socName=(sid)=>{const s=socs.find(x=>x.id===sid);return s?s.nom:sid||"\u2014";};
+ const getUserSocIds=(u)=>{const meta=u.user_metadata||{};if(Array.isArray(meta.society_ids)&&meta.society_ids.length>0)return meta.society_ids;if(meta.society_id)return[meta.society_id];return[];};
+ const openAccessModal=(u)=>{setAccessModal(u);setAccessIds(getUserSocIds(u));};
+ const toggleSocAccess=(sid)=>{setAccessIds(prev=>prev.includes(sid)?prev.filter(x=>x!==sid):[...prev,sid]);};
+ const doUpdateAccess=async()=>{if(!accessModal)return;setAccessSaving(true);const prevIds=getUserSocIds(accessModal);try{const r=await fetch("/api/auth?action=update_access",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:accessModal.id,society_ids:accessIds,society_id:accessIds[0]||""})});if(r.ok){const added=accessIds.filter(id=>!prevIds.includes(id));const removed=prevIds.filter(id=>!accessIds.includes(id));logLineage({layer:"gold",source:"system",pipeline:"access_control",step:"update_access",status:"success",recordsIn:prevIds.length,recordsOut:accessIds.length,details:{user_id:accessModal.id,user_email:accessModal.email,previous_access:prevIds,new_access:accessIds,granted:added,revoked:removed,rgpd_basis:"Art. 6.1.b - Execution du contrat"}});setAccessModal(null);loadUsers();}}catch{}finally{setAccessSaving(false);}};
+ return <><Sect title="Gestion des acces" sub="Utilisateurs Supabase Auth" right={<div style={{display:"flex",gap:6}}><Btn small v="secondary" onClick={loadUsers}>Actualiser</Btn><Btn small onClick={()=>setShowAdd(true)}>+ Ajouter un porteur</Btn></div>}>
   {loading&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Chargement...</div>}
   {!loading&&users.length===0&&<Card><div style={{textAlign:"center",padding:20,color:C.td,fontSize:12}}>Aucun utilisateur</div></Card>}
-  {!loading&&users.map(u=>{const meta=u.user_metadata||{};const isAdmin=meta.role==="admin";return <Card key={u.id} style={{marginBottom:4,padding:"10px 14px"}}>
+  {!loading&&users.map(u=>{const meta=u.user_metadata||{};const isAdmin=meta.role==="admin";const userSocIds=getUserSocIds(u);return <Card key={u.id} style={{marginBottom:4,padding:"10px 14px"}}>
    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
     <span style={{padding:"2px 8px",borderRadius:6,fontSize:9,fontWeight:700,background:isAdmin?"#FFBF0022":"#3b82f622",color:isAdmin?"#FFBF00":"#3b82f6",border:`1px solid ${isAdmin?"#FFBF0033":"#3b82f633"}`}}>{isAdmin?"Admin":"Porteur"}</span>
     <div style={{flex:1,minWidth:100}}>
      <div style={{fontWeight:700,fontSize:12}}>{meta.name||u.email}</div>
-     <div style={{fontSize:10,color:C.td}}>{u.email}{meta.society_id?` · ${socName(meta.society_id)}`:""}</div>
+     <div style={{fontSize:10,color:C.td}}>{u.email}</div>
+     {!isAdmin&&userSocIds.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>{userSocIds.map(sid=>{const sc=socs.find(x=>x.id===sid);return <span key={sid} style={{padding:"1px 7px",borderRadius:5,fontSize:9,fontWeight:600,background:(sc?.color||C.acc)+"18",color:sc?.color||C.acc,border:`1px solid ${(sc?.color||C.acc)}33`}}>{sc?.nom||sid}</span>;})}</div>}
+     {!isAdmin&&userSocIds.length===0&&<div style={{fontSize:9,color:C.o,marginTop:3,fontStyle:"italic"}}>Aucun projet attribue</div>}
     </div>
     <div style={{fontSize:9,color:C.td}}>{u.last_sign_in_at?`Vu ${new Date(u.last_sign_in_at).toLocaleDateString("fr-FR")}`:""}</div>
-    <button onClick={()=>{setPwModal(u.id);setNewPw("");}} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:9,cursor:"pointer",fontFamily:FONT}}>🔑 MDP</button>
-    <button onClick={()=>setDelConfirm(u.id)} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${C.r}33`,background:C.rD,color:C.r,fontSize:9,cursor:"pointer",fontFamily:FONT}}>✕</button>
+    {!isAdmin&&<button onClick={()=>openAccessModal(u)} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${C.acc}33`,background:C.accD,color:C.acc,fontSize:9,cursor:"pointer",fontFamily:FONT}} title="Gerer les acces projets">Acces</button>}
+    <button onClick={()=>{setPwModal(u.id);setNewPw("");}} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:9,cursor:"pointer",fontFamily:FONT}}>MDP</button>
+    <button onClick={()=>setDelConfirm(u.id)} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${C.r}33`,background:C.rD,color:C.r,fontSize:9,cursor:"pointer",fontFamily:FONT}}>Supprimer</button>
    </div>
   </Card>;})}
  </Sect>
  <Modal open={showAdd} onClose={()=>setShowAdd(false)} title="Ajouter un utilisateur">
   <Inp label="Email" value={addEmail} onChange={setAddEmail} placeholder="porteur@email.com"/>
-  <Inp label="Nom" value={addName} onChange={setAddName} placeholder="Prénom Nom"/>
-  <Inp label="Mot de passe" value={addPass} onChange={setAddPass} type="password" placeholder="Min. 6 caractères"/>
-  <Sel label="Rôle" value={addRole} onChange={setAddRole} options={[{v:"porteur",l:"Porteur"},{v:"admin",l:"Admin"}]}/>
-  {addRole==="porteur"&&<Sel label="Société" value={addSoc} onChange={setAddSoc} options={[{v:"",l:"— Sélectionner —"},...socs.map(s=>({v:s.id,l:s.nom}))]}/>}
-  {addErr&&<div style={{color:C.r,fontSize:11,marginTop:4}}>⚠ {addErr}</div>}
-  <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={doAdd} disabled={addLoading}>{addLoading?"Création...":"Créer"}</Btn><Btn v="secondary" onClick={()=>setShowAdd(false)}>Annuler</Btn></div>
+  <Inp label="Nom" value={addName} onChange={setAddName} placeholder="Prenom Nom"/>
+  <Inp label="Mot de passe" value={addPass} onChange={setAddPass} type="password" placeholder="Min. 8 caracteres"/>
+  <Sel label="Role" value={addRole} onChange={setAddRole} options={[{v:"porteur",l:"Porteur"},{v:"admin",l:"Admin"}]}/>
+  {addRole==="porteur"&&<Sel label="Societe" value={addSoc} onChange={setAddSoc} options={[{v:"",l:"\u2014 Selectionner \u2014"},...socs.map(s=>({v:s.id,l:s.nom}))]}/>}
+  {addErr&&<div style={{color:C.r,fontSize:11,marginTop:4}}>{addErr}</div>}
+  <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={doAdd} disabled={addLoading}>{addLoading?"Creation...":"Creer"}</Btn><Btn v="secondary" onClick={()=>setShowAdd(false)}>Annuler</Btn></div>
+ </Modal>
+ {/* Modal: Grant / Revoke project access */}
+ <Modal open={!!accessModal} onClose={()=>setAccessModal(null)} title="Acces aux projets">
+  <div style={{marginBottom:12}}>
+   <div style={{fontWeight:700,fontSize:12,color:C.t,marginBottom:2}}>{accessModal?.user_metadata?.name||accessModal?.email}</div>
+   <div style={{fontSize:10,color:C.td}}>{accessModal?.email}</div>
+  </div>
+  <div style={{fontSize:10,fontWeight:700,color:C.td,letterSpacing:.5,marginBottom:8}}>PROJETS ACCESSIBLES</div>
+  <div style={{maxHeight:300,overflowY:"auto"}}>
+   {socs.map(s=>{const checked=accessIds.includes(s.id);return <div key={s.id} onClick={()=>toggleSocAccess(s.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",marginBottom:4,borderRadius:10,border:`1px solid ${checked?(s.color||C.acc)+"55":C.brd}`,background:checked?(s.color||C.acc)+"0C":C.bg,cursor:"pointer",transition:"all .15s"}}>
+    <div style={{width:18,height:18,borderRadius:5,border:`2px solid ${checked?(s.color||C.acc):C.brd}`,background:checked?(s.color||C.acc):"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"}}>
+     {checked&&<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5L4.5 7.5L8 3" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+    </div>
+    <div style={{flex:1,minWidth:0}}>
+     <div style={{fontWeight:700,fontSize:12,color:C.t}}>{s.nom}</div>
+     <div style={{fontSize:10,color:C.td}}>{s.porteur}{s.act?` \u00b7 ${s.act}`:""}</div>
+    </div>
+    {s.color&&<div style={{width:8,height:8,borderRadius:4,background:s.color,flexShrink:0}}/>}
+   </div>;})}
+  </div>
+  <div style={{fontSize:10,color:C.td,marginTop:10,padding:"8px 10px",background:C.bg,borderRadius:8,border:`1px solid ${C.brd}`,lineHeight:1.5}}>
+   RGPD Art. 5.1.c — Principe de minimisation : n'accordez que les acces strictement necessaires a la mission du porteur.
+  </div>
+  <div style={{display:"flex",gap:8,marginTop:12}}>
+   <Btn onClick={doUpdateAccess} disabled={accessSaving}>{accessSaving?"Enregistrement...":"Enregistrer les acces"}</Btn>
+   <Btn v="secondary" onClick={()=>setAccessModal(null)}>Annuler</Btn>
+  </div>
  </Modal>
  <Modal open={!!pwModal} onClose={()=>setPwModal(null)} title="Modifier le mot de passe">
-  <Inp label="Nouveau mot de passe" value={newPw} onChange={setNewPw} type="password" placeholder="Min. 6 caractères"/>
+  <Inp label="Nouveau mot de passe" value={newPw} onChange={setNewPw} type="password" placeholder="Min. 8 caracteres"/>
   <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={doUpdatePw}>Sauver</Btn><Btn v="secondary" onClick={()=>setPwModal(null)}>Annuler</Btn></div>
  </Modal>
  <Modal open={!!delConfirm} onClose={()=>setDelConfirm(null)} title="Confirmer la suppression">
-  <p style={{color:C.td,fontSize:12}}>Supprimer définitivement cet utilisateur ?</p>
+  <p style={{color:C.td,fontSize:12}}>Supprimer definitivement cet utilisateur ?</p>
   <div style={{display:"flex",gap:8,marginTop:12}}><Btn v="danger" onClick={()=>doDelete(delConfirm)}>Supprimer</Btn><Btn v="secondary" onClick={()=>setDelConfirm(null)}>Annuler</Btn></div>
  </Modal>
  </>;

@@ -136,6 +136,7 @@ export function PrivacyPolicyPage({ hold, onBack }) {
           <tbody>
             {[
               ["Identification", "Nom, prénom, email, téléphone", "Gestion de compte et accès"],
+              ["Droits d'accès", "Liste des projets/sociétés accessibles", "Contrôle d'accès par projet (minimisation)"],
               ["Authentification", "Email, mot de passe (hashé), tokens de session", "Sécurité et connexion"],
               ["Données d'entreprise", "Nom société, CA, charges, marge, KPIs", "Pilotage et reporting"],
               ["Données clients", "Nom, email, téléphone des clients de chaque société", "CRM et facturation"],
@@ -350,8 +351,11 @@ export function MentionsLegalesPage({ hold, onBack }) {
 /* ═══════════════════════════════════════════════════
    4. DATA EXPORT (Droit d'accès / portabilité)
    ═══════════════════════════════════════════════════ */
-export function exportUserData(role, socs, reps, clients, team, invoices, actions, journal, subs) {
+export function exportUserData(role, socs, reps, clients, team, invoices, actions, journal, subs, porteurSocIds) {
   const soc = role !== "admin" ? socs.find(s => s.id === role) : null;
+  const accessibleSocs = Array.isArray(porteurSocIds) && porteurSocIds.length > 0
+    ? porteurSocIds.map(sid => socs.find(s => s.id === sid)).filter(Boolean)
+    : soc ? [soc] : [];
   const data = {
     _meta: {
       exported_at: new Date().toISOString(),
@@ -364,6 +368,7 @@ export function exportUserData(role, socs, reps, clients, team, invoices, action
       phone: soc.phone, activite: soc.act, description: soc.desc,
       date_creation: soc.createdAt || "N/A",
     } : { role: "admin" },
+    acces_projets: role !== "admin" ? accessibleSocs.map(s => ({ id: s.id, nom: s.nom })) : "Tous (administrateur)",
     rapports_financiers: {},
     clients: [],
     equipe: [],
@@ -540,7 +545,7 @@ export function DataDeletionModal({ open, onClose, role, socs, onConfirm }) {
 /* ═══════════════════════════════════════════════════
    6. RGPD SETTINGS PANEL (for Settings tab)
    ═══════════════════════════════════════════════════ */
-export function RGPDSettingsPanel({ role, socs, reps, clients, team, invoices, actions, journal, subs }) {
+export function RGPDSettingsPanel({ role, socs, reps, clients, team, invoices, actions, journal, subs, porteurSocIds }) {
   const [prefs, setPrefs] = useState(getConsentPrefs);
   const [showDelete, setShowDelete] = useState(false);
   const [exported, setExported] = useState(false);
@@ -553,7 +558,7 @@ export function RGPDSettingsPanel({ role, socs, reps, clients, team, invoices, a
   };
 
   const doExport = () => {
-    exportUserData(role, socs, reps, clients, team, invoices, actions, journal, subs);
+    exportUserData(role, socs, reps, clients, team, invoices, actions, journal, subs, porteurSocIds);
     setExported(true);
     setTimeout(() => setExported(false), 3000);
   };

@@ -27,7 +27,7 @@ function resetBrute(email) {
 
 // --- Validation ---
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const VALID_ACTIONS = ['signup','login','logout','me','update_password','list_users','delete_user'];
+const VALID_ACTIONS = ['signup','login','logout','me','update_password','update_access','list_users','delete_user'];
 
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -73,7 +73,7 @@ export default async function handler(req, res) {
           email,
           password,
           email_confirm: true,
-          user_metadata: { name: name || "", role: role || "porteur", society_id: society_id || "" },
+          user_metadata: { name: name || "", role: role || "porteur", society_id: society_id || "", society_ids: society_id ? [society_id] : [] },
         }),
       });
       const data = await r.json();
@@ -158,6 +158,31 @@ export default async function handler(req, res) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ password }),
+      });
+      const data = await r.json();
+      return res.status(r.status).json(data);
+    }
+
+    // === UPDATE ACCESS (admin grants/revokes society access) ===
+    if (action === "update_access") {
+      if (req.method !== "PUT" && req.method !== "POST") return res.status(405).json({ error: "PUT/POST required" });
+      const { user_id, society_ids, society_id } = req.body || {};
+      if (!user_id) return res.status(400).json({ error: "Missing user_id" });
+      if (!Array.isArray(society_ids)) return res.status(400).json({ error: "society_ids must be an array" });
+      // Sanitize: only keep non-empty string IDs
+      const cleanIds = society_ids.filter(id => typeof id === "string" && id.length > 0);
+      const primaryId = society_id || cleanIds[0] || "";
+      console.log(`[${new Date().toISOString()}] AUTH UPDATE_ACCESS user=${user_id} societies=[${cleanIds.join(",")}] ip=${ip}`);
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${user_id}`, {
+        method: "PUT",
+        headers: {
+          apikey: SUPABASE_SERVICE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_metadata: { society_id: primaryId, society_ids: cleanIds },
+        }),
       });
       const data = await r.json();
       return res.status(r.status).json(data);
