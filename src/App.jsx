@@ -64,6 +64,8 @@ function AppInner(){
  const[isOffline,setIsOffline]=useState(!navigator.onLine);
  useEffect(()=>{const on=()=>setIsOffline(false);const off=()=>setIsOffline(true);window.addEventListener("online",on);window.addEventListener("offline",off);return()=>{window.removeEventListener("online",on);window.removeEventListener("offline",off);};},[]);
  const[newActSoc,setNewActSoc]=useState("");const[newActText,setNewActText]=useState("");const[showPulse,setShowPulse]=useState(false);const[showSearch,setShowSearch]=useState(false);
+ const[hash,setHash]=useState(window.location.hash);
+ useEffect(()=>{const h=()=>setHash(window.location.hash);window.addEventListener("hashchange",h);return()=>window.removeEventListener("hashchange",h);},[]);
  useEffect(()=>{if(tab===99){setShowPulse(true);setTab(0);}},[tab]);
  // Global Ctrl+K search
  useEffect(()=>{const h=e=>{if((e.metaKey||e.ctrlKey)&&e.key==="k"){e.preventDefault();setShowSearch(s=>!s);}};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[]);
@@ -220,11 +222,12 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  const deleteAction=(id)=>{saveAJ(actions.filter(a=>a.id!==id),null);};
  if(!loaded)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}><style>{CSS}{POLISH_CSS}</style><div style={{width:40,height:40,border:"3px solid var(--sc-w06)",borderTopColor:C.acc,borderRadius:"50%",animation:"sp 1s linear infinite",boxShadow:"0 0 20px rgba(255,170,0,.15)"}}/></div>;
  /* HASH-BASED ROUTES: War Room & Widget (public, no login) */
- const hash=window.location.hash;
- if(hash==="#privacy")return <><style>{CSS}{POLISH_CSS}</style><PrivacyPolicyPage hold={hold} onBack={()=>{window.location.hash="";window.location.reload();}}/></>;
- if(hash==="#mentions")return <><style>{CSS}{POLISH_CSS}</style><MentionsLegalesPage hold={hold} onBack={()=>{window.location.hash="";window.location.reload();}}/></>;
+ const goBack=()=>{window.location.hash="";setHash("");};
+ if(hash==="#privacy")return <><style>{CSS}{POLISH_CSS}</style><PrivacyPolicyPage hold={hold} onBack={goBack}/></>;
+ if(hash==="#mentions")return <><style>{CSS}{POLISH_CSS}</style><MentionsLegalesPage hold={hold} onBack={goBack}/></>;
+ if(hash==="#rgpd")return <><style>{CSS}{POLISH_CSS}</style><PrivacyPolicyPage hold={hold} onBack={goBack}/></>;
  if(hash.startsWith("#widget/")){const wSocId=hash.replace("#widget/","");return <><style>{CSS}{POLISH_CSS}</style><WidgetRenderer socId={wSocId} socs={socs} clients={clients}/></>;}
- if(hash==="#pulse")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>{window.location.hash="";window.location.reload();}}/></Suspense></>;
+ if(hash==="#pulse")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={goBack}/></Suspense></>;
  if(hash.startsWith("#portal/")){const parts=hash.replace("#portal/","").split("/");return <><style>{CSS}{POLISH_CSS}</style><ClientPortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients} ghlData={ghlData}/></>;}
  if(hash.startsWith("#board/")){const bPin=hash.replace("#board/","");return <><style>{CSS}{POLISH_CSS}</style><InvestorBoard socs={socs} reps={reps} allM={allM} hold={hold} pin={bPin}/></>;}
 

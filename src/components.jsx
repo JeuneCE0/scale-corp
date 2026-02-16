@@ -2659,6 +2659,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
  const cmNow=curM();
  const[selectedMonth,setSelectedMonth]=useState(cmNow);
  const[viewPeriod,setViewPeriod]=useState("month"); // month | quarter | year
+ const[chartViewType,setChartViewType]=useState("bar"); // bar | line | area | donut
  const cm=selectedMonth;
  const report=gr(reps,soc.id,cm);
  const bankData=socBank?.[soc.id];const acc2=soc.brandColor||soc.color||C.acc;
@@ -2694,11 +2695,14 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
  const marge=ca-charges;const margePct=ca>0?Math.round(marge/ca*100):0;
  const treso=bankData?.balance||0;
  // Marge nette: deduct Dayyaan remuneration + Scale Corp Inc dividends from excluded transactions
+ // For dividendes: only count transfers FROM Principal TO SCALE CORP INC pocket (not pocket → external bank)
  const margeNetteData=useMemo(()=>{
   if(!bankData?.transactions)return{remunDayyaan:0,dividendesScaleCorp:0,margeNette:marge,margeNettePct:margePct};
   const exclTxs=bankData.transactions.filter(t=>{const ca2=t.created_at||"";return periodMonths.some(m=>ca2.startsWith(m))&&isExcludedTx(t,excluded)&&(t.legs?.[0]?.amount||0)<0;});
   const remunDayyaan=Math.round(Math.abs(exclTxs.filter(t=>{const desc=((t.legs?.[0]?.description||"")+" "+(t.reference||"")).toLowerCase();return/dayyaan|mohammad/i.test(desc);}).reduce((a,t)=>a+Math.abs(t.legs?.[0]?.amount||0),0)));
-  const dividendesScaleCorp=Math.round(Math.abs(exclTxs.filter(t=>{const desc=((t.legs?.[0]?.description||"")+" "+(t.reference||"")).toLowerCase();return/dividend|scale\s*corp|anthony|rudy/i.test(desc)&&!/dayyaan|mohammad/i.test(desc);}).reduce((a,t)=>a+Math.abs(t.legs?.[0]?.amount||0),0)));
+  // Only count transfers where the source is the main/principal account (leg[0].account_id NOT in excluded list)
+  // This excludes transfers FROM the SCALE CORP pocket to external bank accounts
+  const dividendesScaleCorp=Math.round(Math.abs(exclTxs.filter(t=>{const desc=((t.legs?.[0]?.description||"")+" "+(t.reference||"")).toLowerCase();const isFromPrincipal=!excluded.includes(t.legs?.[0]?.account_id);return isFromPrincipal&&/dividend|scale\s*corp|anthony|rudy/i.test(desc)&&!/dayyaan|mohammad/i.test(desc);}).reduce((a,t)=>a+Math.abs(t.legs?.[0]?.amount||0),0)));
   const mn=marge-remunDayyaan-dividendesScaleCorp;
   return{remunDayyaan,dividendesScaleCorp,margeNette:mn,margeNettePct:ca>0?Math.round(mn/ca*100):0};
  },[bankData,periodMonths,excluded,marge,ca]);
@@ -2845,22 +2849,50 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
    <div style={{flex:1}}><span style={{fontWeight:700,fontSize:11,color:C.o}}>{unpaid.length} facture{unpaid.length>1?"s":""} impayée{unpaid.length>1?"s":""}:</span><span style={{fontSize:10,color:C.td,marginLeft:4}}>{unpaid.slice(0,3).map(c=>c.name).join(", ")}{unpaid.length>3?` et ${unpaid.length-3} autres`:""}</span></div>
    <button onClick={()=>setPTab(20)} style={{padding:"4px 10px",borderRadius:8,border:`1px solid ${C.o}33`,background:C.oD,color:C.o,fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:FONT,flexShrink:0}}>Voir →</button>
   </div>:null;})()}
-  {/* Monthly objective progress — AI auto-computed from previous month CA */}
-  {isCurrentMonth&&(()=>{
-   // Compute AI objective: previous month CA + growth target
-   const prevMKey=prevM(cm);
-   const prevBankCa=(()=>{if(!bankData?.transactions)return 0;return bankData.transactions.filter(t=>(t.created_at||"").startsWith(prevMKey)&&!isExcludedTx(t,excluded)&&(t.legs?.[0]?.amount||0)>0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0);})();
-   const prevCaVal=prevBankCa||pf(gr(reps,soc.id,prevMKey)?.ca);
+  {/* Objective progress — AI auto-computed, adapts to period (month/quarter/year) */}
+  {(()=>{
+   // Compute reference period CA based on viewPeriod
+   const computePeriodBankCa=(months)=>{if(!bankData?.transactions)return 0;return months.reduce((total,m)=>{return total+bankData.transactions.filter(t=>(t.created_at||"").startsWith(m)&&!isExcludedTx(t,excluded)&&(t.legs?.[0]?.amount||0)>0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0);},0);};
+   let prevCaVal=0,periodLabelObj="",compLabel="";
+   if(viewPeriod==="month"){
+    const prevMKey=prevM(cm);
+    prevCaVal=computePeriodBankCa([prevMKey])||pf(gr(reps,soc.id,prevMKey)?.ca);
+    compLabel="vs mois dernier";
+    periodLabelObj="MENSUEL";
+   }else if(viewPeriod==="quarter"){
+    // Compare to previous quarter
+    const [y,m]=cm.split("-").map(Number);const qStart=Math.floor((m-1)/3)*3+1;
+    const prevQStart=qStart-3>0?qStart-3:qStart+9;const prevQYear=qStart-3>0?y:y-1;
+    const prevQMonths=[0,1,2].map(i=>`${prevQYear}-${String(prevQStart+i).padStart(2,"0")}`);
+    prevCaVal=computePeriodBankCa(prevQMonths);
+    if(prevCaVal<=0)prevQMonths.forEach(pm2=>{prevCaVal+=pf(gr(reps,soc.id,pm2)?.ca);});
+    compLabel="vs trimestre dernier";
+    periodLabelObj="TRIMESTRIEL";
+   }else{
+    // Compare to previous year
+    const prevY=String(Number(cm.split("-")[0])-1);
+    const prevYMonths=Array.from({length:12},(_,i)=>`${prevY}-${String(i+1).padStart(2,"0")}`);
+    prevCaVal=computePeriodBankCa(prevYMonths);
+    if(prevCaVal<=0)prevYMonths.forEach(pm2=>{prevCaVal+=pf(gr(reps,soc.id,pm2)?.ca);});
+    compLabel="vs année dernière";
+    periodLabelObj="ANNUEL";
+   }
    if(prevCaVal<=0)return null;
-   // Growth target: +15% par défaut, +10% si déjà > 15k, +20% si < 5k
+   // Growth target adapts to period
    const growthPct=prevCaVal>=15000?10:prevCaVal<5000?20:15;
    const aiObj=Math.round(prevCaVal*(1+growthPct/100));
    const objPct=aiObj>0?Math.round(ca/aiObj*100):0;
    const objColor=ca>=aiObj?C.g:ca>=aiObj*0.7?C.acc:C.o;
+   // Progress info
+   const progressInfo=(()=>{
+    if(viewPeriod==="month"){const daysInMonth=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate();const daysPassed=new Date().getDate();return`J${daysPassed}/${daysInMonth} (${Math.round(daysPassed/daysInMonth*100)}% du mois)`;}
+    if(viewPeriod==="quarter"){const [y2,m2]=cm.split("-").map(Number);const qStart2=Math.floor((m2-1)/3)*3+1;const monthInQ=m2-qStart2;const now=new Date();const dayInMonth=now.getDate();const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();const pct2=Math.round(((monthInQ*30+dayInMonth)/(3*30))*100);return`Mois ${monthInQ+1}/3 (${pct2}% du trimestre)`;}
+    const now2=new Date();const dayOfYear=Math.floor((now2-new Date(now2.getFullYear(),0,0))/(864e5));return`J${dayOfYear}/365 (${Math.round(dayOfYear/365*100)}% de l'année)`;
+   })();
    return <div className="glass-card-static fu" style={{padding:16,marginBottom:14}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-     <span style={{fontSize:10,fontWeight:700,color:C.td,letterSpacing:.5,fontFamily:FONT_TITLE}}>🤖 OBJECTIF IA MENSUEL <span style={{fontSize:8,color:C.acc,fontWeight:600}}>+{growthPct}% vs mois dernier</span></span>
-     <span style={{fontSize:10,color:C.td}}>{(()=>{const daysInMonth=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate();const daysPassed=new Date().getDate();return`J${daysPassed}/${daysInMonth} (${Math.round(daysPassed/daysInMonth*100)}% du mois)`;})()}</span>
+     <span style={{fontSize:10,fontWeight:700,color:C.td,letterSpacing:.5,fontFamily:FONT_TITLE}}>{"🤖 OBJECTIF IA "+periodLabelObj} <span style={{fontSize:8,color:C.acc,fontWeight:600}}>+{growthPct}% {compLabel}</span></span>
+     <span style={{fontSize:10,color:C.td}}>{progressInfo}</span>
     </div>
     <div style={{display:"flex",alignItems:"flex-end",gap:10,marginBottom:8}}>
      <div style={{flex:1}}>
@@ -2877,7 +2909,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
     <div style={{fontSize:9,color:C.td,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:4}}>
      {ca<aiObj&&<span>Reste {fmt(aiObj-ca)}€ pour atteindre l'objectif</span>}
      {ca>=aiObj&&<span style={{color:C.g,fontWeight:700}}>Objectif atteint ! +{fmt(ca-aiObj)}€ au-dessus</span>}
-     <span>Mois dernier : {fmt(prevCaVal)}€</span>
+     <span>{viewPeriod==="month"?"Mois dernier":viewPeriod==="quarter"?"Trimestre dernier":"Année dernière"} : {fmt(prevCaVal)}€</span>
     </div>
    </div>;
   })()}
@@ -2941,19 +2973,30 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
      <div style={{flex:"1 1 180px",minWidth:0}}>{(()=>{const total=pieData.reduce((a,d)=>a+d.value,0);return pieData.slice(0,6).map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/><span style={{flex:1,fontSize:10,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span><span style={{fontSize:9,color:C.tm,marginRight:4}}>{total>0?Math.round(d.value/total*100):0}%</span><span style={{fontWeight:700,fontSize:10,color:C.t}}>{fmt(d.value)}€</span></div>);})()}</div>
     </div>
    </div>}
-   {/* Monthly breakdown chart (quarter/year view) */}
-   {viewPeriod!=="month"&&(()=>{
-    const chartData=periodMonths.map(m=>{
+   {/* Monthly evolution chart — multi-view: bar, line, area, donut */}
+   {(()=>{
+    // For month view, show last 6 months; for quarter/year use periodMonths
+    const chartMonths=viewPeriod==="month"?(()=>{const ms=[];let m2=cm;for(let i=0;i<6;i++){ms.unshift(m2);m2=prevM(m2);}return ms;})():periodMonths;
+    const chartData=chartMonths.map(m=>{
      const txs2=bankData?.transactions?.filter(t=>(t.created_at||"").startsWith(m)&&!isExcludedTx(t,excluded))||[];
      const inc=txs2.filter(t=>(t.legs?.[0]?.amount||0)>0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0);
      const exp=Math.abs(txs2.filter(t=>(t.legs?.[0]?.amount||0)<0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0));
      return{mois:ml(m),CA:Math.round(inc),Charges:Math.round(exp),Marge:Math.round(inc-exp)};
     }).filter(d=>d.CA>0||d.Charges>0);
     if(chartData.length<2)return null;
+    const CHART_VIEWS=[{id:"bar",label:"Barres",icon:"📊"},{id:"line",label:"Ligne",icon:"📈"},{id:"area",label:"Aire",icon:"🏔"},{id:"donut",label:"Donut",icon:"🍩"}];
+    // Donut: aggregate totals
+    const donutData=[{name:"CA",value:chartData.reduce((a,d)=>a+d.CA,0)},{name:"Charges",value:chartData.reduce((a,d)=>a+d.Charges,0)},{name:"Marge",value:Math.max(0,chartData.reduce((a,d)=>a+d.Marge,0))}];
+    const DONUT_COLORS=[C.acc,C.r+"CC",C.g];
     return <div className="glass-card-static" style={{padding:18,marginTop:12}}>
-     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📈 ÉVOLUTION MENSUELLE ({periodLabel})</div>
-     <div style={{height:180}}>
-      <ResponsiveContainer><ComposedChart data={chartData}>
+     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,flexWrap:"wrap",gap:6}}>
+      <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,fontFamily:FONT_TITLE}}>📈 ÉVOLUTION MENSUELLE {viewPeriod!=="month"?`(${periodLabel})`:""}</div>
+      <div style={{display:"flex",gap:0,background:C.card2,borderRadius:6,border:`1px solid ${C.brd}`,overflow:"hidden"}}>
+       {CHART_VIEWS.map(v=><button key={v.id} onClick={()=>setChartViewType(v.id)} title={v.label} style={{padding:"4px 8px",fontSize:9,fontWeight:chartViewType===v.id?700:400,color:chartViewType===v.id?C.acc:C.td,background:chartViewType===v.id?C.accD:"transparent",border:"none",cursor:"pointer",fontFamily:FONT,transition:"all .15s",borderRight:`1px solid ${C.brd}`}}>{v.icon}</button>)}
+      </div>
+     </div>
+     <div style={{height:200}}>
+      {chartViewType==="bar"&&<ResponsiveContainer><ComposedChart data={chartData}>
        <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
        <XAxis dataKey="mois" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
        <YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/>
@@ -2961,7 +3004,34 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
        <Bar dataKey="CA" fill={C.acc} radius={[4,4,0,0]} name="CA"/>
        <Bar dataKey="Charges" fill={C.r+"88"} radius={[4,4,0,0]} name="Charges"/>
        <Line type="monotone" dataKey="Marge" stroke={C.g} strokeWidth={2} dot={{fill:C.g,r:3}} name="Marge"/>
-      </ComposedChart></ResponsiveContainer>
+      </ComposedChart></ResponsiveContainer>}
+      {chartViewType==="line"&&<ResponsiveContainer><LineChart data={chartData}>
+       <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
+       <XAxis dataKey="mois" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
+       <YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/>
+       <Tooltip content={<CTip/>}/>
+       <Line type="monotone" dataKey="CA" stroke={C.acc} strokeWidth={2} dot={{fill:C.acc,r:3}} name="CA"/>
+       <Line type="monotone" dataKey="Charges" stroke={C.r} strokeWidth={2} dot={{fill:C.r,r:3}} name="Charges"/>
+       <Line type="monotone" dataKey="Marge" stroke={C.g} strokeWidth={2} dot={{fill:C.g,r:3}} name="Marge"/>
+       <Legend wrapperStyle={{fontSize:9}}/>
+      </LineChart></ResponsiveContainer>}
+      {chartViewType==="area"&&<ResponsiveContainer><AreaChart data={chartData}>
+       <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
+       <XAxis dataKey="mois" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
+       <YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/>
+       <Tooltip content={<CTip/>}/>
+       <Area type="monotone" dataKey="CA" fill={C.acc+"33"} stroke={C.acc} strokeWidth={2} name="CA"/>
+       <Area type="monotone" dataKey="Charges" fill={C.r+"22"} stroke={C.r} strokeWidth={2} name="Charges"/>
+       <Area type="monotone" dataKey="Marge" fill={C.g+"22"} stroke={C.g} strokeWidth={2} name="Marge"/>
+       <Legend wrapperStyle={{fontSize:9}}/>
+      </AreaChart></ResponsiveContainer>}
+      {chartViewType==="donut"&&<ResponsiveContainer><PieChart>
+       <Pie data={donutData} dataKey="value" cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={3} strokeWidth={0}>
+        {donutData.map((d,i)=><Cell key={i} fill={DONUT_COLORS[i]}/>)}
+       </Pie>
+       <Tooltip content={<CTip/>}/>
+       <Legend wrapperStyle={{fontSize:9}}/>
+      </PieChart></ResponsiveContainer>}
      </div>
     </div>;
    })()}

@@ -108,7 +108,7 @@ export function PrivacyPolicyPage({ hold, onBack }) {
     td: { padding: "8px 10px", border: `1px solid ${C.brd}`, color: C.td, fontSize: 11 },
   };
 
-  return <div className="glass-bg" style={{ minHeight: "100vh", fontFamily: FONT, color: C.t, padding: "20px 16px" }}>
+  return <div className="glass-bg" style={{ minHeight: "100vh", fontFamily: FONT, color: C.t, padding: "20px 16px", position: "relative", zIndex: 1 }}>
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <button onClick={onBack} style={{
         display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px",
@@ -291,7 +291,7 @@ export function MentionsLegalesPage({ hold, onBack }) {
     h2: { fontFamily: FONT_TITLE, fontSize: 15, fontWeight: 800, color: C.acc, marginTop: 24, marginBottom: 8 },
     p: { fontSize: 12, color: C.td, lineHeight: 1.7, marginBottom: 8 },
   };
-  return <div className="glass-bg" style={{ minHeight: "100vh", fontFamily: FONT, color: C.t, padding: "20px 16px" }}>
+  return <div className="glass-bg" style={{ minHeight: "100vh", fontFamily: FONT, color: C.t, padding: "20px 16px", position: "relative", zIndex: 1 }}>
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <button onClick={onBack} style={{
         display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px",
@@ -677,12 +677,14 @@ export function RGPDSettingsPanel({ role, socs, reps, clients, team, invoices, a
    7. LOGIN FOOTER (privacy links under login form)
    ═══════════════════════════════════════════════════ */
 export function LoginFooter() {
+  const linkStyle = { color: C.td, textDecoration: "underline", cursor: "pointer" };
+  const nav = (h) => (e) => { e.preventDefault(); window.location.hash = h; };
   return <div style={{ marginTop: 16, textAlign: "center", fontSize: 10, color: C.td, lineHeight: 1.8 }}>
     {"En vous connectant, vous acceptez notre "}
-    <a href="#privacy" style={{ color: C.acc, textDecoration: "underline" }}>{"politique de confidentialité"}</a>
+    <a href="#privacy" onClick={nav("privacy")} style={{ ...linkStyle, color: C.acc }}>{"politique de confidentialité"}</a>
     <br />
-    <a href="#mentions" style={{ color: C.td, textDecoration: "underline" }}>{"Mentions légales"}</a>
+    <a href="#mentions" onClick={nav("mentions")} style={linkStyle}>{"Mentions légales"}</a>
     {" · "}
-    <a href="#privacy" style={{ color: C.td, textDecoration: "underline" }}>RGPD</a>
+    <a href="#rgpd" onClick={nav("rgpd")} style={linkStyle}>RGPD</a>
   </div>;
 }

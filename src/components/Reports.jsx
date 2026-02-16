@@ -47,9 +47,11 @@ function computeReportData(soc, month, socBankData, ghlData, clients, reps) {
     const desc = ((t.legs?.[0]?.description || "") + " " + (t.reference || "")).toLowerCase();
     return /dayyaan|mohammad/i.test(desc);
   }).reduce((a, t) => a + Math.abs(t.legs?.[0]?.amount || 0), 0)));
+  // Only count transfers FROM Principal TO SCALE CORP INC pocket (not pocket → external bank)
   const dividendesScaleCorp = Math.round(Math.abs(excludedTxs.filter(t => {
     const desc = ((t.legs?.[0]?.description || "") + " " + (t.reference || "")).toLowerCase();
-    return /dividend|scale\s*corp|anthony|rudy/i.test(desc) && !/dayyaan|mohammad/i.test(desc);
+    const isFromPrincipal = !excl.includes(t.legs?.[0]?.account_id);
+    return isFromPrincipal && /dividend|scale\s*corp|anthony|rudy/i.test(desc) && !/dayyaan|mohammad/i.test(desc);
   }).reduce((a, t) => a + Math.abs(t.legs?.[0]?.amount || 0), 0)));
   const margeNette = marge - remunDayyaan - dividendesScaleCorp;
   const margeNettePct = ca > 0 ? Math.round(margeNette / ca * 100) : 0;

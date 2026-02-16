@@ -18,9 +18,9 @@ import { C, FONT, FONT_TITLE, getTheme } from "./shared.jsx";
 // ─── CSS for all polish features ───
 export const POLISH_CSS = `
 /* 1. PAGE TRANSITIONS */
-.page-transition-enter{opacity:0;transform:translateY(8px)}
-.page-transition-active{opacity:1;transform:translateY(0);transition:opacity .25s ease,transform .25s ease}
-.page-transition-exit{opacity:0;transform:translateY(-6px);transition:opacity .15s ease,transform .15s ease}
+.page-transition-enter{opacity:0}
+.page-transition-active{opacity:1;transition:opacity .25s ease}
+.page-transition-exit{opacity:0;transition:opacity .15s ease}
 
 /* 2. TOAST NOTIFICATIONS */
 .toast-container{position:fixed;top:16px;right:16px;z-index:11000;display:flex;flex-direction:column;gap:8px;pointer-events:none}

@@ -11,6 +11,7 @@ export function ClientsPanelSafe(props){return <ErrorBoundary label="Erreur dans
 export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices,stripeData,onSelectClient}){
  const[editCl,setEditCl]=useState(null);const[cl360Tab,setCl360Tab]=useState("infos");const[filter,setFilter]=useState("all");const[stageFilter,setStageFilter]=useState("all");const[invView,setInvView]=useState(null);
  const[sending,setSending]=useState(null);const[search,setSearch]=useState("");const[selPipeline,setSelPipeline]=useState("all");const[sort,setSort]=useState("recent");
+ const[showGhlSearch,setShowGhlSearch]=useState(false);const[ghlSearchQ,setGhlSearchQ]=useState("");const[ghlSearchLoading,setGhlSearchLoading]=useState(false);const[ghlSearchResults,setGhlSearchResults]=useState([]);
  const allPipelines=ghlData?.[soc.id]?.pipelines||[];
  const selPipelineStages=selPipeline==="all"?(allPipelines[0]?.stages||[]):(allPipelines.find(p=>p.id===selPipeline)?.stages||[]);
  const rawGhl=ghlData?.[soc.id]?.ghlClients||[];
@@ -55,6 +56,66 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
   else if(type==="hybrid")base.billing={type:"hybrid",amount:0,freq:"monthly",percent:0,basis:"ca",commitment:0,startDate:new Date().toISOString().slice(0,10)};
   else base.billing={type:"oneoff",amount:0,product:"",deliveredDate:"",paidDate:"",installments:1};
   setEditCl(base);
+ };
+ // GHL Prospect Search & Import
+ const searchGhlProspects=async(query)=>{
+  if(!query.trim())return;
+  setGhlSearchLoading(true);
+  const loc=soc.ghlLocationId;
+  // Search in already loaded GHL contacts first
+  const q=query.toLowerCase().trim();
+  const existingGhlIds=new Set(clients.filter(c=>c.socId===soc.id).map(c=>c.ghlId).filter(Boolean));
+  let results=(rawGhl||[]).filter(gc=>{
+   const gid=gc.ghlId||gc.id;
+   if(existingGhlIds.has(gid))return false;
+   const name=((gc.name||"")+" "+(gc.firstName||"")+" "+(gc.lastName||"")).toLowerCase();
+   const email=(gc.email||"").toLowerCase();
+   const phone=(gc.phone||"");
+   return name.includes(q)||email.includes(q)||phone.includes(q);
+  });
+  // If we have a GHL location, also try live search
+  if(loc&&results.length<3){
+   try{
+    const liveResults=await fetchGHL("contacts_search",loc,{query:query.trim()});
+    if(Array.isArray(liveResults?.contacts)){
+     liveResults.contacts.forEach(c=>{
+      const gid=c.id;
+      if(!existingGhlIds.has(gid)&&!results.some(r=>(r.ghlId||r.id)===gid)){
+       results.push({...c,ghlId:gid,name:((c.firstName||"")+" "+(c.lastName||"")).trim()||c.name||c.email||"Sans nom",email:c.email,phone:c.phone,_fromGHL:true});
+      }
+     });
+    }
+   }catch{}
+  }
+  setGhlSearchResults(results.slice(0,20));
+  setGhlSearchLoading(false);
+ };
+ const importGhlProspect=(prospect)=>{
+  const gid=prospect.ghlId||prospect.id;
+  const name=prospect.name||((prospect.firstName||"")+" "+(prospect.lastName||"")).trim()||"Sans nom";
+  const newClient={
+   id:uid(),socId:soc.id,
+   name,
+   contact:prospect.firstName?`${prospect.firstName} ${prospect.lastName||""}`.trim():"",
+   company:prospect.companyName||prospect.company||"",
+   email:prospect.email||"",
+   phone:prospect.phone||"",
+   domain:prospect.businessType||"",
+   status:"active",
+   notes:prospect.tags?.join(", ")||"",
+   ghlId:gid,
+   stripeId:"",
+   source:prospect.source||"GHL Import",
+   at:new Date().toISOString(),
+   billing:{type:"fixed",amount:0,freq:"monthly",commitment:0,startDate:new Date().toISOString().slice(0,10)},
+  };
+  // Sync notes to GHL if available
+  const loc=soc.ghlLocationId;
+  if(loc&&gid){
+   fetchGHL("notes_create",loc,{contactId:gid,body:`Importé comme client dans Scale Corp le ${new Date().toLocaleDateString("fr-FR")}`}).catch(()=>{});
+  }
+  setShowGhlSearch(false);setGhlSearchQ("");setGhlSearchResults([]);
+  setEditCl(newClient);
  };
  const saveCl=(cl)=>{
   const isNew=!clients.some(c=>c.id===cl.id);
@@ -132,7 +193,8 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
   <div style={{fontSize:40,marginBottom:12}}>👥</div>
   <div style={{fontWeight:700,fontSize:15,marginBottom:6,color:C.t}}>Aucun client</div>
   <div style={{color:C.td,fontSize:12,marginBottom:16}}>Connectez GHL ou ajoutez des clients manuellement</div>
-  <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+  <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
+   <Btn small v="ai" onClick={()=>{setShowGhlSearch(true);setGhlSearchQ("");setGhlSearchResults([]);}}>🔍 Rechercher prospect GHL</Btn>
    <Btn small onClick={()=>addClient("fixed")}>+ Forfait</Btn>
    <Btn small v="secondary" onClick={()=>addClient("percent")}>+ %</Btn>
    <Btn small v="secondary" onClick={()=>addClient("hybrid")}>+ Fixe+%</Btn>
@@ -337,6 +399,7 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
     return <button key={f2.v} onClick={()=>setFilter(f2.v)} style={{padding:"4px 10px",borderRadius:6,fontSize:9,fontWeight:filter===f2.v?700:500,border:`1px solid ${filter===f2.v?(stColor||C.acc):C.brd}`,background:filter===f2.v?(stColor||C.acc)+"22":"transparent",color:filter===f2.v?(stColor||C.acc):C.td,cursor:"pointer",fontFamily:FONT}}>{f2.l}</button>;
    })}
    <div style={{marginLeft:"auto",display:"flex",gap:4}}>
+    <Btn small v="ai" onClick={()=>{setShowGhlSearch(true);setGhlSearchQ("");setGhlSearchResults([]);}}>🔍 Prospect GHL</Btn>
     <Btn small onClick={()=>addClient("fixed")}>+ Forfait</Btn>
     <Btn small v="secondary" onClick={()=>addClient("percent")}>+ %</Btn>
     <Btn small v="secondary" onClick={()=>addClient("hybrid")}>+ Fixe+%</Btn>
@@ -517,6 +580,44 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
    <div style={{fontWeight:700,fontSize:12,marginBottom:4}}>Aucune facture générée</div>
    <div style={{color:C.td,fontSize:10,marginBottom:10}}>Ajoute un client avec engagement ou paiement en plusieurs fois pour générer automatiquement les factures</div>
   </Card>}
+  {/* GHL Prospect Search Modal */}
+  <Modal open={showGhlSearch} onClose={()=>setShowGhlSearch(false)} title="Rechercher un prospect GHL">
+   <div style={{marginBottom:12}}>
+    <div style={{display:"flex",gap:6}}>
+     <div style={{flex:1,position:"relative"}}>
+      <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:14,color:C.td}}>🔍</span>
+      <input value={ghlSearchQ} onChange={e=>setGhlSearchQ(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")searchGhlProspects(ghlSearchQ);}} placeholder="Nom, email ou téléphone du prospect..." autoFocus style={{width:"100%",padding:"10px 12px 10px 34px",borderRadius:10,border:`1px solid ${ghlSearchQ?C.acc+"66":C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/>
+     </div>
+     <Btn onClick={()=>searchGhlProspects(ghlSearchQ)} disabled={!ghlSearchQ.trim()||ghlSearchLoading}>{ghlSearchLoading?"Recherche...":"Rechercher"}</Btn>
+    </div>
+    <div style={{fontSize:9,color:C.td,marginTop:4}}>Recherche dans les contacts GHL actifs. Les clients existants sont exclus.</div>
+   </div>
+   {ghlSearchLoading&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Recherche en cours...</div>}
+   {!ghlSearchLoading&&ghlSearchResults.length===0&&ghlSearchQ&&<div style={{textAlign:"center",padding:20,color:C.td}}><div style={{fontSize:24,marginBottom:6}}>👤</div><div style={{fontSize:11}}>Aucun prospect trouvé pour "{ghlSearchQ}"</div></div>}
+   {ghlSearchResults.length>0&&<div style={{maxHeight:400,overflowY:"auto"}}>
+    <div style={{fontSize:9,color:C.td,fontWeight:700,letterSpacing:.5,marginBottom:6}}>{ghlSearchResults.length} RÉSULTAT{ghlSearchResults.length>1?"S":""}</div>
+    {ghlSearchResults.map((p,i)=>{
+     const pName=p.name||((p.firstName||"")+" "+(p.lastName||"")).trim()||"Sans nom";
+     return <div key={p.ghlId||p.id||i} className="fu" style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",marginBottom:4,borderRadius:10,border:`1px solid ${C.brd}`,background:C.card,cursor:"pointer",transition:"all .15s"}} onClick={()=>importGhlProspect(p)} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.acc+"66";e.currentTarget.style.background=C.accD;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.brd;e.currentTarget.style.background=C.card;}}>
+      <div style={{width:36,height:36,borderRadius:9,background:C.acc+"18",border:`1.5px solid ${C.acc}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>👤</div>
+      <div style={{flex:1,minWidth:0}}>
+       <div style={{fontWeight:700,fontSize:12,color:C.t}}>{pName}</div>
+       <div style={{fontSize:10,color:C.td}}>
+        {p.email&&<span>{p.email}</span>}
+        {p.email&&p.phone&&<span> · </span>}
+        {p.phone&&<span>{p.phone}</span>}
+       </div>
+       {(p.companyName||p.company)&&<div style={{fontSize:9,color:"#60a5fa",fontWeight:600}}>{p.companyName||p.company}</div>}
+       {p.tags&&p.tags.length>0&&<div style={{display:"flex",gap:3,marginTop:3,flexWrap:"wrap"}}>{p.tags.slice(0,5).map((t,ti)=><span key={ti} style={{fontSize:7,padding:"1px 5px",borderRadius:4,background:C.accD,color:C.acc,fontWeight:600}}>{t}</span>)}</div>}
+      </div>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2,flexShrink:0}}>
+       <span style={{padding:"3px 8px",borderRadius:6,background:C.gD,color:C.g,fontSize:9,fontWeight:700,border:`1px solid ${C.g}33`}}>Importer</span>
+       {p.dateAdded&&<span style={{fontSize:8,color:C.td}}>Ajouté {ago(p.dateAdded)}</span>}
+      </div>
+     </div>;
+    })}
+   </div>}
+  </Modal>
   <Modal open={!!editCl} onClose={()=>{setEditCl(null);setCl360Tab("infos");}} title={editCl?.name?"Modifier client":"Nouveau client"} wide>
    {editCl&&(()=>{
     const b=editCl.billing||{type:"fixed"};const bt=BILL_TYPES[b.type];
