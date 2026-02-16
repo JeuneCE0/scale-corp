@@ -2792,18 +2792,18 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
  const selS2={background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,color:C.t,padding:"6px 10px",fontSize:11,fontFamily:FONT,outline:"none",cursor:"pointer"};
  return <div className="fu">
   {/* Stripe-style period selector */}
-  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
-   <div style={{display:"flex",alignItems:"center",gap:6}}>
-    <button onClick={()=>{const idx=availableMonths.indexOf(cm);if(idx<availableMonths.length-1)setSelectedMonth(availableMonths[idx+1]);}} style={{background:"none",border:`1px solid ${C.brd}`,borderRadius:8,color:C.td,cursor:"pointer",padding:"6px 10px",fontSize:14,fontFamily:FONT}}>‹</button>
-    <select value={cm} onChange={e=>setSelectedMonth(e.target.value)} style={selS2}>
+  <div className="period-selector" style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
+   <div className="period-nav" style={{display:"flex",alignItems:"center",gap:6}}>
+    <button onClick={()=>{const idx=availableMonths.indexOf(cm);if(idx<availableMonths.length-1)setSelectedMonth(availableMonths[idx+1]);}} style={{background:"none",border:`1px solid ${C.brd}`,borderRadius:8,color:C.td,cursor:"pointer",padding:"8px 12px",fontSize:14,fontFamily:FONT,minHeight:38,minWidth:38,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+    <select value={cm} onChange={e=>setSelectedMonth(e.target.value)} style={{...selS2,minHeight:38}}>
      {availableMonths.map(m=><option key={m} value={m}>{ml(m)}{m===cmNow?" (actuel)":""}</option>)}
     </select>
-    <button onClick={()=>{const idx=availableMonths.indexOf(cm);if(idx>0)setSelectedMonth(availableMonths[idx-1]);}} style={{background:"none",border:`1px solid ${C.brd}`,borderRadius:8,color:C.td,cursor:"pointer",padding:"6px 10px",fontSize:14,fontFamily:FONT}}>›</button>
+    <button onClick={()=>{const idx=availableMonths.indexOf(cm);if(idx>0)setSelectedMonth(availableMonths[idx-1]);}} style={{background:"none",border:`1px solid ${C.brd}`,borderRadius:8,color:C.td,cursor:"pointer",padding:"8px 12px",fontSize:14,fontFamily:FONT,minHeight:38,minWidth:38,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+    {!isCurrentMonth&&<button onClick={()=>setSelectedMonth(cmNow)} style={{background:C.accD,border:`1px solid ${C.acc}33`,borderRadius:8,color:C.acc,cursor:"pointer",padding:"6px 12px",fontSize:10,fontWeight:600,fontFamily:FONT,minHeight:38}}>Actuel</button>}
    </div>
-   <div style={{display:"flex",gap:0,background:C.card2,borderRadius:8,border:`1px solid ${C.brd}`,overflow:"hidden"}}>
-    {[{id:"month",label:"Mois"},{id:"quarter",label:"Trimestre"},{id:"year",label:"Année"}].map(p=><button key={p.id} onClick={()=>setViewPeriod(p.id)} style={{padding:"6px 14px",fontSize:10,fontWeight:viewPeriod===p.id?800:500,color:viewPeriod===p.id?C.acc:C.td,background:viewPeriod===p.id?C.accD:"transparent",border:"none",cursor:"pointer",fontFamily:FONT,transition:"all .15s",borderRight:`1px solid ${C.brd}`}}>{p.label}</button>)}
+   <div className="period-selector-btns" style={{display:"flex",gap:0,background:C.card2,borderRadius:8,border:`1px solid ${C.brd}`,overflow:"hidden"}}>
+    {[{id:"month",label:"Mois"},{id:"quarter",label:"Trimestre"},{id:"year",label:"Année"}].map(p=><button key={p.id} onClick={()=>setViewPeriod(p.id)} style={{padding:"8px 14px",fontSize:10,fontWeight:viewPeriod===p.id?800:500,color:viewPeriod===p.id?C.acc:C.td,background:viewPeriod===p.id?C.accD:"transparent",border:"none",cursor:"pointer",fontFamily:FONT,transition:"all .15s",borderRight:`1px solid ${C.brd}`,minHeight:38}}>{p.label}</button>)}
    </div>
-   {!isCurrentMonth&&<button onClick={()=>setSelectedMonth(cmNow)} style={{background:C.accD,border:`1px solid ${C.acc}33`,borderRadius:8,color:C.acc,cursor:"pointer",padding:"5px 12px",fontSize:10,fontWeight:600,fontFamily:FONT}}>Mois actuel</button>}
   </div>
   {viewPeriod!=="month"&&<div style={{marginBottom:12,padding:"8px 14px",background:C.accD,borderRadius:10,border:`1px solid ${C.acc}22`,display:"flex",alignItems:"center",gap:6}}>
    <span style={{fontSize:12}}>📊</span><span style={{fontSize:11,fontWeight:700,color:C.acc}}>{periodLabel}</span><span style={{fontSize:9,color:C.td}}>· {periodMonths.length} mois agrégés</span>
@@ -2912,9 +2912,9 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
    {/* Répartition des dépenses - donut */}
    {pieData.length>0&&<div className="glass-card-static" style={{padding:18}}>
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>📊 RÉPARTITION DES DÉPENSES</div>
-    <div style={{display:"flex",alignItems:"center",height:180}}>
-     <div style={{width:"45%",height:180}}><ResponsiveContainer><PieChart><Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={3} strokeWidth={0}>{pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip content={<CTip/>}/></PieChart></ResponsiveContainer></div>
-     <div style={{flex:1,paddingLeft:8}}>{(()=>{const total=pieData.reduce((a,d)=>a+d.value,0);return pieData.slice(0,6).map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/><span style={{flex:1,fontSize:10,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span><span style={{fontSize:9,color:C.tm,marginRight:4}}>{total>0?Math.round(d.value/total*100):0}%</span><span style={{fontWeight:700,fontSize:10,color:C.t}}>{fmt(d.value)}€</span></div>);})()}</div>
+    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",minHeight:180}}>
+     <div style={{flex:"1 1 140px",minWidth:140,height:180}}><ResponsiveContainer><PieChart><Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={3} strokeWidth={0}>{pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip content={<CTip/>}/></PieChart></ResponsiveContainer></div>
+     <div style={{flex:"1 1 180px",minWidth:0}}>{(()=>{const total=pieData.reduce((a,d)=>a+d.value,0);return pieData.slice(0,6).map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/><span style={{flex:1,fontSize:10,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span><span style={{fontSize:9,color:C.tm,marginRight:4}}>{total>0?Math.round(d.value/total*100):0}%</span><span style={{fontWeight:700,fontSize:10,color:C.t}}>{fmt(d.value)}€</span></div>);})()}</div>
     </div>
    </div>}
    {/* Monthly breakdown chart (quarter/year view) */}
@@ -2961,7 +2961,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
    {/* Funnel de conversion — horizontal */}
    <div className="glass-card-static" style={{padding:18,marginBottom:12}}>
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>🔄 FUNNEL DE CONVERSION</div>
-    <div style={{display:"flex",alignItems:"center",gap:0}}>
+    <div className="funnel-scroll" style={{display:"flex",alignItems:"center",gap:0}}>
      {funnelData.map((f,i)=>{const conv=i>0&&funnelData[i-1].count>0?Math.round(f.count/funnelData[i-1].count*100):null;
       return <Fragment key={i}>
        {i>0&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"0 4px",flexShrink:0}}>
@@ -4287,13 +4287,13 @@ function AdSimulatorAdvanced({budgetSim,setBudgetSim,totCpl,totRoas,wonAll,totLe
 
  const offerColors=["#FFAA00","#a78bfa","#14b8a6","#f472b6","#60a5fa"];
 
- return <div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,borderLeft:`3px solid #ec4899`}}>
+ return <div className="fade-up glass-card-static ad-sim-card" style={{padding:22,marginBottom:20,borderLeft:`3px solid #ec4899`}}>
   <div style={{fontSize:9,fontWeight:700,color:"#ec4899",letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>🎯 SIMULATEUR AVANCÉ — GAMME D'OFFRES & PROJECTION CA</div>
 
   {/* Budget slider */}
-  <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+  <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
    <span style={{fontSize:11,color:C.td,fontWeight:600}}>Budget mensuel :</span>
-   <input type="range" min={200} max={15000} step={100} value={budgetSim} onChange={e=>setBudgetSim(parseInt(e.target.value))} style={{flex:1}}/>
+   <input type="range" min={200} max={15000} step={100} value={budgetSim} onChange={e=>setBudgetSim(parseInt(e.target.value))} style={{flex:"1 1 120px",minWidth:100}}/>
    <span style={{fontWeight:900,fontSize:16,color:"#ec4899",minWidth:80,textAlign:"right"}}>{fmt(budgetSim)}€</span>
   </div>
 
@@ -4301,43 +4301,43 @@ function AdSimulatorAdvanced({budgetSim,setBudgetSim,totCpl,totRoas,wonAll,totLe
   <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>GAMME D'OFFRES</div>
   <div style={{display:"grid",gap:8,marginBottom:16}}>
    {offers.map((off,i)=><div key={i} style={{padding:12,background:C.card2,borderRadius:10,border:`1px solid ${offerColors[i%offerColors.length]}33`}}>
-    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
-     <input value={off.name} onChange={e=>updateOffer(i,"name",e.target.value)} style={{flex:1,minWidth:100,padding:"4px 8px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,fontWeight:700,outline:"none"}}/>
+    <div className="offer-inputs" style={{display:"flex",gap:8,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
+     <input value={off.name} onChange={e=>updateOffer(i,"name",e.target.value)} style={{flex:"1 1 120px",minWidth:100,padding:"6px 10px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,fontWeight:700,outline:"none",minHeight:36}}/>
      <div style={{display:"flex",alignItems:"center",gap:4}}>
       <span style={{fontSize:9,color:C.td}}>Prix:</span>
-      <input type="number" value={off.price} onChange={e=>updateOffer(i,"price",pf(e.target.value))} style={{width:70,padding:"4px 6px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,textAlign:"right",outline:"none"}}/>
+      <input type="number" value={off.price} onChange={e=>updateOffer(i,"price",pf(e.target.value))} style={{width:70,padding:"6px 8px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,textAlign:"right",outline:"none",minHeight:36}}/>
       <span style={{fontSize:9,color:C.td}}>€</span>
      </div>
      <div style={{display:"flex",alignItems:"center",gap:4}}>
       <span style={{fontSize:9,color:C.td}}>Close:</span>
-      <input type="number" value={off.closeRate} onChange={e=>updateOffer(i,"closeRate",Math.min(100,Math.max(1,pf(e.target.value))))} style={{width:45,padding:"4px 6px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,textAlign:"right",outline:"none"}}/>
+      <input type="number" value={off.closeRate} onChange={e=>updateOffer(i,"closeRate",Math.min(100,Math.max(1,pf(e.target.value))))} style={{width:50,padding:"6px 8px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,textAlign:"right",outline:"none",minHeight:36}}/>
       <span style={{fontSize:9,color:C.td}}>%</span>
      </div>
-     {offers.length>1&&<button onClick={()=>removeOffer(i)} style={{background:"none",border:`1px solid ${C.r}33`,borderRadius:6,color:C.r,cursor:"pointer",padding:"3px 6px",fontSize:10,fontFamily:FONT}}>✕</button>}
+     {offers.length>1&&<button onClick={()=>removeOffer(i)} style={{background:"none",border:`1px solid ${C.r}33`,borderRadius:6,color:C.r,cursor:"pointer",padding:"6px 8px",fontSize:10,fontFamily:FONT,minHeight:36,minWidth:36,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>}
     </div>
     {/* Simulation results for this offer */}
-    {simResults[i]&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(80px,1fr))",gap:6}}>
-     <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:6}}>
+    {simResults[i]&&<div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(80px,1fr))",gap:6}}>
+     <div style={{textAlign:"center",padding:8,background:C.bg,borderRadius:6}}>
       <div style={{fontWeight:900,fontSize:16,color:"#60a5fa"}}>{simResults[i].leadsPerMonth}</div>
       <div style={{fontSize:7,color:C.td}}>Leads/mois</div>
      </div>
-     <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:6}}>
+     <div style={{textAlign:"center",padding:8,background:C.bg,borderRadius:6}}>
       <div style={{fontWeight:900,fontSize:16,color:"#14b8a6"}}>{simResults[i].callsPerMonth}</div>
       <div style={{fontSize:7,color:C.td}}>Appels/mois</div>
      </div>
-     <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:6}}>
+     <div style={{textAlign:"center",padding:8,background:C.bg,borderRadius:6}}>
       <div style={{fontWeight:900,fontSize:16,color:C.g}}>{simResults[i].closedPerMonth}</div>
       <div style={{fontSize:7,color:C.td}}>Clients/mois</div>
      </div>
-     <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:6}}>
+     <div style={{textAlign:"center",padding:8,background:C.bg,borderRadius:6}}>
       <div style={{fontWeight:900,fontSize:16,color:C.acc}}>{fmt(simResults[i].revenuePerMonth)}€</div>
       <div style={{fontSize:7,color:C.td}}>CA/mois</div>
      </div>
-     <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:6}}>
+     <div style={{textAlign:"center",padding:8,background:C.bg,borderRadius:6}}>
       <div style={{fontWeight:900,fontSize:16,color:simResults[i].roiPerMonth>=0?C.g:C.r}}>{simResults[i].roiPerMonth>=0?"+":""}{fmt(simResults[i].roiPerMonth)}€</div>
       <div style={{fontSize:7,color:C.td}}>ROI/mois</div>
      </div>
-     <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:6}}>
+     <div style={{textAlign:"center",padding:8,background:C.bg,borderRadius:6}}>
       <div style={{fontWeight:900,fontSize:16,color:simResults[i].roasOffer>=1?C.g:C.r}}>{simResults[i].roasOffer}x</div>
       <div style={{fontSize:7,color:C.td}}>ROAS</div>
      </div>
@@ -4368,7 +4368,7 @@ function AdSimulatorAdvanced({budgetSim,setBudgetSim,totCpl,totRoas,wonAll,totLe
     const totalBudget=budgetSim*simMonths;
     const totalClients=simResults.reduce((a,r)=>a+r.closedPerMonth,0)*simMonths;
     const breakEvenMonth=projectionData.findIndex(d=>d.Total>=d.Budget);
-    return <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:8}}>
+    return <div className="sim-summary rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:8}}>
      <div style={{textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.acc}}>{fmt(totalRevM6)}€</div><div style={{fontSize:8,color:C.td}}>CA total M6</div></div>
      <div style={{textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.r}}>{fmt(totalBudget)}€</div><div style={{fontSize:8,color:C.td}}>Budget total</div></div>
      <div style={{textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:totalRevM6>=totalBudget?C.g:C.r}}>{totalBudget>0?(totalRevM6/totalBudget).toFixed(1):0}x</div><div style={{fontSize:8,color:C.td}}>ROAS global</div></div>
@@ -4458,12 +4458,12 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
   <button onClick={()=>setPTab(12)} style={{padding:"8px 20px",borderRadius:10,border:`1px solid ${C.acc}44`,background:C.accD,color:C.acc,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>⚙️ Aller aux Paramètres</button>
  </div>;
  return <div className="fu">
-  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
    <div><div style={{fontSize:9,fontWeight:700,color:C.acc,letterSpacing:1.5,fontFamily:FONT_TITLE}}>📣 PUBLICITÉ — {soc.nom}</div><div style={{fontSize:11,color:C.td,marginTop:2}}>Données Meta Ads × GHL</div></div>
-   <button onClick={()=>setPTab(12)} style={{padding:"5px 12px",borderRadius:8,border:`1px solid ${C.acc}44`,background:C.accD,color:C.acc,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>✏️ Modifier les données</button>
+   <button onClick={()=>setPTab(12)} style={{padding:"7px 14px",borderRadius:8,border:`1px solid ${C.acc}44`,background:C.accD,color:C.acc,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:FONT,minHeight:38}}>✏️ Modifier</button>
   </div>
   {/* KPIs */}
-  <div className="kpi-grid-responsive" style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20}}>
+  <div className="kpi-grid-responsive rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:10,marginBottom:20}}>
    {kpis.map((k,i)=><div key={i} className="fade-up glass-card-static kpi-shimmer" style={{padding:16,textAlign:"center",animationDelay:`${i*0.05}s`,position:"relative",overflow:"hidden"}}>
     <div style={{fontSize:18,marginBottom:4}}>{k.icon}</div>
     <div style={{fontWeight:900,fontSize:18,color:k.color,lineHeight:1}}>{k.value}</div>
@@ -4522,9 +4522,9 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    {/* Budget répartition Pie */}
    <div className="fade-up glass-card-static" style={{padding:18,animationDelay:"0.35s"}}>
     <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>🍩 RÉPARTITION BUDGET PAR MOIS</div>
-    {pieMonths.length>0?<div style={{display:"flex",alignItems:"center",height:220}}>
-     <div style={{width:"55%",height:200}}><ResponsiveContainer><PieChart><Pie data={pieMonths} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={3} strokeWidth={0} animationDuration={1000}>{pieMonths.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip/></PieChart></ResponsiveContainer></div>
-     <div style={{flex:1,paddingLeft:8}}>{pieMonths.map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/><span style={{flex:1,fontSize:9,color:C.td}}>{d.name}</span><span style={{fontWeight:700,fontSize:9,color:C.t}}>{fmt(d.value)}€</span></div>)}</div>
+    {pieMonths.length>0?<div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",minHeight:200}}>
+     <div style={{flex:"1 1 140px",minWidth:140,height:200}}><ResponsiveContainer><PieChart><Pie data={pieMonths} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={3} strokeWidth={0} animationDuration={1000}>{pieMonths.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip/></PieChart></ResponsiveContainer></div>
+     <div style={{flex:"1 1 160px",minWidth:0}}>{pieMonths.map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/><span style={{flex:1,fontSize:9,color:C.td}}>{d.name}</span><span style={{fontWeight:700,fontSize:9,color:C.t}}>{fmt(d.value)}€</span></div>)}</div>
     </div>:<div style={{textAlign:"center",padding:40,color:C.td,fontSize:11}}>Pas de données</div>}
    </div>
    {/* ROAS evolution */}
@@ -4598,12 +4598,12 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
   {/* Budget Simulator */}
   <div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,borderLeft:`3px solid ${C.v}`}}>
    <div style={{fontSize:9,fontWeight:700,color:C.v,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>🧮 SIMULATEUR DE BUDGET</div>
-   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14,flexWrap:"wrap"}}>
     <span style={{fontSize:12,color:C.td,fontWeight:600}}>Budget :</span>
-    <input type="range" min={100} max={10000} step={100} value={budgetSim} onChange={e=>setBudgetSim(parseInt(e.target.value))} style={{flex:1}}/>
+    <input type="range" min={100} max={10000} step={100} value={budgetSim} onChange={e=>setBudgetSim(parseInt(e.target.value))} style={{flex:"1 1 120px",minWidth:100}}/>
     <span style={{fontWeight:900,fontSize:16,color:C.v,minWidth:80,textAlign:"right"}}>{fmt(budgetSim)}€</span>
    </div>
-   {totCpl>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
+   {totCpl>0&&<div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
     <div style={{padding:12,background:C.card2,borderRadius:10,textAlign:"center"}}>
      <div style={{fontSize:8,color:C.td,fontWeight:600}}>Leads estimés</div>
      <div style={{fontWeight:900,fontSize:20,color:"#60a5fa"}}>{Math.round(budgetSim/totCpl)}</div>

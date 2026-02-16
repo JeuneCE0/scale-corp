@@ -61,7 +61,7 @@ export function PipelinePanel({soc, ghlData, clients, socBankData}) {
  return <div>
    <Sect title="🎯 Pipeline" sub={`${openOpps.length} opportunités ouvertes · ${fmt(pipelineValue)}€`}>
      {/* KPIs */}
-     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginBottom:14}}>
+     <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginBottom:14}}>
        <Card accent={C.acc} style={{padding:"10px 12px",textAlign:"center"}}><div style={{color:C.td,fontSize:8,fontWeight:700}}>PIPELINE</div><div style={{fontWeight:900,fontSize:20,color:C.acc}}>{fmt(pipelineValue)}€</div><div style={{fontSize:8,color:C.td}}>{openOpps.length} ouvertes</div></Card>
        <Card accent={C.g} style={{padding:"10px 12px",textAlign:"center"}}><div style={{color:C.td,fontSize:8,fontWeight:700}}>GAGNÉS</div><div style={{fontWeight:900,fontSize:20,color:C.g}}>{wonOpps.length}</div><div style={{fontSize:8,color:C.td}}>{fmt(wonValue)}€</div></Card>
        <Card accent={C.r} style={{padding:"10px 12px",textAlign:"center"}}><div style={{color:C.td,fontSize:8,fontWeight:700}}>PERDUS</div><div style={{fontWeight:900,fontSize:20,color:C.r}}>{lostOpps.length}</div><div style={{fontSize:8,color:C.td}}>{fmt(lostValue)}€</div></Card>
@@ -79,7 +79,7 @@ export function PipelinePanel({soc, ghlData, clients, socBankData}) {
        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un prospect..." style={{flex:1,minWidth:150,padding:"6px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}} />
      </div>
      {/* Stage conversion funnel */}
-     {stages.length > 1 && <div style={{display:"flex",alignItems:"center",gap:0,marginBottom:14,overflowX:"auto",paddingBottom:4}}>
+     {stages.length > 1 && <div className="funnel-scroll" style={{display:"flex",alignItems:"center",gap:0,marginBottom:14,overflowX:"auto",paddingBottom:4}}>
        {stages.map((s, i) => {
          const col = stageColors[i % stageColors.length];
          const conv = stageConvRates[s.id];
@@ -95,7 +95,7 @@ export function PipelinePanel({soc, ghlData, clients, socBankData}) {
      </div>}
 
      {/* Kanban board */}
-     <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8}}>
+     <div className="kanban-board" style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8}}>
        {stages.map((stage, si) => {
          const stageOpps = oppsForStage(stage.id);
          const stageVal = stageOpps.reduce((a, o) => a + (o.monetaryValue || o.value || 0), 0);
@@ -131,7 +131,7 @@ export function PipelinePanel({soc, ghlData, clients, socBankData}) {
      </div>
 
      {/* Won / Lost summary */}
-     {(wonOpps.length > 0 || lostOpps.length > 0) && <div style={{marginTop:14}}>
+     {(wonOpps.length > 0 || lostOpps.length > 0) && <div className="deals-recent" style={{marginTop:14}}>
        <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:6}}>DEALS RÉCENTS</div>
        {[...wonOpps,...lostOpps].sort((a,b) => new Date(b.updatedAt||0) - new Date(a.updatedAt||0)).slice(0,8).map(o => <div key={o.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:o.status==="won"?C.gD:C.rD,borderRadius:8,marginBottom:2,border:`1px solid ${o.status==="won"?C.g:C.r}15`}}>
          <span style={{fontSize:10}}>{o.status==="won"?"🏆":"❌"}</span>
@@ -272,7 +272,7 @@ export function NewClientsPanel({soc, clients, saveClients, ghlData, socBankData
  return <div>
    <Sect title="👥 Clients" sub={`${active.length} actifs · ${myClients.length} total · MRR ${fmt(totalMRR)}€`}>
      {/* KPIs */}
-     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(95px,1fr))",gap:6,marginBottom:12}}>
+     <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(95px,1fr))",gap:6,marginBottom:12}}>
        <Card accent={C.g} style={{padding:"8px 10px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.g}}>{active.length}</div><div style={{fontSize:8,color:C.td}}>Actifs</div></Card>
        <Card accent={C.acc} style={{padding:"8px 10px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.acc}}>{fmt(totalMRR)}€</div><div style={{fontSize:8,color:C.td}}>MRR</div></Card>
        <Card accent={C.o} style={{padding:"8px 10px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:latePayments.length > 0 ? C.o : C.td}}>{latePayments.length}</div><div style={{fontSize:8,color:C.td}}>Retard</div></Card>
@@ -282,8 +282,8 @@ export function NewClientsPanel({soc, clients, saveClients, ghlData, socBankData
      </div>
 
      {/* Tabs */}
-     <div style={{display:"flex",gap:4,marginBottom:14,flexWrap:"wrap"}}>
-       {tabs.map(t => <button key={t.id} onClick={() => setTab(t.id)} style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${tab === t.id ? t.color + "66" : C.brd}`,background:tab === t.id ? t.color + "15" : "transparent",color:tab === t.id ? t.color : C.td,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:4}}>
+     <div className="panel-tabs" style={{display:"flex",gap:4,marginBottom:14,flexWrap:"wrap"}}>
+       {tabs.map(t => <button key={t.id} onClick={() => setTab(t.id)} style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${tab === t.id ? t.color + "66" : C.brd}`,background:tab === t.id ? t.color + "15" : "transparent",color:tab === t.id ? t.color : C.td,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:4,minHeight:38}}>
          <span>{t.icon}</span>{t.label}{t.count > 0 && <span style={{background:t.color + "22",color:t.color,padding:"1px 5px",borderRadius:6,fontSize:8,fontWeight:800}}>{t.count}</span>}
        </button>)}
      </div>
@@ -453,7 +453,7 @@ export function PrestatairesPanel({soc, team, saveTeam, clients, reps}) {
  return <div>
    <Sect title="🛠️ Prestataires" sub={`${myPresta.length} prestataire${myPresta.length > 1 ? "s" : ""} · ${fmt(totalPrestaMonthly)}€/mois`} right={<Btn small onClick={addPresta}>+ Ajouter</Btn>}>
      {/* Financial recap */}
-     {myPresta.length > 0 && <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginBottom:14}}>
+     {myPresta.length > 0 && <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginBottom:14}}>
        <Card accent={C.r} style={{padding:"10px 12px",textAlign:"center"}}><div style={{color:C.td,fontSize:8,fontWeight:700}}>COÛT MENSUEL</div><div style={{fontWeight:900,fontSize:18,color:C.r}}>{fmt(totalPrestaMonthly)}€</div></Card>
        <Card accent={C.acc} style={{padding:"10px 12px",textAlign:"center"}}><div style={{color:C.td,fontSize:8,fontWeight:700}}>CA MENSUEL</div><div style={{fontWeight:900,fontSize:18,color:C.acc}}>{fmt(ca)}€</div></Card>
        <Card accent={prestaPctOfCa > 40 ? C.r : prestaPctOfCa > 25 ? C.o : C.g} style={{padding:"10px 12px",textAlign:"center"}}><div style={{color:C.td,fontSize:8,fontWeight:700}}>RATIO COÛT/CA</div><div style={{fontWeight:900,fontSize:18,color:prestaPctOfCa > 40 ? C.r : prestaPctOfCa > 25 ? C.o : C.g}}>{prestaPctOfCa}%</div></Card>
@@ -621,18 +621,18 @@ export function SantePanel({soc, reps, allM, socBankData, ghlData, clients, hold
        <div style={{fontWeight:900,fontSize:48,color:hs.color,lineHeight:1}}>{hs.grade}</div>
        <div style={{fontWeight:700,fontSize:14,color:C.t,marginTop:6}}>{gradeTxt[hs.grade] || "—"}</div>
        <div style={{fontSize:11,color:C.td,marginTop:4}}>Score: {hs.score}/100</div>
-       <div style={{display:"flex",justifyContent:"center",gap:16,marginTop:14}}>
-         <div><div style={{fontSize:8,color:C.td,fontWeight:600}}>Objectif</div><div style={{fontWeight:800,fontSize:14,color:C.acc}}>{hs.obj}/30</div></div>
-         <div><div style={{fontSize:8,color:C.td,fontWeight:600}}>Croissance</div><div style={{fontWeight:800,fontSize:14,color:C.g}}>{hs.growth}/25</div></div>
-         <div><div style={{fontSize:8,color:C.td,fontWeight:600}}>Marge</div><div style={{fontWeight:800,fontSize:14,color:C.b}}>{hs.margin}/25</div></div>
-         <div><div style={{fontSize:8,color:C.td,fontWeight:600}}>Rétention</div><div style={{fontWeight:800,fontSize:14,color:"#a78bfa"}}>{hs.retention}/20</div></div>
+       <div className="health-score-grid" style={{display:"flex",justifyContent:"center",gap:16,marginTop:14}}>
+         <div style={{textAlign:"center"}}><div style={{fontSize:8,color:C.td,fontWeight:600}}>Objectif</div><div style={{fontWeight:800,fontSize:14,color:C.acc}}>{hs.obj}/30</div></div>
+         <div style={{textAlign:"center"}}><div style={{fontSize:8,color:C.td,fontWeight:600}}>Croissance</div><div style={{fontWeight:800,fontSize:14,color:C.g}}>{hs.growth}/25</div></div>
+         <div style={{textAlign:"center"}}><div style={{fontSize:8,color:C.td,fontWeight:600}}>Marge</div><div style={{fontWeight:800,fontSize:14,color:C.b}}>{hs.margin}/25</div></div>
+         <div style={{textAlign:"center"}}><div style={{fontSize:8,color:C.td,fontWeight:600}}>Rétention</div><div style={{fontWeight:800,fontSize:14,color:"#a78bfa"}}>{hs.retention}/20</div></div>
        </div>
      </div>
 
      {/* Burn rate / Runway */}
      <div className="glass-card-static" style={{padding:16,marginBottom:14}}>
        <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>🔥 BURN-RATE & SURVIE</div>
-       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+       <div className="burn-grid" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
          <div style={{textAlign:"center"}}><div style={{fontSize:8,color:C.td}}>Dépenses moy/mois</div><div style={{fontWeight:900,fontSize:18,color:C.r}}>{fmt(avgBurn)}€</div></div>
          <div style={{textAlign:"center"}}><div style={{fontSize:8,color:C.td}}>Trésorerie</div><div style={{fontWeight:900,fontSize:18,color:C.b}}>{fmt(treso)}€</div></div>
          <div style={{textAlign:"center"}}><div style={{fontSize:8,color:C.td}}>Mois de survie</div><div style={{fontWeight:900,fontSize:18,color:burnRunway <= 3 ? C.r : burnRunway <= 6 ? C.o : C.g}}>{burnRunway >= 99 ? "∞" : burnRunway}</div></div>
@@ -734,7 +734,7 @@ export function AgendaStats({soc, ghlData}) {
 
  return <div className="glass-card-static" style={{padding:16,marginBottom:14}}>
    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>📞 APPELS RÉSERVÉS</div>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(90px,1fr))",gap:8}}>
+   <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(90px,1fr))",gap:8}}>
      <div style={{textAlign:"center",padding:8,background:C.bg,borderRadius:8}}>
        <div style={{fontWeight:900,fontSize:20,color:C.acc}}>{yearCalls}</div>
        <div style={{fontSize:8,color:C.td}}>Cette année</div>
@@ -756,7 +756,7 @@ export function AgendaStats({soc, ghlData}) {
        <div style={{fontSize:8,color:C.td}}>Sem. prochaine</div>
      </div>
    </div>
-   <div style={{display:"flex",gap:12,marginTop:10,justifyContent:"center"}}>
+   <div style={{display:"flex",gap:12,marginTop:10,justifyContent:"center",flexWrap:"wrap"}}>
      <span style={{fontSize:9,color:C.g}}>✅ {confirmed} confirmés</span>
      <span style={{fontSize:9,color:C.r}}>❌ {noShows} no-show/annulés</span>
      <span style={{fontSize:9,color:C.td}}>📊 Taux: {calEvts.length > 0 ? Math.round(confirmed / calEvts.length * 100) : 0}% confirmés</span>
