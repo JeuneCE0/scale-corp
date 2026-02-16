@@ -677,7 +677,7 @@ export function LoginFooter() {
     <a href="#privacy" style={{ color: C.acc, textDecoration: "underline" }}>{"politique de confidentialité"}</a>
     <br />
     <a href="#mentions" style={{ color: C.td, textDecoration: "underline" }}>{"Mentions légales"}</a>
-    {" \u00b7 "}
+    {" · "}
     <a href="#privacy" style={{ color: C.td, textDecoration: "underline" }}>RGPD</a>
   </div>;
 }
