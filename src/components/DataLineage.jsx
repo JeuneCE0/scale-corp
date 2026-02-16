@@ -36,49 +36,49 @@ function FlowDiagram({ socs }) {
           ))}
         </div>
 
-        <div style={arrowStyle}><span style={{ fontSize: 20 }}>\u2192</span></div>
+        <div style={arrowStyle}><span style={{ fontSize: 20 }}>{"\u2192"}</span></div>
 
         {/* Bronze */}
         <div style={colStyle}>
           {layerLabel("bronze")}
           <div style={nodeStyle("#cd7f3218", "#cd7f3244")}>
-            <div style={{ fontSize: 14 }}>1\uFE0F\u20E3</div>
+            <div style={{ fontSize: 14 }}>{"\u0031\uFE0F\u20E3"}</div>
             <div style={{ fontWeight: 700 }}>Ingestion brute</div>
             <div style={{ fontSize: 8, color: C.td, marginTop: 3, lineHeight: 1.4 }}>
-              Appel API<br/>Validation r\u00E9ponse<br/>Cache local
+              Appel API<br/>Validation réponse<br/>Cache local
             </div>
           </div>
         </div>
 
-        <div style={arrowStyle}><span style={{ fontSize: 20 }}>\u2192</span></div>
+        <div style={arrowStyle}><span style={{ fontSize: 20 }}>{"\u2192"}</span></div>
 
         {/* Silver */}
         <div style={colStyle}>
           {layerLabel("silver")}
           <div style={nodeStyle("#c0c0c018", "#c0c0c044")}>
-            <div style={{ fontSize: 14 }}>2\uFE0F\u20E3</div>
+            <div style={{ fontSize: 14 }}>{"\u0032\uFE0F\u20E3"}</div>
             <div style={{ fontWeight: 700 }}>Transformation</div>
             <div style={{ fontSize: 8, color: C.td, marginTop: 3, lineHeight: 1.4 }}>
-              Mapping champs<br/>Cat\u00E9gorisation tx<br/>Filtrage exclusions<br/>Calcul mensuel
+              Mapping champs<br/>Catégorisation tx<br/>Filtrage exclusions<br/>Calcul mensuel
             </div>
           </div>
         </div>
 
-        <div style={arrowStyle}><span style={{ fontSize: 20 }}>\u2192</span></div>
+        <div style={arrowStyle}><span style={{ fontSize: 20 }}>{"\u2192"}</span></div>
 
         {/* Gold */}
         <div style={colStyle}>
           {layerLabel("gold")}
           <div style={nodeStyle("#FFD70018", "#FFD70044")}>
-            <div style={{ fontSize: 14 }}>3\uFE0F\u20E3</div>
-            <div style={{ fontWeight: 700 }}>Agr\u00E9gation</div>
+            <div style={{ fontSize: 14 }}>{"\u0033\uFE0F\u20E3"}</div>
+            <div style={{ fontWeight: 700 }}>Agrégation</div>
             <div style={{ fontSize: 8, color: C.td, marginTop: 3, lineHeight: 1.4 }}>
               Rapport mensuel<br/>KPIs & Health Score<br/>Cash Cascade<br/>Alertes
             </div>
           </div>
         </div>
 
-        <div style={arrowStyle}><span style={{ fontSize: 20 }}>\u2192</span></div>
+        <div style={arrowStyle}><span style={{ fontSize: 20 }}>{"\u2192"}</span></div>
 
         {/* Dashboards */}
         <div style={colStyle}>
@@ -132,7 +132,7 @@ function LogEntry({ log, socs }) {
 
       {/* Records info */}
       <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
-        {log.recordsIn > 0 && <span style={{ fontSize: 9, color: C.td }}>{log.recordsIn} entr\u00E9es</span>}
+        {log.recordsIn > 0 && <span style={{ fontSize: 9, color: C.td }}>{log.recordsIn} entrées</span>}
         {log.recordsOut > 0 && <span style={{ fontSize: 9, color: C.g }}>{log.recordsOut} sorties</span>}
         {log.durationMs > 0 && <span style={{ fontSize: 9, color: C.b }}>{log.durationMs}ms</span>}
         {log.errorMessage && <span style={{ fontSize: 9, color: C.r }}>{log.errorMessage}</span>}
@@ -141,7 +141,7 @@ function LogEntry({ log, socs }) {
       {/* Expandable details */}
       {open && log.details && Object.keys(log.details).length > 0 && (
         <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 8, background: C.bg, border: `1px solid ${C.brd}`, fontSize: 10, lineHeight: 1.6 }}>
-          <div style={{ color: C.td, fontWeight: 700, fontSize: 8, letterSpacing: .5, marginBottom: 4, textTransform: "uppercase" }}>D\u00E9tails</div>
+          <div style={{ color: C.td, fontWeight: 700, fontSize: 8, letterSpacing: .5, marginBottom: 4, textTransform: "uppercase" }}>Détails</div>
           {Object.entries(log.details).map(([k, v]) => (
             <div key={k} style={{ display: "flex", gap: 8 }}>
               <span style={{ color: C.td, minWidth: 90 }}>{k}:</span>
@@ -180,7 +180,7 @@ function StatCards({ logs }) {
       </div>
       <div style={cardStyle}>
         <div style={{ fontSize: 20, fontWeight: 900, color: C.g }}>{byStatus.success}</div>
-        <div style={{ fontSize: 9, color: C.td, fontWeight: 600 }}>Succ\u00E8s</div>
+        <div style={{ fontSize: 9, color: C.td, fontWeight: 600 }}>Succès</div>
       </div>
       <div style={cardStyle}>
         <div style={{ fontSize: 20, fontWeight: 900, color: C.r }}>{byStatus.error}</div>
@@ -192,7 +192,7 @@ function StatCards({ logs }) {
       </div>
       <div style={cardStyle}>
         <div style={{ fontSize: 20, fontWeight: 900, color: C.b }}>{totalDuration > 1000 ? `${(totalDuration / 1000).toFixed(1)}s` : `${totalDuration}ms`}</div>
-        <div style={{ fontSize: 9, color: C.td, fontWeight: 600 }}>Dur\u00E9e totale</div>
+        <div style={{ fontSize: 9, color: C.td, fontWeight: 600 }}>Durée totale</div>
       </div>
       {Object.entries(byLayer).map(([k, v]) => (
         <div key={k} style={cardStyle}>
@@ -253,7 +253,7 @@ export function DataLineage({ socs, socId }) {
         Data Lineage
       </div>
       <div style={{ color: C.td, fontSize: 11, marginBottom: 16, lineHeight: 1.5 }}>
-        Tra\u00E7abilit\u00E9 compl\u00E8te des donn\u00E9es : de l'ingestion (APIs) \u00E0 l'affichage (dashboards). Architecture M\u00E9daillon Bronze \u2192 Silver \u2192 Gold.
+        {"Traçabilité complète des données : de l'ingestion (APIs) à l'affichage (dashboards). Architecture Médaillon Bronze \u2192 Silver \u2192 Gold."}
       </div>
 
       {/* View toggle */}
@@ -267,13 +267,13 @@ export function DataLineage({ socs, socId }) {
       {view === "flow" && (
         <div style={{ padding: 16, borderRadius: 14, border: `1px solid ${C.brd}`, background: C.card, marginBottom: 14 }}>
           <div style={{ color: C.td, fontSize: 9, fontWeight: 700, letterSpacing: .8, marginBottom: 10, textTransform: "uppercase" }}>
-            Flux de donn\u00E9es — Architecture M\u00E9daillon
+            {"Flux de données \u2014 Architecture Médaillon"}
           </div>
           <FlowDiagram socs={socs} />
 
           {/* Legend */}
           <div style={{ marginTop: 16, padding: "12px 14px", borderRadius: 10, background: C.bg, border: `1px solid ${C.brd}` }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: C.td, letterSpacing: .5, marginBottom: 8, textTransform: "uppercase" }}>L\u00E9gende des couches</div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: C.td, letterSpacing: .5, marginBottom: 8, textTransform: "uppercase" }}>Légende des couches</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
               {LAYER_ORDER.map(l => (
                 <div key={l} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
@@ -281,9 +281,9 @@ export function DataLineage({ socs, socId }) {
                   <div>
                     <div style={{ fontSize: 10, fontWeight: 700, color: LINEAGE_LAYERS[l].color }}>{LINEAGE_LAYERS[l].label}</div>
                     <div style={{ fontSize: 9, color: C.td, lineHeight: 1.4 }}>
-                      {l === "bronze" && "Donn\u00E9es brutes des APIs (GHL, Revolut, Stripe). Aucune transformation."}
-                      {l === "silver" && "Nettoyage, mapping des champs, cat\u00E9gorisation des transactions, filtrage."}
-                      {l === "gold" && "M\u00E9triques agr\u00E9g\u00E9es : CA, marge, KPIs, health score, rapports mensuels."}
+                      {l === "bronze" && "Données brutes des APIs (GHL, Revolut, Stripe). Aucune transformation."}
+                      {l === "silver" && "Nettoyage, mapping des champs, catégorisation des transactions, filtrage."}
+                      {l === "gold" && "Métriques agrégées : CA, marge, KPIs, health score, rapports mensuels."}
                     </div>
                   </div>
                 </div>
@@ -305,14 +305,14 @@ export function DataLineage({ socs, socId }) {
               </thead>
               <tbody>
                 {[
-                  { table: "data_lineage_logs", layer: "system", src: "Toutes", desc: "Logs de tra\u00E7abilit\u00E9 du pipeline" },
-                  { table: "societies", layer: "bronze", src: "Config", desc: "Soci\u00E9t\u00E9s et param\u00E8tres" },
-                  { table: "client_data", layer: "silver", src: "GHL + Manuel", desc: "Donn\u00E9es clients enrichies" },
-                  { table: "tx_categories", layer: "silver", src: "Revolut", desc: "Cat\u00E9gorisation des transactions" },
-                  { table: "meta_ads", layer: "bronze", src: "Manuel", desc: "D\u00E9penses publicitaires mensuelles" },
-                  { table: "sales_data", layer: "bronze", src: "Manuel", desc: "Donn\u00E9es de vente" },
-                  { table: "reports", layer: "gold", src: "Auto + Manuel", desc: "Rapports mensuels agr\u00E9g\u00E9s" },
-                  { table: "holding", layer: "gold", src: "Calcul\u00E9", desc: "Configuration et cash cascade holding" },
+                  { table: "data_lineage_logs", layer: "system", src: "Toutes", desc: "Logs de traçabilité du pipeline" },
+                  { table: "societies", layer: "bronze", src: "Config", desc: "Sociétés et paramètres" },
+                  { table: "client_data", layer: "silver", src: "GHL + Manuel", desc: "Données clients enrichies" },
+                  { table: "tx_categories", layer: "silver", src: "Revolut", desc: "Catégorisation des transactions" },
+                  { table: "meta_ads", layer: "bronze", src: "Manuel", desc: "Dépenses publicitaires mensuelles" },
+                  { table: "sales_data", layer: "bronze", src: "Manuel", desc: "Données de vente" },
+                  { table: "reports", layer: "gold", src: "Auto + Manuel", desc: "Rapports mensuels agrégés" },
+                  { table: "holding", layer: "gold", src: "Calculé", desc: "Configuration et cash cascade holding" },
                 ].map((r, i) => (
                   <tr key={i} style={{ borderBottom: `1px solid ${C.brd}08` }}>
                     <td style={{ padding: "6px 8px", fontWeight: 600, color: C.t, fontFamily: "monospace" }}>{r.table}</td>
@@ -345,14 +345,14 @@ export function DataLineage({ socs, socId }) {
             </select>
             <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={selStyle}>
               <option value="all">Tous les statuts</option>
-              <option value="success">Succ\u00E8s</option>
+              <option value="success">{"Succès"}</option>
               <option value="error">Erreur</option>
               <option value="warning">Warning</option>
               <option value="skipped">Skipped</option>
             </select>
             {!socId && (
               <select value={filterSoc} onChange={e => setFilterSoc(e.target.value)} style={selStyle}>
-                <option value="all">Toutes les soci\u00E9t\u00E9s</option>
+                <option value="all">{"Toutes les sociétés"}</option>
                 {socs.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
               </select>
             )}
@@ -369,7 +369,7 @@ export function DataLineage({ socs, socId }) {
                 <div style={{ fontSize: 32, marginBottom: 8 }}>{"\uD83D\uDD0D"}</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 4 }}>Aucun log</div>
                 <div style={{ fontSize: 11, color: C.td, lineHeight: 1.5 }}>
-                  Les logs appara\u00EEtront automatiquement lors des synchronisations de donn\u00E9es (GHL, Revolut, Stripe) et de la g\u00E9n\u00E9ration des rapports.
+                  {"Les logs apparaîtront automatiquement lors des synchronisations de données (GHL, Revolut, Stripe) et de la génération des rapports."}
                 </div>
               </div>
             )}
@@ -378,7 +378,7 @@ export function DataLineage({ socs, socId }) {
             ))}
             {filtered.length > 100 && (
               <div style={{ textAlign: "center", color: C.td, fontSize: 10, padding: 8 }}>
-                + {filtered.length - 100} logs suppl\u00E9mentaires
+                + {filtered.length - 100} logs supplémentaires
               </div>
             )}
           </div>
