@@ -41,6 +41,19 @@ function computeReportData(soc, month, socBankData, ghlData, clients, reps) {
   const margePct = ca > 0 ? Math.round(marge / ca * 100) : 0;
   const treso = socBankData?.balance || 0;
 
+  // Rémunération Dayyaan & Dividendes Scale Corp (from excluded transactions)
+  const excludedTxs = txs.filter(t => isExcludedTx(t, excl) && (t.legs?.[0]?.amount || 0) < 0);
+  const remunDayyaan = Math.round(Math.abs(excludedTxs.filter(t => {
+    const desc = ((t.legs?.[0]?.description || "") + " " + (t.reference || "")).toLowerCase();
+    return /dayyaan|mohammad/i.test(desc);
+  }).reduce((a, t) => a + Math.abs(t.legs?.[0]?.amount || 0), 0)));
+  const dividendesScaleCorp = Math.round(Math.abs(excludedTxs.filter(t => {
+    const desc = ((t.legs?.[0]?.description || "") + " " + (t.reference || "")).toLowerCase();
+    return /dividend|scale\s*corp|anthony|rudy/i.test(desc) && !/dayyaan|mohammad/i.test(desc);
+  }).reduce((a, t) => a + Math.abs(t.legs?.[0]?.amount || 0), 0)));
+  const margeNette = marge - remunDayyaan - dividendesScaleCorp;
+  const margeNettePct = ca > 0 ? Math.round(margeNette / ca * 100) : 0;
+
   // Category breakdown for expenses
   const catBreakdown = {};
   outTxs.forEach(t => {
@@ -151,6 +164,7 @@ function computeReportData(soc, month, socBankData, ghlData, clients, reps) {
   return {
     // Finances
     ca, charges, marge, margePct, treso, catData, topEncaissements, topDepenses, txCount: filtered.length,
+    remunDayyaan, dividendesScaleCorp, margeNette, margeNettePct,
     // Sales
     prospectsMonth, activeCl: activeCl.length, churnedCl: churnedCl.length,
     callsMonth, closings, lostDeals, conversionRate, avgClientValue,
@@ -228,9 +242,35 @@ export function RapportsPanel({ soc, socBankData, ghlData, clients, reps, allM, 
       <div className="rg4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 12 }}>
         <KpiBox value={`${fmt(d.ca)}€`} label="CA du mois" color={C.g} />
         <KpiBox value={`${fmt(d.charges)}€`} label="Charges" color={C.r} />
-        <KpiBox value={`${fmt(d.marge)}€`} label="Marge" color={d.marge >= 0 ? C.g : C.r} sub={`${d.margePct}%`} />
+        <KpiBox value={`${fmt(d.marge)}€`} label="Marge brute" color={d.marge >= 0 ? C.g : C.r} sub={`${d.margePct}%`} />
         <KpiBox value={`${fmt(d.treso)}€`} label="Trésorerie" color={C.b} />
       </div>
+
+      {/* Marge Nette card */}
+      {(d.remunDayyaan > 0 || d.dividendesScaleCorp > 0) && <div style={{ padding: 14, background: C.card2, borderRadius: 10, border: `1px solid ${C.brd}`, marginBottom: 12 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, color: C.td, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>Marge nette (après déductions)</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: C.t }}>Marge brute</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: d.marge >= 0 ? C.g : C.r }}>{fmt(d.marge)}€</span>
+          </div>
+          {d.remunDayyaan > 0 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: C.td }}>− Rémunération Dayyaan</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: C.r }}>-{fmt(d.remunDayyaan)}€</span>
+          </div>}
+          {d.dividendesScaleCorp > 0 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: C.td }}>− Dividendes Scale Corp Inc</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: C.r }}>-{fmt(d.dividendesScaleCorp)}€</span>
+          </div>}
+          <div style={{ borderTop: `1px solid ${C.brd}`, paddingTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: C.t }}>Marge nette</span>
+            <div style={{ textAlign: "right" }}>
+              <span style={{ fontSize: 16, fontWeight: 900, color: d.margeNette >= 0 ? C.g : C.r }}>{fmt(d.margeNette)}€</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: d.margeNettePct >= 0 ? C.g : C.r, marginLeft: 6 }}>{d.margeNettePct}%</span>
+            </div>
+          </div>
+        </div>
+      </div>}
 
       {/* Category breakdown */}
       {d.catData.length > 0 && <div style={{ marginBottom: 12 }}>
