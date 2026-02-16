@@ -38,6 +38,7 @@ const PulseScreen = lazy(() => import("./components/PulseScreen.jsx").then(m => 
 const AICoPilot = lazy(() => import("./components/AI.jsx").then(m => ({ default: m.AICoPilot })));
 const TabCRM = lazy(() => import("./components/CRM.jsx").then(m => ({ default: m.TabCRM })));
 const BankingPanel = lazy(() => import("./components/Banking.jsx").then(m => ({ default: m.BankingPanel })));
+const AdminPanel = lazy(() => import("./components/AdminPanel.jsx").then(m => ({ default: m.AdminPanel })));
 
 /* Suspense fallback with skeleton loader */
 function LazyFallback() {
@@ -918,6 +919,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </Sect>
    <div style={{marginTop:12}}><Btn onClick={()=>{save(null,null,hold);}}>💾 Sauvegarder les paramètres</Btn></div>
   </>}
+  {tab===20&&<Suspense fallback={<LazyFallback/>}><AdminPanel socs={socs} hold={hold} setHold={setHold} saveHold={()=>save(null,null,hold)}/></Suspense>}
   </PageTransition>
   </div>
   </div>

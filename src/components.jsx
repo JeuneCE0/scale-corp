@@ -4538,6 +4538,7 @@ export const SB_ADMIN=[
  {id:"pub",icon:"📣",label:"Publicité",tab:16,accent:"#f472b6"},
  {id:"rapports",icon:"📋",label:"Rapports",tab:17,accent:C.v},
  {id:"access",icon:"🔐",label:"Accès",tab:14,accent:"#f59e0b"},
+ {id:"admin",icon:"🛠",label:"Administration",tab:20,accent:"#e879f9"},
  {id:"params",icon:"⚙️",label:"Paramètres",tab:18,accent:C.td},
  {id:"pulse",icon:"⚡",label:"PULSE",tab:99,accent:"#FFAA00"},
 ];
