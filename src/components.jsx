@@ -27,17 +27,17 @@ import { PipelinePanel, NewClientsPanel, PrestatairesPanel, SantePanel, AgendaSt
 
 export function MobileBottomNav({items,activeTab,setTab,onAIToggle,aiOpen}){
  const mainItems=[
-  items.find(i=>i.id==="dashboard"),
+  items.find(i=>i.id==="dashboard"||i.id==="dash"),
   items.find(i=>i.id==="sales"||i.id==="bank"),
-  null, // AI button placeholder
+  {_ai:true}, // AI button placeholder
   items.find(i=>i.id==="clients"),
   items.find(i=>i.id==="conversations"||i.id==="activite"),
- ].filter((x,i)=>i===2||x);
+ ].filter(x=>x);
  const[moreOpen,setMoreOpen]=useState(false);
  const otherItems=items.filter(i=>!i.children&&!mainItems.find(m=>m&&m.id===i.id));
  return <><nav className="mobile-bottom-nav" style={{display:"none",position:"fixed",bottom:0,left:0,right:0,zIndex:200,background:"rgba(6,6,11,.92)",backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",borderTop:"1px solid rgba(255,255,255,.06)",padding:"0 0 env(safe-area-inset-bottom,0px)",justifyContent:"space-around",alignItems:"flex-end"}}>
   {mainItems.map((item,idx)=>{
-   if(idx===2) return <button key="ai-fab" onClick={onAIToggle} className="mobile-ai-fab" style={{display:"flex",flexDirection:"column",alignItems:"center",gap:0,background:"none",border:"none",cursor:"pointer",fontFamily:FONT,position:"relative",bottom:12,padding:0}}>
+   if(item._ai) return <button key="ai-fab" onClick={onAIToggle} className="mobile-ai-fab" style={{display:"flex",flexDirection:"column",alignItems:"center",gap:0,background:"none",border:"none",cursor:"pointer",fontFamily:FONT,position:"relative",bottom:12,padding:0}}>
     <div style={{width:52,height:52,borderRadius:26,background:aiOpen?"linear-gradient(135deg,#a78bfa,#FFAA00)":"linear-gradient(135deg,#FFBF00,#FF9D00)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:aiOpen?"0 0 24px rgba(167,139,250,.5)":"0 4px 20px rgba(255,170,0,.35)",transition:"all .3s cubic-bezier(.4,0,.2,1)",transform:aiOpen?"scale(1.05) rotate(15deg)":"scale(1)"}}>
      <span style={{fontSize:24,filter:"drop-shadow(0 1px 2px rgba(0,0,0,.3))"}}>{aiOpen?"✕":"🤖"}</span>
     </div>
