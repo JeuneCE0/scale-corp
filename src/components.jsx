@@ -23,6 +23,7 @@ export { PredictionsCard, LiveFeed, categorizeTransaction, BankingTransactions, 
 import { AIWeeklyCoach } from "./components/AI.jsx";
 import { RapportsPanel, ReplayMensuel } from "./components/Reports.jsx";
 export { AIWeeklyCoach, RapportsPanel, ReplayMensuel };
+import { PipelinePanel, NewClientsPanel, PrestatairesPanel, SantePanel, AgendaStats, CAForecast } from "./views/NewPanels.jsx";
 
 export function MobileBottomNav({items,activeTab,setTab,onAIToggle,aiOpen}){
  const mainItems=[
@@ -2633,10 +2634,18 @@ export function PulseDashWidget({soc,existing,savePulse,hold}){
 export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,savePulse,hold,clients,stripeData}){
  const cmNow=curM();
  const[selectedMonth,setSelectedMonth]=useState(cmNow);
+ const[viewPeriod,setViewPeriod]=useState("month"); // month | quarter | year
  const cm=selectedMonth;
  const report=gr(reps,soc.id,cm);
  const bankData=socBank?.[soc.id];const acc2=soc.brandColor||soc.color||C.acc;
  const excluded=EXCLUDED_ACCOUNTS[soc.id]||[];
+ // Period months for aggregation
+ const periodMonths=useMemo(()=>{
+  if(viewPeriod==="month")return[cm];
+  if(viewPeriod==="quarter"){const [y,m]=cm.split("-").map(Number);const qStart=Math.floor((m-1)/3)*3+1;return[0,1,2].map(i=>`${y}-${String(qStart+i).padStart(2,"0")}`);}
+  const y=cm.split("-")[0];return Array.from({length:12},(_,i)=>`${y}-${String(i+1).padStart(2,"0")}`);
+ },[cm,viewPeriod]);
+ const periodLabel=viewPeriod==="month"?ml(cm):viewPeriod==="quarter"?(()=>{const[y,m]=cm.split("-").map(Number);const q=Math.ceil(m/3);return`T${q} ${y}`;})():`Année ${cm.split("-")[0]}`;
  // Available months
  const availableMonths=useMemo(()=>{
   const months=new Set(allM||[]);
@@ -2646,16 +2655,16 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
   return[...months].sort().reverse();
  },[allM,bankData,cmNow]);
  const isCurrentMonth=cm===cmNow;
- // Bank financials
+ // Bank financials (aggregated by period)
  const bankFinancials=useMemo(()=>{
   if(!bankData?.transactions)return{income:0,expense:0,incomeTxs:[],expenseTxs:[]};
-  const monthTxs=bankData.transactions.filter(t=>(t.created_at||"").startsWith(cm)&&!isExcludedTx(t,excluded));
+  const monthTxs=bankData.transactions.filter(t=>{const ca2=t.created_at||"";return periodMonths.some(m=>ca2.startsWith(m))&&!isExcludedTx(t,excluded);});
   const incomeTxs=monthTxs.filter(t=>(t.legs?.[0]?.amount||0)>0);
   const expenseTxs=monthTxs.filter(t=>(t.legs?.[0]?.amount||0)<0);
   const income=incomeTxs.reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0);
   const expense=Math.abs(expenseTxs.reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0));
   return{income:Math.round(income),expense:Math.round(expense),incomeTxs,expenseTxs};
- },[bankData,soc.id,cm]);
+ },[bankData,soc.id,periodMonths]);
  const ca=bankFinancials.income||pf(report?.ca);
  const charges=bankFinancials.expense||pf(report?.charges);
  const marge=ca-charges;const margePct=ca>0?Math.round(marge/ca*100):0;
@@ -2773,8 +2782,8 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
  </div>;
  const selS2={background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,color:C.t,padding:"6px 10px",fontSize:11,fontFamily:FONT,outline:"none",cursor:"pointer"};
  return <div className="fu">
-  {/* Month selector */}
-  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+  {/* Stripe-style period selector */}
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
    <div style={{display:"flex",alignItems:"center",gap:6}}>
     <button onClick={()=>{const idx=availableMonths.indexOf(cm);if(idx<availableMonths.length-1)setSelectedMonth(availableMonths[idx+1]);}} style={{background:"none",border:`1px solid ${C.brd}`,borderRadius:8,color:C.td,cursor:"pointer",padding:"6px 10px",fontSize:14,fontFamily:FONT}}>‹</button>
     <select value={cm} onChange={e=>setSelectedMonth(e.target.value)} style={selS2}>
@@ -2782,8 +2791,14 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
     </select>
     <button onClick={()=>{const idx=availableMonths.indexOf(cm);if(idx>0)setSelectedMonth(availableMonths[idx-1]);}} style={{background:"none",border:`1px solid ${C.brd}`,borderRadius:8,color:C.td,cursor:"pointer",padding:"6px 10px",fontSize:14,fontFamily:FONT}}>›</button>
    </div>
+   <div style={{display:"flex",gap:0,background:C.card2,borderRadius:8,border:`1px solid ${C.brd}`,overflow:"hidden"}}>
+    {[{id:"month",label:"Mois"},{id:"quarter",label:"Trimestre"},{id:"year",label:"Année"}].map(p=><button key={p.id} onClick={()=>setViewPeriod(p.id)} style={{padding:"6px 14px",fontSize:10,fontWeight:viewPeriod===p.id?800:500,color:viewPeriod===p.id?C.acc:C.td,background:viewPeriod===p.id?C.accD:"transparent",border:"none",cursor:"pointer",fontFamily:FONT,transition:"all .15s",borderRight:`1px solid ${C.brd}`}}>{p.label}</button>)}
+   </div>
    {!isCurrentMonth&&<button onClick={()=>setSelectedMonth(cmNow)} style={{background:C.accD,border:`1px solid ${C.acc}33`,borderRadius:8,color:C.acc,cursor:"pointer",padding:"5px 12px",fontSize:10,fontWeight:600,fontFamily:FONT}}>Mois actuel</button>}
   </div>
+  {viewPeriod!=="month"&&<div style={{marginBottom:12,padding:"8px 14px",background:C.accD,borderRadius:10,border:`1px solid ${C.acc}22`,display:"flex",alignItems:"center",gap:6}}>
+   <span style={{fontSize:12}}>📊</span><span style={{fontSize:11,fontWeight:700,color:C.acc}}>{periodLabel}</span><span style={{fontSize:9,color:C.td}}>· {periodMonths.length} mois agrégés</span>
+  </div>}
   {/* Treasury Alert */}
   {treso>0&&treso<2000&&isCurrentMonth&&<div className="fu" style={{padding:"12px 16px",marginBottom:12,borderRadius:12,background:treso<500?"rgba(248,113,113,.12)":"rgba(251,146,60,.1)",border:`1px solid ${treso<500?"rgba(248,113,113,.3)":"rgba(251,146,60,.25)"}`,display:"flex",alignItems:"center",gap:10}}>
    <span style={{fontSize:22}}>{treso<500?"🚨":"⚠️"}</span>
@@ -2795,7 +2810,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
   {(()=>{const myCl2=(clients||[]).filter(c=>c.socId===soc.id&&c.status==="active"&&c.billing&&c.billing.type!=="oneoff");const txs2=socBank?.[soc.id]?.transactions||[];const now45=Date.now()-45*864e5;const unpaid=myCl2.filter(cl=>{const cn=(cl.name||"").toLowerCase().trim();return!txs2.some(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;return new Date(tx.created_at||tx.date||0).getTime()>now45&&(leg.description||tx.reference||"").toLowerCase().includes(cn);});});return unpaid.length>0?<div className="fu" style={{padding:"10px 14px",marginBottom:12,borderRadius:12,background:"rgba(251,146,60,.08)",border:"1px solid rgba(251,146,60,.2)",display:"flex",alignItems:"center",gap:8}}>
    <span style={{fontSize:18}}>💸</span>
    <div style={{flex:1}}><span style={{fontWeight:700,fontSize:11,color:C.o}}>{unpaid.length} facture{unpaid.length>1?"s":""} impayée{unpaid.length>1?"s":""}:</span><span style={{fontSize:10,color:C.td,marginLeft:4}}>{unpaid.slice(0,3).map(c=>c.name).join(", ")}{unpaid.length>3?` et ${unpaid.length-3} autres`:""}</span></div>
-   <button onClick={()=>setPTab(9)} style={{padding:"4px 10px",borderRadius:8,border:`1px solid ${C.o}33`,background:C.oD,color:C.o,fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:FONT,flexShrink:0}}>Voir →</button>
+   <button onClick={()=>setPTab(20)} style={{padding:"4px 10px",borderRadius:8,border:`1px solid ${C.o}33`,background:C.oD,color:C.o,fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:FONT,flexShrink:0}}>Voir →</button>
   </div>:null;})()}
   {/* Monthly objective progress */}
   {soc.obj>0&&isCurrentMonth&&<div className="glass-card-static fu" style={{padding:16,marginBottom:14}}>
@@ -2834,7 +2849,7 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
    <div style={secTitle}><span style={{color:acc2}}>💰</span><span style={{color:C.t}}>FINANCES</span></div>
    <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:16}}>
     <div className="glass-card-static" style={kpiCard}>
-     <div style={{color:C.td,fontSize:8,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:FONT_TITLE}}>CA {ml(cm)}</div>
+     <div style={{color:C.td,fontSize:8,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:FONT_TITLE}}>CA {periodLabel}</div>
      <div style={{fontSize:22,fontWeight:900,color:acc2,lineHeight:1,cursor:"pointer"}} onClick={()=>setShowIncome(!showIncome)}>{fmt(ca)}€<TrendArrow val={trendCA}/></div>
      <div style={{fontSize:8,color:C.acc,cursor:"pointer",marginTop:4}} onClick={()=>setShowIncome(!showIncome)}>{showIncome?"▲ masquer":"▼ détails"}</div>
      {showIncome&&<div className="slide-down" style={{marginTop:8,textAlign:"left",maxHeight:140,overflow:"auto"}}>
@@ -2868,6 +2883,30 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
      <div style={{flex:1,paddingLeft:8}}>{(()=>{const total=pieData.reduce((a,d)=>a+d.value,0);return pieData.slice(0,6).map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/><span style={{flex:1,fontSize:10,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span><span style={{fontSize:9,color:C.tm,marginRight:4}}>{total>0?Math.round(d.value/total*100):0}%</span><span style={{fontWeight:700,fontSize:10,color:C.t}}>{fmt(d.value)}€</span></div>);})()}</div>
     </div>
    </div>}
+   {/* Monthly breakdown chart (quarter/year view) */}
+   {viewPeriod!=="month"&&(()=>{
+    const chartData=periodMonths.map(m=>{
+     const txs2=bankData?.transactions?.filter(t=>(t.created_at||"").startsWith(m)&&!isExcludedTx(t,excluded))||[];
+     const inc=txs2.filter(t=>(t.legs?.[0]?.amount||0)>0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0);
+     const exp=Math.abs(txs2.filter(t=>(t.legs?.[0]?.amount||0)<0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0));
+     return{mois:ml(m),CA:Math.round(inc),Charges:Math.round(exp),Marge:Math.round(inc-exp)};
+    }).filter(d=>d.CA>0||d.Charges>0);
+    if(chartData.length<2)return null;
+    return <div className="glass-card-static" style={{padding:18,marginTop:12}}>
+     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📈 ÉVOLUTION MENSUELLE ({periodLabel})</div>
+     <div style={{height:180}}>
+      <ResponsiveContainer><ComposedChart data={chartData}>
+       <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
+       <XAxis dataKey="mois" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
+       <YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/>
+       <Tooltip content={<CTip/>}/>
+       <Bar dataKey="CA" fill={C.acc} radius={[4,4,0,0]} name="CA"/>
+       <Bar dataKey="Charges" fill={C.r+"88"} radius={[4,4,0,0]} name="Charges"/>
+       <Line type="monotone" dataKey="Marge" stroke={C.g} strokeWidth={2} dot={{fill:C.g,r:3}} name="Marge"/>
+      </ComposedChart></ResponsiveContainer>
+     </div>
+    </div>;
+   })()}
   </div>
 
   {/* ===== BANDEAU 2 — SALES ===== */}
@@ -4411,6 +4450,29 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
     </div>
    </div>}
    {totCpl===0&&<div style={{textAlign:"center",padding:10,color:C.td,fontSize:11}}>Pas assez de données pour simuler. Ajoutez vos données Meta dans les Paramètres.</div>}
+   {/* Smart recommendations based on data */}
+   {totCpl>0&&<div style={{marginTop:14,padding:14,background:`linear-gradient(135deg,${C.v}08,${C.acc}08)`,borderRadius:12,border:`1px solid ${C.v}22`}}>
+    <div style={{fontSize:9,fontWeight:700,color:C.v,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>💡 RECOMMANDATIONS</div>
+    {(()=>{
+     const recs=[];
+     const estLeads=Math.round(budgetSim/totCpl);const estClients=Math.max(1,Math.round(estLeads*(wonAll.length/Math.max(1,totLeads))));const estRev=Math.round(budgetSim*totRoas);const roi=estRev-budgetSim;
+     if(totRoas>=2)recs.push({icon:"🚀",text:`ROAS excellent (${totRoas.toFixed(1)}x) — Envisagez d'augmenter le budget à ${fmt(Math.round(budgetSim*1.5))}€ pour maximiser l'acquisition`,color:C.g});
+     else if(totRoas>=1)recs.push({icon:"📈",text:`ROAS positif (${totRoas.toFixed(1)}x) — Optimisez les créatives avant d'augmenter le budget`,color:C.o});
+     else recs.push({icon:"⚠️",text:`ROAS négatif (${totRoas.toFixed(1)}x) — Réduisez le budget et travaillez l'offre/ciblage`,color:C.r});
+     if(totCpl>benchmarks.cpl*1.5)recs.push({icon:"💰",text:`CPL élevé (${totCpl.toFixed(0)}€ vs ${benchmarks.cpl}€ benchmark) — Testez de nouveaux audiences et créatives`,color:C.r});
+     if(totCtr<0.8)recs.push({icon:"🎨",text:`CTR bas (${totCtr.toFixed(2)}%) — Travaillez les visuels et les accroches publicitaires`,color:C.o});
+     const callConv=stratCallsAll>0&&totLeads>0?stratCallsAll/totLeads:0;
+     if(callConv<0.3&&totLeads>5)recs.push({icon:"📞",text:`Seulement ${Math.round(callConv*100)}% des leads bookent un appel — Améliorez le tunnel de conversion (landing page, relances)`,color:C.o});
+     const closeRate=wonAll.length>0&&stratCallsAll>0?wonAll.length/stratCallsAll:0;
+     if(closeRate>0.25)recs.push({icon:"🏆",text:`Taux de closing fort (${Math.round(closeRate*100)}%) — Investissez plus en pub, votre process de vente convertit bien`,color:C.g});
+     const optimalBudget=totRoas>=1?Math.round(totSpend/(metaData.filter(d=>d.spend>0).length||1)*1.3):Math.round(totSpend/(metaData.filter(d=>d.spend>0).length||1)*0.7);
+     recs.push({icon:"🎯",text:`Budget optimal recommandé : ${fmt(optimalBudget)}€/mois basé sur vos performances`,color:C.acc});
+     return recs.map((r,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"6px 0",borderBottom:i<recs.length-1?`1px solid ${C.brd}08`:"none"}}>
+      <span style={{fontSize:12,flexShrink:0}}>{r.icon}</span>
+      <span style={{fontSize:10,color:r.color,fontWeight:600,lineHeight:1.4}}>{r.text}</span>
+     </div>);
+    })()}
+   </div>}
   </div>
   {/* Cross-referencing */}
   <div className="fade-up glass-card-static" style={{padding:16,marginBottom:20,animationDelay:"0.65s",borderLeft:`3px solid ${C.v}`}}>
@@ -4526,14 +4588,18 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
   {pTab===0&&<><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
   </div>
   <PorteurDashboard soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}} ghlData={ghlData} setPTab={setPTab} soc2={soc} clients={clients} pulses={pulses} savePulse={savePulse} hold={hold} stripeData={stripeData}/>
+  <CAForecast soc={soc} reps={reps} allM={allM} socBank={socBankData?{[soc.id]:socBankData}:{}}/>
   </>}
   {pTab===5&&<><SocBankWidget bankData={socBankData} onSync={()=>syncSocBank(soc.id)} soc={soc}/>
    <SubsTeamPanel socs={[soc]} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId={soc.id} reps={reps} socBankData={socBankData}/>
   </>}
-  {pTab===9&&<ErrorBoundary label="Clients"><ClientsUnifiedPanel soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices} stripeData={stripeData}/></ErrorBoundary>}
+  {pTab===9&&<ErrorBoundary label="Pipeline"><PipelinePanel soc={soc} ghlData={ghlData}/></ErrorBoundary>}
+  {pTab===20&&<ErrorBoundary label="Clients"><NewClientsPanel soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices} stripeData={stripeData}/></ErrorBoundary>}
+  {pTab===21&&<ErrorBoundary label="Prestataires"><PrestatairesPanel soc={soc} team={team} saveTeam={saveTeam} clients={clients} reps={reps}/></ErrorBoundary>}
+  {pTab===22&&<ErrorBoundary label="Santé"><SantePanel soc={soc} reps={reps} allM={allM} socBankData={socBankData} ghlData={ghlData} clients={clients} hold={hold} team={team}/></ErrorBoundary>}
   {pTab===14&&<ErrorBoundary label="Conversations"><ConversationsPanel soc={soc}/></ErrorBoundary>}
   {pTab===13&&<ErrorBoundary label="Rapports"><RapportsPanel soc={soc} socBankData={socBankData} ghlData={ghlData} clients={clients} reps={reps} allM={allM} hold={hold}/></ErrorBoundary>}
-  {pTab===11&&<ErrorBoundary label="Agenda"><AgendaPanel soc={soc} ghlData={ghlData}/></ErrorBoundary>}
+  {pTab===11&&<ErrorBoundary label="Agenda"><AgendaStats soc={soc} ghlData={ghlData}/><AgendaPanel soc={soc} ghlData={ghlData}/></ErrorBoundary>}
   {pTab===12&&<SocSettingsPanel soc={soc} save={save} socs={socs} clients={clients}/>}
   {pTab===1&&<ErrorBoundary label="Activité"><ActivitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
   {pTab===2&&<ErrorBoundary label="Sales"><SalesPanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
@@ -5022,9 +5088,11 @@ export const SB_PORTEUR=[
  {id:"bank",icon:"🏦",label:"Finances",tab:5,accent:C.g},
  {id:"sales",icon:"📞",label:"Sales",tab:2,accent:"#34d399"},
  {id:"publicite",icon:"📣",label:"Publicité",tab:3,accent:"#f472b6"},
- {id:"clients",icon:"👥",label:"Clients",tab:9,accent:C.o},
+ {id:"pipeline",icon:"🎯",label:"Pipeline",tab:9,accent:C.o},
+ {id:"clients",icon:"👥",label:"Clients",tab:20,accent:C.b},
+ {id:"prestataires",icon:"🛠️",label:"Prestataires",tab:21,accent:"#ec4899"},
  {id:"agenda",icon:"📅",label:"Agenda",tab:11,accent:"#14b8a6"},
- {id:"activite",icon:"✅",label:"Tâches",tab:1,accent:C.b},
+ {id:"sante",icon:"🩺",label:"Santé",tab:22,accent:C.g},
  {id:"conversations",icon:"💬",label:"Conversations",tab:14,accent:C.b},
  {id:"rapports",icon:"📋",label:"Rapports",tab:13,accent:C.v},
  {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
