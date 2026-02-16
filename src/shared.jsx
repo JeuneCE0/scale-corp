@@ -129,6 +129,7 @@ export const DEAL_STAGES=["Idée","Contact","Négociation","Due Diligence","Sign
 export function mkPrefill(){ return {}; }
 
 export function autoGenerateReport(socId, month, socBank, ghlData, subs){
+ const _t0=Date.now();
  const sb=socBank?.[socId], gd=ghlData?.[socId];
  const monthly=sb?.monthly?.[month];
  const txns=(sb?.transactions||[]).filter(t=>{const d=t.created_at||t.date||"";return d.startsWith(month);});
@@ -140,6 +141,7 @@ export function autoGenerateReport(socId, month, socBank, ghlData, subs){
  const salaire=Math.round(sumTxns(["salaire","salary","freelance","prestation"]));
  const pub=Math.round(sumTxns(["facebook","google ads","meta ads","tiktok","pub ","advertising","adwords"]));
  const formation=Math.round(sumTxns(["formation","training","skool","udemy","coursera"]));
+ logLineage({societyId:socId,layer:"silver",source:"revolut",pipeline:"auto_report",step:"categorize",status:"success",recordsIn:txns.length,recordsOut:txns.length,durationMs:Date.now()-_t0,details:{month,txns:txns.length,ca:Math.round(ca),charges:Math.round(charges),chargesOps,salaire,pub,formation}});
  const clients=gd?.stats?.wonDeals||gd?.ghlClients?.filter(c=>c.status==="active")?.length||0;
  const leads=gd?.stats?.totalLeads||0;
  const pipeline=gd?.stats?.pipelineValue||0;
@@ -147,7 +149,9 @@ export function autoGenerateReport(socId, month, socBank, ghlData, subs){
  const activeClients=gd?.ghlClients?.filter(c=>c.status==="active")||[];
  const mrr=activeClients.reduce((a,c)=>{const b=c.billing;if(!b)return a;if(b.freq==="monthly")return a+pf(b.amount);if(b.freq==="annual")return a+pf(b.amount)/12;return a;},0);
  const prestataire=Math.round(sumTxns(["lucien","prestataire"]));
- return{ca:String(Math.round(ca)),charges:String(Math.round(charges)),prestataireAmount:String(prestataire),chargesOps:String(chargesOps),salaire:String(salaire),formation:String(formation),clients:String(clients),churn:"",pub:String(pub),leads:String(leads),leadsContact:"",leadsClos:String(gd?.stats?.wonDeals||0),notes:"Auto-généré depuis Revolut + GHL",mrr:String(Math.round(mrr)),pipeline:String(Math.round(pipeline)),tresoSoc:String(Math.round(tresoSoc)),dividendesHolding:String(dividendesHolding),ok:false,at:new Date().toISOString(),comment:"",_auto:true};
+ const report={ca:String(Math.round(ca)),charges:String(Math.round(charges)),prestataireAmount:String(prestataire),chargesOps:String(chargesOps),salaire:String(salaire),formation:String(formation),clients:String(clients),churn:"",pub:String(pub),leads:String(leads),leadsContact:"",leadsClos:String(gd?.stats?.wonDeals||0),notes:"Auto-généré depuis Revolut + GHL",mrr:String(Math.round(mrr)),pipeline:String(Math.round(pipeline)),tresoSoc:String(Math.round(tresoSoc)),dividendesHolding:String(dividendesHolding),ok:false,at:new Date().toISOString(),comment:"",_auto:true};
+ logLineage({societyId:socId,layer:"gold",source:"system",pipeline:"auto_report",step:"aggregate",status:"success",recordsIn:txns.length+(gd?.ghlClients?.length||0),recordsOut:1,durationMs:Date.now()-_t0,details:{month,ca:Math.round(ca),charges:Math.round(charges),marge:Math.round(ca-charges),clients,leads,mrr:Math.round(mrr),pipeline:Math.round(pipeline),tresoSoc:Math.round(tresoSoc)}});
+ return report;
 }
 export const DEMO_JOURNAL={};
 export const DEMO_ACTIONS=[];
@@ -403,6 +407,61 @@ export const DEMO_KB=[
 ];
 export const GHL_STAGES_COLORS=["#60a5fa","#FFAA00","#fb923c","#34d399","#a78bfa","#f43f5e","#14b8a6","#eab308"];
 export const GHL_BASE="/api/ghl";
+
+/* ── DATA LINEAGE LOGGING ── */
+// In-memory ring buffer for lineage logs (max 500 entries)
+const LINEAGE_MAX=500;
+let _lineageLogs=[];
+let _lineageListeners=new Set();
+export function getLineageLogs(){return _lineageLogs;}
+export function clearLineageLogs(){_lineageLogs=[];_lineageListeners.forEach(fn=>fn([]));}
+export function onLineageChange(fn){_lineageListeners.add(fn);return()=>_lineageListeners.delete(fn);}
+function _notifyLineage(){_lineageListeners.forEach(fn=>fn([..._lineageLogs]));}
+
+// Layer colors for UI
+export const LINEAGE_LAYERS={bronze:{label:"Bronze (Ingestion)",color:"#cd7f32",icon:"1"},silver:{label:"Silver (Transformation)",color:"#c0c0c0",icon:"2"},gold:{label:"Gold (Agrégation)",color:"#FFD700",icon:"3"}};
+export const LINEAGE_SOURCES={ghl:{label:"GoHighLevel",icon:"📞",color:"#60a5fa"},revolut:{label:"Revolut",icon:"🏦",color:"#0075eb"},stripe:{label:"Stripe",icon:"💳",color:"#635bff"},manual:{label:"Saisie manuelle",icon:"✏️",color:"#fb923c"},system:{label:"Système",icon:"⚙️",color:"#a78bfa"}};
+
+/**
+ * Log a data lineage event.
+ * @param {object} opts
+ * @param {string} opts.societyId - null for global/holding
+ * @param {'bronze'|'silver'|'gold'} opts.layer
+ * @param {'ghl'|'revolut'|'stripe'|'manual'|'system'} opts.source
+ * @param {string} opts.pipeline - e.g. 'sync_ghl','sync_revolut','auto_report'
+ * @param {string} opts.step - e.g. 'fetch','transform','categorize','aggregate','store'
+ * @param {'success'|'error'|'warning'|'skipped'} opts.status
+ * @param {number} opts.recordsIn
+ * @param {number} opts.recordsOut
+ * @param {number} opts.durationMs
+ * @param {object} opts.details
+ * @param {string} opts.errorMessage
+ */
+export function logLineage({societyId=null,layer,source,pipeline,step,status="success",recordsIn=0,recordsOut=0,durationMs=0,details={},errorMessage=null}){
+ const entry={id:uid(),societyId,layer,source,pipeline,step,status,recordsIn,recordsOut,durationMs,details,errorMessage,createdAt:new Date().toISOString()};
+ _lineageLogs.unshift(entry);
+ if(_lineageLogs.length>LINEAGE_MAX)_lineageLogs=_lineageLogs.slice(0,LINEAGE_MAX);
+ _notifyLineage();
+ // Fire-and-forget persist to Supabase
+ try{sbUpsert('data_lineage_logs',{society_id:societyId,layer,source,pipeline,step,status,records_in:recordsIn,records_out:recordsOut,duration_ms:durationMs,details,error_message:errorMessage});}catch{}
+ return entry;
+}
+// Fetch historical lineage logs from Supabase
+export async function fetchLineageLogs(societyId){
+ try{
+  const data=await sbList('data_lineage_logs',societyId);
+  if(Array.isArray(data)){
+   const mapped=data.map(d=>({id:d.id,societyId:d.society_id,layer:d.layer,source:d.source,pipeline:d.pipeline,step:d.step,status:d.status,recordsIn:d.records_in,recordsOut:d.records_out,durationMs:d.duration_ms,details:d.details||{},errorMessage:d.error_message,createdAt:d.created_at}));
+   // Merge with in-memory (dedup by id)
+   const ids=new Set(_lineageLogs.map(l=>l.id));
+   const merged=[..._lineageLogs,...mapped.filter(m=>!ids.has(m.id))].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,LINEAGE_MAX);
+   _lineageLogs=merged;_notifyLineage();
+   return merged;
+  }
+  return _lineageLogs;
+ }catch{return _lineageLogs;}
+}
+
 export function mkGHLDemo(){ return {}; }
 export async function ghlUpdateContact(locationId,contactId,data){return fetchGHL("contact_update",locationId,{contactId,data});}
 export async function ghlCreateContact(locationId,data){return fetchGHL("contact_create",locationId,{data});}
@@ -418,12 +477,13 @@ export async function fetchGHL(action,locationId,params={}){
 }
 export async function syncGHLForSoc(soc){
  if(!soc.ghlLocationId)return null;
+ const _t0=Date.now();
  const cacheKey="ghl_"+soc.id;
  const loc=soc.ghlLocationId;
  const pipData=await fetchGHL("pipelines",loc);
- if(!pipData||!pipData.pipelines){const cached=cacheGet(cacheKey);return cached||null;}
+ if(!pipData||!pipData.pipelines){logLineage({societyId:soc.id,layer:"bronze",source:"ghl",pipeline:"sync_ghl",step:"fetch",status:"warning",durationMs:Date.now()-_t0,details:{endpoint:"pipelines"},errorMessage:"Pas de données pipeline — cache utilisé"});const cached=cacheGet(cacheKey);return cached||null;}
  const allPipelines=pipData.pipelines||[];
- if(allPipelines.length===0){const cached=cacheGet(cacheKey);return cached||null;}
+ if(allPipelines.length===0){logLineage({societyId:soc.id,layer:"bronze",source:"ghl",pipeline:"sync_ghl",step:"fetch",status:"skipped",durationMs:Date.now()-_t0,details:{pipelines:0}});const cached=cacheGet(cacheKey);return cached||null;}
  // Fetch opportunities, contacts and calendar in parallel
  const [oppResults,ctData,evData,convData]=await Promise.all([
   Promise.all(allPipelines.map(pip=>fetchGHL("opportunities",loc,{pipeline_id:pip.id}).then(d=>({pip,d})))),
@@ -431,6 +491,7 @@ export async function syncGHLForSoc(soc){
   fetchGHL("calendar_events",loc,{startTime:Date.now()-365*24*60*60*1000,endTime:Date.now()}),
   fetchGHL("conversations_list",loc)
  ]);
+ logLineage({societyId:soc.id,layer:"bronze",source:"ghl",pipeline:"sync_ghl",step:"fetch",status:"success",recordsIn:0,recordsOut:(ctData?.contacts||[]).length+(evData?.events||[]).length,durationMs:Date.now()-_t0,details:{pipelines:allPipelines.length,contacts:(ctData?.contacts||[]).length,events:(evData?.events||[]).length,conversations:(convData?.conversations||[]).length}});
  let allMappedOpps=[];const allPipelinesMeta=[];
  for(const{pip,d:oppData2} of oppResults){
   const opps2=(oppData2?.opportunities||[]).map(o=>({
@@ -466,6 +527,8 @@ export async function syncGHLForSoc(soc){
   source:c.source||"",notes:(c.tags||[]).filter(t=>!t.startsWith("domaine:")).join(", "),ghlId:c.id,stripeId:"",at:c.dateAdded||new Date().toISOString()
  }));
  const calEvents=evData?.events||[];
+ const _t1=Date.now();
+ logLineage({societyId:soc.id,layer:"silver",source:"ghl",pipeline:"sync_ghl",step:"transform",status:"success",recordsIn:rawContacts.length+allMappedOpps.length,recordsOut:ghlClients.length+mappedOpps.length,durationMs:_t1-_t0,details:{rawContacts:rawContacts.length,mappedOpps:mappedOpps.length,ghlClients:ghlClients.length,won:won.length,open:open2.length}});
  const result={
   pipelines:allPipelinesMeta,opportunities:mappedOpps,ghlClients,calendarEvents:calEvents,
   conversations:(convData?.conversations||[]).map(c=>({id:c.id,contactId:c.contactId,contactName:c.contactName||c.fullName||"Sans nom",lastMsg:c.lastMessageBody||"",lastMsgDate:c.lastMessageDate||c.dateUpdated,unread:c.unreadCount||0,type:c.type||"",locationId:loc})),
@@ -478,6 +541,7 @@ export async function syncGHLForSoc(soc){
    sourceBreakdown:[]},lastSync:new Date().toISOString(),isDemo:false
  };
  cacheSet(cacheKey,result);
+ logLineage({societyId:soc.id,layer:"silver",source:"ghl",pipeline:"sync_ghl",step:"store",status:"success",recordsIn:mappedOpps.length+ghlClients.length,recordsOut:1,durationMs:Date.now()-_t0,details:{totalLeads:result.stats.totalLeads,wonDeals:result.stats.wonDeals,pipelineValue:result.stats.pipelineValue}});
  return result;
 }
 export const SLACK_MODES={
@@ -613,22 +677,24 @@ export async function fetchStripe(action,params={}){
  }catch(e){console.warn("Stripe fetch failed:",e.message);return null;}
 }
 export async function syncStripeData(){
+ const _t0=Date.now();
  try{
   const[custRes,chargesRes,subsRes]=await Promise.all([
    fetchStripe("customers_list"),
    fetchStripe("charges_list"),
    fetchStripe("subscriptions_list"),
   ]);
-  if(!custRes&&!chargesRes&&!subsRes){return cacheGet("stripe")||null;}
+  if(!custRes&&!chargesRes&&!subsRes){logLineage({layer:"bronze",source:"stripe",pipeline:"sync_stripe",step:"fetch",status:"warning",durationMs:Date.now()-_t0,errorMessage:"Aucune donnée Stripe — cache utilisé"});return cacheGet("stripe")||null;}
   const result={
    customers:custRes?.data||[],
    charges:chargesRes?.data||[],
    subscriptions:subsRes?.data||[],
    lastSync:new Date().toISOString(),
   };
+  logLineage({layer:"bronze",source:"stripe",pipeline:"sync_stripe",step:"fetch",status:"success",recordsIn:0,recordsOut:result.customers.length+result.charges.length+result.subscriptions.length,durationMs:Date.now()-_t0,details:{customers:result.customers.length,charges:result.charges.length,subscriptions:result.subscriptions.length}});
   cacheSet("stripe",result);
   return result;
- }catch(e){console.warn("Stripe sync failed:",e.message);return cacheGet("stripe")||null;}
+ }catch(e){logLineage({layer:"bronze",source:"stripe",pipeline:"sync_stripe",step:"fetch",status:"error",durationMs:Date.now()-_t0,errorMessage:e.message});console.warn("Stripe sync failed:",e.message);return cacheGet("stripe")||null;}
 }
 export function getStripeChargesForClient(stripeData,client){
  if(!stripeData?.charges)return[];
@@ -658,16 +724,20 @@ export async function fetchRevolut(company,endpoint){
 }
 export async function syncRevolut(company){
  if(!company)return null;
+ const _t0=Date.now();
  const ck="rev_"+company;
  const accounts=await fetchRevolut(company,"/accounts");
- if(!accounts){const cached=cacheGet(ck);return cached||null;}
+ if(!accounts){logLineage({societyId:null,layer:"bronze",source:"revolut",pipeline:"sync_revolut",step:"fetch",status:"warning",durationMs:Date.now()-_t0,details:{company},errorMessage:"Pas de données comptes — cache utilisé"});const cached=cacheGet(ck);return cached||null;}
  const txns=await fetchRevolut(company,"/transactions?count=25");
  const accs=(Array.isArray(accounts)?accounts:[]).map(a=>({
   id:a.id,name:a.name||"Compte",balance:a.balance,currency:a.currency,state:a.state,updated_at:a.updated_at
  }));
+ logLineage({societyId:null,layer:"bronze",source:"revolut",pipeline:"sync_revolut",step:"fetch",status:"success",recordsIn:0,recordsOut:accs.length+(Array.isArray(txns)?txns.length:0),durationMs:Date.now()-_t0,details:{company,accounts:accs.length,transactions:(Array.isArray(txns)?txns.length:0)}});
  const totalEUR=accs.reduce((s,a)=>s+(a.currency==="EUR"?a.balance:a.balance*0.92),0);
  const result={accounts:accs,transactions:Array.isArray(txns)?txns:[],totalEUR,lastSync:new Date().toISOString(),isDemo:false};
- cacheSet(ck,result);return result;
+ cacheSet(ck,result);
+ logLineage({societyId:null,layer:"silver",source:"revolut",pipeline:"sync_revolut",step:"store",status:"success",recordsIn:accs.length,recordsOut:1,durationMs:Date.now()-_t0,details:{company,totalEUR:Math.round(totalEUR)}});
+ return result;
 }
 export function mkSocRevDemo(){ return null; }
 // Accounts to exclude from treasury per company (personal pockets, dividend transit, etc.)
@@ -681,9 +751,10 @@ export const EXCLUDED_ACCOUNTS={
 };
 export async function syncSocRevolut(soc){
  if(!soc.revolutCompany)return null;
+ const _t0=Date.now();
  const ck="socrev_"+soc.id;
  const accounts=await fetchRevolut(soc.revolutCompany,"/accounts");
- if(!accounts){const cached=cacheGet(ck);return cached||null;}
+ if(!accounts){logLineage({societyId:soc.id,layer:"bronze",source:"revolut",pipeline:"sync_soc_revolut",step:"fetch",status:"warning",durationMs:Date.now()-_t0,details:{company:soc.revolutCompany},errorMessage:"Pas de données comptes — cache utilisé"});const cached=cacheGet(ck);return cached||null;}
  const now=new Date();const cm=curM();const pm=prevM(cm);
  const from1=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString();
  const txnsRaw=await fetchRevolut(soc.revolutCompany,`/transactions?from=${from1}&count=500`);
@@ -691,12 +762,15 @@ export async function syncSocRevolut(soc){
   const dt=new Date(t.created_at);
   return{...t,month:`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`};
  });
+ logLineage({societyId:soc.id,layer:"bronze",source:"revolut",pipeline:"sync_soc_revolut",step:"fetch",status:"success",recordsIn:0,recordsOut:(Array.isArray(accounts)?accounts.length:0)+txns.length,durationMs:Date.now()-_t0,details:{company:soc.revolutCompany,accounts:(Array.isArray(accounts)?accounts.length:0),transactions:txns.length}});
  const excluded=EXCLUDED_ACCOUNTS[soc.id]||[];
  const accs=(Array.isArray(accounts)?accounts:[]).map(a=>({id:a.id,name:a.name||"Compte",balance:a.balance,currency:a.currency,state:a.state,excluded:excluded.includes(a.id)}));
  const balance=accs.filter(a=>!a.excluded).reduce((s,a)=>s+(a.currency==="EUR"?a.balance:a.balance*0.92),0);
  const monthly={};
+ const includedTxns=txns.filter(tx=>{const leg=tx.legs?.[0];return leg&&!isExcludedTx(tx,excluded);});
  txns.forEach(tx=>{const m=tx.month;const leg=tx.legs?.[0];if(!leg)return;if(isExcludedTx(tx,excluded))return;const amt=leg.amount;if(!monthly[m])monthly[m]={income:0,expense:0};if(amt>0)monthly[m].income+=amt;else monthly[m].expense+=Math.abs(amt);});
  Object.keys(monthly).forEach(m=>{monthly[m].income=Math.round(monthly[m].income);monthly[m].expense=Math.round(monthly[m].expense);});
+ logLineage({societyId:soc.id,layer:"silver",source:"revolut",pipeline:"sync_soc_revolut",step:"transform",status:"success",recordsIn:txns.length,recordsOut:includedTxns.length,durationMs:Date.now()-_t0,details:{totalTxns:txns.length,includedTxns:includedTxns.length,excludedTxns:txns.length-includedTxns.length,months:Object.keys(monthly),balance:Math.round(balance)}});
  const result={accounts:accs,transactions:txns.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)),balance:Math.round(balance),monthly,lastSync:new Date().toISOString(),isDemo:false};
  cacheSet(ck,result);return result;
 }

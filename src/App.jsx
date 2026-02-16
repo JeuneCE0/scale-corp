@@ -39,6 +39,7 @@ const PulseScreen = lazy(() => import("./components/PulseScreen.jsx").then(m => 
 const AICoPilot = lazy(() => import("./components/AI.jsx").then(m => ({ default: m.AICoPilot })));
 const TabCRM = lazy(() => import("./components/CRM.jsx").then(m => ({ default: m.TabCRM })));
 const BankingPanel = lazy(() => import("./components/Banking.jsx").then(m => ({ default: m.BankingPanel })));
+const DataLineage = lazy(() => import("./components/DataLineage.jsx").then(m => ({ default: m.DataLineage })));
 
 /* Suspense fallback with skeleton loader */
 function LazyFallback() {
@@ -920,6 +921,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    <RGPDSettingsPanel role={role} socs={socs} reps={reps} clients={clients} team={team} invoices={invoices} actions={actions} journal={journal} subs={subs}/>
    <div style={{marginTop:12}}><Btn onClick={()=>{save(null,null,hold);}}>💾 Sauvegarder les paramètres</Btn></div>
   </>}
+  {tab===19&&<Suspense fallback={<LazyFallback/>}><DataLineage socs={socs}/></Suspense>}
   </PageTransition>
   </div>
   </div>

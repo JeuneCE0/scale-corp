@@ -22,6 +22,7 @@ export { PredictionsCard, LiveFeed, categorizeTransaction, BankingTransactions, 
 // TabCRM is lazy-loaded directly; AICoPilot is lazy-loaded directly; PulseScreen is lazy-loaded directly; BankingPanel is lazy-loaded directly
 import { AIWeeklyCoach } from "./components/AI.jsx";
 import { RapportsPanel, ReplayMensuel } from "./components/Reports.jsx";
+import { DataLineage } from "./components/DataLineage.jsx";
 export { AIWeeklyCoach, RapportsPanel, ReplayMensuel };
 import { PipelinePanel, NewClientsPanel, PrestatairesPanel, SantePanel, AgendaStats, CAForecast } from "./views/NewPanels.jsx";
 
@@ -4790,6 +4791,7 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
   {pTab===1&&<ErrorBoundary label="Activité"><ActivitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
   {pTab===2&&<ErrorBoundary label="Sales"><SalesPanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
   {pTab===3&&<ErrorBoundary label="Publicité"><PublicitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
+  {pTab===23&&<ErrorBoundary label="Data Lineage"><DataLineage socs={socs} socId={soc.id}/></ErrorBoundary>}
   </div>
   </div>
   {/* Mobile AI Fullscreen Panel */}
@@ -5265,6 +5267,7 @@ export const SB_ADMIN=[
  {id:"pub",icon:"📣",label:"Publicité",tab:16,accent:"#f472b6"},
  {id:"rapports",icon:"📋",label:"Rapports",tab:17,accent:C.v},
  {id:"access",icon:"🔐",label:"Accès",tab:14,accent:"#f59e0b"},
+ {id:"lineage",icon:"🔀",label:"Data Lineage",tab:19,accent:"#14b8a6"},
  {id:"params",icon:"⚙️",label:"Paramètres",tab:18,accent:C.td},
  {id:"pulse",icon:"⚡",label:"PULSE",tab:99,accent:"#FFAA00"},
 ];
@@ -5280,6 +5283,7 @@ export const SB_PORTEUR=[
  {id:"agenda",icon:"📅",label:"Agenda",tab:11,accent:"#14b8a6"},
  {id:"sante",icon:"🩺",label:"Santé",tab:22,accent:C.g},
  {id:"rapports",icon:"📋",label:"Rapports",tab:13,accent:C.v},
+ {id:"lineage",icon:"🔀",label:"Data Lineage",tab:23,accent:"#14b8a6"},
  {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
 ];
 
