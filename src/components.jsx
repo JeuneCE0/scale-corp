@@ -2169,6 +2169,18 @@ export function SocSettingsPanel({soc,save,socs,clients}){
     </div>)}
    </div>}
   </Card>
+  {/* 🔒 RGPD */}
+  <Card style={{padding:16,marginTop:12,border:`1px solid ${C.brd}`}}>
+   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}><span style={{fontSize:16}}>🔒</span><div><div style={{fontWeight:800,fontSize:13,color:C.t}}>Vie privée & RGPD</div><div style={{fontSize:10,color:C.td}}>Gestion de vos données personnelles</div></div></div>
+   <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+    <a href="#privacy" style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.acc,fontSize:11,fontWeight:600,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>🔒 Politique de confidentialité</a>
+    <a href="#mentions" style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.acc,fontSize:11,fontWeight:600,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>📜 Mentions légales</a>
+   </div>
+   <div style={{fontSize:10,color:C.td,lineHeight:1.6}}>
+    Pour exercer vos droits (accès, rectification, suppression, portabilité), contactez <strong>rgpd@lincubateur.fr</strong><br/>
+    Réclamation CNIL : <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" style={{color:C.acc}}>www.cnil.fr</a>
+   </div>
+  </Card>
   <Btn onClick={doSave}>💾 Sauvegarder</Btn>
  </Sect>;
 }

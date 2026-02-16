@@ -31,6 +31,7 @@ import {
 import { GlobalSearch } from "./components/GlobalSearch.jsx";
 import { SkeletonDashboard, SkeletonKPI, SkeletonCard, SkeletonTable, SkeletonStyles } from "./components/Skeletons.jsx";
 import { POLISH_CSS, ToastProvider, useToast, setGlobalToast, showToast, PageTransition, Breadcrumbs, AnimatedThemeToggle, PullToRefresh, ConfettiBurst, OnboardingTour, EmptyState } from "./ui-polish.jsx";
+import { ConsentBanner, PrivacyPolicyPage, MentionsLegalesPage, RGPDSettingsPanel, LoginFooter } from "./rgpd.jsx";
 
 /* LAZY-LOADED HEAVY VIEWS */
 // Lazy-loaded components — imported directly from chunk files (not via components.jsx barrel)
@@ -219,6 +220,8 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  if(!loaded)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}><style>{CSS}{POLISH_CSS}</style><div style={{width:40,height:40,border:"3px solid var(--sc-w06)",borderTopColor:C.acc,borderRadius:"50%",animation:"sp 1s linear infinite",boxShadow:"0 0 20px rgba(255,170,0,.15)"}}/></div>;
  /* HASH-BASED ROUTES: War Room & Widget (public, no login) */
  const hash=window.location.hash;
+ if(hash==="#privacy")return <><style>{CSS}{POLISH_CSS}</style><PrivacyPolicyPage hold={hold} onBack={()=>{window.location.hash="";window.location.reload();}}/></>;
+ if(hash==="#mentions")return <><style>{CSS}{POLISH_CSS}</style><MentionsLegalesPage hold={hold} onBack={()=>{window.location.hash="";window.location.reload();}}/></>;
  if(hash.startsWith("#widget/")){const wSocId=hash.replace("#widget/","");return <><style>{CSS}{POLISH_CSS}</style><WidgetRenderer socId={wSocId} socs={socs} clients={clients}/></>;}
  if(hash==="#pulse")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>{window.location.hash="";window.location.reload();}}/></Suspense></>;
  if(hash.startsWith("#portal/")){const parts=hash.replace("#portal/","").split("/");return <><style>{CSS}{POLISH_CSS}</style><ClientPortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients} ghlData={ghlData}/></>;}
@@ -258,11 +261,9 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </div>
    {lErr&&<div style={{color:C.r,fontSize:11,marginBottom:8,textAlign:"center"}}>⚠ {lErr}</div>}
    <Btn onClick={loginEmail2} full disabled={authLoading}>{authLoading?"Connexion...":"Connexion"}</Btn>
-
-
-
-
+   <LoginFooter/>
   </div>
+  <ConsentBanner/>
  </div>;
  if(role!=="admin"){const soc=socs.find(s=>s.id===role);if(!soc)return null;
   const porteurSetTab=(t)=>{const btn=document.querySelector(`[data-tour="porteur-tab-${t}"]`);if(btn)btn.click();};
@@ -287,7 +288,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
      <button onClick={()=>setMissedRecap(null)} style={{padding:"8px 24px",borderRadius:10,border:"none",background:`linear-gradient(135deg,${C.acc},#FF9D00)`,color:"#000",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:FONT}}>C'est noté 👊</button>
     </div>
    </div>
-  </div>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData}/></></ErrorBoundary>;}
+  </div>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData}/><ConsentBanner/></></ErrorBoundary>;}
  if(showPulse)return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>setShowPulse(false)}/></Suspense></>;
  if(meeting)return <MeetingMode socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} clients={clients} onExit={()=>setMeeting(false)}/>;
  /* ADMIN → Porteur View Override */
@@ -916,12 +917,14 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    <Sect title="📱 Widgets Porteur" sub="Embed pour chaque société">
     {actS.filter(s=>s.id!=="eco").map(s=><WidgetEmbed key={s.id} soc={s} clients={clients}/>)}
    </Sect>
+   <RGPDSettingsPanel role={role} socs={socs} reps={reps} clients={clients} team={team} invoices={invoices} actions={actions} journal={journal} subs={subs}/>
    <div style={{marginTop:12}}><Btn onClick={()=>{save(null,null,hold);}}>💾 Sauvegarder les paramètres</Btn></div>
   </>}
   </PageTransition>
   </div>
   </div>
   <MobileBottomNav items={SB_ADMIN} activeTab={tab} setTab={setTab}/>
+  <ConsentBanner/>
  </div>;
 }
 /* USER ACCESS PANEL */
