@@ -2669,6 +2669,15 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
  const charges=bankFinancials.expense||pf(report?.charges);
  const marge=ca-charges;const margePct=ca>0?Math.round(marge/ca*100):0;
  const treso=bankData?.balance||0;
+ // Marge nette: deduct Dayyaan remuneration + Scale Corp Inc dividends from excluded transactions
+ const margeNetteData=useMemo(()=>{
+  if(!bankData?.transactions)return{remunDayyaan:0,dividendesScaleCorp:0,margeNette:marge,margeNettePct:margePct};
+  const exclTxs=bankData.transactions.filter(t=>{const ca2=t.created_at||"";return periodMonths.some(m=>ca2.startsWith(m))&&isExcludedTx(t,excluded)&&(t.legs?.[0]?.amount||0)<0;});
+  const remunDayyaan=Math.round(Math.abs(exclTxs.filter(t=>{const desc=((t.legs?.[0]?.description||"")+" "+(t.reference||"")).toLowerCase();return/dayyaan|mohammad/i.test(desc);}).reduce((a,t)=>a+Math.abs(t.legs?.[0]?.amount||0),0)));
+  const dividendesScaleCorp=Math.round(Math.abs(exclTxs.filter(t=>{const desc=((t.legs?.[0]?.description||"")+" "+(t.reference||"")).toLowerCase();return/dividend|scale\s*corp|anthony|rudy/i.test(desc)&&!/dayyaan|mohammad/i.test(desc);}).reduce((a,t)=>a+Math.abs(t.legs?.[0]?.amount||0),0)));
+  const mn=marge-remunDayyaan-dividendesScaleCorp;
+  return{remunDayyaan,dividendesScaleCorp,margeNette:mn,margeNettePct:ca>0?Math.round(mn/ca*100):0};
+ },[bankData,periodMonths,excluded,marge,ca]);
  const myClients=(clients||[]).filter(c=>c.socId===soc.id&&c.status==="active");
  const churnedClients=(clients||[]).filter(c=>c.socId===soc.id&&c.status==="churned");
  const prevu=myClients.reduce((a,c)=>a+clientMonthlyRevenue(c),0);
@@ -2812,27 +2821,42 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
    <div style={{flex:1}}><span style={{fontWeight:700,fontSize:11,color:C.o}}>{unpaid.length} facture{unpaid.length>1?"s":""} impayée{unpaid.length>1?"s":""}:</span><span style={{fontSize:10,color:C.td,marginLeft:4}}>{unpaid.slice(0,3).map(c=>c.name).join(", ")}{unpaid.length>3?` et ${unpaid.length-3} autres`:""}</span></div>
    <button onClick={()=>setPTab(20)} style={{padding:"4px 10px",borderRadius:8,border:`1px solid ${C.o}33`,background:C.oD,color:C.o,fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:FONT,flexShrink:0}}>Voir →</button>
   </div>:null;})()}
-  {/* Monthly objective progress */}
-  {soc.obj>0&&isCurrentMonth&&<div className="glass-card-static fu" style={{padding:16,marginBottom:14}}>
-   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-    <span style={{fontSize:10,fontWeight:700,color:C.td,letterSpacing:.5,fontFamily:FONT_TITLE}}>🎯 OBJECTIF MENSUEL</span>
-    <span style={{fontSize:10,color:C.td}}>{(()=>{const daysInMonth=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate();const daysPassed=new Date().getDate();return`J${daysPassed}/${daysInMonth} (${Math.round(daysPassed/daysInMonth*100)}% du mois)`;})()}</span>
-   </div>
-   <div style={{display:"flex",alignItems:"flex-end",gap:10,marginBottom:8}}>
-    <div style={{flex:1}}>
-     <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-      <span style={{fontWeight:900,fontSize:18,color:ca>=soc.obj?C.g:ca>=soc.obj*0.7?C.acc:C.o}}>{fmt(ca)}€</span>
-      <span style={{fontSize:11,color:C.td,fontWeight:600}}>/ {fmt(soc.obj)}€</span>
-     </div>
-     <div style={{height:8,background:C.brd,borderRadius:4,overflow:"hidden"}}>
-      <div style={{height:"100%",width:`${Math.min(100,Math.round(ca/soc.obj*100))}%`,background:ca>=soc.obj?`linear-gradient(90deg,${C.g},#22d3ee)`:ca>=soc.obj*0.7?`linear-gradient(90deg,${C.acc},#FF9D00)`:C.o,borderRadius:4,transition:"width .8s cubic-bezier(.4,0,.2,1)"}}/>
-     </div>
+  {/* Monthly objective progress — AI auto-computed from previous month CA */}
+  {isCurrentMonth&&(()=>{
+   // Compute AI objective: previous month CA + growth target
+   const prevMKey=prevM(cm);
+   const prevBankCa=(()=>{if(!bankData?.transactions)return 0;return bankData.transactions.filter(t=>(t.created_at||"").startsWith(prevMKey)&&!isExcludedTx(t,excluded)&&(t.legs?.[0]?.amount||0)>0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0);})();
+   const prevCaVal=prevBankCa||pf(gr(reps,soc.id,prevMKey)?.ca);
+   if(prevCaVal<=0)return null;
+   // Growth target: +15% par défaut, +10% si déjà > 15k, +20% si < 5k
+   const growthPct=prevCaVal>=15000?10:prevCaVal<5000?20:15;
+   const aiObj=Math.round(prevCaVal*(1+growthPct/100));
+   const objPct=aiObj>0?Math.round(ca/aiObj*100):0;
+   const objColor=ca>=aiObj?C.g:ca>=aiObj*0.7?C.acc:C.o;
+   return <div className="glass-card-static fu" style={{padding:16,marginBottom:14}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+     <span style={{fontSize:10,fontWeight:700,color:C.td,letterSpacing:.5,fontFamily:FONT_TITLE}}>🤖 OBJECTIF IA MENSUEL <span style={{fontSize:8,color:C.acc,fontWeight:600}}>+{growthPct}% vs mois dernier</span></span>
+     <span style={{fontSize:10,color:C.td}}>{(()=>{const daysInMonth=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate();const daysPassed=new Date().getDate();return`J${daysPassed}/${daysInMonth} (${Math.round(daysPassed/daysInMonth*100)}% du mois)`;})()}</span>
     </div>
-    <span style={{fontSize:20,fontWeight:900,color:ca>=soc.obj?C.g:ca>=soc.obj*0.7?C.acc:C.o}}>{Math.round(ca/soc.obj*100)}%</span>
-   </div>
-   {ca<soc.obj&&<div style={{fontSize:10,color:C.td}}>Reste {fmt(soc.obj-ca)}€ pour atteindre l'objectif</div>}
-   {ca>=soc.obj&&<div style={{fontSize:10,color:C.g,fontWeight:700}}>Objectif atteint ! +{fmt(ca-soc.obj)}€ au-dessus</div>}
-  </div>}
+    <div style={{display:"flex",alignItems:"flex-end",gap:10,marginBottom:8}}>
+     <div style={{flex:1}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+       <span style={{fontWeight:900,fontSize:18,color:objColor}}>{fmt(ca)}€</span>
+       <span style={{fontSize:11,color:C.td,fontWeight:600}}>/ {fmt(aiObj)}€</span>
+      </div>
+      <div style={{height:8,background:C.brd,borderRadius:4,overflow:"hidden"}}>
+       <div style={{height:"100%",width:`${Math.min(100,objPct)}%`,background:ca>=aiObj?`linear-gradient(90deg,${C.g},#22d3ee)`:ca>=aiObj*0.7?`linear-gradient(90deg,${C.acc},#FF9D00)`:C.o,borderRadius:4,transition:"width .8s cubic-bezier(.4,0,.2,1)"}}/>
+      </div>
+     </div>
+     <span style={{fontSize:20,fontWeight:900,color:objColor}}>{objPct}%</span>
+    </div>
+    <div style={{fontSize:9,color:C.td,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:4}}>
+     {ca<aiObj&&<span>Reste {fmt(aiObj-ca)}€ pour atteindre l'objectif</span>}
+     {ca>=aiObj&&<span style={{color:C.g,fontWeight:700}}>Objectif atteint ! +{fmt(ca-aiObj)}€ au-dessus</span>}
+     <span>Mois dernier : {fmt(prevCaVal)}€</span>
+    </div>
+   </div>;
+  })()}
   {/* Prévisionnel */}
   {prevu>0&&<div className="glass-card-static" style={{padding:20,marginBottom:16}}>
     <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>📊 PRÉVISIONNEL</div>
@@ -2872,9 +2896,19 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
       {bankFinancials.expenseTxs.length===0&&<div style={{fontSize:9,color:C.td}}>Aucune charge</div>}
      </div>}
     </div>
-    <KPI label="Marge" value={`${fmt(marge)}€`} sub={<>{margePct}% de marge{trendMarge!==null&&trendMarge!==0&&<span style={{color:trendMarge>0?C.g:C.r,fontWeight:800}}> {trendMarge>0?"↑":"↓"}{Math.abs(trendMarge)}pts</span>}</>} accent={marge>=0?C.g:C.r}/>
+    <KPI label="Marge brute" value={`${fmt(marge)}€`} sub={<>{margePct}%{trendMarge!==null&&trendMarge!==0&&<span style={{color:trendMarge>0?C.g:C.r,fontWeight:800}}> {trendMarge>0?"↑":"↓"}{Math.abs(trendMarge)}pts</span>}</>} accent={marge>=0?C.g:C.r}/>
     <KPI label="Trésorerie" value={`${fmt(treso)}€`} sub={charges>0?`~${Math.max(1,Math.floor(treso/charges))} mois de runway`:null} accent={treso<1000?C.r:treso<3000?C.o:C.b}/>
    </div>
+   {/* Marge nette card */}
+   {(margeNetteData.remunDayyaan>0||margeNetteData.dividendesScaleCorp>0)&&<div className="glass-card-static" style={{padding:16,marginBottom:12,borderLeft:`3px solid ${margeNetteData.margeNette>=0?C.g:C.r}`}}>
+    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>💰 MARGE NETTE</div>
+    <div style={{display:"flex",flexDirection:"column",gap:4}}>
+     <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:C.td}}>Marge brute</span><span style={{fontWeight:700,color:marge>=0?C.g:C.r}}>{fmt(marge)}€</span></div>
+     {margeNetteData.remunDayyaan>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:C.td}}>- Rémunération Dayyaan</span><span style={{fontWeight:700,color:C.r}}>-{fmt(margeNetteData.remunDayyaan)}€</span></div>}
+     {margeNetteData.dividendesScaleCorp>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:C.td}}>- Dividendes Scale Corp Inc</span><span style={{fontWeight:700,color:C.r}}>-{fmt(margeNetteData.dividendesScaleCorp)}€</span></div>}
+     <div style={{borderTop:`1px solid ${C.brd}`,paddingTop:6,marginTop:2,display:"flex",justifyContent:"space-between",fontSize:13}}><span style={{fontWeight:800,color:C.t}}>Marge nette</span><span style={{fontWeight:900,color:margeNetteData.margeNette>=0?C.g:C.r}}>{fmt(margeNetteData.margeNette)}€ <span style={{fontSize:9,fontWeight:600}}>({margeNetteData.margeNettePct}%)</span></span></div>
+    </div>
+   </div>}
    {/* Répartition des dépenses - donut */}
    {pieData.length>0&&<div className="glass-card-static" style={{padding:18}}>
     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>📊 RÉPARTITION DES DÉPENSES</div>
@@ -4207,7 +4241,145 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
  </div>;
 }
 
-/* ===== PUBLICITE PANEL ===== */
+/* ===== SIMULATEUR PUBLICITAIRE AVANCÉ ===== */
+function AdSimulatorAdvanced({budgetSim,setBudgetSim,totCpl,totRoas,wonAll,totLeads,stratCallsAll,soc}){
+ const[offers,setOffers]=useState(()=>{
+  try{const s=localStorage.getItem(`adSimOffers_${soc.id}`);return s?JSON.parse(s):[{name:"Offre Standard",price:1500,closeRate:20},{name:"Offre Premium",price:3000,closeRate:15}];}catch{return[{name:"Offre Standard",price:1500,closeRate:20},{name:"Offre Premium",price:3000,closeRate:15}];}
+ });
+ const[simMonths]=useState(6);
+ const saveOffers=(o)=>{setOffers(o);try{localStorage.setItem(`adSimOffers_${soc.id}`,JSON.stringify(o));}catch{}};
+ const addOffer=()=>saveOffers([...offers,{name:`Offre ${offers.length+1}`,price:2000,closeRate:15}]);
+ const removeOffer=(i)=>saveOffers(offers.filter((_,j)=>j!==i));
+ const updateOffer=(i,k,v)=>saveOffers(offers.map((o,j)=>j===i?{...o,[k]:v}:o));
+
+ const convLeadToCall=totLeads>0?stratCallsAll/totLeads:0.4;
+ const convCallToClient=stratCallsAll>0?wonAll.length/stratCallsAll:0.2;
+
+ // Simulation per offer
+ const simResults=offers.map(off=>{
+  const leadsPerMonth=totCpl>0?budgetSim/totCpl:10;
+  const callsPerMonth=leadsPerMonth*convLeadToCall;
+  const closedPerMonth=callsPerMonth*(off.closeRate/100);
+  const revenuePerMonth=closedPerMonth*off.price;
+  const roiPerMonth=revenuePerMonth-budgetSim;
+  const roasOffer=budgetSim>0?revenuePerMonth/budgetSim:0;
+  return{...off,leadsPerMonth:Math.round(leadsPerMonth),callsPerMonth:Math.round(callsPerMonth),closedPerMonth:Math.round(closedPerMonth*10)/10,revenuePerMonth:Math.round(revenuePerMonth),roiPerMonth:Math.round(roiPerMonth),roasOffer:Math.round(roasOffer*100)/100};
+ });
+
+ // 6-month projection chart data
+ const projectionData=Array.from({length:simMonths},(_,m)=>{
+  const d={mois:`M${m+1}`};
+  let totalRev=0;
+  offers.forEach((off,i)=>{
+   const leadsPerMonth=totCpl>0?budgetSim/totCpl:10;
+   const callsPerMonth=leadsPerMonth*convLeadToCall;
+   const closedPerMonth=callsPerMonth*(off.closeRate/100);
+   // Clients accumulate (recurring)
+   const cumulClients=closedPerMonth*(m+1);
+   const monthRev=off.price*cumulClients;
+   d[off.name]=Math.round(monthRev);
+   totalRev+=monthRev;
+  });
+  d.Total=Math.round(totalRev);
+  d.Budget=budgetSim*(m+1);
+  return d;
+ });
+
+ const offerColors=["#FFAA00","#a78bfa","#14b8a6","#f472b6","#60a5fa"];
+
+ return <div className="fade-up glass-card-static" style={{padding:22,marginBottom:20,borderLeft:`3px solid #ec4899`}}>
+  <div style={{fontSize:9,fontWeight:700,color:"#ec4899",letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>🎯 SIMULATEUR AVANCÉ — GAMME D'OFFRES & PROJECTION CA</div>
+
+  {/* Budget slider */}
+  <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+   <span style={{fontSize:11,color:C.td,fontWeight:600}}>Budget mensuel :</span>
+   <input type="range" min={200} max={15000} step={100} value={budgetSim} onChange={e=>setBudgetSim(parseInt(e.target.value))} style={{flex:1}}/>
+   <span style={{fontWeight:900,fontSize:16,color:"#ec4899",minWidth:80,textAlign:"right"}}>{fmt(budgetSim)}€</span>
+  </div>
+
+  {/* Offer tiers */}
+  <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>GAMME D'OFFRES</div>
+  <div style={{display:"grid",gap:8,marginBottom:16}}>
+   {offers.map((off,i)=><div key={i} style={{padding:12,background:C.card2,borderRadius:10,border:`1px solid ${offerColors[i%offerColors.length]}33`}}>
+    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
+     <input value={off.name} onChange={e=>updateOffer(i,"name",e.target.value)} style={{flex:1,minWidth:100,padding:"4px 8px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,fontWeight:700,outline:"none"}}/>
+     <div style={{display:"flex",alignItems:"center",gap:4}}>
+      <span style={{fontSize:9,color:C.td}}>Prix:</span>
+      <input type="number" value={off.price} onChange={e=>updateOffer(i,"price",pf(e.target.value))} style={{width:70,padding:"4px 6px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,textAlign:"right",outline:"none"}}/>
+      <span style={{fontSize:9,color:C.td}}>€</span>
+     </div>
+     <div style={{display:"flex",alignItems:"center",gap:4}}>
+      <span style={{fontSize:9,color:C.td}}>Close:</span>
+      <input type="number" value={off.closeRate} onChange={e=>updateOffer(i,"closeRate",Math.min(100,Math.max(1,pf(e.target.value))))} style={{width:45,padding:"4px 6px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,textAlign:"right",outline:"none"}}/>
+      <span style={{fontSize:9,color:C.td}}>%</span>
+     </div>
+     {offers.length>1&&<button onClick={()=>removeOffer(i)} style={{background:"none",border:`1px solid ${C.r}33`,borderRadius:6,color:C.r,cursor:"pointer",padding:"3px 6px",fontSize:10,fontFamily:FONT}}>✕</button>}
+    </div>
+    {/* Simulation results for this offer */}
+    {simResults[i]&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(80px,1fr))",gap:6}}>
+     <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:6}}>
+      <div style={{fontWeight:900,fontSize:16,color:"#60a5fa"}}>{simResults[i].leadsPerMonth}</div>
+      <div style={{fontSize:7,color:C.td}}>Leads/mois</div>
+     </div>
+     <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:6}}>
+      <div style={{fontWeight:900,fontSize:16,color:"#14b8a6"}}>{simResults[i].callsPerMonth}</div>
+      <div style={{fontSize:7,color:C.td}}>Appels/mois</div>
+     </div>
+     <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:6}}>
+      <div style={{fontWeight:900,fontSize:16,color:C.g}}>{simResults[i].closedPerMonth}</div>
+      <div style={{fontSize:7,color:C.td}}>Clients/mois</div>
+     </div>
+     <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:6}}>
+      <div style={{fontWeight:900,fontSize:16,color:C.acc}}>{fmt(simResults[i].revenuePerMonth)}€</div>
+      <div style={{fontSize:7,color:C.td}}>CA/mois</div>
+     </div>
+     <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:6}}>
+      <div style={{fontWeight:900,fontSize:16,color:simResults[i].roiPerMonth>=0?C.g:C.r}}>{simResults[i].roiPerMonth>=0?"+":""}{fmt(simResults[i].roiPerMonth)}€</div>
+      <div style={{fontSize:7,color:C.td}}>ROI/mois</div>
+     </div>
+     <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:6}}>
+      <div style={{fontWeight:900,fontSize:16,color:simResults[i].roasOffer>=1?C.g:C.r}}>{simResults[i].roasOffer}x</div>
+      <div style={{fontSize:7,color:C.td}}>ROAS</div>
+     </div>
+    </div>}
+   </div>)}
+   <button onClick={addOffer} style={{padding:"8px 14px",borderRadius:8,border:`1px dashed ${C.brd}`,background:"transparent",color:C.td,cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:FONT}}>+ Ajouter une offre</button>
+  </div>
+
+  {/* Projection chart — CA cumulé sur 6 mois */}
+  <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>📈 PROJECTION CA CUMULÉ SUR {simMonths} MOIS</div>
+  <div style={{height:200,marginBottom:12}}>
+   <ResponsiveContainer><ComposedChart data={projectionData}>
+    <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
+    <XAxis dataKey="mois" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false}/>
+    <YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/>
+    <Tooltip content={<CTip/>}/>
+    {offers.map((off,i)=><Bar key={off.name} dataKey={off.name} fill={offerColors[i%offerColors.length]} radius={[4,4,0,0]} stackId="rev" name={off.name}/>)}
+    <Line type="monotone" dataKey="Budget" stroke={C.r} strokeWidth={2} strokeDasharray="5 5" dot={false} name="Budget cumulé"/>
+    <Legend wrapperStyle={{fontSize:9}}/>
+   </ComposedChart></ResponsiveContainer>
+  </div>
+
+  {/* Summary */}
+  <div style={{padding:12,background:`linear-gradient(135deg,${C.g}08,${C.acc}08)`,borderRadius:10,border:`1px solid ${C.g}22`}}>
+   <div style={{fontSize:9,fontWeight:700,color:C.g,letterSpacing:1,marginBottom:6,fontFamily:FONT_TITLE}}>📊 RÉSUMÉ PROJECTION À 6 MOIS</div>
+   {(()=>{
+    const totalRevM6=projectionData[projectionData.length-1]?.Total||0;
+    const totalBudget=budgetSim*simMonths;
+    const totalClients=simResults.reduce((a,r)=>a+r.closedPerMonth,0)*simMonths;
+    const breakEvenMonth=projectionData.findIndex(d=>d.Total>=d.Budget);
+    return <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:8}}>
+     <div style={{textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.acc}}>{fmt(totalRevM6)}€</div><div style={{fontSize:8,color:C.td}}>CA total M6</div></div>
+     <div style={{textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.r}}>{fmt(totalBudget)}€</div><div style={{fontSize:8,color:C.td}}>Budget total</div></div>
+     <div style={{textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:totalRevM6>=totalBudget?C.g:C.r}}>{totalBudget>0?(totalRevM6/totalBudget).toFixed(1):0}x</div><div style={{fontSize:8,color:C.td}}>ROAS global</div></div>
+     <div style={{textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.g}}>{Math.round(totalClients)}</div><div style={{fontSize:8,color:C.td}}>Clients acquis</div></div>
+     {breakEvenMonth>=0&&<div style={{textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.b}}>M{breakEvenMonth+1}</div><div style={{fontSize:8,color:C.td}}>Break-even</div></div>}
+    </div>;
+   })()}
+  </div>
+ </div>;
+}
+
 /* ===== PUBLICITE PANEL ===== */
 export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
  const cm=curM();
@@ -4479,6 +4651,8 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
    <div style={{fontSize:9,fontWeight:700,color:C.v,letterSpacing:1,marginBottom:6,fontFamily:FONT_TITLE}}>🔗 CROISEMENT DONNÉES</div>
    <div style={{fontSize:11,color:C.t,fontWeight:600}}>{totLeads} leads générés → {stratCallsAll} appels bookés → {wonAll.length} deals → {fmt(totRev)}€ CA = ROAS {totRoas.toFixed(2)}x</div>
   </div>
+  {/* Advanced simulator — Offer tiers & CA projection */}
+  <AdSimulatorAdvanced budgetSim={budgetSim} setBudgetSim={setBudgetSim} totCpl={totCpl} totRoas={totRoas} wonAll={wonAll} totLeads={totLeads} stratCallsAll={stratCallsAll} soc={soc}/>
   {/* Data Table */}
   <div className="fade-up glass-card-static" style={{padding:18,overflow:"auto",animationDelay:"0.7s"}}>
    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>📋 TABLEAU RÉCAPITULATIF — 12 MOIS</div>
@@ -4593,7 +4767,7 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
   {pTab===5&&<><SocBankWidget bankData={socBankData} onSync={()=>syncSocBank(soc.id)} soc={soc}/>
    <SubsTeamPanel socs={[soc]} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId={soc.id} reps={reps} socBankData={socBankData}/>
   </>}
-  {pTab===9&&<ErrorBoundary label="Pipeline"><PipelinePanel soc={soc} ghlData={ghlData}/></ErrorBoundary>}
+  {pTab===9&&<ErrorBoundary label="Pipeline"><PipelinePanel soc={soc} ghlData={ghlData} clients={clients} socBankData={socBankData}/></ErrorBoundary>}
   {pTab===20&&<ErrorBoundary label="Clients"><NewClientsPanel soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData} invoices={invoices} saveInvoices={saveInvoices} stripeData={stripeData}/></ErrorBoundary>}
   {pTab===21&&<ErrorBoundary label="Prestataires"><PrestatairesPanel soc={soc} team={team} saveTeam={saveTeam} clients={clients} reps={reps}/></ErrorBoundary>}
   {pTab===22&&<ErrorBoundary label="Santé"><SantePanel soc={soc} reps={reps} allM={allM} socBankData={socBankData} ghlData={ghlData} clients={clients} hold={hold} team={team}/></ErrorBoundary>}
@@ -5093,7 +5267,6 @@ export const SB_PORTEUR=[
  {id:"prestataires",icon:"🛠️",label:"Prestataires",tab:21,accent:"#ec4899"},
  {id:"agenda",icon:"📅",label:"Agenda",tab:11,accent:"#14b8a6"},
  {id:"sante",icon:"🩺",label:"Santé",tab:22,accent:C.g},
- {id:"conversations",icon:"💬",label:"Conversations",tab:14,accent:C.b},
  {id:"rapports",icon:"📋",label:"Rapports",tab:13,accent:C.v},
  {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
 ];
