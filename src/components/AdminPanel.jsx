@@ -221,7 +221,59 @@ function AssetsTab({cfg,setCfg,hold,setHold,saveHold}){
    const nc=addLog({...cfg,brand:brandCopy},"brand_save","Brand settings saved");
    setCfg(nc);saveCfg(nc);
    saveHold();
-  }}>Sauvegarder branding</Btn>
+  }}>Sauvegarder branding groupe</Btn>
+
+  <div style={{marginTop:28,padding:"16px 0",borderTop:`1px solid ${C.brd}`}}>
+   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+    <span style={{fontSize:18}}>🎯</span>
+    <div>
+     <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE}}>Branding Produit SaaS</div>
+     <div style={{fontSize:10,color:C.td}}>Identité visuelle pour l'espace client (indépendant du groupe)</div>
+    </div>
+   </div>
+   {(()=>{
+    const sb=hold?.saasBrand||{};
+    const uSB=(k,v)=>setHold({...hold,saasBrand:{...(hold.saasBrand||{}), [k]:v}});
+    return <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+     <Card style={{padding:16}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:14}}><span style={{fontSize:14}}>&#x1F3F7;</span><span style={{fontWeight:700,fontSize:12}}>Identité client</span></div>
+      <Inp label="Nom du produit" value={sb.name||""} onChange={v=>uSB("name",v)} placeholder="Scale Corp SaaS"/>
+      <Inp label="Sous-titre" value={sb.sub||""} onChange={v=>uSB("sub",v)} placeholder="Espace client"/>
+      <Inp label="Lettre logo (fallback)" value={sb.logoLetter||""} onChange={v=>uSB("logoLetter",v)} placeholder="S"/>
+      <div style={{marginTop:6}}>
+       <div style={{fontSize:10,fontWeight:600,color:C.td,marginBottom:4}}>Logo produit SaaS</div>
+       <label style={{display:"inline-flex",alignItems:"center",gap:8,padding:"8px 14px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,cursor:"pointer"}}>
+        <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
+         const file=e.target.files?.[0];if(!file)return;
+         if(file.size>500000){alert("Image trop lourde (max 500 KB)");return;}
+         const reader=new FileReader();
+         reader.onload=(ev)=>uSB("logoUrl",ev.target.result);
+         reader.readAsDataURL(file);
+        }}/>
+        <span style={{fontSize:11,color:C.t,fontWeight:600,fontFamily:FONT}}>📁 Choisir un fichier image</span>
+       </label>
+       {sb.logoUrl&&<button onClick={()=>uSB("logoUrl","")} style={{marginLeft:8,padding:"4px 8px",borderRadius:6,border:`1px solid ${C.r}33`,background:"transparent",color:C.r,fontSize:9,cursor:"pointer",fontFamily:FONT}}>Supprimer</button>}
+      </div>
+      {sb.logoUrl&&<div style={{marginTop:8,padding:10,background:C.bg,borderRadius:10,textAlign:"center",border:`1px solid ${C.brd}`}}>
+       <img src={sb.logoUrl} alt="Logo SaaS" style={{maxHeight:60,maxWidth:"100%",objectFit:"contain"}} onError={e=>{e.target.style.display="none";}}/>
+      </div>}
+     </Card>
+     <Card style={{padding:16}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:14}}><span style={{fontSize:14}}>👁</span><span style={{fontWeight:700,fontSize:12}}>Aperçu client</span></div>
+      <div style={{padding:16,borderRadius:12,background:C.bg,border:`1px solid ${C.brd}`,textAlign:"center"}}>
+       {sb.logoUrl?<img src={sb.logoUrl} alt="" style={{width:40,height:40,borderRadius:8,objectFit:"contain",marginBottom:8}}/>
+        :<div style={{width:40,height:40,borderRadius:8,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:8}}>{sb.logoLetter||"S"}</div>}
+       <div style={{fontWeight:800,fontSize:14,fontFamily:FONT_TITLE}}>{sb.name||"Scale Corp SaaS"}</div>
+       <div style={{fontSize:10,color:C.td,marginTop:2}}>{sb.sub||"Espace client"}</div>
+      </div>
+      <div style={{marginTop:12,fontSize:10,color:C.td,lineHeight:1.5}}>
+       Ce branding s'affiche sur la landing page, les pages de connexion et d'inscription client, et le portail client connecté. Il est totalement indépendant du branding de votre groupe.
+      </div>
+     </Card>
+    </div>;
+   })()}
+   <div style={{marginTop:12}}><Btn onClick={()=>{saveHold();}} v="success">Sauvegarder branding SaaS</Btn></div>
+  </div>
  </>;
 }
 

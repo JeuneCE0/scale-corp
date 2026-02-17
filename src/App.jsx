@@ -231,11 +231,14 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  if(hash.startsWith("#portal/")){const parts=hash.replace("#portal/","").split("/");return <><style>{CSS}{POLISH_CSS}</style><ClientPortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients} ghlData={ghlData}/></>;}
  if(hash.startsWith("#board/")){const bPin=hash.replace("#board/","");return <><style>{CSS}{POLISH_CSS}</style><InvestorBoard socs={socs} reps={reps} allM={allM} hold={hold} pin={bPin}/></>;}
 
+ /* SaaS brand — indépendant du branding du groupe */
+ const saasBrand=hold.saasBrand||{name:"Scale Corp SaaS",sub:"Espace client",logoLetter:"S"};
+
  /* PUBLIC ROUTES: Landing, Client Login, Signup */
  const routeNav=(h)=>{window.location.hash=h;setRoute(h);};
- if(!role&&(route==="#/landing"||route===""||route==="#"||(!route.startsWith("#widget/")&&!route.startsWith("#portal/")&&!route.startsWith("#board/")&&route!=="#pulse"&&route!=="#/admin"&&route!=="#/client"&&route!=="#/signup")))return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><LandingPage brand={hold.brand} onNavigate={routeNav}/></Suspense></>;
- if(!role&&route==="#/client")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><ClientLoginPage brand={hold.brand} onNavigate={routeNav} onLogin={(user)=>{setAuthUser(user);const meta=user?.user_metadata||{};const rid=meta.role==="admin"?"admin":meta.role==="client"?"client":(meta.society_id||"admin");setRole(rid);setStoreToken("auth");setCurrentSocId(rid);localStorage.setItem("sc_store_token","auth");window.location.hash="";}}/></Suspense></>;
- if(!role&&route==="#/signup")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><ClientSignupPage brand={hold.brand} onNavigate={routeNav}/></Suspense></>;
+ if(!role&&(route==="#/landing"||route===""||route==="#"||(!route.startsWith("#widget/")&&!route.startsWith("#portal/")&&!route.startsWith("#board/")&&route!=="#pulse"&&route!=="#/admin"&&route!=="#/client"&&route!=="#/signup")))return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><LandingPage brand={saasBrand} onNavigate={routeNav}/></Suspense></>;
+ if(!role&&route==="#/client")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><ClientLoginPage brand={saasBrand} onNavigate={routeNav} onLogin={(user)=>{setAuthUser(user);const meta=user?.user_metadata||{};const rid=meta.role==="admin"?"admin":meta.role==="client"?"client":(meta.society_id||"admin");setRole(rid);setStoreToken("auth");setCurrentSocId(rid);localStorage.setItem("sc_store_token","auth");window.location.hash="";}}/></Suspense></>;
+ if(!role&&route==="#/signup")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><ClientSignupPage brand={saasBrand} onNavigate={routeNav}/></Suspense></>;
 
  /* ADMIN LOGIN — #/admin route */
  if(!role)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT,padding:16}}>
@@ -261,24 +264,27 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </div>
   </div>
  </div>;
- /* CLIENT PORTAL — SaaS client logged in */
- if(role==="client")return <div className="glass-bg" style={{minHeight:"100vh",fontFamily:FONT,color:C.t}}>
+ /* CLIENT PORTAL — SaaS client logged in (totalement indépendant du groupe) */
+ if(role==="client"){const clientMeta=authUser?.user_metadata||{};return <div className="glass-bg" style={{minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}{POLISH_CSS}</style>
   <div style={{maxWidth:1100,margin:"0 auto",padding:"20px 24px 60px"}}>
-   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
     <div style={{display:"flex",alignItems:"center",gap:10}}>
-     {hold.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:32,height:32,borderRadius:8,objectFit:"contain"}}/>
-      :<div style={{width:32,height:32,borderRadius:8,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:"#0a0a0f"}}>{hold.brand?.logoLetter||"E"}</div>}
-     <span style={{fontWeight:800,fontSize:15,fontFamily:FONT_TITLE}}>{hold.brand?.name||"L'INCUBATEUR ECS"}</span>
+     {saasBrand.logoUrl?<img src={saasBrand.logoUrl} alt="" style={{width:32,height:32,borderRadius:8,objectFit:"contain"}}/>
+      :<div style={{width:32,height:32,borderRadius:8,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:"#0a0a0f"}}>{saasBrand.logoLetter||"S"}</div>}
+     <div><span style={{fontWeight:800,fontSize:15,fontFamily:FONT_TITLE,display:"block"}}>{saasBrand.name||"Scale Corp SaaS"}</span>
+      {clientMeta.company&&<span style={{fontSize:10,color:C.td}}>{clientMeta.company}</span>}
+     </div>
     </div>
     <div style={{display:"flex",alignItems:"center",gap:8}}>
+     {clientMeta.name&&<span style={{fontSize:11,color:C.td,fontWeight:500}}>{clientMeta.name}</span>}
      <AnimatedThemeToggle onToggle={toggleTheme}/>
-     <button onClick={()=>{setRole(null);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}window.location.hash="#/landing";}} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${C.brd}`,background:"transparent",color:C.td,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>Déconnexion</button>
+     <button onClick={()=>{const tk=localStorage.getItem("sc_auth_token");setRole(null);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(tk||"")}});}catch{}window.location.hash="#/landing";}} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${C.brd}`,background:"transparent",color:C.td,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>Déconnexion</button>
     </div>
    </div>
    <Suspense fallback={<LazyFallback/>}><SaaSClientPortal/></Suspense>
   </div>
- </div>;
+ </div>;}
  if(role!=="admin"){const soc=socs.find(s=>s.id===role);if(!soc)return null;
   const porteurSetTab=(t)=>{const btn=document.querySelector(`[data-tour="porteur-tab-${t}"]`);if(btn)btn.click();};
   return <ErrorBoundary label="Vue Porteur"><>{missedRecap&&<div className="fi" style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)"}} onClick={()=>setMissedRecap(null)}>
@@ -932,6 +938,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   </>}
   {tab===20&&<Suspense fallback={<LazyFallback/>}><AdminPanel socs={socs} hold={hold} setHold={setHold} saveHold={()=>save(null,null,hold)}/></Suspense>}
   {tab===30&&<Suspense fallback={<LazyFallback/>}><SaaSClientPortal previewMode/></Suspense>}
+  {tab===31&&<SaaSClientAccessPanel/>}
   </PageTransition>
   </div>
   </div>
@@ -994,6 +1001,69 @@ function UserAccessPanel({socs}){
   <p style={{color:C.td,fontSize:12}}>Supprimer définitivement cet utilisateur ?</p>
   <div style={{display:"flex",gap:8,marginTop:12}}><Btn v="danger" onClick={()=>doDelete(delConfirm)}>Supprimer</Btn><Btn v="secondary" onClick={()=>setDelConfirm(null)}>Annuler</Btn></div>
  </Modal>
+ </>;
+}
+/* SAAS CLIENT ACCESS PANEL — Gestion des accès clients (indépendant du groupe) */
+function SaaSClientAccessPanel(){
+ const[users,setUsers]=useState([]);const[loading,setLoading]=useState(true);const[showAdd,setShowAdd]=useState(false);
+ const[addEmail,setAddEmail]=useState("");const[addName,setAddName]=useState("");const[addCompany,setAddCompany]=useState("");const[addPhone,setAddPhone]=useState("");const[addPass,setAddPass]=useState("");const[addErr,setAddErr]=useState("");const[addLoading,setAddLoading]=useState(false);
+ const[pwModal,setPwModal]=useState(null);const[newPw,setNewPw]=useState("");const[delConfirm,setDelConfirm]=useState(null);
+ const[search,setSearch]=useState("");
+ const loadUsers=useCallback(async()=>{setLoading(true);try{const r=await fetch("/api/auth?action=list_users");const d=await r.json();setUsers((d.users||[]).filter(u=>(u.user_metadata||{}).role==="client"));}catch{}setLoading(false);},[]);
+ useEffect(()=>{loadUsers();},[loadUsers]);
+ const doAdd=async()=>{if(!addEmail||!addPass){setAddErr("Email et mot de passe requis");return;}if(addPass.length<8){setAddErr("Mot de passe : 8 caractères minimum");return;}setAddLoading(true);setAddErr("");try{const r=await fetch("/api/auth?action=signup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:addEmail,password:addPass,name:addName,role:"client",company:addCompany,phone:addPhone})});const d=await r.json();if(!r.ok){setAddErr(d.msg||d.error||"Erreur");return;}setShowAdd(false);setAddEmail("");setAddName("");setAddPass("");setAddCompany("");setAddPhone("");loadUsers();}catch{setAddErr("Erreur réseau");}finally{setAddLoading(false);}};
+ const doUpdatePw=async()=>{if(!newPw||!pwModal)return;try{const r=await fetch("/api/auth?action=update_password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:pwModal,password:newPw})});if(r.ok){setPwModal(null);setNewPw("");loadUsers();}}catch{}};
+ const doDelete=async(uid2)=>{try{await fetch("/api/auth?action=delete_user",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:uid2})});setDelConfirm(null);loadUsers();}catch{}};
+ const filtered=users.filter(u=>{if(!search)return true;const m=u.user_metadata||{};const s=search.toLowerCase();return(m.name||"").toLowerCase().includes(s)||(u.email||"").toLowerCase().includes(s)||(m.company||"").toLowerCase().includes(s);});
+ const activeCount=users.filter(u=>u.last_sign_in_at).length;
+ return <>
+  <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:4}}>👤 Accès Clients SaaS</div>
+  <div style={{fontSize:11,color:C.td,marginBottom:16}}>Gérez les comptes clients de votre produit SaaS — indépendant de la gestion du groupe</div>
+
+  <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:16}}>
+   <KPI label="Total clients" value={users.length} accent={C.b} icon="👤"/>
+   <KPI label="Actifs" value={activeCount} accent={C.g} icon="✅" sub="Connectés au moins 1 fois"/>
+   <KPI label="Jamais connectés" value={users.length-activeCount} accent={C.o} icon="⏳"/>
+  </div>
+
+  <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+   <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un client..." style={{flex:1,minWidth:200,padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
+   <Btn small onClick={()=>setShowAdd(true)}>+ Créer un accès client</Btn>
+   <Btn small v="secondary" onClick={loadUsers}>↻</Btn>
+  </div>
+
+  {loading&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Chargement...</div>}
+  {!loading&&filtered.length===0&&<Card><div style={{textAlign:"center",padding:24,color:C.td,fontSize:12}}>{search?"Aucun résultat":"Aucun client SaaS pour l'instant"}<br/><span style={{fontSize:10}}>Créez un accès pour vos premiers clients.</span></div></Card>}
+  {!loading&&filtered.map(u=>{const meta=u.user_metadata||{};return <Card key={u.id} style={{marginBottom:4,padding:"12px 16px"}}>
+   <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+    <div style={{width:34,height:34,borderRadius:9,background:C.gD,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,color:C.g,flexShrink:0}}>{(meta.name||meta.company||u.email||"C")[0].toUpperCase()}</div>
+    <div style={{flex:1,minWidth:120}}>
+     <div style={{fontWeight:700,fontSize:12}}>{meta.name||u.email}</div>
+     <div style={{fontSize:10,color:C.td}}>{u.email}{meta.company?` · ${meta.company}`:""}{meta.phone?` · ${meta.phone}`:""}</div>
+    </div>
+    <div style={{fontSize:9,color:C.td}}>{u.last_sign_in_at?`Dernière connexion : ${new Date(u.last_sign_in_at).toLocaleDateString("fr-FR")}`:<span style={{color:C.o}}>Jamais connecté</span>}</div>
+    <button onClick={()=>{setPwModal(u.id);setNewPw("");}} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:9,cursor:"pointer",fontFamily:FONT}}>🔑 MDP</button>
+    <button onClick={()=>setDelConfirm(u.id)} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${C.r}33`,background:C.rD,color:C.r,fontSize:9,cursor:"pointer",fontFamily:FONT}}>Supprimer</button>
+   </div>
+  </Card>;})}
+
+  <Modal open={showAdd} onClose={()=>setShowAdd(false)} title="Créer un accès client SaaS">
+   <Inp label="Email *" value={addEmail} onChange={setAddEmail} placeholder="client@entreprise.com"/>
+   <Inp label="Nom" value={addName} onChange={setAddName} placeholder="Prénom Nom"/>
+   <Inp label="Entreprise" value={addCompany} onChange={setAddCompany} placeholder="Nom de l'entreprise"/>
+   <Inp label="Téléphone" value={addPhone} onChange={setAddPhone} placeholder="+33 6 12 34 56 78"/>
+   <Inp label="Mot de passe *" value={addPass} onChange={setAddPass} type="password" placeholder="Min. 8 caractères"/>
+   {addErr&&<div style={{color:C.r,fontSize:11,marginTop:4}}>⚠ {addErr}</div>}
+   <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={doAdd} disabled={addLoading}>{addLoading?"Création...":"Créer l'accès"}</Btn><Btn v="secondary" onClick={()=>setShowAdd(false)}>Annuler</Btn></div>
+  </Modal>
+  <Modal open={!!pwModal} onClose={()=>setPwModal(null)} title="Modifier le mot de passe">
+   <Inp label="Nouveau mot de passe" value={newPw} onChange={setNewPw} type="password" placeholder="Min. 8 caractères"/>
+   <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={doUpdatePw}>Sauver</Btn><Btn v="secondary" onClick={()=>setPwModal(null)}>Annuler</Btn></div>
+  </Modal>
+  <Modal open={!!delConfirm} onClose={()=>setDelConfirm(null)} title="Supprimer l'accès client">
+   <p style={{color:C.td,fontSize:12}}>Supprimer définitivement cet accès client ? Le client ne pourra plus se connecter.</p>
+   <div style={{display:"flex",gap:8,marginTop:12}}><Btn v="danger" onClick={()=>doDelete(delConfirm)}>Supprimer</Btn><Btn v="secondary" onClick={()=>setDelConfirm(null)}>Annuler</Btn></div>
+  </Modal>
  </>;
 }
 /* ANALYTIQUE TAB */

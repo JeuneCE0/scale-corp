@@ -4530,6 +4530,7 @@ export function TutorialOverlay({steps,onFinish,onSkip,setActiveTab}){
 /* SIDEBAR NAVIGATION */
 /* SIDEBAR NAVIGATION */
 export const SB_ADMIN=[
+ {id:"_sec_groupe",section:"Mon Groupe"},
  {id:"dash",icon:"◉",label:"Dashboard",tab:0,accent:C.acc},
  {id:"societes",icon:"🏢",label:"Sociétés",tab:1,accent:C.b},
  {id:"finances",icon:"💰",label:"Finances",tab:2,accent:C.g},
@@ -4538,10 +4539,12 @@ export const SB_ADMIN=[
  {id:"pub",icon:"📣",label:"Publicité",tab:16,accent:"#f472b6"},
  {id:"rapports",icon:"📋",label:"Rapports",tab:17,accent:C.v},
  {id:"access",icon:"🔐",label:"Accès",tab:14,accent:"#f59e0b"},
- {id:"admin",icon:"🛠",label:"Administration",tab:20,accent:"#e879f9"},
- {id:"saas_tpl",icon:"🎯",label:"Template Client",tab:30,accent:"#06b6d4"},
  {id:"params",icon:"⚙️",label:"Paramètres",tab:18,accent:C.td},
+ {id:"admin",icon:"🛠",label:"Administration",tab:20,accent:"#e879f9"},
  {id:"pulse",icon:"⚡",label:"PULSE",tab:99,accent:"#FFAA00"},
+ {id:"_sec_saas",section:"Produit SaaS"},
+ {id:"saas_tpl",icon:"🎯",label:"Template Client",tab:30,accent:"#06b6d4"},
+ {id:"saas_clients",icon:"👤",label:"Accès Clients",tab:31,accent:"#34d399"},
 ];
 
 export const SB_PORTEUR=[
@@ -4572,6 +4575,7 @@ export function Sidebar({items,activeTab,setTab,brandTitle,brandSub,onLogout,onT
   </div>
   <nav style={{flex:1,overflow:"auto",padding:"8px 6px 8px 6px"}}>
    {items.map(g=>{
+    if(g.section)return <div key={g.id} style={{padding:"10px 10px 3px",marginTop:6}}><span style={{fontSize:8,fontWeight:800,color:C.td,letterSpacing:1.2,textTransform:"uppercase",fontFamily:FONT_TITLE}}>{g.section}</span></div>;
     const hasK=!!g.children;const open=exp[g.id];const gA=hasK?grpAct(g):isAct(g.tab);
     return <div key={g.id} style={{marginBottom:1}}>
      <button data-tour={!hasK?`${dataTourPrefix}-tab-${g.tab}`:undefined} onClick={()=>{if(hasK){setExp(p=>({...p,[g.id]:!p[g.id]}));if(!open&&g.children[0])setTab(g.children[0].tab);}else setTab(g.tab);}}
