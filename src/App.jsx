@@ -50,7 +50,7 @@ function LazyFallback() {
 }
 
 function AppInner(){
- const[loaded,setLoaded]=useState(false);const[role,setRole]=useState(null);const[theme,setThemeState]=useState(getTheme);
+ const[loaded,setLoaded]=useState(false);const[role,setRole]=useState(null);const[authRestoring,setAuthRestoring]=useState(!!localStorage.getItem("sc_auth_token"));const[theme,setThemeState]=useState(getTheme);
  const toggleTheme=useCallback(()=>{const t=getTheme()==="dark"?"light":"dark";applyTheme(t);setThemeState(t);},[]);
 
  const[socs,setSocs]=useState([]);const[reps,setReps]=useState({});const[hold,setHold]=useState(DH);
@@ -86,7 +86,7 @@ function AppInner(){
    /* onboarding removed */
    setLoaded(true);
    // Session persistence: check stored auth token
-   try{const tk=localStorage.getItem("sc_auth_token");if(tk){fetch("/api/auth?action=me",{headers:{Authorization:"Bearer "+tk}}).then(r2=>r2.ok?r2.json():null).then(u=>{if(u&&u.id){setAuthUser(u);const meta=u.user_metadata||{};if(meta.role==="admin"){setRole("admin");setStoreToken("auth");setCurrentSocId("admin");syncFromSupabase("admin").catch(()=>{});}else if(meta.role==="client"){setRole("client");setStoreToken("auth");setCurrentSocId("client");}else if(meta.society_id){setRole(meta.society_id);setStoreToken("auth");setCurrentSocId(meta.society_id);syncFromSupabase(meta.society_id).catch(()=>{});}}}).catch(()=>{});}}catch{}
+   try{const tk=localStorage.getItem("sc_auth_token");if(tk){fetch("/api/auth?action=me",{headers:{Authorization:"Bearer "+tk}}).then(r2=>r2.ok?r2.json():null).then(u=>{if(u&&u.id){setAuthUser(u);const meta=u.user_metadata||{};if(meta.role==="admin"){setRole("admin");setStoreToken("auth");setCurrentSocId("admin");syncFromSupabase("admin").catch(()=>{});}else if(meta.role==="client"){setRole("client");setStoreToken("auth");setCurrentSocId("client");}else if(meta.society_id){setRole(meta.society_id);setStoreToken("auth");setCurrentSocId(meta.society_id);syncFromSupabase(meta.society_id).catch(()=>{});}}setAuthRestoring(false);}).catch(()=>{setAuthRestoring(false);});}else{setAuthRestoring(false);}}catch{setAuthRestoring(false);}
    })();},[]);
  const scChannel=useRef(null);
  useEffect(()=>{try{scChannel.current=new BroadcastChannel("scale-corp-sync");scChannel.current.onmessage=async(e)=>{if(e.data?.type==="socs-updated"){try{const sbSocs=await fetchSocietiesFromSB();if(sbSocs&&sbSocs.length>0)setSocs(prev=>{const sbMap=Object.fromEntries(sbSocs.map(x=>[x.id,x]));return prev.map(sc=>sbMap[sc.id]?{...sc,...sbMap[sc.id]}:sc);});}catch{}}if(e.data?.type==="hold-updated"){try{const sbHold=await fetchHoldingFromSB();if(sbHold)setHold(sbHold);}catch{}}};}catch{}return()=>{try{scChannel.current?.close();}catch{}};},[]);
@@ -234,10 +234,35 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  /* SaaS brand — indépendant du branding du groupe */
  const saasBrand=hold.saasBrand||{name:"Scale Corp SaaS",sub:"Espace client",logoLetter:"S"};
 
- /* PUBLIC ROUTES: Landing, Client Login, Signup */
+ /* CLIENT PORTAL — SaaS client logged in (totalement indépendant du groupe) */
  const routeNav=(h)=>{window.location.hash=h;setRoute(h);};
+ if(role==="client"){const clientMeta=authUser?.user_metadata||{};return <div className="glass-bg" style={{minHeight:"100vh",fontFamily:FONT,color:C.t}}>
+  <style>{CSS}{POLISH_CSS}</style>
+  <div style={{maxWidth:1100,margin:"0 auto",padding:"20px 24px 60px"}}>
+   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
+    <div style={{display:"flex",alignItems:"center",gap:10}}>
+     {saasBrand.logoUrl?<img src={saasBrand.logoUrl} alt="" style={{width:32,height:32,borderRadius:8,objectFit:"contain"}}/>
+      :<div style={{width:32,height:32,borderRadius:8,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:"#0a0a0f"}}>{saasBrand.logoLetter||"S"}</div>}
+     <div><span style={{fontWeight:800,fontSize:15,fontFamily:FONT_TITLE,display:"block"}}>{saasBrand.name||"Scale Corp SaaS"}</span>
+      {clientMeta.company&&<span style={{fontSize:10,color:C.td}}>{clientMeta.company}</span>}
+     </div>
+    </div>
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+     {clientMeta.name&&<span style={{fontSize:11,color:C.td,fontWeight:500}}>{clientMeta.name}</span>}
+     <AnimatedThemeToggle onToggle={toggleTheme}/>
+     <button onClick={()=>{const tk=localStorage.getItem("sc_auth_token");setRole(null);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(tk||"")}});}catch{}window.location.hash="#/landing";}} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${C.brd}`,background:"transparent",color:C.td,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>Déconnexion</button>
+    </div>
+   </div>
+   <Suspense fallback={<LazyFallback/>}><SaaSClientPortal/></Suspense>
+  </div>
+ </div>;}
+
+ /* Auth restoring: show loader while verifying stored session token */
+ if(!role&&authRestoring)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}><style>{CSS}{POLISH_CSS}</style><div style={{width:40,height:40,border:"3px solid rgba(255,255,255,.06)",borderTopColor:C.acc,borderRadius:"50%",animation:"sp 1s linear infinite",boxShadow:"0 0 20px rgba(255,170,0,.15)"}}/></div>;
+
+ /* PUBLIC ROUTES: Landing, Client Login, Signup */
  if(!role&&(route==="#/landing"||route===""||route==="#"||(!route.startsWith("#widget/")&&!route.startsWith("#portal/")&&!route.startsWith("#board/")&&route!=="#pulse"&&route!=="#/admin"&&route!=="#/client"&&route!=="#/signup")))return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><LandingPage brand={saasBrand} onNavigate={routeNav}/></Suspense></>;
- if(!role&&route==="#/client")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><ClientLoginPage brand={saasBrand} onNavigate={routeNav} onLogin={(user)=>{setAuthUser(user);const meta=user?.user_metadata||{};const rid=meta.role==="admin"?"admin":meta.role==="client"?"client":(meta.society_id||"admin");setRole(rid);setStoreToken("auth");setCurrentSocId(rid);localStorage.setItem("sc_store_token","auth");window.location.hash="";}}/></Suspense></>;
+ if(!role&&route==="#/client")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><ClientLoginPage brand={saasBrand} onNavigate={routeNav} onLogin={(user)=>{setAuthUser(user);const meta=user?.user_metadata||{};const rid=meta.role==="admin"?"admin":meta.role==="client"?"client":(meta.society_id||"admin");setRole(rid);setStoreToken("auth");setCurrentSocId(rid);localStorage.setItem("sc_store_token","auth");setRoute("");window.history.replaceState(null,"",window.location.pathname);}}/></Suspense></>;
  if(!role&&route==="#/signup")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><ClientSignupPage brand={saasBrand} onNavigate={routeNav}/></Suspense></>;
 
  /* ADMIN LOGIN — #/admin route */
@@ -264,27 +289,6 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </div>
   </div>
  </div>;
- /* CLIENT PORTAL — SaaS client logged in (totalement indépendant du groupe) */
- if(role==="client"){const clientMeta=authUser?.user_metadata||{};return <div className="glass-bg" style={{minHeight:"100vh",fontFamily:FONT,color:C.t}}>
-  <style>{CSS}{POLISH_CSS}</style>
-  <div style={{maxWidth:1100,margin:"0 auto",padding:"20px 24px 60px"}}>
-   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
-    <div style={{display:"flex",alignItems:"center",gap:10}}>
-     {saasBrand.logoUrl?<img src={saasBrand.logoUrl} alt="" style={{width:32,height:32,borderRadius:8,objectFit:"contain"}}/>
-      :<div style={{width:32,height:32,borderRadius:8,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:"#0a0a0f"}}>{saasBrand.logoLetter||"S"}</div>}
-     <div><span style={{fontWeight:800,fontSize:15,fontFamily:FONT_TITLE,display:"block"}}>{saasBrand.name||"Scale Corp SaaS"}</span>
-      {clientMeta.company&&<span style={{fontSize:10,color:C.td}}>{clientMeta.company}</span>}
-     </div>
-    </div>
-    <div style={{display:"flex",alignItems:"center",gap:8}}>
-     {clientMeta.name&&<span style={{fontSize:11,color:C.td,fontWeight:500}}>{clientMeta.name}</span>}
-     <AnimatedThemeToggle onToggle={toggleTheme}/>
-     <button onClick={()=>{const tk=localStorage.getItem("sc_auth_token");setRole(null);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(tk||"")}});}catch{}window.location.hash="#/landing";}} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${C.brd}`,background:"transparent",color:C.td,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>Déconnexion</button>
-    </div>
-   </div>
-   <Suspense fallback={<LazyFallback/>}><SaaSClientPortal/></Suspense>
-  </div>
- </div>;}
  if(role!=="admin"){const soc=socs.find(s=>s.id===role);if(!soc)return null;
   const porteurSetTab=(t)=>{const btn=document.querySelector(`[data-tour="porteur-tab-${t}"]`);if(btn)btn.click();};
   return <ErrorBoundary label="Vue Porteur"><>{missedRecap&&<div className="fi" style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)"}} onClick={()=>setMissedRecap(null)}>
