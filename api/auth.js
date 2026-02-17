@@ -27,7 +27,7 @@ function resetBrute(email) {
 
 // --- Validation ---
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const VALID_ACTIONS = ['signup','login','logout','me','update_password','list_users','delete_user'];
+const VALID_ACTIONS = ['signup','login','logout','me','update_password','update_user','list_users','delete_user'];
 
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -161,6 +161,29 @@ export default async function handler(req, res) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ password }),
+      });
+      const data = await r.json();
+      return res.status(r.status).json(data);
+    }
+
+    // === UPDATE USER METADATA (admin) ===
+    if (action === "update_user") {
+      if (req.method !== "PUT" && req.method !== "POST") return res.status(405).json({ error: "PUT/POST required" });
+      const { user_id, email, user_metadata, ban_duration } = req.body || {};
+      if (!user_id) return res.status(400).json({ error: "Missing user_id" });
+      if (email && !EMAIL_RE.test(email)) return res.status(400).json({ error: "Format email invalide" });
+      const payload = {};
+      if (email) payload.email = email;
+      if (user_metadata) payload.user_metadata = user_metadata;
+      if (ban_duration !== undefined) payload.ban_duration = ban_duration;
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${user_id}`, {
+        method: "PUT",
+        headers: {
+          apikey: SUPABASE_SERVICE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
       const data = await r.json();
       return res.status(r.status).json(data);

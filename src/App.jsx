@@ -1011,15 +1011,41 @@ function UserAccessPanel({socs}){
 function SaaSClientAccessPanel(){
  const[users,setUsers]=useState([]);const[loading,setLoading]=useState(true);const[showAdd,setShowAdd]=useState(false);
  const[addEmail,setAddEmail]=useState("");const[addName,setAddName]=useState("");const[addCompany,setAddCompany]=useState("");const[addPhone,setAddPhone]=useState("");const[addPass,setAddPass]=useState("");const[addErr,setAddErr]=useState("");const[addLoading,setAddLoading]=useState(false);
- const[pwModal,setPwModal]=useState(null);const[newPw,setNewPw]=useState("");const[delConfirm,setDelConfirm]=useState(null);
+ const[delConfirm,setDelConfirm]=useState(null);
  const[search,setSearch]=useState("");
+ const[editUser,setEditUser]=useState(null);
+ const[editForm,setEditForm]=useState({});
+ const[editPw,setEditPw]=useState("");const[editErr,setEditErr]=useState("");const[editLoading,setEditLoading]=useState(false);const[editSuccess,setEditSuccess]=useState("");
+ const[filterTab,setFilterTab]=useState("all");
  const loadUsers=useCallback(async()=>{setLoading(true);try{const r=await fetch("/api/auth?action=list_users");const d=await r.json();setUsers((d.users||[]).filter(u=>(u.user_metadata||{}).role==="client"));}catch{}setLoading(false);},[]);
  useEffect(()=>{loadUsers();},[loadUsers]);
  const doAdd=async()=>{if(!addEmail||!addPass){setAddErr("Email et mot de passe requis");return;}if(addPass.length<8){setAddErr("Mot de passe : 8 caractères minimum");return;}setAddLoading(true);setAddErr("");try{const r=await fetch("/api/auth?action=signup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:addEmail,password:addPass,name:addName,role:"client",company:addCompany,phone:addPhone})});const d=await r.json();if(!r.ok){setAddErr(d.msg||d.error||"Erreur");return;}setShowAdd(false);setAddEmail("");setAddName("");setAddPass("");setAddCompany("");setAddPhone("");loadUsers();}catch{setAddErr("Erreur réseau");}finally{setAddLoading(false);}};
- const doUpdatePw=async()=>{if(!newPw||!pwModal)return;try{const r=await fetch("/api/auth?action=update_password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:pwModal,password:newPw})});if(r.ok){setPwModal(null);setNewPw("");loadUsers();}}catch{}};
- const doDelete=async(uid2)=>{try{await fetch("/api/auth?action=delete_user",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:uid2})});setDelConfirm(null);loadUsers();}catch{}};
- const filtered=users.filter(u=>{if(!search)return true;const m=u.user_metadata||{};const s=search.toLowerCase();return(m.name||"").toLowerCase().includes(s)||(u.email||"").toLowerCase().includes(s)||(m.company||"").toLowerCase().includes(s);});
+ const doDelete=async(uid2)=>{try{await fetch("/api/auth?action=delete_user",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:uid2})});setDelConfirm(null);setEditUser(null);loadUsers();}catch{}};
+ const openEdit=(u)=>{const m=u.user_metadata||{};setEditUser(u);setEditForm({firstName:m.firstName||((m.name||"").split(" ")[0])||"",lastName:m.lastName||((m.name||"").split(" ").slice(1).join(" "))||"",email:u.email||"",company:m.company||"",phone:m.phone||"",plan:m.plan||"starter",planStatus:m.planStatus||"active",planStart:m.planStart||"",planEnd:m.planEnd||"",notes:m.notes||"",accessEnabled:!u.banned_until||new Date(u.banned_until)<new Date()});setEditPw("");setEditErr("");setEditSuccess("");};
+ const doSaveEdit=async()=>{if(!editUser)return;setEditLoading(true);setEditErr("");setEditSuccess("");try{
+  const meta={...editUser.user_metadata,firstName:editForm.firstName,lastName:editForm.lastName,name:`${editForm.firstName} ${editForm.lastName}`.trim(),company:editForm.company,phone:editForm.phone,plan:editForm.plan,planStatus:editForm.planStatus,planStart:editForm.planStart,planEnd:editForm.planEnd,notes:editForm.notes};
+  const payload={user_id:editUser.id,user_metadata:meta};
+  if(editForm.email!==editUser.email)payload.email=editForm.email;
+  if(!editForm.accessEnabled)payload.ban_duration="876600h";
+  else payload.ban_duration="none";
+  const r=await fetch("/api/auth?action=update_user",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  if(!r.ok){const d=await r.json();setEditErr(d.error||d.msg||"Erreur de mise à jour");return;}
+  if(editPw&&editPw.length>=8){const r2=await fetch("/api/auth?action=update_password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:editUser.id,password:editPw})});if(!r2.ok){setEditErr("Infos sauvées mais erreur mot de passe");setEditLoading(false);loadUsers();return;}}
+  else if(editPw&&editPw.length>0&&editPw.length<8){setEditErr("Mot de passe : 8 caractères minimum");setEditLoading(false);return;}
+  setEditSuccess("Sauvegardé");loadUsers();setTimeout(()=>setEditSuccess(""),2000);
+ }catch{setEditErr("Erreur réseau");}finally{setEditLoading(false);}};
+ const genPassword=()=>{const chars="abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%";let pw="";for(let i=0;i<12;i++)pw+=chars[Math.floor(Math.random()*chars.length)];setEditPw(pw);};
+ const filtered=users.filter(u=>{if(!search&&filterTab==="all")return true;const m=u.user_metadata||{};const s=search.toLowerCase();const matchSearch=!search||(m.name||"").toLowerCase().includes(s)||(u.email||"").toLowerCase().includes(s)||(m.company||"").toLowerCase().includes(s)||(m.firstName||"").toLowerCase().includes(s)||(m.lastName||"").toLowerCase().includes(s);
+  if(filterTab==="active")return matchSearch&&!!u.last_sign_in_at;
+  if(filterTab==="never")return matchSearch&&!u.last_sign_in_at;
+  if(filterTab==="disabled")return matchSearch&&u.banned_until&&new Date(u.banned_until)>new Date();
+  return matchSearch;});
  const activeCount=users.filter(u=>u.last_sign_in_at).length;
+ const disabledCount=users.filter(u=>u.banned_until&&new Date(u.banned_until)>new Date()).length;
+ const PLAN_LABELS={starter:"Starter",pro:"Professional",enterprise:"Enterprise"};
+ const PLAN_COLORS={starter:C.b,pro:C.acc,enterprise:C.v};
+ const STATUS_LABELS={active:"Actif",trial:"Essai",expired:"Expiré",cancelled:"Annulé"};
+ const STATUS_COLORS={active:C.g,trial:C.o,expired:C.r,cancelled:C.td};
  return <>
   <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:4}}>👤 Accès Clients SaaS</div>
   <div style={{fontSize:11,color:C.td,marginBottom:16}}>Gérez les comptes clients de votre produit SaaS — indépendant de la gestion du groupe</div>
@@ -1028,29 +1054,47 @@ function SaaSClientAccessPanel(){
    <KPI label="Total clients" value={users.length} accent={C.b} icon="👤"/>
    <KPI label="Actifs" value={activeCount} accent={C.g} icon="✅" sub="Connectés au moins 1 fois"/>
    <KPI label="Jamais connectés" value={users.length-activeCount} accent={C.o} icon="⏳"/>
+   <KPI label="Désactivés" value={disabledCount} accent={C.r} icon="🚫"/>
+  </div>
+
+  <div style={{display:"flex",gap:4,marginBottom:12,flexWrap:"wrap"}}>
+   {[{id:"all",l:"Tous"},{id:"active",l:"Actifs"},{id:"never",l:"Jamais connectés"},{id:"disabled",l:"Désactivés"}].map(f=><button key={f.id} onClick={()=>setFilterTab(f.id)} style={{padding:"5px 12px",borderRadius:8,border:`1px solid ${filterTab===f.id?C.acc+"55":C.brd}`,background:filterTab===f.id?C.accD:"transparent",color:filterTab===f.id?C.acc:C.td,fontSize:10,fontWeight:filterTab===f.id?700:500,cursor:"pointer",fontFamily:FONT}}>{f.l}</button>)}
   </div>
 
   <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
-   <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un client..." style={{flex:1,minWidth:200,padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
+   <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher par nom, email, entreprise..." style={{flex:1,minWidth:200,padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
    <Btn small onClick={()=>setShowAdd(true)}>+ Créer un accès client</Btn>
    <Btn small v="secondary" onClick={loadUsers}>↻</Btn>
   </div>
 
   {loading&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Chargement...</div>}
-  {!loading&&filtered.length===0&&<Card><div style={{textAlign:"center",padding:24,color:C.td,fontSize:12}}>{search?"Aucun résultat":"Aucun client SaaS pour l'instant"}<br/><span style={{fontSize:10}}>Créez un accès pour vos premiers clients.</span></div></Card>}
-  {!loading&&filtered.map(u=>{const meta=u.user_metadata||{};return <Card key={u.id} style={{marginBottom:4,padding:"12px 16px"}}>
+  {!loading&&filtered.length===0&&<Card style={{padding:"40px 20px"}}><div style={{textAlign:"center"}}>
+   <div style={{fontSize:40,marginBottom:12}}>👤</div>
+   <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{search?"Aucun résultat":"Aucun client SaaS pour l'instant"}</div>
+   <div style={{color:C.td,fontSize:11,marginBottom:16}}>Créez un accès pour vos premiers clients.</div>
+   {!search&&<Btn small onClick={()=>setShowAdd(true)}>Créer un accès client</Btn>}
+  </div></Card>}
+  {!loading&&filtered.map(u=>{const meta=u.user_metadata||{};const isBanned=u.banned_until&&new Date(u.banned_until)>new Date();const plan=meta.plan||"starter";const planStatus=meta.planStatus||"active";
+   return <Card key={u.id} style={{marginBottom:4,padding:"12px 16px",cursor:"pointer",transition:"all .15s",border:`1px solid ${isBanned?C.r+"22":C.brd}`}} onClick={()=>openEdit(u)} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.acc+"44";e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=isBanned?C.r+"22":C.brd;e.currentTarget.style.transform="translateY(0)";}}>
    <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-    <div style={{width:34,height:34,borderRadius:9,background:C.gD,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,color:C.g,flexShrink:0}}>{(meta.name||meta.company||u.email||"C")[0].toUpperCase()}</div>
-    <div style={{flex:1,minWidth:120}}>
-     <div style={{fontWeight:700,fontSize:12}}>{meta.name||u.email}</div>
-     <div style={{fontSize:10,color:C.td}}>{u.email}{meta.company?` · ${meta.company}`:""}{meta.phone?` · ${meta.phone}`:""}</div>
+    <div style={{width:38,height:38,borderRadius:10,background:isBanned?C.rD:C.gD,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:15,color:isBanned?C.r:C.g,flexShrink:0}}>{(meta.firstName||meta.name||meta.company||u.email||"C")[0].toUpperCase()}</div>
+    <div style={{flex:1,minWidth:140}}>
+     <div style={{display:"flex",alignItems:"center",gap:6}}>
+      <span style={{fontWeight:700,fontSize:12}}>{meta.firstName&&meta.lastName?`${meta.firstName} ${meta.lastName}`:meta.name||u.email}</span>
+      {isBanned&&<span style={{padding:"1px 6px",borderRadius:4,fontSize:8,fontWeight:700,background:C.rD,color:C.r}}>Désactivé</span>}
+     </div>
+     <div style={{fontSize:10,color:C.td}}>{u.email}{meta.company?` · ${meta.company}`:""}</div>
     </div>
-    <div style={{fontSize:9,color:C.td}}>{u.last_sign_in_at?`Dernière connexion : ${new Date(u.last_sign_in_at).toLocaleDateString("fr-FR")}`:<span style={{color:C.o}}>Jamais connecté</span>}</div>
-    <button onClick={()=>{setPwModal(u.id);setNewPw("");}} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:9,cursor:"pointer",fontFamily:FONT}}>🔑 MDP</button>
-    <button onClick={()=>setDelConfirm(u.id)} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${C.r}33`,background:C.rD,color:C.r,fontSize:9,cursor:"pointer",fontFamily:FONT}}>Supprimer</button>
+    <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+     <span style={{padding:"2px 8px",borderRadius:6,fontSize:8,fontWeight:700,background:`${PLAN_COLORS[plan]||C.b}15`,color:PLAN_COLORS[plan]||C.b}}>{PLAN_LABELS[plan]||plan}</span>
+     <span style={{padding:"2px 8px",borderRadius:6,fontSize:8,fontWeight:700,background:`${STATUS_COLORS[planStatus]||C.g}15`,color:STATUS_COLORS[planStatus]||C.g}}>{STATUS_LABELS[planStatus]||planStatus}</span>
+    </div>
+    <div style={{fontSize:9,color:C.td,textAlign:"right",minWidth:100}}>{u.last_sign_in_at?<>Dernière connexion<br/>{new Date(u.last_sign_in_at).toLocaleDateString("fr-FR")}</>:<span style={{color:C.o}}>Jamais connecté</span>}</div>
+    <div style={{fontSize:14,color:C.td,flexShrink:0}}>›</div>
    </div>
   </Card>;})}
 
+  {/* ====== CREATE MODAL ====== */}
   <Modal open={showAdd} onClose={()=>setShowAdd(false)} title="Créer un accès client SaaS">
    <Inp label="Email *" value={addEmail} onChange={setAddEmail} placeholder="client@entreprise.com"/>
    <Inp label="Nom" value={addName} onChange={setAddName} placeholder="Prénom Nom"/>
@@ -1060,10 +1104,76 @@ function SaaSClientAccessPanel(){
    {addErr&&<div style={{color:C.r,fontSize:11,marginTop:4}}>⚠ {addErr}</div>}
    <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={doAdd} disabled={addLoading}>{addLoading?"Création...":"Créer l'accès"}</Btn><Btn v="secondary" onClick={()=>setShowAdd(false)}>Annuler</Btn></div>
   </Modal>
-  <Modal open={!!pwModal} onClose={()=>setPwModal(null)} title="Modifier le mot de passe">
-   <Inp label="Nouveau mot de passe" value={newPw} onChange={setNewPw} type="password" placeholder="Min. 8 caractères"/>
-   <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={doUpdatePw}>Sauver</Btn><Btn v="secondary" onClick={()=>setPwModal(null)}>Annuler</Btn></div>
+
+  {/* ====== EDIT CLIENT MODAL ====== */}
+  <Modal open={!!editUser} onClose={()=>setEditUser(null)} title="Fiche client">
+   {editUser&&<div>
+    {/* Header */}
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,padding:"12px 16px",borderRadius:12,background:`linear-gradient(135deg,${C.acc}08,${C.b}06)`,border:`1px solid ${C.acc}15`}}>
+     <div style={{width:48,height:48,borderRadius:12,background:C.accD,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:20,color:C.acc}}>{(editForm.firstName||editForm.email||"C")[0].toUpperCase()}</div>
+     <div style={{flex:1}}>
+      <div style={{fontWeight:800,fontSize:14,fontFamily:FONT_TITLE}}>{editForm.firstName||editForm.lastName?`${editForm.firstName} ${editForm.lastName}`.trim():editForm.email}</div>
+      <div style={{fontSize:10,color:C.td}}>{editForm.company||"—"} · Créé le {new Date(editUser.created_at).toLocaleDateString("fr-FR")}</div>
+     </div>
+     <div style={{textAlign:"right"}}>
+      <div style={{fontSize:9,color:editForm.accessEnabled?C.g:C.r,fontWeight:700}}>{editForm.accessEnabled?"Accès actif":"Accès désactivé"}</div>
+      <div style={{fontSize:9,color:C.td}}>{editUser.last_sign_in_at?`Vu le ${new Date(editUser.last_sign_in_at).toLocaleDateString("fr-FR")}`:"Jamais connecté"}</div>
+     </div>
+    </div>
+
+    {/* Identity section */}
+    <div style={{fontWeight:700,fontSize:11,color:C.td,marginBottom:8,textTransform:"uppercase",letterSpacing:.8}}>Identité</div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
+     <Inp label="Prénom" value={editForm.firstName} onChange={v=>setEditForm({...editForm,firstName:v})} placeholder="Prénom"/>
+     <Inp label="Nom" value={editForm.lastName} onChange={v=>setEditForm({...editForm,lastName:v})} placeholder="Nom de famille"/>
+     <Inp label="Email" value={editForm.email} onChange={v=>setEditForm({...editForm,email:v})} type="email" placeholder="client@email.com"/>
+     <Inp label="Téléphone" value={editForm.phone} onChange={v=>setEditForm({...editForm,phone:v})} placeholder="+33 6 12 34 56 78"/>
+     <div style={{gridColumn:"1 / -1"}}><Inp label="Entreprise" value={editForm.company} onChange={v=>setEditForm({...editForm,company:v})} placeholder="Nom de l'entreprise"/></div>
+    </div>
+
+    {/* Password section */}
+    <div style={{fontWeight:700,fontSize:11,color:C.td,marginBottom:8,textTransform:"uppercase",letterSpacing:.8}}>Mot de passe</div>
+    <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"flex-end"}}>
+     <div style={{flex:1}}><Inp label="Nouveau mot de passe" value={editPw} onChange={setEditPw} type={editPw.length>0?"text":"password"} placeholder="Laisser vide pour ne pas changer"/></div>
+     <button onClick={genPassword} style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.card,color:C.t,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap",marginBottom:0,height:36}}>🎲 Générer</button>
+    </div>
+    {editPw&&<div style={{padding:"6px 10px",borderRadius:6,background:C.bg,fontSize:10,color:C.g,fontFamily:"monospace",marginBottom:16,marginTop:-8,wordBreak:"break-all"}}>{editPw}</div>}
+
+    {/* Subscription section */}
+    <div style={{fontWeight:700,fontSize:11,color:C.td,marginBottom:8,textTransform:"uppercase",letterSpacing:.8}}>Abonnement</div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
+     <Sel label="Plan" value={editForm.plan} onChange={v=>setEditForm({...editForm,plan:v})} options={[{v:"starter",l:"Starter"},{v:"pro",l:"Professional"},{v:"enterprise",l:"Enterprise"}]}/>
+     <Sel label="Statut abonnement" value={editForm.planStatus} onChange={v=>setEditForm({...editForm,planStatus:v})} options={[{v:"active",l:"Actif"},{v:"trial",l:"Essai gratuit"},{v:"expired",l:"Expiré"},{v:"cancelled",l:"Annulé"}]}/>
+     <Inp label="Date de début" value={editForm.planStart} onChange={v=>setEditForm({...editForm,planStart:v})} type="date"/>
+     <Inp label="Date de fin" value={editForm.planEnd} onChange={v=>setEditForm({...editForm,planEnd:v})} type="date"/>
+    </div>
+
+    {/* Access control */}
+    <div style={{fontWeight:700,fontSize:11,color:C.td,marginBottom:8,textTransform:"uppercase",letterSpacing:.8}}>Accès & Notes</div>
+    <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,background:editForm.accessEnabled?C.gD:C.rD,border:`1px solid ${editForm.accessEnabled?C.g+"33":C.r+"33"}`,marginBottom:10,cursor:"pointer"}} onClick={()=>setEditForm({...editForm,accessEnabled:!editForm.accessEnabled})}>
+     <div style={{width:36,height:20,borderRadius:10,background:editForm.accessEnabled?C.g:C.r+"66",position:"relative",transition:"background .2s"}}>
+      <div style={{width:16,height:16,borderRadius:8,background:"#fff",position:"absolute",top:2,left:editForm.accessEnabled?18:2,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+     </div>
+     <div style={{flex:1}}>
+      <div style={{fontWeight:700,fontSize:11,color:editForm.accessEnabled?C.g:C.r}}>{editForm.accessEnabled?"Accès activé":"Accès désactivé"}</div>
+      <div style={{fontSize:9,color:C.td}}>{editForm.accessEnabled?"Le client peut se connecter":"Le client est bloqué"}</div>
+     </div>
+    </div>
+    <Inp label="Notes internes" value={editForm.notes} onChange={v=>setEditForm({...editForm,notes:v})} textarea placeholder="Notes sur ce client, historique, particularités..."/>
+
+    {/* Save / Delete */}
+    {editErr&&<div style={{color:C.r,fontSize:11,marginTop:8}}>⚠ {editErr}</div>}
+    {editSuccess&&<div style={{color:C.g,fontSize:11,marginTop:8}}>✅ {editSuccess}</div>}
+    <div style={{display:"flex",gap:8,marginTop:14,alignItems:"center"}}>
+     <Btn onClick={doSaveEdit} disabled={editLoading}>{editLoading?"Sauvegarde...":"Sauvegarder"}</Btn>
+     <Btn v="secondary" onClick={()=>setEditUser(null)}>Fermer</Btn>
+     <div style={{flex:1}}/>
+     <button onClick={()=>setDelConfirm(editUser.id)} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${C.r}33`,background:C.rD,color:C.r,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>Supprimer le compte</button>
+    </div>
+   </div>}
   </Modal>
+
+  {/* ====== DELETE CONFIRM ====== */}
   <Modal open={!!delConfirm} onClose={()=>setDelConfirm(null)} title="Supprimer l'accès client">
    <p style={{color:C.td,fontSize:12}}>Supprimer définitivement cet accès client ? Le client ne pourra plus se connecter.</p>
    <div style={{display:"flex",gap:8,marginTop:12}}><Btn v="danger" onClick={()=>doDelete(delConfirm)}>Supprimer</Btn><Btn v="secondary" onClick={()=>setDelConfirm(null)}>Annuler</Btn></div>
