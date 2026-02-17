@@ -32,6 +32,28 @@ const TOOLS=[
 
 const TOOL_CATS={pub:"Publicité",crm:"CRM",payment:"Paiement",bank:"Banque",comm:"Communication",auto:"Automatisation",analytics:"Analytics",ecommerce:"E-commerce"};
 
+const SECTORS=[
+ {v:"",l:"Choisir un secteur..."},
+ {v:"saas",l:"SaaS / Logiciel"},
+ {v:"ecommerce",l:"E-commerce / Retail"},
+ {v:"agency",l:"Agence (marketing, dev, créa)"},
+ {v:"consulting",l:"Conseil / Consulting"},
+ {v:"fintech",l:"Fintech / Services financiers"},
+ {v:"healthtech",l:"Santé / Healthtech"},
+ {v:"edtech",l:"Éducation / Formation"},
+ {v:"food",l:"Food & Beverage / Restauration"},
+ {v:"real_estate",l:"Immobilier"},
+ {v:"media",l:"Média / Contenu / Presse"},
+ {v:"logistics",l:"Logistique / Transport"},
+ {v:"manufacturing",l:"Industrie / Production"},
+ {v:"services",l:"Services aux entreprises"},
+ {v:"telecom",l:"Télécoms / IT"},
+ {v:"energy",l:"Énergie / Environnement"},
+ {v:"legal",l:"Juridique / Comptabilité"},
+ {v:"sports",l:"Sport / Loisirs / Bien-être"},
+ {v:"other",l:"Autre"},
+];
+
 const TUTO_STEPS=[
  {title:"Dashboard Overview",desc:"Votre tableau de bord affiche en temps réel les KPIs principaux : CA, charges, résultat net, score de santé. Les alertes actives apparaissent en haut.",icon:"📊"},
  {title:"CRM — Gestion des contacts",desc:"Ajoutez et gérez vos contacts commerciaux. Chaque contact passe par les étapes : Prospect → Lead → Client. Filtrez et recherchez facilement.",icon:"👥"},
@@ -92,7 +114,7 @@ export function ClientOnboarding({data,setData,client,setClient,onComplete}){
     <div style={{fontWeight:700,fontSize:14,marginBottom:16}}>🏢 Informations entreprise</div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
      <Inp label="Nom de l'entreprise *" value={onb.company?.name||""} onChange={v=>uCompany("name",v)} placeholder="Acme SAS"/>
-     <Inp label="Secteur d'activité" value={onb.company?.sector||""} onChange={v=>uCompany("sector",v)} placeholder="SaaS, E-commerce, Agence..."/>
+     <Sel label="Secteur d'activité" value={onb.company?.sector||""} onChange={v=>uCompany("sector",v)} options={SECTORS}/>
      <Inp label="Site web" value={onb.company?.website||""} onChange={v=>uCompany("website",v)} placeholder="https://acme.com"/>
      <Inp label="Nombre d'employés" value={onb.company?.employees||""} onChange={v=>uCompany("employees",v)} placeholder="1-10, 11-50, 51-200..."/>
      <Inp label="CA annuel estimé (€)" value={onb.company?.revenue||""} onChange={v=>uCompany("revenue",v)} type="number" placeholder="100000"/>

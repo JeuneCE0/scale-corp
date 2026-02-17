@@ -14,38 +14,136 @@ const SK = "scCpState";
 function load(k,d){try{const s=localStorage.getItem(k);return s?{...d,...JSON.parse(s)}:d;}catch{return d;}}
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));sSet(k,v);}catch{}}
 
+/* ====== HEALTH RING (SVG) ====== */
+function HealthRing({score,size=80}){
+ const r=(size-8)/2,circ=2*Math.PI*r,pct2=Math.max(0,Math.min(100,score)),offset=circ-(pct2/100)*circ;
+ const color=score>=70?C.g:score>=40?C.o:C.r;
+ return<svg width={size} height={size} style={{transform:"rotate(-90deg)"}}>
+  <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={C.brd} strokeWidth={6}/>
+  <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={6} strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" style={{transition:"stroke-dashoffset .8s ease"}}/>
+ </svg>;
+}
+
+/* ====== MINI SPARKLINE (SVG) ====== */
+function Sparkline({values,color,width=120,height=32}){
+ if(!values||values.length<2)return null;
+ const mx=Math.max(...values,1);const mn=Math.min(...values,0);const range=mx-mn||1;
+ const pts=values.map((v,i)=>`${(i/(values.length-1))*width},${height-((v-mn)/range)*(height-4)-2}`).join(" ");
+ return<svg width={width} height={height} style={{display:"block"}}>
+  <defs><linearGradient id={`sp_${color.replace("#","")}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity=".25"/><stop offset="100%" stopColor={color} stopOpacity="0"/></linearGradient></defs>
+  <polygon points={`0,${height} ${pts} ${width},${height}`} fill={`url(#sp_${color.replace("#","")})`}/>
+  <polyline points={pts} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"/>
+ </svg>;
+}
+
 /* ====== OVERVIEW TAB ====== */
-function OverviewTab({client,data}){
+function OverviewTab({client,data,onNav}){
  const cM=curM();
  const fin=data.finances||{};const curFin=fin[cM]||{};
  const ca=pf(curFin.ca);const charges=pf(curFin.charges||((pf(curFin.chargesFixes))+(pf(curFin.chargesVar))));
  const profit=ca-charges;
  const pm=(()=>{const[y,m]=cM.split("-").map(Number);const p=m===1?12:m-1;return`${m===1?y-1:y}-${String(p).padStart(2,"0")}`;})();
  const prevCA=pf((fin[pm]||{}).ca);const evoCA=prevCA?((ca-prevCA)/prevCA*100):0;
+ const prevCharges=pf((fin[pm]||{}).charges||((pf((fin[pm]||{}).chargesFixes))+(pf((fin[pm]||{}).chargesVar))));const evoCharges=prevCharges?((charges-prevCharges)/prevCharges*100):0;
  const health=data.health||{score:0,items:[]};
  const alerts=data.alerts||[];
  const tasks=data.tasks||[];
  const openTasks=tasks.filter(t=>!t.done).length;
+ const contacts=data.contacts||[];
+ const deals=data.deals||[];
+ const events=data.events||[];
+ const ads=data.ads||{};const curAds=ads[cM]||{};
+ const margin=ca>0?((profit/ca)*100):0;
+
+ /* 6 months data for sparklines */
+ const months6=Array.from({length:6}).map((_,i)=>{const d=new Date();d.setMonth(d.getMonth()-5+i);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;});
+ const caHistory=months6.map(k=>pf((fin[k]||{}).ca));
+ const chargesHistory=months6.map(k=>{const f=fin[k]||{};return pf(f.charges||((pf(f.chargesFixes))+(pf(f.chargesVar))));});
+ const profitHistory=months6.map((k,i)=>caHistory[i]-chargesHistory[i]);
+
+ const upcomingEvents=events.filter(e=>e.date>=new Date().toISOString().slice(0,10)).slice(0,3);
+ const today=new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+ const hr=new Date().getHours();const greeting=hr<12?"Bonjour":hr<18?"Bon après-midi":"Bonsoir";
+
+ const QUICK_ACTIONS=[
+  {icon:"👥",label:"Nouveau contact",desc:"Ajouter au CRM",tab:1},
+  {icon:"💰",label:"Saisir finances",desc:"Données du mois",tab:2},
+  {icon:"📅",label:"Planifier",desc:"Ajouter un événement",tab:3},
+  {icon:"🔬",label:"Data Health",desc:"Vérifier la qualité",tab:7},
+ ];
+
+ const pipelineTotal=deals.reduce((s,d)=>s+pf(d.value),0);
+ const wonDeals=deals.filter(d=>d.stage==="Gagné");
+ const wonTotal=wonDeals.reduce((s,d)=>s+pf(d.value),0);
 
  return<>
-  <div style={{fontWeight:900,fontSize:20,fontFamily:FONT_TITLE,marginBottom:4}}>
-   Bienvenue, {client.company||"Mon entreprise"}
-  </div>
-  <div style={{fontSize:11,color:C.td,marginBottom:20}}>
-   Vue d'ensemble — {new Date().toLocaleDateString("fr-FR",{month:"long",year:"numeric"})}
+  {/* ========== WELCOME BANNER ========== */}
+  <div style={{background:`linear-gradient(135deg,${C.acc}12,${C.b}08,${C.v}06)`,borderRadius:16,padding:"20px 24px",marginBottom:20,border:`1px solid ${C.acc}18`,position:"relative",overflow:"hidden"}}>
+   <div style={{position:"absolute",top:-30,right:-20,width:140,height:140,borderRadius:"50%",background:`radial-gradient(circle,${C.acc}08,transparent 70%)`,pointerEvents:"none"}}/>
+   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+    <div>
+     <div style={{fontSize:22,fontWeight:900,fontFamily:FONT_TITLE,marginBottom:2}}>{greeting}, {client.company||"Mon entreprise"} 👋</div>
+     <div style={{fontSize:12,color:C.td}}>{today}</div>
+     <div style={{display:"flex",gap:12,marginTop:10,flexWrap:"wrap"}}>
+      {contacts.length>0&&<span style={{padding:"3px 10px",borderRadius:20,background:`${C.b}15`,color:C.b,fontSize:10,fontWeight:600}}>{contacts.length} contact{contacts.length>1?"s":""}</span>}
+      {deals.length>0&&<span style={{padding:"3px 10px",borderRadius:20,background:`${C.g}15`,color:C.g,fontSize:10,fontWeight:600}}>{deals.length} deal{deals.length>1?"s":""} en cours</span>}
+      {upcomingEvents.length>0&&<span style={{padding:"3px 10px",borderRadius:20,background:`${C.o}15`,color:C.o,fontSize:10,fontWeight:600}}>{upcomingEvents.length} événement{upcomingEvents.length>1?"s":""} à venir</span>}
+     </div>
+    </div>
+    <div style={{display:"flex",alignItems:"center",gap:12}}>
+     <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <HealthRing score={health.score} size={68}/>
+      <div style={{position:"absolute",display:"flex",flexDirection:"column",alignItems:"center"}}>
+       <div style={{fontWeight:900,fontSize:16,fontFamily:FONT_TITLE,color:health.score>=70?C.g:health.score>=40?C.o:C.r}}>{health.score}</div>
+       <div style={{fontSize:7,color:C.td,fontWeight:600}}>SANTÉ</div>
+      </div>
+     </div>
+    </div>
+   </div>
   </div>
 
-  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(155px,1fr))",gap:10,marginBottom:20}}>
-   <KPI label="CA du mois" value={fmt(ca)+"€"} sub={evoCA!==0?`${evoCA>0?"+":""}${evoCA.toFixed(1)}%`:undefined} accent={C.g} icon="💰"/>
-   <KPI label="Charges" value={fmt(charges)+"€"} accent={C.r} icon="📉"/>
-   <KPI label="Résultat net" value={fmt(profit)+"€"} accent={profit>=0?C.g:C.r} icon="📊"/>
-   <KPI label="Score santé" value={`${health.score}/100`} accent={health.score>=70?C.g:health.score>=40?C.o:C.r} icon="❤️"/>
-   <KPI label="Tâches ouvertes" value={openTasks} accent={C.b} icon="📋"/>
-   <KPI label="Alertes" value={alerts.filter(a=>!a.dismissed).length} accent={C.o} icon="⚠️"/>
+  {/* ========== KPI CARDS WITH SPARKLINES ========== */}
+  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10,marginBottom:20}}>
+   <Card style={{padding:"14px 16px",position:"relative",overflow:"hidden"}}>
+    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
+     <div>
+      <div style={{fontSize:9,color:C.td,fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>CA du mois</div>
+      <div style={{fontSize:22,fontWeight:900,fontFamily:FONT_TITLE,color:C.g,marginTop:2}}>{fmt(ca)}€</div>
+      {evoCA!==0&&<div style={{fontSize:10,fontWeight:700,color:evoCA>0?C.g:C.r,marginTop:2}}>{evoCA>0?"▲":"▼"} {Math.abs(evoCA).toFixed(1)}% vs mois dernier</div>}
+     </div>
+     <div style={{opacity:.7}}><Sparkline values={caHistory} color={C.g}/></div>
+    </div>
+   </Card>
+   <Card style={{padding:"14px 16px",position:"relative",overflow:"hidden"}}>
+    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
+     <div>
+      <div style={{fontSize:9,color:C.td,fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Charges</div>
+      <div style={{fontSize:22,fontWeight:900,fontFamily:FONT_TITLE,color:C.r,marginTop:2}}>{fmt(charges)}€</div>
+      {evoCharges!==0&&<div style={{fontSize:10,fontWeight:700,color:evoCharges<0?C.g:C.r,marginTop:2}}>{evoCharges>0?"▲":"▼"} {Math.abs(evoCharges).toFixed(1)}%</div>}
+     </div>
+     <div style={{opacity:.7}}><Sparkline values={chargesHistory} color={C.r}/></div>
+    </div>
+   </Card>
+   <Card style={{padding:"14px 16px",position:"relative",overflow:"hidden"}}>
+    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
+     <div>
+      <div style={{fontSize:9,color:C.td,fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Résultat net</div>
+      <div style={{fontSize:22,fontWeight:900,fontFamily:FONT_TITLE,color:profit>=0?C.g:C.r,marginTop:2}}>{fmt(profit)}€</div>
+      <div style={{fontSize:10,fontWeight:600,color:C.td,marginTop:2}}>Marge {margin.toFixed(1)}%</div>
+     </div>
+     <div style={{opacity:.7}}><Sparkline values={profitHistory} color={profit>=0?C.g:C.r}/></div>
+    </div>
+   </Card>
   </div>
 
-  {alerts.filter(a=>!a.dismissed).length>0&&<Sect title="Alertes actives" sub={`${alerts.filter(a=>!a.dismissed).length} alerte(s)`}>
-   {alerts.filter(a=>!a.dismissed).slice(0,5).map(a=><Card key={a.id} style={{marginBottom:4,padding:"10px 14px"}} accent={a.severity==="critical"?C.r:a.severity==="warning"?C.o:C.b}>
+  {/* ========== ALERTS ========== */}
+  {alerts.filter(a=>!a.dismissed).length>0&&<div style={{marginBottom:16}}>
+   <div style={{fontWeight:700,fontSize:12,marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+    <span style={{width:8,height:8,borderRadius:4,background:C.r,animation:"sp 2s ease infinite"}}/>
+    Alertes actives
+    <span style={{padding:"1px 8px",borderRadius:10,background:`${C.r}18`,color:C.r,fontSize:9,fontWeight:700}}>{alerts.filter(a=>!a.dismissed).length}</span>
+   </div>
+   {alerts.filter(a=>!a.dismissed).slice(0,4).map(a=><Card key={a.id} style={{marginBottom:4,padding:"10px 14px"}} accent={a.severity==="critical"?C.r:a.severity==="warning"?C.o:C.b}>
     <div style={{display:"flex",alignItems:"center",gap:8}}>
      <span style={{fontSize:14}}>{a.severity==="critical"?"🔴":a.severity==="warning"?"🟡":"🔵"}</span>
      <div style={{flex:1}}>
@@ -55,45 +153,218 @@ function OverviewTab({client,data}){
      <span style={{fontSize:9,color:C.td}}>{ago(a.at)}</span>
     </div>
    </Card>)}
-  </Sect>}
+  </div>}
 
+  {/* ========== QUICK ACTIONS ========== */}
+  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,marginBottom:20}}>
+   {QUICK_ACTIONS.map(a=><button key={a.label} onClick={()=>onNav?.(a.tab)} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderRadius:12,border:`1px solid ${C.brd}`,background:C.card,cursor:"pointer",fontFamily:FONT,transition:"all .2s",textAlign:"left"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.acc+"55";e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(0,0,0,.15)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.brd;e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}}>
+    <span style={{fontSize:20}}>{a.icon}</span>
+    <div>
+     <div style={{fontWeight:700,fontSize:11,color:C.t}}>{a.label}</div>
+     <div style={{fontSize:9,color:C.td}}>{a.desc}</div>
+    </div>
+   </button>)}
+  </div>
+
+  {/* ========== MAIN GRID: Revenue chart + Pipeline + Activity ========== */}
   <div className="saas-2col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+   {/* Revenue bar chart */}
    <Card style={{padding:16}}>
-    <div style={{fontWeight:700,fontSize:12,marginBottom:12}}>Évolution CA (6 derniers mois)</div>
-    <div style={{display:"flex",alignItems:"flex-end",gap:4,height:100}}>
-     {Array.from({length:6}).map((_,i)=>{
-      const d=new Date();d.setMonth(d.getMonth()-5+i);
-      const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
-      const v=pf((fin[k]||{}).ca);const maxV=Math.max(...Array.from({length:6}).map((_,j)=>{const d2=new Date();d2.setMonth(d2.getMonth()-5+j);const k2=`${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,"0")}`;return pf((fin[k2]||{}).ca);}),1);
-      return<div key={k} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-       <div style={{fontSize:8,color:C.td,fontWeight:600}}>{fK(v)}</div>
-       <div style={{width:"100%",background:`linear-gradient(to top,${C.g},${C.g}88)`,borderRadius:4,height:`${Math.max(4,(v/maxV)*80)}px`,transition:"height .3s"}}/>
-       <div style={{fontSize:8,color:C.td}}>{MN[d.getMonth()]?.slice(0,3)}</div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+     <div style={{fontWeight:700,fontSize:12}}>Évolution CA</div>
+     <div style={{fontSize:9,color:C.td}}>6 derniers mois</div>
+    </div>
+    <div style={{display:"flex",alignItems:"flex-end",gap:6,height:110}}>
+     {months6.map((k,i)=>{
+      const v=caHistory[i];const maxV=Math.max(...caHistory,1);const d=new Date(k+"-01");
+      const isCurrentMonth=k===cM;
+      return<div key={k} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+       <div style={{fontSize:8,color:isCurrentMonth?C.acc:C.td,fontWeight:isCurrentMonth?700:600}}>{v>0?fK(v):"—"}</div>
+       <div style={{width:"100%",borderRadius:6,height:`${Math.max(6,(v/maxV)*85)}px`,background:isCurrentMonth?`linear-gradient(to top,${C.acc},#FF9D00)`:`linear-gradient(to top,${C.g}88,${C.g}44)`,transition:"height .4s ease",boxShadow:isCurrentMonth?`0 4px 12px ${C.acc}33`:"none"}}/>
+       <div style={{fontSize:8,color:isCurrentMonth?C.acc:C.td,fontWeight:isCurrentMonth?700:400}}>{MN[d.getMonth()]?.slice(0,3)}</div>
       </div>;
      })}
     </div>
+    {ca===0&&<div style={{textAlign:"center",padding:"8px 0 0",fontSize:10,color:C.td}}>
+     <button onClick={()=>onNav?.(2)} style={{background:"none",border:"none",color:C.acc,cursor:"pointer",fontFamily:FONT,fontSize:10,fontWeight:600}}>→ Saisir vos données financières</button>
+    </div>}
    </Card>
+
+   {/* Pipeline summary */}
    <Card style={{padding:16}}>
-    <div style={{fontWeight:700,fontSize:12,marginBottom:12}}>Santé du système</div>
-    {(health.items||[]).slice(0,5).map((h,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderBottom:i<4?`1px solid ${C.brd}08`:"none"}}>
-     <span style={{width:8,height:8,borderRadius:4,background:h.status==="ok"?C.g:h.status==="warning"?C.o:C.r}}/>
-     <span style={{flex:1,fontSize:10,fontWeight:500}}>{h.label}</span>
-     <span style={{fontSize:9,color:h.status==="ok"?C.g:h.status==="warning"?C.o:C.r,fontWeight:600}}>{h.status==="ok"?"OK":h.status==="warning"?"Attention":"Erreur"}</span>
-    </div>)}
-    {(health.items||[]).length===0&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Aucune donnée</div>}
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+     <div style={{fontWeight:700,fontSize:12}}>Pipeline commercial</div>
+     <button onClick={()=>onNav?.(2)} style={{background:"none",border:"none",color:C.b,cursor:"pointer",fontFamily:FONT,fontSize:9,fontWeight:600}}>Voir tout →</button>
+    </div>
+    {deals.length>0?<>
+     <div style={{display:"flex",gap:6,marginBottom:12}}>
+      <div style={{flex:1,padding:"10px 12px",borderRadius:10,background:`${C.b}10`,textAlign:"center"}}>
+       <div style={{fontSize:18,fontWeight:900,fontFamily:FONT_TITLE,color:C.b}}>{deals.length}</div>
+       <div style={{fontSize:8,color:C.td,fontWeight:600}}>DEALS</div>
+      </div>
+      <div style={{flex:1,padding:"10px 12px",borderRadius:10,background:`${C.g}10`,textAlign:"center"}}>
+       <div style={{fontSize:18,fontWeight:900,fontFamily:FONT_TITLE,color:C.g}}>{fmt(pipelineTotal)}€</div>
+       <div style={{fontSize:8,color:C.td,fontWeight:600}}>PIPELINE</div>
+      </div>
+      <div style={{flex:1,padding:"10px 12px",borderRadius:10,background:`${C.acc}10`,textAlign:"center"}}>
+       <div style={{fontSize:18,fontWeight:900,fontFamily:FONT_TITLE,color:C.acc}}>{fmt(wonTotal)}€</div>
+       <div style={{fontSize:8,color:C.td,fontWeight:600}}>GAGNÉS</div>
+      </div>
+     </div>
+     {/* Pipeline stages bar */}
+     <div style={{display:"flex",height:8,borderRadius:4,overflow:"hidden",gap:1}}>
+      {["Prospect","Qualification","Proposition","Négociation","Gagné","Perdu"].map((s,i)=>{
+       const cnt=deals.filter(d=>d.stage===s).length;if(!cnt)return null;
+       const colors=[C.td,C.b,C.o,"#f59e0b",C.g,C.r];
+       return<div key={s} style={{flex:cnt,background:colors[i],borderRadius:2,transition:"flex .3s"}} title={`${s}: ${cnt}`}/>;
+      })}
+     </div>
+     <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
+      {["Prospect","Qualification","Proposition","Négociation","Gagné","Perdu"].map((s,i)=>{
+       const cnt=deals.filter(d=>d.stage===s).length;if(!cnt)return null;
+       const colors=[C.td,C.b,C.o,"#f59e0b",C.g,C.r];
+       return<span key={s} style={{fontSize:8,color:colors[i],fontWeight:600}}>{s} ({cnt})</span>;
+      })}
+     </div>
+    </>:<div style={{textAlign:"center",padding:"24px 12px"}}>
+     <div style={{fontSize:32,marginBottom:8}}>📊</div>
+     <div style={{fontSize:11,color:C.td,marginBottom:8}}>Pas encore de deals dans le pipeline</div>
+     <button onClick={()=>onNav?.(2)} style={{padding:"6px 14px",borderRadius:8,border:"none",background:`${C.b}18`,color:C.b,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>Créer un deal →</button>
+    </div>}
    </Card>
   </div>
 
-  <Sect title="Tâches récentes" sub={`${openTasks} en cours`}>
-   {tasks.length===0&&<Card><div style={{textAlign:"center",padding:16,color:C.td,fontSize:11}}>Aucune tâche</div></Card>}
-   {tasks.slice(0,8).map(t=><Card key={t.id} style={{marginBottom:3,padding:"8px 12px"}}>
-    <div style={{display:"flex",alignItems:"center",gap:8}}>
-     <span style={{width:18,height:18,borderRadius:5,border:`2px solid ${t.done?C.g:C.brd}`,background:t.done?C.gD:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:C.g}}>{t.done?"✓":""}</span>
-     <span style={{flex:1,fontSize:11,fontWeight:500,textDecoration:t.done?"line-through":"none",color:t.done?C.td:C.t}}>{t.title}</span>
-     {t.deadline&&<span style={{fontSize:9,color:C.td}}>{t.deadline}</span>}
+  {/* ========== SECOND ROW: Health + Activity ========== */}
+  <div className="saas-2col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+   {/* System health */}
+   <Card style={{padding:16}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+     <div style={{fontWeight:700,fontSize:12}}>Santé du système</div>
+     <button onClick={()=>onNav?.(7)} style={{background:"none",border:"none",color:C.g,cursor:"pointer",fontFamily:FONT,fontSize:9,fontWeight:600}}>Data Health →</button>
     </div>
-   </Card>)}
-  </Sect>
+    {(health.items||[]).length>0?(health.items||[]).slice(0,5).map((h,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i<4?`1px solid ${C.brd}08`:"none"}}>
+     <span style={{width:10,height:10,borderRadius:5,background:h.status==="ok"?C.g:h.status==="warning"?C.o:C.r,boxShadow:`0 0 6px ${h.status==="ok"?C.g:h.status==="warning"?C.o:C.r}44`}}/>
+     <span style={{flex:1,fontSize:10,fontWeight:500}}>{h.label}</span>
+     <span style={{padding:"2px 8px",borderRadius:6,fontSize:8,fontWeight:700,background:`${h.status==="ok"?C.g:h.status==="warning"?C.o:C.r}15`,color:h.status==="ok"?C.g:h.status==="warning"?C.o:C.r}}>{h.status==="ok"?"OK":h.status==="warning"?"Attention":"Erreur"}</span>
+    </div>):<div style={{textAlign:"center",padding:"20px 12px"}}>
+     <div style={{fontSize:28,marginBottom:6}}>🔬</div>
+     <div style={{fontSize:11,color:C.td,marginBottom:4}}>Aucune donnée de santé</div>
+     <div style={{fontSize:9,color:C.td}}>Saisissez des données pour activer le monitoring automatique</div>
+    </div>}
+   </Card>
+
+   {/* Activity & Upcoming */}
+   <Card style={{padding:16}}>
+    <div style={{fontWeight:700,fontSize:12,marginBottom:12}}>Activité récente & à venir</div>
+    {(upcomingEvents.length>0||tasks.length>0)?<div>
+     {upcomingEvents.map(e=>{
+      const ET=[{v:"meeting",icon:"📅",c:C.b},{v:"call",icon:"📞",c:C.g},{v:"deadline",icon:"⏰",c:C.r},{v:"task",icon:"📋",c:C.o}];
+      const t=ET.find(t2=>t2.v===e.type)||{icon:"📌",c:C.td};
+      return<div key={e.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:`1px solid ${C.brd}08`}}>
+       <div style={{width:28,height:28,borderRadius:8,background:`${t.c}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>{t.icon}</div>
+       <div style={{flex:1}}>
+        <div style={{fontWeight:600,fontSize:11}}>{e.title}</div>
+        <div style={{fontSize:9,color:C.td}}>{new Date(e.date).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})}{e.time?` · ${e.time}`:""}</div>
+       </div>
+       <span style={{padding:"2px 6px",borderRadius:4,fontSize:8,fontWeight:600,background:`${t.c}12`,color:t.c}}>À venir</span>
+      </div>;
+     })}
+     {tasks.filter(t=>!t.done).slice(0,3).map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:`1px solid ${C.brd}08`}}>
+      <div style={{width:28,height:28,borderRadius:8,background:`${C.o}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>📋</div>
+      <div style={{flex:1}}>
+       <div style={{fontWeight:600,fontSize:11}}>{t.title}</div>
+       {t.deadline&&<div style={{fontSize:9,color:C.td}}>{t.deadline}</div>}
+      </div>
+      <span style={{padding:"2px 6px",borderRadius:4,fontSize:8,fontWeight:600,background:`${C.o}12`,color:C.o}}>Tâche</span>
+     </div>)}
+    </div>:<div style={{textAlign:"center",padding:"20px 12px"}}>
+     <div style={{fontSize:28,marginBottom:6}}>📅</div>
+     <div style={{fontSize:11,color:C.td,marginBottom:8}}>Rien de planifié pour l'instant</div>
+     <button onClick={()=>onNav?.(3)} style={{padding:"6px 14px",borderRadius:8,border:"none",background:`${C.o}18`,color:C.o,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>Planifier un événement →</button>
+    </div>}
+   </Card>
+  </div>
+
+  {/* ========== THIRD ROW: CRM overview + Ads summary ========== */}
+  <div className="saas-2col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+   {/* CRM overview */}
+   <Card style={{padding:16}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+     <div style={{fontWeight:700,fontSize:12}}>Contacts CRM</div>
+     <button onClick={()=>onNav?.(1)} style={{background:"none",border:"none",color:C.b,cursor:"pointer",fontFamily:FONT,fontSize:9,fontWeight:600}}>Voir tous →</button>
+    </div>
+    {contacts.length>0?<>
+     <div style={{display:"flex",gap:4,marginBottom:12,flexWrap:"wrap"}}>
+      {[{v:"prospect",l:"Prospects",c:C.b},{v:"lead",l:"Leads",c:C.o},{v:"client",l:"Clients",c:C.g},{v:"churned",l:"Perdus",c:C.r},{v:"partner",l:"Partenaires",c:C.v}].map(s=>{
+       const cnt=contacts.filter(c2=>c2.status===s.v).length;
+       return<div key={s.v} style={{padding:"6px 10px",borderRadius:8,background:`${s.c}10`,textAlign:"center",minWidth:60}}>
+        <div style={{fontSize:14,fontWeight:900,fontFamily:FONT_TITLE,color:s.c}}>{cnt}</div>
+        <div style={{fontSize:7,color:C.td,fontWeight:600,textTransform:"uppercase"}}>{s.l}</div>
+       </div>;
+      })}
+     </div>
+     {/* Recent contacts */}
+     {contacts.slice(0,3).map(c2=><div key={c2.id} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:`1px solid ${C.brd}08`}}>
+      <div style={{width:24,height:24,borderRadius:6,background:`${C.b}18`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:10,color:C.b}}>{(c2.name||"?")[0].toUpperCase()}</div>
+      <div style={{flex:1,minWidth:0}}>
+       <div style={{fontWeight:600,fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c2.name}</div>
+       <div style={{fontSize:8,color:C.td}}>{c2.company||c2.email||"—"}</div>
+      </div>
+      <span style={{padding:"1px 6px",borderRadius:4,fontSize:7,fontWeight:600,background:`${({prospect:C.b,lead:C.o,client:C.g,churned:C.r,partner:C.v})[c2.status]||C.td}15`,color:({prospect:C.b,lead:C.o,client:C.g,churned:C.r,partner:C.v})[c2.status]||C.td}}>{c2.status}</span>
+     </div>)}
+    </>:<div style={{textAlign:"center",padding:"20px 12px"}}>
+     <div style={{fontSize:28,marginBottom:6}}>👥</div>
+     <div style={{fontSize:11,color:C.td,marginBottom:8}}>Pas encore de contacts</div>
+     <button onClick={()=>onNav?.(1)} style={{padding:"6px 14px",borderRadius:8,border:"none",background:`${C.b}18`,color:C.b,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>Ajouter un contact →</button>
+    </div>}
+   </Card>
+
+   {/* Ads summary */}
+   <Card style={{padding:16}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+     <div style={{fontWeight:700,fontSize:12}}>Publicité du mois</div>
+     <button onClick={()=>onNav?.(2)} style={{background:"none",border:"none",color:"#f472b6",cursor:"pointer",fontFamily:FONT,fontSize:9,fontWeight:600}}>Détails →</button>
+    </div>
+    {pf(curAds.spend)>0?(()=>{
+     const sp=pf(curAds.spend);const imp=pf(curAds.impressions);const cl=pf(curAds.clicks);const cv=pf(curAds.conversions);const rev=pf(curAds.revenue);
+     const roas=sp?(rev/sp):0;const ctr=imp?((cl/imp)*100):0;
+     return<>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
+       <div style={{padding:"8px 10px",borderRadius:8,background:`${C.r}10`}}>
+        <div style={{fontSize:16,fontWeight:900,fontFamily:FONT_TITLE,color:C.r}}>{fmt(sp)}€</div>
+        <div style={{fontSize:7,color:C.td,fontWeight:600}}>DÉPENSES</div>
+       </div>
+       <div style={{padding:"8px 10px",borderRadius:8,background:`${C.g}10`}}>
+        <div style={{fontSize:16,fontWeight:900,fontFamily:FONT_TITLE,color:C.g}}>{roas.toFixed(1)}x</div>
+        <div style={{fontSize:7,color:C.td,fontWeight:600}}>ROAS</div>
+       </div>
+      </div>
+      <div style={{display:"flex",gap:12,fontSize:9,color:C.td}}>
+       <span><b style={{color:C.t}}>{fK(imp)}</b> impressions</span>
+       <span><b style={{color:C.t}}>{cl}</b> clics</span>
+       <span>CTR <b style={{color:ctr>2?C.g:C.o}}>{ctr.toFixed(1)}%</b></span>
+      </div>
+     </>;
+    })():<div style={{textAlign:"center",padding:"20px 12px"}}>
+     <div style={{fontSize:28,marginBottom:6}}>📣</div>
+     <div style={{fontSize:11,color:C.td,marginBottom:8}}>Pas de données publicitaires ce mois</div>
+     <button onClick={()=>onNav?.(2)} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#f472b618",color:"#f472b6",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>Saisir les dépenses →</button>
+    </div>}
+   </Card>
+  </div>
+
+  {/* ========== TASKS ========== */}
+  <Card style={{padding:16}}>
+   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+    <div style={{fontWeight:700,fontSize:12}}>Tâches</div>
+    <span style={{padding:"2px 8px",borderRadius:10,background:`${C.b}15`,color:C.b,fontSize:9,fontWeight:700}}>{openTasks} en cours</span>
+   </div>
+   {tasks.length>0?tasks.slice(0,6).map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:`1px solid ${C.brd}08`}}>
+    <span style={{width:20,height:20,borderRadius:6,border:`2px solid ${t.done?C.g:C.brd}`,background:t.done?C.g:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",flexShrink:0}}>{t.done?"✓":""}</span>
+    <span style={{flex:1,fontSize:11,fontWeight:500,textDecoration:t.done?"line-through":"none",color:t.done?C.td:C.t}}>{t.title}</span>
+    {t.deadline&&<span style={{fontSize:9,color:C.td,padding:"2px 6px",borderRadius:4,background:C.card2+"44"}}>{t.deadline}</span>}
+   </div>):<div style={{textAlign:"center",padding:"16px 12px",color:C.td,fontSize:11}}>Aucune tâche pour le moment</div>}
+  </Card>
  </>;
 }
 
@@ -122,7 +393,12 @@ function CRMTab({data,setData}){
    <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un contact..." style={{flex:1,padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
    <Btn small onClick={()=>setShowAdd(true)}>+ Contact</Btn>
   </div>
-  {filtered.length===0&&<Card><div style={{textAlign:"center",padding:20,color:C.td,fontSize:12}}>Aucun contact</div></Card>}
+  {filtered.length===0&&<Card style={{padding:"40px 20px"}}><div style={{textAlign:"center"}}>
+   <div style={{fontSize:40,marginBottom:12}}>👥</div>
+   <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Aucun contact</div>
+   <div style={{color:C.td,fontSize:11,marginBottom:16,maxWidth:300,margin:"0 auto 16px"}}>Commencez à construire votre base de contacts en ajoutant vos premiers prospects et clients.</div>
+   <Btn small onClick={()=>setShowAdd(true)}>Ajouter un contact</Btn>
+  </div></Card>}
   {filtered.map(c=><Card key={c.id} style={{marginBottom:4,padding:"10px 14px"}}>
    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
     <div style={{width:32,height:32,borderRadius:8,background:`${SC[c.status]||C.b}22`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,color:SC[c.status]||C.b}}>{(c.name||"?")[0].toUpperCase()}</div>
@@ -285,7 +561,12 @@ function AgendaTab({data,setData}){
    <Btn small onClick={()=>setShowAdd(true)}>+ Événement</Btn>
   </div>
   <Sect title="À venir" sub={`${upcoming.length} événement(s)`}>
-   {upcoming.length===0&&<Card><div style={{textAlign:"center",padding:16,color:C.td,fontSize:11}}>Aucun événement</div></Card>}
+   {upcoming.length===0&&<Card style={{padding:"40px 20px"}}><div style={{textAlign:"center"}}>
+    <div style={{fontSize:40,marginBottom:12}}>📅</div>
+    <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Aucun événement à venir</div>
+    <div style={{color:C.td,fontSize:11,marginBottom:16,maxWidth:300,margin:"0 auto 16px"}}>Planifiez vos réunions, appels et deadlines pour ne rien manquer.</div>
+    <Btn small onClick={()=>setShowAdd(true)}>Créer un événement</Btn>
+   </div></Card>}
    {upcoming.map(e=>{const t=ET.find(t2=>t2.v===e.type)||ET[4];
     return<Card key={e.id} style={{marginBottom:4,padding:"10px 14px"}} accent={t.color}>
      <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -344,6 +625,9 @@ export function SaaSClientPortal({previewMode}){
 
  useEffect(()=>{if(!isOnb&&!previewMode&&tab!==6&&tab!==5)setTab(6);},[isOnb,previewMode,tab]);
 
+ /* Hide onboarding tab once completed */
+ const visibleTabs=isOnb?TABS.filter(t=>t.id!==6):TABS;
+
  return<div>
   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
    <div style={{width:36,height:36,borderRadius:10,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:16,color:"#0a0a0f"}}>{(client.company||"C")[0].toUpperCase()}</div>
@@ -355,14 +639,14 @@ export function SaaSClientPortal({previewMode}){
   </div>
 
   <div className="saas-tabs" style={{display:"flex",gap:3,marginBottom:20,overflowX:"auto",padding:"2px 0",borderBottom:`1px solid ${C.brd}`,paddingBottom:8}}>
-   {TABS.map(t=>{const a=tab===t.id;
+   {visibleTabs.map(t=>{const a=tab===t.id;
     return<button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 12px",borderRadius:8,border:"none",background:a?t.accent+"18":"transparent",color:a?C.t:C.td,fontSize:10,fontWeight:a?700:500,cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap",flexShrink:0,borderBottom:a?`2px solid ${t.accent}`:"2px solid transparent"}}>
      <span style={{fontSize:12}}>{t.icon}</span><span>{t.label}</span>
     </button>;
    })}
   </div>
 
-  {tab===0&&<OverviewTab client={client} data={data}/>}
+  {tab===0&&<OverviewTab client={client} data={data} onNav={setTab}/>}
   {tab===1&&<CRMTab data={data} setData={setData}/>}
   {tab===2&&<DataTab data={data} setData={setData}/>}
   {tab===3&&<AgendaTab data={data} setData={setData}/>}
