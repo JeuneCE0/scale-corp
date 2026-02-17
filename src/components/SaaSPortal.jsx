@@ -370,18 +370,33 @@ function OverviewTab({client,data,onNav}){
 
 /* ====== CRM TAB ====== */
 function CRMTab({data,setData}){
- const contacts=data.contacts||[];const[search,setSearch]=useState("");const[showAdd,setShowAdd]=useState(false);
- const[nf,setNf]=useState({name:"",email:"",phone:"",company:"",status:"prospect",note:""});
+ const contacts=data.contacts||[];const[search,setSearch]=useState("");const[showAdd,setShowAdd]=useState(false);const[filterStatus,setFilterStatus]=useState("all");
+ const EMPTY_CONTACT={name:"",email:"",phone:"",company:"",status:"prospect",note:"",poste:"",linkedin:"",source:"",value:"",tags:"",address:""};
+ const[nf,setNf]=useState({...EMPTY_CONTACT});
+ const[editContact,setEditContact]=useState(null);const[ef,setEf]=useState({});
  const STS=[{v:"prospect",l:"Prospect"},{v:"lead",l:"Lead"},{v:"client",l:"Client"},{v:"churned",l:"Perdu"},{v:"partner",l:"Partenaire"}];
  const SC={prospect:C.b,lead:C.o,client:C.g,churned:C.r,partner:C.v};
+ const SOURCES=[{v:"",l:"—"},{v:"site",l:"Site web"},{v:"referral",l:"Recommandation"},{v:"linkedin",l:"LinkedIn"},{v:"salon",l:"Salon / Événement"},{v:"cold",l:"Prospection directe"},{v:"ads",l:"Publicité"},{v:"other",l:"Autre"}];
 
  const add=()=>{
   if(!nf.name)return;
-  const c={...nf,id:uid(),createdAt:new Date().toISOString()};
-  const nd={...data,contacts:[c,...contacts]};setData(nd);sv(SK,nd);setShowAdd(false);setNf({name:"",email:"",phone:"",company:"",status:"prospect",note:""});
+  const c={...nf,id:uid(),createdAt:new Date().toISOString(),history:[{date:new Date().toISOString(),action:"Création du contact"}]};
+  const nd={...data,contacts:[c,...contacts]};setData(nd);sv(SK,nd);setShowAdd(false);setNf({...EMPTY_CONTACT});
  };
- const del=(id)=>{const nd={...data,contacts:contacts.filter(c=>c.id!==id)};setData(nd);sv(SK,nd);};
- const filtered=contacts.filter(c=>{if(!search)return true;const s=search.toLowerCase();return(c.name||"").toLowerCase().includes(s)||(c.email||"").toLowerCase().includes(s)||(c.company||"").toLowerCase().includes(s);});
+ const del=(id)=>{const nd={...data,contacts:contacts.filter(c=>c.id!==id)};setData(nd);sv(SK,nd);setEditContact(null);};
+ const openEdit=(c)=>{setEditContact(c);setEf({...c});};
+ const saveEdit=()=>{if(!editContact||!ef.name)return;
+  const hist=[...(ef.history||[])];
+  const prev=contacts.find(c=>c.id===editContact.id);
+  if(prev&&prev.status!==ef.status)hist.push({date:new Date().toISOString(),action:`Statut : ${STS.find(s=>s.v===prev.status)?.l||prev.status} → ${STS.find(s=>s.v===ef.status)?.l||ef.status}`});
+  const updated={...ef,history:hist,updatedAt:new Date().toISOString()};
+  const nd={...data,contacts:contacts.map(c=>c.id===editContact.id?updated:c)};setData(nd);sv(SK,nd);setEditContact(null);};
+ const addHistoryNote=(note)=>{if(!note)return;const hist=[...(ef.history||[]),{date:new Date().toISOString(),action:note}];setEf({...ef,history:hist});};
+
+ const filtered=contacts.filter(c=>{const s=search.toLowerCase();const matchSearch=!search||(c.name||"").toLowerCase().includes(s)||(c.email||"").toLowerCase().includes(s)||(c.company||"").toLowerCase().includes(s)||(c.poste||"").toLowerCase().includes(s)||(c.tags||"").toLowerCase().includes(s);
+  const matchStatus=filterStatus==="all"||c.status===filterStatus;return matchSearch&&matchStatus;});
+
+ const[histNote,setHistNote]=useState("");
 
  return<>
   <div style={{fontWeight:900,fontSize:20,fontFamily:FONT_TITLE,marginBottom:4}}>CRM</div>
@@ -389,37 +404,147 @@ function CRMTab({data,setData}){
   <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
    {STS.map(s=><KPI key={s.v} label={s.l} value={contacts.filter(c=>c.status===s.v).length} accent={SC[s.v]} small/>)}
   </div>
+
+  <div style={{display:"flex",gap:4,marginBottom:12,flexWrap:"wrap"}}>
+   <button onClick={()=>setFilterStatus("all")} style={{padding:"5px 12px",borderRadius:8,border:`1px solid ${filterStatus==="all"?C.acc+"55":C.brd}`,background:filterStatus==="all"?C.accD:"transparent",color:filterStatus==="all"?C.acc:C.td,fontSize:10,fontWeight:filterStatus==="all"?700:500,cursor:"pointer",fontFamily:FONT}}>Tous ({contacts.length})</button>
+   {STS.map(s=><button key={s.v} onClick={()=>setFilterStatus(s.v)} style={{padding:"5px 12px",borderRadius:8,border:`1px solid ${filterStatus===s.v?SC[s.v]+"55":C.brd}`,background:filterStatus===s.v?`${SC[s.v]}18`:"transparent",color:filterStatus===s.v?SC[s.v]:C.td,fontSize:10,fontWeight:filterStatus===s.v?700:500,cursor:"pointer",fontFamily:FONT}}>{s.l}</button>)}
+  </div>
+
   <div style={{display:"flex",gap:8,marginBottom:14}}>
-   <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un contact..." style={{flex:1,padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
+   <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher par nom, email, entreprise, poste, tag..." style={{flex:1,padding:"8px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
    <Btn small onClick={()=>setShowAdd(true)}>+ Contact</Btn>
   </div>
   {filtered.length===0&&<Card style={{padding:"40px 20px"}}><div style={{textAlign:"center"}}>
    <div style={{fontSize:40,marginBottom:12}}>👥</div>
-   <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Aucun contact</div>
+   <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{search||filterStatus!=="all"?"Aucun résultat":"Aucun contact"}</div>
    <div style={{color:C.td,fontSize:11,marginBottom:16,maxWidth:300,margin:"0 auto 16px"}}>Commencez à construire votre base de contacts en ajoutant vos premiers prospects et clients.</div>
-   <Btn small onClick={()=>setShowAdd(true)}>Ajouter un contact</Btn>
+   {!search&&filterStatus==="all"&&<Btn small onClick={()=>setShowAdd(true)}>Ajouter un contact</Btn>}
   </div></Card>}
-  {filtered.map(c=><Card key={c.id} style={{marginBottom:4,padding:"10px 14px"}}>
-   <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-    <div style={{width:32,height:32,borderRadius:8,background:`${SC[c.status]||C.b}22`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,color:SC[c.status]||C.b}}>{(c.name||"?")[0].toUpperCase()}</div>
-    <div style={{flex:1,minWidth:120}}>
-     <div style={{fontWeight:700,fontSize:12}}>{c.name}</div>
-     <div style={{fontSize:10,color:C.td}}>{c.email}{c.company?` · ${c.company}`:""}</div>
+  {filtered.map(c=>{const stColor=SC[c.status]||C.b;
+   return<Card key={c.id} style={{marginBottom:4,padding:"10px 14px",cursor:"pointer",transition:"all .15s"}} onClick={()=>openEdit(c)} onMouseEnter={e=>{e.currentTarget.style.borderColor=stColor+"44";e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.brd;e.currentTarget.style.transform="translateY(0)";}}>
+   <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+    <div style={{width:36,height:36,borderRadius:10,background:`${stColor}22`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,color:stColor}}>{(c.name||"?")[0].toUpperCase()}</div>
+    <div style={{flex:1,minWidth:140}}>
+     <div style={{display:"flex",alignItems:"center",gap:6}}>
+      <span style={{fontWeight:700,fontSize:12}}>{c.name}</span>
+      {c.poste&&<span style={{fontSize:9,color:C.td}}>· {c.poste}</span>}
+     </div>
+     <div style={{fontSize:10,color:C.td}}>{c.email||"—"}{c.company?` · ${c.company}`:""}</div>
     </div>
-    <span style={{padding:"2px 8px",borderRadius:6,fontSize:9,fontWeight:600,background:`${SC[c.status]}18`,color:SC[c.status]}}>{STS.find(s=>s.v===c.status)?.l||c.status}</span>
-    {c.phone&&<span style={{fontSize:9,color:C.td}}>📞 {c.phone}</span>}
-    <button onClick={()=>del(c.id)} style={{padding:"3px 6px",borderRadius:4,border:`1px solid ${C.r}33`,background:"transparent",color:C.r,fontSize:9,cursor:"pointer",fontFamily:FONT}}>×</button>
+    <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+     {c.value&&<span style={{fontSize:10,fontWeight:700,color:C.g}}>{fmt(pf(c.value))}€</span>}
+     <span style={{padding:"2px 8px",borderRadius:6,fontSize:9,fontWeight:600,background:`${stColor}18`,color:stColor}}>{STS.find(s=>s.v===c.status)?.l||c.status}</span>
+     {c.source&&<span style={{padding:"2px 6px",borderRadius:4,fontSize:8,color:C.td,background:C.card2+"44"}}>{SOURCES.find(s=>s.v===c.source)?.l||c.source}</span>}
+    </div>
+    <div style={{fontSize:14,color:C.td,flexShrink:0}}>›</div>
    </div>
-   {c.note&&<div style={{marginTop:4,fontSize:10,color:C.td,paddingLeft:40}}>{c.note}</div>}
-  </Card>)}
+   {c.tags&&<div style={{marginTop:4,paddingLeft:46,display:"flex",gap:4,flexWrap:"wrap"}}>{c.tags.split(",").map((t,i)=>t.trim()&&<span key={i} style={{padding:"1px 8px",borderRadius:10,fontSize:8,fontWeight:600,background:`${C.acc}12`,color:C.acc}}>{t.trim()}</span>)}</div>}
+  </Card>;})}
+
+  {/* ====== ADD CONTACT MODAL ====== */}
   <Modal open={showAdd} onClose={()=>setShowAdd(false)} title="Nouveau contact">
    <Inp label="Nom complet *" value={nf.name} onChange={v=>setNf({...nf,name:v})} placeholder="Jean Dupont"/>
-   <Inp label="Email" value={nf.email} onChange={v=>setNf({...nf,email:v})} placeholder="jean@company.com" type="email"/>
-   <Inp label="Téléphone" value={nf.phone} onChange={v=>setNf({...nf,phone:v})} placeholder="+33 6 12 34 56 78"/>
-   <Inp label="Entreprise" value={nf.company} onChange={v=>setNf({...nf,company:v})} placeholder="Acme Corp"/>
-   <Sel label="Statut" value={nf.status} onChange={v=>setNf({...nf,status:v})} options={STS}/>
+   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+    <Inp label="Email" value={nf.email} onChange={v=>setNf({...nf,email:v})} placeholder="jean@company.com" type="email"/>
+    <Inp label="Téléphone" value={nf.phone} onChange={v=>setNf({...nf,phone:v})} placeholder="+33 6 12 34 56 78"/>
+   </div>
+   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+    <Inp label="Entreprise" value={nf.company} onChange={v=>setNf({...nf,company:v})} placeholder="Acme Corp"/>
+    <Inp label="Poste / Rôle" value={nf.poste} onChange={v=>setNf({...nf,poste:v})} placeholder="Directeur commercial"/>
+   </div>
+   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+    <Sel label="Statut" value={nf.status} onChange={v=>setNf({...nf,status:v})} options={STS}/>
+    <Sel label="Source" value={nf.source} onChange={v=>setNf({...nf,source:v})} options={SOURCES}/>
+   </div>
+   <Inp label="LinkedIn" value={nf.linkedin} onChange={v=>setNf({...nf,linkedin:v})} placeholder="https://linkedin.com/in/..."/>
+   <Inp label="Valeur estimée (€)" value={nf.value} onChange={v=>setNf({...nf,value:v})} type="number" placeholder="0"/>
+   <Inp label="Tags" value={nf.tags} onChange={v=>setNf({...nf,tags:v})} placeholder="VIP, Tech, Priorité (séparés par virgule)"/>
    <Inp label="Notes" value={nf.note} onChange={v=>setNf({...nf,note:v})} textarea placeholder="Notes libres..."/>
    <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={add}>Ajouter</Btn><Btn v="secondary" onClick={()=>setShowAdd(false)}>Annuler</Btn></div>
+  </Modal>
+
+  {/* ====== EDIT CONTACT MODAL ====== */}
+  <Modal open={!!editContact} onClose={()=>setEditContact(null)} title="Fiche contact" wide>
+   {editContact&&<div>
+    {/* Header */}
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,padding:"12px 16px",borderRadius:12,background:`${SC[ef.status]||C.b}08`,border:`1px solid ${SC[ef.status]||C.b}18`}}>
+     <div style={{width:50,height:50,borderRadius:14,background:`${SC[ef.status]||C.b}22`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:22,color:SC[ef.status]||C.b}}>{(ef.name||"?")[0].toUpperCase()}</div>
+     <div style={{flex:1}}>
+      <div style={{fontWeight:900,fontSize:16,fontFamily:FONT_TITLE}}>{ef.name||"Contact"}</div>
+      <div style={{fontSize:10,color:C.td}}>{ef.poste?`${ef.poste} · `:"" }{ef.company||"—"}{ef.createdAt?` · Créé le ${new Date(ef.createdAt).toLocaleDateString("fr-FR")}`:""}</div>
+     </div>
+     <div style={{textAlign:"right"}}>
+      <span style={{padding:"3px 10px",borderRadius:8,fontSize:10,fontWeight:700,background:`${SC[ef.status]||C.b}18`,color:SC[ef.status]||C.b}}>{STS.find(s=>s.v===ef.status)?.l||ef.status}</span>
+      {ef.value&&<div style={{fontSize:11,fontWeight:700,color:C.g,marginTop:4}}>{fmt(pf(ef.value))}€</div>}
+     </div>
+    </div>
+
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+     {/* LEFT: Info */}
+     <div>
+      <div style={{fontWeight:700,fontSize:11,color:C.td,marginBottom:8,textTransform:"uppercase",letterSpacing:.8}}>Informations</div>
+      <Inp label="Nom complet *" value={ef.name} onChange={v=>setEf({...ef,name:v})}/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+       <Inp label="Email" value={ef.email} onChange={v=>setEf({...ef,email:v})} type="email"/>
+       <Inp label="Téléphone" value={ef.phone} onChange={v=>setEf({...ef,phone:v})}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+       <Inp label="Entreprise" value={ef.company} onChange={v=>setEf({...ef,company:v})}/>
+       <Inp label="Poste / Rôle" value={ef.poste||""} onChange={v=>setEf({...ef,poste:v})} placeholder="Directeur commercial"/>
+      </div>
+      <Inp label="Adresse" value={ef.address||""} onChange={v=>setEf({...ef,address:v})} placeholder="123 rue..."/>
+      <Inp label="LinkedIn" value={ef.linkedin||""} onChange={v=>setEf({...ef,linkedin:v})} placeholder="https://linkedin.com/in/..."/>
+      {ef.linkedin&&<a href={ef.linkedin} target="_blank" rel="noopener noreferrer" style={{fontSize:9,color:C.acc,marginTop:-6,display:"inline-block",marginBottom:6}}>Ouvrir le profil LinkedIn →</a>}
+
+      <div style={{fontWeight:700,fontSize:11,color:C.td,marginBottom:8,marginTop:12,textTransform:"uppercase",letterSpacing:.8}}>Qualification</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+       <Sel label="Statut" value={ef.status} onChange={v=>setEf({...ef,status:v})} options={STS}/>
+       <Sel label="Source" value={ef.source||""} onChange={v=>setEf({...ef,source:v})} options={SOURCES}/>
+      </div>
+      <Inp label="Valeur estimée (€)" value={ef.value||""} onChange={v=>setEf({...ef,value:v})} type="number"/>
+      <Inp label="Tags" value={ef.tags||""} onChange={v=>setEf({...ef,tags:v})} placeholder="VIP, Tech, Priorité"/>
+      {ef.tags&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:-4,marginBottom:8}}>{ef.tags.split(",").map((t,i)=>t.trim()&&<span key={i} style={{padding:"2px 8px",borderRadius:10,fontSize:8,fontWeight:600,background:`${C.acc}12`,color:C.acc}}>{t.trim()}</span>)}</div>}
+     </div>
+
+     {/* RIGHT: Notes + History */}
+     <div>
+      <div style={{fontWeight:700,fontSize:11,color:C.td,marginBottom:8,textTransform:"uppercase",letterSpacing:.8}}>Notes</div>
+      <Inp label="" value={ef.note||""} onChange={v=>setEf({...ef,note:v})} textarea placeholder="Notes, historique de conversation, besoins..."/>
+
+      <div style={{fontWeight:700,fontSize:11,color:C.td,marginBottom:8,marginTop:12,textTransform:"uppercase",letterSpacing:.8}}>Historique</div>
+      <div style={{display:"flex",gap:6,marginBottom:8}}>
+       <input value={histNote} onChange={e=>setHistNote(e.target.value)} placeholder="Ajouter une note d'activité..." onKeyDown={e=>{if(e.key==="Enter"&&histNote){addHistoryNote(histNote);setHistNote("");}}} style={{flex:1,padding:"6px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:10,fontFamily:FONT,outline:"none"}}/>
+       <button onClick={()=>{if(histNote){addHistoryNote(histNote);setHistNote("");}}} style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${C.acc}33`,background:`${C.acc}12`,color:C.acc,fontSize:9,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>+ Ajouter</button>
+      </div>
+      <div style={{maxHeight:200,overflowY:"auto",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg}}>
+       {(ef.history||[]).length===0&&<div style={{padding:16,textAlign:"center",fontSize:10,color:C.td}}>Aucun historique</div>}
+       {[...(ef.history||[])].reverse().map((h,i)=><div key={i} style={{padding:"8px 12px",borderBottom:`1px solid ${C.brd}08`,display:"flex",gap:8,alignItems:"flex-start"}}>
+        <div style={{width:6,height:6,borderRadius:3,background:C.acc,marginTop:4,flexShrink:0}}/>
+        <div style={{flex:1}}>
+         <div style={{fontSize:10,fontWeight:500}}>{h.action}</div>
+         <div style={{fontSize:8,color:C.td}}>{new Date(h.date).toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</div>
+        </div>
+       </div>)}
+      </div>
+
+      {/* Quick actions */}
+      <div style={{fontWeight:700,fontSize:11,color:C.td,marginBottom:8,marginTop:12,textTransform:"uppercase",letterSpacing:.8}}>Actions rapides</div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+       {ef.email&&<a href={`mailto:${ef.email}`} style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.card,color:C.t,fontSize:10,fontWeight:600,textDecoration:"none",fontFamily:FONT,display:"inline-flex",alignItems:"center",gap:4}}>✉️ Email</a>}
+       {ef.phone&&<a href={`tel:${ef.phone}`} style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.card,color:C.t,fontSize:10,fontWeight:600,textDecoration:"none",fontFamily:FONT,display:"inline-flex",alignItems:"center",gap:4}}>📞 Appeler</a>}
+       {ef.linkedin&&<a href={ef.linkedin} target="_blank" rel="noopener noreferrer" style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.card,color:C.t,fontSize:10,fontWeight:600,textDecoration:"none",fontFamily:FONT,display:"inline-flex",alignItems:"center",gap:4}}>💼 LinkedIn</a>}
+      </div>
+     </div>
+    </div>
+
+    {/* Footer */}
+    <div style={{display:"flex",gap:8,marginTop:16,alignItems:"center",paddingTop:12,borderTop:`1px solid ${C.brd}`}}>
+     <Btn onClick={saveEdit}>Sauvegarder</Btn>
+     <Btn v="secondary" onClick={()=>setEditContact(null)}>Fermer</Btn>
+     <div style={{flex:1}}/>
+     <button onClick={()=>del(editContact.id)} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${C.r}33`,background:C.rD,color:C.r,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>Supprimer</button>
+    </div>
+   </div>}
   </Modal>
  </>;
 }
@@ -540,17 +665,42 @@ function DataTab({data,setData}){
 /* ====== AGENDA TAB ====== */
 function AgendaTab({data,setData}){
  const events=data.events||[];const[showAdd,setShowAdd]=useState(false);
- const[nf,setNf]=useState({title:"",date:"",time:"",type:"meeting",desc:""});
+ const EMPTY_EVENT={title:"",date:"",time:"",type:"meeting",desc:"",meetLink:"",meetMode:"none"};
+ const[nf,setNf]=useState({...EMPTY_EVENT});
+ const[editEvent,setEditEvent]=useState(null);const[evf,setEvf]=useState({});
  const ET=[{v:"meeting",l:"Réunion",icon:"📅",color:C.b},{v:"call",l:"Appel",icon:"📞",color:C.g},{v:"deadline",l:"Deadline",icon:"⏰",color:C.r},{v:"task",l:"Tâche",icon:"📋",color:C.o},{v:"other",l:"Autre",icon:"📌",color:C.td}];
+
+ const genMeetLink=()=>{const c=Math.random().toString(36).slice(2,12);return`https://meet.google.com/${c.slice(0,3)}-${c.slice(3,7)}-${c.slice(7)}`;};
 
  const add=()=>{
   if(!nf.title||!nf.date)return;
-  const ev={...nf,id:uid(),createdAt:new Date().toISOString()};
-  const nd={...data,events:[ev,...events].sort((a,b)=>new Date(a.date)-new Date(b.date))};setData(nd);sv(SK,nd);setShowAdd(false);setNf({title:"",date:"",time:"",type:"meeting",desc:""});
+  const meetLink=nf.meetMode==="auto"?genMeetLink():nf.meetMode==="manual"?nf.meetLink:"";
+  const ev={...nf,meetLink,id:uid(),createdAt:new Date().toISOString()};
+  const nd={...data,events:[ev,...events].sort((a,b)=>new Date(a.date)-new Date(b.date))};setData(nd);sv(SK,nd);setShowAdd(false);setNf({...EMPTY_EVENT});
  };
- const rm=(id)=>{const nd={...data,events:events.filter(e=>e.id!==id)};setData(nd);sv(SK,nd);};
+ const rm=(id)=>{const nd={...data,events:events.filter(e=>e.id!==id)};setData(nd);sv(SK,nd);setEditEvent(null);};
+ const openEdit=(e)=>{setEditEvent(e);setEvf({...e,meetMode:e.meetLink?(e.meetLink.includes("meet.google.com")?"auto":"manual"):"none"});};
+ const saveEdit=()=>{if(!editEvent||!evf.title||!evf.date)return;
+  const meetLink=evf.meetMode==="auto"?(evf.meetLink||genMeetLink()):evf.meetMode==="manual"?evf.meetLink:"";
+  const updated={...evf,meetLink,updatedAt:new Date().toISOString()};
+  const nd={...data,events:events.map(e=>e.id===editEvent.id?updated:e).sort((a,b)=>new Date(a.date)-new Date(b.date))};setData(nd);sv(SK,nd);setEditEvent(null);};
+
  const today=new Date().toISOString().slice(0,10);
  const upcoming=events.filter(e=>e.date>=today);const past=events.filter(e=>e.date<today);
+
+ const MeetLinkSection=({mode,setMode,link,setLink})=><>
+  <div style={{fontWeight:700,fontSize:11,color:C.td,marginBottom:8,marginTop:4,textTransform:"uppercase",letterSpacing:.8}}>Google Meet</div>
+  <div style={{display:"flex",gap:6,marginBottom:10}}>
+   {[{v:"none",l:"Pas de lien",icon:"—"},{v:"auto",l:"Générer auto",icon:"🎲"},{v:"manual",l:"Lien manuel",icon:"✏️"}].map(o=><button key={o.v} onClick={()=>{setMode(o.v);if(o.v==="auto")setLink(genMeetLink());}} style={{flex:1,padding:"8px 10px",borderRadius:8,border:`1px solid ${mode===o.v?C.acc+"55":C.brd}`,background:mode===o.v?C.accD:"transparent",color:mode===o.v?C.acc:C.td,fontSize:10,fontWeight:mode===o.v?700:500,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:4,justifyContent:"center"}}><span>{o.icon}</span>{o.l}</button>)}
+  </div>
+  {mode==="auto"&&link&&<div style={{padding:"8px 12px",borderRadius:8,background:`${C.g}08`,border:`1px solid ${C.g}22`,marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+   <span style={{fontSize:14}}>🎥</span>
+   <a href={link} target="_blank" rel="noopener noreferrer" style={{flex:1,fontSize:11,color:C.acc,fontFamily:"monospace",wordBreak:"break-all",textDecoration:"none"}}>{link}</a>
+   <button onClick={()=>setLink(genMeetLink())} style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:8,cursor:"pointer",fontFamily:FONT}}>↻ Nouveau</button>
+   <button onClick={()=>{navigator.clipboard?.writeText(link);}} style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${C.acc}33`,background:`${C.acc}12`,color:C.acc,fontSize:8,cursor:"pointer",fontFamily:FONT}}>Copier</button>
+  </div>}
+  {mode==="manual"&&<Inp label="Lien Google Meet" value={link} onChange={v=>setLink(v)} placeholder="https://meet.google.com/xxx-xxxx-xxx"/>}
+ </>;
 
  return<>
   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
@@ -568,29 +718,38 @@ function AgendaTab({data,setData}){
     <Btn small onClick={()=>setShowAdd(true)}>Créer un événement</Btn>
    </div></Card>}
    {upcoming.map(e=>{const t=ET.find(t2=>t2.v===e.type)||ET[4];
-    return<Card key={e.id} style={{marginBottom:4,padding:"10px 14px"}} accent={t.color}>
+    return<Card key={e.id} style={{marginBottom:4,padding:"10px 14px",cursor:"pointer",transition:"all .15s"}} accent={t.color} onClick={()=>openEdit(e)} onMouseEnter={ev=>{ev.currentTarget.style.borderColor=t.color+"44";ev.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={ev=>{ev.currentTarget.style.borderColor=C.brd;ev.currentTarget.style.transform="translateY(0)";}}>
      <div style={{display:"flex",alignItems:"center",gap:8}}>
       <span style={{fontSize:16}}>{t.icon}</span>
       <div style={{flex:1}}>
-       <div style={{fontWeight:700,fontSize:12}}>{e.title}</div>
+       <div style={{display:"flex",alignItems:"center",gap:6}}>
+        <span style={{fontWeight:700,fontSize:12}}>{e.title}</span>
+        {e.meetLink&&<span style={{padding:"1px 6px",borderRadius:4,fontSize:8,fontWeight:600,background:`${C.g}15`,color:C.g}}>🎥 Meet</span>}
+       </div>
        <div style={{fontSize:10,color:C.td}}>{new Date(e.date).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})}{e.time?` à ${e.time}`:""}</div>
        {e.desc&&<div style={{fontSize:10,color:C.td,marginTop:2}}>{e.desc}</div>}
       </div>
-      <button onClick={()=>rm(e.id)} style={{padding:"3px 6px",borderRadius:4,border:`1px solid ${C.r}33`,background:"transparent",color:C.r,fontSize:9,cursor:"pointer",fontFamily:FONT}}>×</button>
+      {e.meetLink&&<a href={e.meetLink} target="_blank" rel="noopener noreferrer" onClick={ev=>ev.stopPropagation()} style={{padding:"5px 10px",borderRadius:8,background:`${C.g}15`,color:C.g,fontSize:9,fontWeight:700,textDecoration:"none",fontFamily:FONT,display:"flex",alignItems:"center",gap:4}}>🎥 Rejoindre</a>}
+      <button onClick={ev=>{ev.stopPropagation();rm(e.id);}} style={{padding:"3px 6px",borderRadius:4,border:`1px solid ${C.r}33`,background:"transparent",color:C.r,fontSize:9,cursor:"pointer",fontFamily:FONT}}>×</button>
      </div>
     </Card>;
    })}
   </Sect>
   {past.length>0&&<Sect title="Passés" sub={`${past.length}`}>
    {past.slice(0,10).map(e=>{const t=ET.find(t2=>t2.v===e.type)||ET[4];
-    return<Card key={e.id} style={{marginBottom:3,padding:"8px 12px",opacity:.6}}>
+    return<Card key={e.id} style={{marginBottom:3,padding:"8px 12px",opacity:.6,cursor:"pointer"}} onClick={()=>openEdit(e)}>
      <div style={{display:"flex",alignItems:"center",gap:8}}>
       <span style={{fontSize:14}}>{t.icon}</span>
-      <div style={{flex:1}}><div style={{fontWeight:600,fontSize:11}}>{e.title}</div><div style={{fontSize:9,color:C.td}}>{new Date(e.date).toLocaleDateString("fr-FR")}</div></div>
+      <div style={{flex:1}}>
+       <div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontWeight:600,fontSize:11}}>{e.title}</span>{e.meetLink&&<span style={{fontSize:8,color:C.g}}>🎥</span>}</div>
+       <div style={{fontSize:9,color:C.td}}>{new Date(e.date).toLocaleDateString("fr-FR")}</div>
+      </div>
      </div>
     </Card>;
    })}
   </Sect>}
+
+  {/* ====== ADD EVENT MODAL ====== */}
   <Modal open={showAdd} onClose={()=>setShowAdd(false)} title="Nouvel événement">
    <Inp label="Titre *" value={nf.title} onChange={v=>setNf({...nf,title:v})} placeholder="Réunion client..."/>
    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -598,8 +757,29 @@ function AgendaTab({data,setData}){
     <Inp label="Heure" value={nf.time} onChange={v=>setNf({...nf,time:v})} type="time"/>
    </div>
    <Sel label="Type" value={nf.type} onChange={v=>setNf({...nf,type:v})} options={ET}/>
+   <MeetLinkSection mode={nf.meetMode} setMode={v=>setNf({...nf,meetMode:v})} link={nf.meetLink} setLink={v=>setNf({...nf,meetLink:v})}/>
    <Inp label="Description" value={nf.desc} onChange={v=>setNf({...nf,desc:v})} textarea placeholder="Détails..."/>
    <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={add}>Créer</Btn><Btn v="secondary" onClick={()=>setShowAdd(false)}>Annuler</Btn></div>
+  </Modal>
+
+  {/* ====== EDIT EVENT MODAL ====== */}
+  <Modal open={!!editEvent} onClose={()=>setEditEvent(null)} title="Modifier l'événement">
+   {editEvent&&<div>
+    <Inp label="Titre *" value={evf.title} onChange={v=>setEvf({...evf,title:v})}/>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+     <Inp label="Date *" value={evf.date} onChange={v=>setEvf({...evf,date:v})} type="date"/>
+     <Inp label="Heure" value={evf.time} onChange={v=>setEvf({...evf,time:v})} type="time"/>
+    </div>
+    <Sel label="Type" value={evf.type} onChange={v=>setEvf({...evf,type:v})} options={ET}/>
+    <MeetLinkSection mode={evf.meetMode} setMode={v=>setEvf({...evf,meetMode:v})} link={evf.meetLink} setLink={v=>setEvf({...evf,meetLink:v})}/>
+    <Inp label="Description" value={evf.desc||""} onChange={v=>setEvf({...evf,desc:v})} textarea placeholder="Détails..."/>
+    <div style={{display:"flex",gap:8,marginTop:14,alignItems:"center"}}>
+     <Btn onClick={saveEdit}>Sauvegarder</Btn>
+     <Btn v="secondary" onClick={()=>setEditEvent(null)}>Fermer</Btn>
+     <div style={{flex:1}}/>
+     <button onClick={()=>rm(editEvent.id)} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${C.r}33`,background:C.rD,color:C.r,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>Supprimer</button>
+    </div>
+   </div>}
   </Modal>
  </>;
 }
