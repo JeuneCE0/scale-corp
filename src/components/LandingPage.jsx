@@ -181,7 +181,7 @@ export function LandingPage({brand,onNavigate}){
 }
 
 /* ====== CLIENT LOGIN PAGE ====== */
-export function ClientLoginPage({brand,onNavigate}){
+export function ClientLoginPage({brand,onNavigate,onLogin}){
  const[email,setEmail]=useState("");
  const[pass,setPass]=useState("");
  const[err,setErr]=useState("");
@@ -198,9 +198,8 @@ export function ClientLoginPage({brand,onNavigate}){
    if(!r.ok){setErr(d.error_description||d.msg||d.error||"Identifiants incorrects");setLoading(false);return;}
    localStorage.setItem("sc_auth_token",d.access_token);
    if(d.refresh_token)localStorage.setItem("sc_auth_refresh",d.refresh_token);
-   // Redirect to client portal
-   window.location.hash="";
-   window.location.reload();
+   // Notify parent to set role directly
+   if(onLogin){onLogin(d.user);}else{window.location.hash="";window.location.reload();}
   }catch{setErr("Erreur de connexion");}
   setLoading(false);
  };
@@ -252,7 +251,7 @@ export function ClientSignupPage({brand,onNavigate}){
 
  const doSignup=async()=>{
   if(!form.email||!form.password||!form.company){setErr("Entreprise, email et mot de passe requis");return;}
-  if(form.password.length<6){setErr("Le mot de passe doit contenir au moins 6 caractères");return;}
+  if(form.password.length<8){setErr("Le mot de passe doit contenir au moins 8 caractères");return;}
   if(form.password!==form.confirmPass){setErr("Les mots de passe ne correspondent pas");return;}
   setLoading(true);setErr("");
   try{

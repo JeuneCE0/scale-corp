@@ -58,10 +58,13 @@ export default async function handler(req, res) {
     // === SIGNUP (admin creates user) ===
     if (action === "signup") {
       if (req.method !== "POST") return res.status(405).json({ error: "POST required" });
-      const { email, password, name, role, society_id } = req.body || {};
+      const { email, password, name, role, society_id, company, phone } = req.body || {};
       if (!email || !password) return res.status(400).json({ error: "Missing email or password" });
       if (!EMAIL_RE.test(email)) return res.status(400).json({ error: "Format email invalide" });
       if (password.length < 8) return res.status(400).json({ error: "Mot de passe : 8 caractères minimum" });
+      const metadata = { name: name || "", role: role || "porteur", society_id: society_id || "" };
+      if (company) metadata.company = company;
+      if (phone) metadata.phone = phone;
       const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
         method: "POST",
         headers: {
@@ -73,7 +76,7 @@ export default async function handler(req, res) {
           email,
           password,
           email_confirm: true,
-          user_metadata: { name: name || "", role: role || "porteur", society_id: society_id || "" },
+          user_metadata: metadata,
         }),
       });
       const data = await r.json();

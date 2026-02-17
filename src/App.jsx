@@ -86,7 +86,7 @@ function AppInner(){
    /* onboarding removed */
    setLoaded(true);
    // Session persistence: check stored auth token
-   try{const tk=localStorage.getItem("sc_auth_token");if(tk){fetch("/api/auth?action=me",{headers:{Authorization:"Bearer "+tk}}).then(r2=>r2.ok?r2.json():null).then(u=>{if(u&&u.id){setAuthUser(u);const meta=u.user_metadata||{};if(meta.role==="admin"){setRole("admin");setStoreToken("auth");setCurrentSocId("admin");syncFromSupabase("admin").catch(()=>{});}else if(meta.society_id){setRole(meta.society_id);setStoreToken("auth");setCurrentSocId(meta.society_id);syncFromSupabase(meta.society_id).catch(()=>{});}}}).catch(()=>{});}}catch{}
+   try{const tk=localStorage.getItem("sc_auth_token");if(tk){fetch("/api/auth?action=me",{headers:{Authorization:"Bearer "+tk}}).then(r2=>r2.ok?r2.json():null).then(u=>{if(u&&u.id){setAuthUser(u);const meta=u.user_metadata||{};if(meta.role==="admin"){setRole("admin");setStoreToken("auth");setCurrentSocId("admin");syncFromSupabase("admin").catch(()=>{});}else if(meta.role==="client"){setRole("client");setStoreToken("auth");setCurrentSocId("client");}else if(meta.society_id){setRole(meta.society_id);setStoreToken("auth");setCurrentSocId(meta.society_id);syncFromSupabase(meta.society_id).catch(()=>{});}}}).catch(()=>{});}}catch{}
    })();},[]);
  const scChannel=useRef(null);
  useEffect(()=>{try{scChannel.current=new BroadcastChannel("scale-corp-sync");scChannel.current.onmessage=async(e)=>{if(e.data?.type==="socs-updated"){try{const sbSocs=await fetchSocietiesFromSB();if(sbSocs&&sbSocs.length>0)setSocs(prev=>{const sbMap=Object.fromEntries(sbSocs.map(x=>[x.id,x]));return prev.map(sc=>sbMap[sc.id]?{...sc,...sbMap[sc.id]}:sc);});}catch{}}if(e.data?.type==="hold-updated"){try{const sbHold=await fetchHoldingFromSB();if(sbHold)setHold(sbHold);}catch{}}};}catch{}return()=>{try{scChannel.current?.close();}catch{}};},[]);
@@ -209,7 +209,7 @@ function AppInner(){
   const absentLabel=hrs>=24?`${Math.round(hrs/24)}j`:hrs>=1?`${hrs}h`:`${mins}min`;
   if(events.length>0)setMissedRecap({events:events.slice(0,20),total:events.length,absent:absentLabel});
  },[role]);
- const loginEmail2=useCallback(async()=>{if(!loginEmail.trim()||!loginPass.trim()){setLErr("Email et mot de passe requis");return;}setAuthLoading(true);setLErr("");try{const r=await fetch("/api/auth?action=login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:loginEmail.trim(),password:loginPass})});const d=await r.json();if(!r.ok){setLErr(d.error_description||d.msg||d.error||"Identifiants incorrects");setShake(true);setTimeout(()=>setShake(false),500);return;}localStorage.setItem("sc_auth_token",d.access_token);if(d.refresh_token)localStorage.setItem("sc_auth_refresh",d.refresh_token);setAuthUser(d.user);const meta=d.user?.user_metadata||{};const rid=meta.role==="admin"?"admin":(meta.society_id||"admin");setRole(rid);setLErr("");setStoreToken("auth");setCurrentSocId(rid);localStorage.setItem("sc_store_token","auth");syncFromSupabase(rid).then(()=>{}).catch(()=>{});}catch(e){setLErr("Erreur de connexion");setShake(true);setTimeout(()=>setShake(false),500);}finally{setAuthLoading(false);}},[loginEmail,loginPass]);
+ const loginEmail2=useCallback(async()=>{if(!loginEmail.trim()||!loginPass.trim()){setLErr("Email et mot de passe requis");return;}setAuthLoading(true);setLErr("");try{const r=await fetch("/api/auth?action=login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:loginEmail.trim(),password:loginPass})});const d=await r.json();if(!r.ok){setLErr(d.error_description||d.msg||d.error||"Identifiants incorrects");setShake(true);setTimeout(()=>setShake(false),500);return;}localStorage.setItem("sc_auth_token",d.access_token);if(d.refresh_token)localStorage.setItem("sc_auth_refresh",d.refresh_token);setAuthUser(d.user);const meta=d.user?.user_metadata||{};const rid=meta.role==="admin"?"admin":meta.role==="client"?"client":(meta.society_id||"admin");setRole(rid);setLErr("");setStoreToken("auth");setCurrentSocId(rid);localStorage.setItem("sc_store_token","auth");if(rid!=="client")syncFromSupabase(rid).then(()=>{}).catch(()=>{});}catch(e){setLErr("Erreur de connexion");setShake(true);setTimeout(()=>setShake(false),500);}finally{setAuthLoading(false);}},[loginEmail,loginPass]);
  const login=useCallback(async()=>{async function hashPin(p){const e=new TextEncoder().encode(p);const h=await crypto.subtle.digest('SHA-256',e);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 const doLogin=(rid)=>{setRole(rid);setLErr("");setStoreToken(pin);setCurrentSocId(rid);localStorage.setItem("sc_store_token",pin);syncFromSupabase(rid).then(()=>{}).catch(()=>{});};
 // Admin check
@@ -234,7 +234,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  /* PUBLIC ROUTES: Landing, Client Login, Signup */
  const routeNav=(h)=>{window.location.hash=h;setRoute(h);};
  if(!role&&(route==="#/landing"||route===""||route==="#"||(!route.startsWith("#widget/")&&!route.startsWith("#portal/")&&!route.startsWith("#board/")&&route!=="#pulse"&&route!=="#/admin"&&route!=="#/client"&&route!=="#/signup")))return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><LandingPage brand={hold.brand} onNavigate={routeNav}/></Suspense></>;
- if(!role&&route==="#/client")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><ClientLoginPage brand={hold.brand} onNavigate={routeNav}/></Suspense></>;
+ if(!role&&route==="#/client")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><ClientLoginPage brand={hold.brand} onNavigate={routeNav} onLogin={(user)=>{setAuthUser(user);const meta=user?.user_metadata||{};const rid=meta.role==="admin"?"admin":meta.role==="client"?"client":(meta.society_id||"admin");setRole(rid);setStoreToken("auth");setCurrentSocId(rid);localStorage.setItem("sc_store_token","auth");window.location.hash="";}}/></Suspense></>;
  if(!role&&route==="#/signup")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><ClientSignupPage brand={hold.brand} onNavigate={routeNav}/></Suspense></>;
 
  /* ADMIN LOGIN — #/admin route */
@@ -259,6 +259,24 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    <div style={{textAlign:"center",fontSize:11,color:C.tm,marginTop:12}}>
     <a href="#/client" style={{color:C.tm,textDecoration:"none"}} onClick={e=>{e.preventDefault();window.location.hash="#/client";}}>Accès client</a>
    </div>
+  </div>
+ </div>;
+ /* CLIENT PORTAL — SaaS client logged in */
+ if(role==="client")return <div className="glass-bg" style={{minHeight:"100vh",fontFamily:FONT,color:C.t}}>
+  <style>{CSS}{POLISH_CSS}</style>
+  <div style={{maxWidth:1100,margin:"0 auto",padding:"20px 24px 60px"}}>
+   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+    <div style={{display:"flex",alignItems:"center",gap:10}}>
+     {hold.brand?.logoUrl?<img src={hold.brand.logoUrl} alt="" style={{width:32,height:32,borderRadius:8,objectFit:"contain"}}/>
+      :<div style={{width:32,height:32,borderRadius:8,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:"#0a0a0f"}}>{hold.brand?.logoLetter||"E"}</div>}
+     <span style={{fontWeight:800,fontSize:15,fontFamily:FONT_TITLE}}>{hold.brand?.name||"L'INCUBATEUR ECS"}</span>
+    </div>
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+     <AnimatedThemeToggle onToggle={toggleTheme}/>
+     <button onClick={()=>{setRole(null);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}window.location.hash="#/landing";}} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${C.brd}`,background:"transparent",color:C.td,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>Déconnexion</button>
+    </div>
+   </div>
+   <Suspense fallback={<LazyFallback/>}><SaaSClientPortal/></Suspense>
   </div>
  </div>;
  if(role!=="admin"){const soc=socs.find(s=>s.id===role);if(!soc)return null;
@@ -922,23 +940,32 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
 /* USER ACCESS PANEL */
 function UserAccessPanel({socs}){
  const[users,setUsers]=useState([]);const[loading,setLoading]=useState(true);const[showAdd,setShowAdd]=useState(false);
- const[addEmail,setAddEmail]=useState("");const[addName,setAddName]=useState("");const[addPass,setAddPass]=useState("");const[addRole,setAddRole]=useState("porteur");const[addSoc,setAddSoc]=useState("");const[addErr,setAddErr]=useState("");const[addLoading,setAddLoading]=useState(false);
+ const[addEmail,setAddEmail]=useState("");const[addName,setAddName]=useState("");const[addPass,setAddPass]=useState("");const[addRole,setAddRole]=useState("porteur");const[addSoc,setAddSoc]=useState("");const[addCompany,setAddCompany]=useState("");const[addPhone,setAddPhone]=useState("");const[addErr,setAddErr]=useState("");const[addLoading,setAddLoading]=useState(false);
  const[pwModal,setPwModal]=useState(null);const[newPw,setNewPw]=useState("");const[delConfirm,setDelConfirm]=useState(null);
+ const[filter,setFilter]=useState("all"); // all | admin | porteur | client
  const loadUsers=useCallback(async()=>{setLoading(true);try{const r=await fetch("/api/auth?action=list_users");const d=await r.json();setUsers(d.users||[]);}catch{}setLoading(false);},[]);
  useEffect(()=>{loadUsers();},[loadUsers]);
- const doAdd=async()=>{if(!addEmail||!addPass){setAddErr("Email et mot de passe requis");return;}setAddLoading(true);setAddErr("");try{const r=await fetch("/api/auth?action=signup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:addEmail,password:addPass,name:addName,role:addRole,society_id:addSoc})});const d=await r.json();if(!r.ok){setAddErr(d.msg||d.error||"Erreur");return;}setShowAdd(false);setAddEmail("");setAddName("");setAddPass("");setAddRole("porteur");setAddSoc("");loadUsers();}catch{setAddErr("Erreur réseau");}finally{setAddLoading(false);}};
- const doUpdatePw=async()=>{if(!newPw||!pwModal)return;try{const r=await fetch("/api/auth?action=update_password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:pwModal,password:newPw})});if(r.ok){setPwModal(null);setNewPw("");}}catch{}};
+ const doAdd=async()=>{if(!addEmail||!addPass){setAddErr("Email et mot de passe requis");return;}if(addPass.length<8){setAddErr("Mot de passe : 8 caractères minimum");return;}setAddLoading(true);setAddErr("");try{const body={email:addEmail,password:addPass,name:addName,role:addRole,society_id:addRole==="porteur"?addSoc:""};if(addRole==="client"){body.company=addCompany;body.phone=addPhone;}const r=await fetch("/api/auth?action=signup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const d=await r.json();if(!r.ok){setAddErr(d.msg||d.error||"Erreur");return;}setShowAdd(false);setAddEmail("");setAddName("");setAddPass("");setAddRole("porteur");setAddSoc("");setAddCompany("");setAddPhone("");loadUsers();}catch{setAddErr("Erreur réseau");}finally{setAddLoading(false);}};
+ const doUpdatePw=async()=>{if(!newPw||!pwModal)return;try{const r=await fetch("/api/auth?action=update_password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:pwModal,password:newPw})});if(r.ok){setPwModal(null);setNewPw("");loadUsers();}}catch{}};
  const doDelete=async(uid2)=>{try{await fetch("/api/auth?action=delete_user",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_id:uid2})});setDelConfirm(null);loadUsers();}catch{}};
  const socName=(sid)=>{const s=socs.find(x=>x.id===sid);return s?s.nom:sid||"—";};
- return <><Sect title="👥 Gestion des accès" sub="Utilisateurs Supabase Auth" right={<div style={{display:"flex",gap:6}}><Btn small v="secondary" onClick={loadUsers}>↻</Btn><Btn small onClick={()=>setShowAdd(true)}>+ Ajouter un porteur</Btn></div>}>
+ const ROLE_BADGE={admin:{bg:"#FFBF0022",color:"#FFBF00",border:"#FFBF0033",label:"Admin"},porteur:{bg:"#3b82f622",color:"#3b82f6",border:"#3b82f633",label:"Porteur"},client:{bg:"#34d39922",color:"#34d399",border:"#34d39933",label:"Client"}};
+ const filteredUsers=users.filter(u=>{if(filter==="all")return true;const meta=u.user_metadata||{};return(meta.role||"porteur")===filter;});
+ const clientCount=users.filter(u=>(u.user_metadata||{}).role==="client").length;
+ const porteurCount=users.filter(u=>{const r2=(u.user_metadata||{}).role;return!r2||r2==="porteur";}).length;
+ const adminCount=users.filter(u=>(u.user_metadata||{}).role==="admin").length;
+ return <><Sect title="👥 Gestion des accès" sub={`${users.length} utilisateur${users.length>1?"s":""} — ${adminCount} admin, ${porteurCount} porteur${porteurCount>1?"s":""}, ${clientCount} client${clientCount>1?"s":""}`} right={<div style={{display:"flex",gap:6}}><Btn small v="secondary" onClick={loadUsers}>↻</Btn><Btn small onClick={()=>{setAddRole("porteur");setShowAdd(true);}}>+ Porteur</Btn><Btn small v="success" onClick={()=>{setAddRole("client");setShowAdd(true);}}>+ Client</Btn></div>}>
+  <div style={{display:"flex",gap:4,marginBottom:10}}>
+   {[{v:"all",l:"Tous"},{v:"admin",l:"Admin"},{v:"porteur",l:"Porteurs"},{v:"client",l:"Clients"}].map(f=><button key={f.v} onClick={()=>setFilter(f.v)} style={{padding:"4px 12px",borderRadius:6,border:`1px solid ${filter===f.v?C.acc+"55":C.brd}`,background:filter===f.v?C.accD:"transparent",color:filter===f.v?C.acc:C.td,fontSize:10,fontWeight:filter===f.v?700:500,cursor:"pointer",fontFamily:FONT}}>{f.l}</button>)}
+  </div>
   {loading&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Chargement...</div>}
-  {!loading&&users.length===0&&<Card><div style={{textAlign:"center",padding:20,color:C.td,fontSize:12}}>Aucun utilisateur</div></Card>}
-  {!loading&&users.map(u=>{const meta=u.user_metadata||{};const isAdmin=meta.role==="admin";return <Card key={u.id} style={{marginBottom:4,padding:"10px 14px"}}>
+  {!loading&&filteredUsers.length===0&&<Card><div style={{textAlign:"center",padding:20,color:C.td,fontSize:12}}>Aucun utilisateur</div></Card>}
+  {!loading&&filteredUsers.map(u=>{const meta=u.user_metadata||{};const uRole=meta.role||"porteur";const rb=ROLE_BADGE[uRole]||ROLE_BADGE.porteur;return <Card key={u.id} style={{marginBottom:4,padding:"10px 14px"}}>
    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-    <span style={{padding:"2px 8px",borderRadius:6,fontSize:9,fontWeight:700,background:isAdmin?"#FFBF0022":"#3b82f622",color:isAdmin?"#FFBF00":"#3b82f6",border:`1px solid ${isAdmin?"#FFBF0033":"#3b82f633"}`}}>{isAdmin?"Admin":"Porteur"}</span>
+    <span style={{padding:"2px 8px",borderRadius:6,fontSize:9,fontWeight:700,background:rb.bg,color:rb.color,border:`1px solid ${rb.border}`}}>{rb.label}</span>
     <div style={{flex:1,minWidth:100}}>
      <div style={{fontWeight:700,fontSize:12}}>{meta.name||u.email}</div>
-     <div style={{fontSize:10,color:C.td}}>{u.email}{meta.society_id?` · ${socName(meta.society_id)}`:""}</div>
+     <div style={{fontSize:10,color:C.td}}>{u.email}{meta.society_id?` · ${socName(meta.society_id)}`:""}{meta.company?` · ${meta.company}`:""}</div>
     </div>
     <div style={{fontSize:9,color:C.td}}>{u.last_sign_in_at?`Vu ${new Date(u.last_sign_in_at).toLocaleDateString("fr-FR")}`:""}</div>
     <button onClick={()=>{setPwModal(u.id);setNewPw("");}} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${C.brd}`,background:C.card,color:C.td,fontSize:9,cursor:"pointer",fontFamily:FONT}}>🔑 MDP</button>
@@ -946,17 +973,21 @@ function UserAccessPanel({socs}){
    </div>
   </Card>;})}
  </Sect>
- <Modal open={showAdd} onClose={()=>setShowAdd(false)} title="Ajouter un utilisateur">
-  <Inp label="Email" value={addEmail} onChange={setAddEmail} placeholder="porteur@email.com"/>
+ <Modal open={showAdd} onClose={()=>setShowAdd(false)} title={addRole==="client"?"Ajouter un accès client":"Ajouter un utilisateur"}>
+  <Inp label="Email *" value={addEmail} onChange={setAddEmail} placeholder={addRole==="client"?"client@entreprise.com":"porteur@email.com"}/>
   <Inp label="Nom" value={addName} onChange={setAddName} placeholder="Prénom Nom"/>
-  <Inp label="Mot de passe" value={addPass} onChange={setAddPass} type="password" placeholder="Min. 6 caractères"/>
-  <Sel label="Rôle" value={addRole} onChange={setAddRole} options={[{v:"porteur",l:"Porteur"},{v:"admin",l:"Admin"}]}/>
+  {addRole==="client"&&<>
+   <Inp label="Entreprise" value={addCompany} onChange={setAddCompany} placeholder="Nom de l'entreprise"/>
+   <Inp label="Téléphone" value={addPhone} onChange={setAddPhone} placeholder="+33 6 12 34 56 78"/>
+  </>}
+  <Inp label="Mot de passe *" value={addPass} onChange={setAddPass} type="password" placeholder="Min. 8 caractères"/>
+  <Sel label="Rôle" value={addRole} onChange={setAddRole} options={[{v:"porteur",l:"Porteur"},{v:"client",l:"Client"},{v:"admin",l:"Admin"}]}/>
   {addRole==="porteur"&&<Sel label="Société" value={addSoc} onChange={setAddSoc} options={[{v:"",l:"— Sélectionner —"},...socs.map(s=>({v:s.id,l:s.nom}))]}/>}
   {addErr&&<div style={{color:C.r,fontSize:11,marginTop:4}}>⚠ {addErr}</div>}
   <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={doAdd} disabled={addLoading}>{addLoading?"Création...":"Créer"}</Btn><Btn v="secondary" onClick={()=>setShowAdd(false)}>Annuler</Btn></div>
  </Modal>
  <Modal open={!!pwModal} onClose={()=>setPwModal(null)} title="Modifier le mot de passe">
-  <Inp label="Nouveau mot de passe" value={newPw} onChange={setNewPw} type="password" placeholder="Min. 6 caractères"/>
+  <Inp label="Nouveau mot de passe" value={newPw} onChange={setNewPw} type="password" placeholder="Min. 8 caractères"/>
   <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={doUpdatePw}>Sauver</Btn><Btn v="secondary" onClick={()=>setPwModal(null)}>Annuler</Btn></div>
  </Modal>
  <Modal open={!!delConfirm} onClose={()=>setDelConfirm(null)} title="Confirmer la suppression">
