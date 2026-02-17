@@ -39,6 +39,7 @@ const AICoPilot = lazy(() => import("./components/AI.jsx").then(m => ({ default:
 const TabCRM = lazy(() => import("./components/CRM.jsx").then(m => ({ default: m.TabCRM })));
 const BankingPanel = lazy(() => import("./components/Banking.jsx").then(m => ({ default: m.BankingPanel })));
 const AdminPanel = lazy(() => import("./components/AdminPanel.jsx").then(m => ({ default: m.AdminPanel })));
+const SaaSClientPortal = lazy(() => import("./components/SaaSPortal.jsx").then(m => ({ default: m.SaaSClientPortal })));
 
 /* Suspense fallback with skeleton loader */
 function LazyFallback() {
@@ -920,6 +921,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    <div style={{marginTop:12}}><Btn onClick={()=>{save(null,null,hold);}}>💾 Sauvegarder les paramètres</Btn></div>
   </>}
   {tab===20&&<Suspense fallback={<LazyFallback/>}><AdminPanel socs={socs} hold={hold} setHold={setHold} saveHold={()=>save(null,null,hold)}/></Suspense>}
+  {tab===30&&<Suspense fallback={<LazyFallback/>}><SaaSClientPortal previewMode/></Suspense>}
   </PageTransition>
   </div>
   </div>
