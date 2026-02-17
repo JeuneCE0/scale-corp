@@ -40,6 +40,9 @@ const TabCRM = lazy(() => import("./components/CRM.jsx").then(m => ({ default: m
 const BankingPanel = lazy(() => import("./components/Banking.jsx").then(m => ({ default: m.BankingPanel })));
 const AdminPanel = lazy(() => import("./components/AdminPanel.jsx").then(m => ({ default: m.AdminPanel })));
 const SaaSClientPortal = lazy(() => import("./components/SaaSPortal.jsx").then(m => ({ default: m.SaaSClientPortal })));
+const LandingPage = lazy(() => import("./components/LandingPage.jsx").then(m => ({ default: m.LandingPage })));
+const ClientLoginPage = lazy(() => import("./components/LandingPage.jsx").then(m => ({ default: m.ClientLoginPage })));
+const ClientSignupPage = lazy(() => import("./components/LandingPage.jsx").then(m => ({ default: m.ClientSignupPage })));
 
 /* Suspense fallback with skeleton loader */
 function LazyFallback() {
@@ -63,6 +66,8 @@ function AppInner(){
  const[saving,setSaving]=useState(false);const[meeting,setMeeting]=useState(false);const[adminSocView,setAdminSocView]=useState(null);
  const[isOffline,setIsOffline]=useState(!navigator.onLine);
  useEffect(()=>{const on=()=>setIsOffline(false);const off=()=>setIsOffline(true);window.addEventListener("online",on);window.addEventListener("offline",off);return()=>{window.removeEventListener("online",on);window.removeEventListener("offline",off);};},[]);
+ const[route,setRoute]=useState(window.location.hash||"");
+ useEffect(()=>{const h=()=>setRoute(window.location.hash||"");window.addEventListener("hashchange",h);return()=>window.removeEventListener("hashchange",h);},[]);
  const[newActSoc,setNewActSoc]=useState("");const[newActText,setNewActText]=useState("");const[showPulse,setShowPulse]=useState(false);const[showSearch,setShowSearch]=useState(false);
  useEffect(()=>{if(tab===99){setShowPulse(true);setTab(0);}},[tab]);
  // Global Ctrl+K search
@@ -226,33 +231,24 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  if(hash.startsWith("#portal/")){const parts=hash.replace("#portal/","").split("/");return <><style>{CSS}{POLISH_CSS}</style><ClientPortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients} ghlData={ghlData}/></>;}
  if(hash.startsWith("#board/")){const bPin=hash.replace("#board/","");return <><style>{CSS}{POLISH_CSS}</style><InvestorBoard socs={socs} reps={reps} allM={allM} hold={hold} pin={bPin}/></>;}
 
- /* Onboarding removed */;
+ /* PUBLIC ROUTES: Landing, Client Login, Signup */
+ const routeNav=(h)=>{window.location.hash=h;setRoute(h);};
+ if(!role&&(route==="#/landing"||route===""||route==="#"||(!route.startsWith("#widget/")&&!route.startsWith("#portal/")&&!route.startsWith("#board/")&&route!=="#pulse"&&route!=="#/admin"&&route!=="#/client"&&route!=="#/signup")))return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><LandingPage brand={hold.brand} onNavigate={routeNav}/></Suspense></>;
+ if(!role&&route==="#/client")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><ClientLoginPage brand={hold.brand} onNavigate={routeNav}/></Suspense></>;
+ if(!role&&route==="#/signup")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><ClientSignupPage brand={hold.brand} onNavigate={routeNav}/></Suspense></>;
+
+ /* ADMIN LOGIN — #/admin route */
  if(!role)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT,padding:16}}>
   <style>{CSS}{POLISH_CSS}</style>
-  {/* TUTORIAL OVERLAY ON LOGIN */}
-  {false&&<div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(0,0,0,.6)",backdropFilter:"blur(3px)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}>
-   <div className="si glass-modal" style={{borderRadius:20,padding:0,width:500,maxWidth:"92vw",overflow:"hidden"}}>
-    <div style={{padding:"24px 28px",background:`linear-gradient(135deg,${C.accD},transparent)`,borderBottom:`1px solid ${C.brd}`,textAlign:"center"}}>
-     <div style={{width:64,height:64,borderRadius:16,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:30,marginBottom:12,boxShadow:`0 8px 32px ${C.accD}`}}>🎓</div>
-     <h2 style={{margin:0,fontSize:22,fontWeight:800,color:C.t,fontFamily:FONT_TITLE}}>Bienvenue  !</h2>
-     <p style={{color:C.td,fontSize:13,margin:"8px 0 0",lineHeight:1.5}}>Votre espace est configuré. Connectez-vous puis découvrez la plateforme avec un tutoriel guidé de chaque onglet.</p>
-    </div>
-    <div style={{padding:"20px 28px"}}>
-     <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{[{icon:"📊",label:"Dashboard",desc:"Pilotage global"},{icon:"🏆",label:"Milestones",desc:"Trophées & progrès"},{icon:"🤖",label:"AI Copilot",desc:"Insights IA"},{icon:"📈",label:"Analytique",desc:"Tendances & comparaisons"}].map(it=>
-      <div key={it.label} style={{padding:"12px 14px",borderRadius:10,background:C.bg,border:`1px solid ${C.brd}`,display:"flex",alignItems:"center",gap:8}}>
-       <span style={{fontSize:18}}>{it.icon}</span><div><div style={{fontWeight:700,fontSize:11,color:C.t}}>{it.label}</div><div style={{fontSize:10,color:C.td}}>{it.desc}</div></div></div>)}</div>
-    </div>
-    <div style={{padding:"14px 28px",borderTop:`1px solid ${C.brd}`,textAlign:"center"}}>
-     <button onClick={()=>setShowTour(false)} style={{padding:"10px 28px",borderRadius:9,border:"none",background:`linear-gradient(135deg,${C.acc},#FF9D00)`,color:"#0a0a0f",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT,boxShadow:`0 4px 16px ${C.accD}`}}>Se connecter →</button>
-    </div>
-   </div>
-  </div>}
+  <div style={{position:"fixed",top:16,left:16,zIndex:10}}>
+   <button onClick={()=>{window.location.hash="#/landing";}} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${C.brd}`,background:"rgba(255,255,255,.03)",color:C.td,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>← Accueil</button>
+  </div>
   <div style={{position:"fixed",top:16,right:16,zIndex:100}}><AnimatedThemeToggle onToggle={toggleTheme}/></div>
   <div className="si glass-modal" style={{borderRadius:20,padding:28,width:340,maxWidth:"100%"}}>
    <div style={{textAlign:"center",marginBottom:24}}>
     <div className="fl glow-accent-strong" style={{width:64,height:64,background:"transparent",borderRadius:12,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:10,overflow:"hidden"}}>{hold.brand?.logoUrl?<img loading="lazy" src={hold.brand.logoUrl} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}}/>:(hold.brand?.logoLetter||"E")}</div>
     <h1 style={{margin:0,fontSize:18,fontWeight:900,letterSpacing:.5,fontFamily:FONT_TITLE,color:"#fff"}}>{hold.brand?.name||"L'INCUBATEUR ECS"}</h1>
-    <p style={{color:C.td,fontSize:11,margin:"4px 0 0"}}>{hold.brand?.sub||"Plateforme de pilotage"}</p>
+    <p style={{color:C.td,fontSize:11,margin:"4px 0 0"}}>Administration</p>
    </div>
    <div style={{animation:shake?"sh .4s ease":"none"}}>
     <Inp label="Email" value={loginEmail} onChange={v=>{setLoginEmail(v);setLErr("");}} type="email" placeholder="votre@email.com" onKeyDown={e=>{if(e.key==="Enter"&&loginEmail&&loginPass)loginEmail2();}}/>
@@ -260,10 +256,9 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </div>
    {lErr&&<div style={{color:C.r,fontSize:11,marginBottom:8,textAlign:"center"}}>⚠ {lErr}</div>}
    <Btn onClick={loginEmail2} full disabled={authLoading}>{authLoading?"Connexion...":"Connexion"}</Btn>
-
-
-
-
+   <div style={{textAlign:"center",fontSize:11,color:C.tm,marginTop:12}}>
+    <a href="#/client" style={{color:C.tm,textDecoration:"none"}} onClick={e=>{e.preventDefault();window.location.hash="#/client";}}>Accès client</a>
+   </div>
   </div>
  </div>;
  if(role!=="admin"){const soc=socs.find(s=>s.id===role);if(!soc)return null;
@@ -915,9 +910,6 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
      </div>)}
     </Card>
    </div>
-   <Sect title="📱 Widgets Porteur" sub="Embed pour chaque société">
-    {actS.filter(s=>s.id!=="eco").map(s=><WidgetEmbed key={s.id} soc={s} clients={clients}/>)}
-   </Sect>
    <div style={{marginTop:12}}><Btn onClick={()=>{save(null,null,hold);}}>💾 Sauvegarder les paramètres</Btn></div>
   </>}
   {tab===20&&<Suspense fallback={<LazyFallback/>}><AdminPanel socs={socs} hold={hold} setHold={setHold} saveHold={()=>save(null,null,hold)}/></Suspense>}

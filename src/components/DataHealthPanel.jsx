@@ -45,6 +45,70 @@ const DEFAULT_KPIS=[
   rules:"• > 70 = vert (sain)\n• 40-70 = orange (attention)\n• < 40 = rouge (critique)"},
 ];
 
+/* Extracted as proper component to avoid hooks-in-conditional-render (React #310) */
+function CleaningRulesTab({data,rules,uData}){
+ const[showAdd,setShowAdd]=useState(false);
+ const[nf,setNf]=useState({name:"",field:"",rule:"",description:"",frequency:"daily"});
+ const addRule=()=>{
+  if(!nf.name)return;
+  const r={...nf,id:uid(),createdAt:new Date().toISOString(),lastRun:null,active:true};
+  uData("cleaningRules",[...rules,r]);setShowAdd(false);setNf({name:"",field:"",rule:"",description:"",frequency:"daily"});
+ };
+ const toggleRule=(id)=>uData("cleaningRules",rules.map(r=>r.id===id?{...r,active:!r.active}:r));
+ const deleteRule=(id)=>uData("cleaningRules",rules.filter(r=>r.id!==id));
+
+ return<>
+  <div style={{display:"flex",alignItems:"center",marginBottom:14}}>
+   <div style={{flex:1}}>
+    <div style={{fontWeight:700,fontSize:13}}>Règles de nettoyage des données</div>
+    <div style={{fontSize:10,color:C.td}}>Définissez les règles automatiques pour maintenir la qualité des données</div>
+   </div>
+   <Btn small onClick={()=>setShowAdd(true)}>+ Règle</Btn>
+  </div>
+  {rules.length===0&&<Card style={{padding:20}}>
+   <div style={{textAlign:"center",color:C.td,marginBottom:12}}>
+    <div style={{fontSize:30,marginBottom:8}}>🧹</div>
+    <div style={{fontSize:12,fontWeight:600}}>Aucune règle de nettoyage</div>
+    <div style={{fontSize:10,marginTop:4}}>Créez des règles pour automatiser le nettoyage des données.</div>
+   </div>
+   <div style={{fontSize:10,color:C.td,lineHeight:1.7,padding:"12px 16px",background:C.bg,borderRadius:10}}>
+    <b style={{color:C.t}}>Exemples de règles :</b><br/>
+    • Supprimer les contacts sans email depuis 30+ jours<br/>
+    • Normaliser les noms (majuscule première lettre)<br/>
+    • Dédupliquer les contacts par email<br/>
+    • Archiver les deals « Perdu » depuis 90+ jours<br/>
+    • Vérifier la cohérence CA vs charges (écart &gt; 50%)<br/>
+    • Nettoyer les événements passés depuis 6+ mois
+   </div>
+  </Card>}
+  {rules.map(r=><Card key={r.id} style={{marginBottom:4,padding:"10px 14px",opacity:r.active?1:.5}}>
+   <div style={{display:"flex",alignItems:"center",gap:8}}>
+    <Toggle on={r.active} onToggle={()=>toggleRule(r.id)}/>
+    <div style={{flex:1}}>
+     <div style={{fontWeight:700,fontSize:11}}>{r.name}</div>
+     <div style={{fontSize:9,color:C.td}}>{r.description||r.rule}</div>
+     <div style={{fontSize:8,color:C.td,marginTop:2}}>Champ: {r.field||"—"} · Fréquence: {r.frequency}</div>
+    </div>
+    <button onClick={()=>deleteRule(r.id)} style={{padding:"3px 6px",borderRadius:4,border:`1px solid ${C.r}33`,background:"transparent",color:C.r,fontSize:9,cursor:"pointer",fontFamily:FONT}}>×</button>
+   </div>
+  </Card>)}
+  <Sect title="Documentation des données" sub="Contexte et métadonnées">
+   <Card style={{padding:16}}>
+    <Inp label="Documentation générale" value={data.dataDocumentation||""} onChange={v=>uData("dataDocumentation",v)} textarea placeholder="Documentez ici les règles métier, les sources de données, les particularités de vos données..."/>
+    <div style={{marginTop:8}}><Btn small onClick={()=>{uData("dataDocumentation",data.dataDocumentation);}}>Sauvegarder</Btn></div>
+   </Card>
+  </Sect>
+  <Modal open={showAdd} onClose={()=>setShowAdd(false)} title="Nouvelle règle de nettoyage">
+   <Inp label="Nom de la règle *" value={nf.name} onChange={v=>setNf({...nf,name:v})} placeholder="Déduplication contacts"/>
+   <Inp label="Champ/Collection concerné" value={nf.field} onChange={v=>setNf({...nf,field:v})} placeholder="contacts, finances, deals..."/>
+   <Inp label="Règle (expression)" value={nf.rule} onChange={v=>setNf({...nf,rule:v})} placeholder="duplicate(email) OR empty(name)"/>
+   <Sel label="Fréquence" value={nf.frequency} onChange={v=>setNf({...nf,frequency:v})} options={[{v:"realtime",l:"Temps réel"},{v:"hourly",l:"Toutes les heures"},{v:"daily",l:"Quotidien"},{v:"weekly",l:"Hebdomadaire"},{v:"monthly",l:"Mensuel"}]}/>
+   <Inp label="Description / Contexte" value={nf.description} onChange={v=>setNf({...nf,description:v})} textarea placeholder="Expliquez pourquoi cette règle existe..."/>
+   <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={addRule}>Créer</Btn><Btn v="secondary" onClick={()=>setShowAdd(false)}>Annuler</Btn></div>
+  </Modal>
+ </>;
+}
+
 export function DataHealth({data,setData}){
  const[sub,setSub]=useState(0);
  const SUBS=[{l:"CI/CD Tests",icon:"🧪",accent:C.b},{l:"Règles nettoyage",icon:"🧹",accent:C.o},{l:"Backups",icon:"💾",accent:C.g},{l:"KPI & Business",icon:"📐",accent:C.v}];
@@ -152,72 +216,7 @@ export function DataHealth({data,setData}){
   </>}
 
   {/* ====== RÈGLES DE NETTOYAGE ====== */}
-  {sub===1&&(()=>{
-   const[showAdd,setShowAdd]=useState(false);
-   const[nf,setNf]=useState({name:"",field:"",rule:"",description:"",frequency:"daily"});
-   const addRule=()=>{
-    if(!nf.name)return;
-    const r={...nf,id:uid(),createdAt:new Date().toISOString(),lastRun:null,active:true};
-    uData("cleaningRules",[...rules,r]);setShowAdd(false);setNf({name:"",field:"",rule:"",description:"",frequency:"daily"});
-   };
-   const toggleRule=(id)=>uData("cleaningRules",rules.map(r=>r.id===id?{...r,active:!r.active}:r));
-   const deleteRule=(id)=>uData("cleaningRules",rules.filter(r=>r.id!==id));
-
-   return<>
-    <div style={{display:"flex",alignItems:"center",marginBottom:14}}>
-     <div style={{flex:1}}>
-      <div style={{fontWeight:700,fontSize:13}}>Règles de nettoyage des données</div>
-      <div style={{fontSize:10,color:C.td}}>Définissez les règles automatiques pour maintenir la qualité des données</div>
-     </div>
-     <Btn small onClick={()=>setShowAdd(true)}>+ Règle</Btn>
-    </div>
-
-    {rules.length===0&&<Card style={{padding:20}}>
-     <div style={{textAlign:"center",color:C.td,marginBottom:12}}>
-      <div style={{fontSize:30,marginBottom:8}}>🧹</div>
-      <div style={{fontSize:12,fontWeight:600}}>Aucune règle de nettoyage</div>
-      <div style={{fontSize:10,marginTop:4}}>Créez des règles pour automatiser le nettoyage des données.</div>
-     </div>
-     <div style={{fontSize:10,color:C.td,lineHeight:1.7,padding:"12px 16px",background:C.bg,borderRadius:10}}>
-      <b style={{color:C.t}}>Exemples de règles :</b><br/>
-      • Supprimer les contacts sans email depuis 30+ jours<br/>
-      • Normaliser les noms (majuscule première lettre)<br/>
-      • Dédupliquer les contacts par email<br/>
-      • Archiver les deals « Perdu » depuis 90+ jours<br/>
-      • Vérifier la cohérence CA vs charges (écart &gt; 50%)<br/>
-      • Nettoyer les événements passés depuis 6+ mois
-     </div>
-    </Card>}
-
-    {rules.map(r=><Card key={r.id} style={{marginBottom:4,padding:"10px 14px",opacity:r.active?1:.5}}>
-     <div style={{display:"flex",alignItems:"center",gap:8}}>
-      <Toggle on={r.active} onToggle={()=>toggleRule(r.id)}/>
-      <div style={{flex:1}}>
-       <div style={{fontWeight:700,fontSize:11}}>{r.name}</div>
-       <div style={{fontSize:9,color:C.td}}>{r.description||r.rule}</div>
-       <div style={{fontSize:8,color:C.td,marginTop:2}}>Champ: {r.field||"—"} · Fréquence: {r.frequency}</div>
-      </div>
-      <button onClick={()=>deleteRule(r.id)} style={{padding:"3px 6px",borderRadius:4,border:`1px solid ${C.r}33`,background:"transparent",color:C.r,fontSize:9,cursor:"pointer",fontFamily:FONT}}>×</button>
-     </div>
-    </Card>)}
-
-    <Sect title="Documentation des données" sub="Contexte et métadonnées">
-     <Card style={{padding:16}}>
-      <Inp label="Documentation générale" value={data.dataDocumentation||""} onChange={v=>uData("dataDocumentation",v)} textarea placeholder="Documentez ici les règles métier, les sources de données, les particularités de vos données...&#10;&#10;Ex:&#10;- Le CA provient de Stripe (hors remboursements)&#10;- Les charges incluent les frais bancaires Revolut&#10;- Les données pub Meta sont synchronisées quotidiennement"/>
-      <div style={{marginTop:8}}><Btn small onClick={()=>{uData("dataDocumentation",data.dataDocumentation);}}>Sauvegarder</Btn></div>
-     </Card>
-    </Sect>
-
-    <Modal open={showAdd} onClose={()=>setShowAdd(false)} title="Nouvelle règle de nettoyage">
-     <Inp label="Nom de la règle *" value={nf.name} onChange={v=>setNf({...nf,name:v})} placeholder="Déduplication contacts"/>
-     <Inp label="Champ/Collection concerné" value={nf.field} onChange={v=>setNf({...nf,field:v})} placeholder="contacts, finances, deals..."/>
-     <Inp label="Règle (expression)" value={nf.rule} onChange={v=>setNf({...nf,rule:v})} placeholder="duplicate(email) OR empty(name)"/>
-     <Sel label="Fréquence" value={nf.frequency} onChange={v=>setNf({...nf,frequency:v})} options={[{v:"realtime",l:"Temps réel"},{v:"hourly",l:"Toutes les heures"},{v:"daily",l:"Quotidien"},{v:"weekly",l:"Hebdomadaire"},{v:"monthly",l:"Mensuel"}]}/>
-     <Inp label="Description / Contexte" value={nf.description} onChange={v=>setNf({...nf,description:v})} textarea placeholder="Expliquez pourquoi cette règle existe..."/>
-     <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={addRule}>Créer</Btn><Btn v="secondary" onClick={()=>setShowAdd(false)}>Annuler</Btn></div>
-    </Modal>
-   </>;
-  })()}
+  {sub===1&&<CleaningRulesTab data={data} rules={rules} uData={uData}/>}
 
   {/* ====== BACKUPS ====== */}
   {sub===2&&<>

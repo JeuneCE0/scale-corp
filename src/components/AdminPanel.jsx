@@ -149,8 +149,21 @@ function AssetsTab({cfg,setCfg,hold,setHold,saveHold}){
     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:14}}><span style={{fontSize:14}}>&#x1F3F7;</span><span style={{fontWeight:700,fontSize:12}}>Identité de marque</span></div>
     <Inp label="Nom de la plateforme" value={brand.name||""} onChange={v=>uBrand("name",v)} placeholder="L'INCUBATEUR ECS"/>
     <Inp label="Sous-titre" value={brand.sub||""} onChange={v=>uBrand("sub",v)} placeholder="Plateforme de pilotage"/>
-    <Inp label="Logo URL" value={brand.logoUrl||""} onChange={v=>uBrand("logoUrl",v)} placeholder="https://..."/>
     <Inp label="Lettre logo (fallback)" value={brand.logoLetter||""} onChange={v=>uBrand("logoLetter",v)} placeholder="E"/>
+    <div style={{marginTop:6}}>
+     <div style={{fontSize:10,fontWeight:600,color:C.td,marginBottom:4}}>Logo de la plateforme</div>
+     <label style={{display:"inline-flex",alignItems:"center",gap:8,padding:"8px 14px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,cursor:"pointer"}}>
+      <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
+       const file=e.target.files?.[0];if(!file)return;
+       if(file.size>500000){alert("Image trop lourde (max 500 KB)");return;}
+       const reader=new FileReader();
+       reader.onload=(ev)=>uBrand("logoUrl",ev.target.result);
+       reader.readAsDataURL(file);
+      }}/>
+      <span style={{fontSize:11,color:C.t,fontWeight:600,fontFamily:FONT}}>📁 Choisir un fichier image</span>
+     </label>
+     {brand.logoUrl&&<button onClick={()=>uBrand("logoUrl","")} style={{marginLeft:8,padding:"4px 8px",borderRadius:6,border:`1px solid ${C.r}33`,background:"transparent",color:C.r,fontSize:9,cursor:"pointer",fontFamily:FONT}}>Supprimer</button>}
+    </div>
     {brand.logoUrl&&<div style={{marginTop:8,padding:10,background:C.bg,borderRadius:10,textAlign:"center",border:`1px solid ${C.brd}`}}>
      <img src={brand.logoUrl} alt="Logo" style={{maxHeight:60,maxWidth:"100%",objectFit:"contain"}} onError={e=>{e.target.style.display="none";}}/>
      <div style={{fontSize:8,color:C.td,marginTop:4}}>Aperçu logo</div>
@@ -202,7 +215,13 @@ function AssetsTab({cfg,setCfg,hold,setHold,saveHold}){
    </Card>
   </div>
 
-  <Btn onClick={()=>{saveHold();const nc=addLog(cfg,"brand_save","Brand settings saved");setCfg(nc);saveCfg(nc);}}>Sauvegarder branding</Btn>
+  <Btn onClick={()=>{
+   /* Persist brand into cfg as well for local backup */
+   const brandCopy={...(hold?.brand||{})};
+   const nc=addLog({...cfg,brand:brandCopy},"brand_save","Brand settings saved");
+   setCfg(nc);saveCfg(nc);
+   saveHold();
+  }}>Sauvegarder branding</Btn>
  </>;
 }
 

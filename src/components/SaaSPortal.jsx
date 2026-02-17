@@ -57,7 +57,7 @@ function OverviewTab({client,data}){
    </Card>)}
   </Sect>}
 
-  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+  <div className="saas-2col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
    <Card style={{padding:16}}>
     <div style={{fontWeight:700,fontSize:12,marginBottom:12}}>Évolution CA (6 derniers mois)</div>
     <div style={{display:"flex",alignItems:"flex-end",gap:4,height:100}}>
@@ -354,7 +354,7 @@ export function SaaSClientPortal({previewMode}){
    {previewMode&&<span style={{marginLeft:"auto",padding:"4px 10px",borderRadius:6,background:C.oD,color:C.o,fontSize:9,fontWeight:700}}>MODE PREVIEW</span>}
   </div>
 
-  <div style={{display:"flex",gap:3,marginBottom:20,overflowX:"auto",padding:"2px 0",borderBottom:`1px solid ${C.brd}`,paddingBottom:8}}>
+  <div className="saas-tabs" style={{display:"flex",gap:3,marginBottom:20,overflowX:"auto",padding:"2px 0",borderBottom:`1px solid ${C.brd}`,paddingBottom:8}}>
    {TABS.map(t=>{const a=tab===t.id;
     return<button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 12px",borderRadius:8,border:"none",background:a?t.accent+"18":"transparent",color:a?C.t:C.td,fontSize:10,fontWeight:a?700:500,cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap",flexShrink:0,borderBottom:a?`2px solid ${t.accent}`:"2px solid transparent"}}>
      <span style={{fontSize:12}}>{t.icon}</span><span>{t.label}</span>
