@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { C, FONT, FONT_TITLE, fmt, uid, sSet } from "../shared.jsx";
 import { Btn, Card, Inp, Sel, Sect, Modal, Toggle, KPI } from "../components.jsx";
 
-const SK="scCpState";
+const _SK="scCpState";
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));sSet(k,v);}catch{}}
 
 const PLANS=[
@@ -11,7 +11,8 @@ const PLANS=[
  {id:"enterprise",name:"Enterprise",priceM:499,priceY:399,features:["Tout Professional +","CI/CD Data Monitoring","Backup automatique 24h","KPI personnalisés","Utilisateurs illimités","Onboarding dédié","SLA 99.9%","Account manager"],color:C.v,icon:"🏢",recommended:false},
 ];
 
-export function ClientBilling({data,setData,client,setClient,onSuccess}){
+export function ClientBilling({data,setData,client,setClient,onSuccess,storageKey}){
+ const SK=storageKey||_SK;
  const[billing,setBilling]=useState(data.billing||{cycle:"monthly",plan:"starter"});
  const[step,setStep]=useState(data.billing?.paid?"manage":"plan"); // plan -> info -> payment -> success | error
  const[form,setForm]=useState({

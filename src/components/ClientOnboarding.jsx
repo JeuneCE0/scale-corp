@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { C, FONT, FONT_TITLE, uid, sSet } from "../shared.jsx";
 import { Btn, Card, Inp, Sel, Sect, Modal, Toggle, KPI, PBar } from "../components.jsx";
 
-const SK="scCpState";
+const _SK="scCpState";
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));sSet(k,v);}catch{}}
 
 const STEPS=[
@@ -65,7 +65,8 @@ const TUTO_STEPS=[
  {title:"Paramètres",desc:"Configurez votre compte, gérez les utilisateurs, exportez vos données, configurez les intégrations API et les options RGPD.",icon:"⚙️"},
 ];
 
-export function ClientOnboarding({data,setData,client,setClient,onComplete}){
+export function ClientOnboarding({data,setData,client,setClient,onComplete,storageKey}){
+ const SK=storageKey||_SK;
  const[step,setStep]=useState(data.onboarding?.step||0);
  const[onb,setOnb]=useState(data.onboarding||{step:0,company:{},tools:[],apis:{},sources:{},completed:false});
  const[tutoStep,setTutoStep]=useState(0);

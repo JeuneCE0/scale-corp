@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { C, FONT, FONT_TITLE, uid, ago, fmt, sSet } from "../shared.jsx";
 import { Btn, Card, Inp, Sel, Sect, Modal, Toggle, KPI, PBar } from "../components.jsx";
 
-const SK="scCpState";
+const _SK="scCpState";
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));sSet(k,v);}catch{}}
 
 /* ====== DEFAULT CI/CD TESTS ====== */
@@ -109,7 +109,8 @@ function CleaningRulesTab({data,rules,uData}){
  </>;
 }
 
-export function DataHealth({data,setData}){
+export function DataHealth({data,setData,storageKey}){
+ const SK=storageKey||_SK;
  const[sub,setSub]=useState(0);
  const SUBS=[{l:"CI/CD Tests",icon:"🧪",accent:C.b},{l:"Règles nettoyage",icon:"🧹",accent:C.o},{l:"Backups",icon:"💾",accent:C.g},{l:"KPI & Business",icon:"📐",accent:C.v}];
 

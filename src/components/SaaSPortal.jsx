@@ -10,7 +10,8 @@ const DataHealth = lazy(() => import("./DataHealthPanel.jsx").then(m => ({ defau
 
 const LF = <div style={{textAlign:"center",padding:40,color:C.td,fontSize:11}}>Chargement...</div>;
 
-const SK = "scCpState";
+/* User-scoped storage key — set by SaaSClientPortal on mount */
+let SK = "scCpState";
 function load(k,d){try{const s=localStorage.getItem(k);return s?{...d,...JSON.parse(s)}:d;}catch{return d;}}
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));sSet(k,v);}catch{}}
 
@@ -796,12 +797,39 @@ const TABS=[
  {id:7,label:"Data Health",icon:"🔬",accent:C.g},
 ];
 
-export function SaaSClientPortal({previewMode}){
+export function SaaSClientPortal({previewMode,authUser}){
+ /* User-scoped storage key: ensures each client has isolated data */
+ const userId=authUser?.id;
+ const userKey=userId?"scCpState_"+userId:"scCpState";
+
+ /* Migration: if user-scoped key doesn't exist but old global key does, copy data over */
+ useEffect(()=>{
+  if(!userId)return;
+  const existing=localStorage.getItem(userKey);
+  if(!existing){
+   const old=localStorage.getItem("scCpState");
+   if(old){localStorage.setItem(userKey,old);/* Re-read into state after migration */try{const parsed=JSON.parse(old);setData(prev=>({...prev,...parsed}));}catch{}}
+  }
+ },[userId,userKey]);
+
+ /* Set module-level SK so all child tab components use the right key */
+ SK=userKey;
+
+ const DEFAULT_DATA={contacts:[],finances:{},deals:[],ads:{},events:[],tasks:[],alerts:[],health:{score:0,items:[]},onboarding:null,billing:null};
  const[tab,setTab]=useState(previewMode?0:6);
- const[data,setData]=useState(()=>load(SK,{contacts:[],finances:{},deals:[],ads:{},events:[],tasks:[],alerts:[],health:{score:0,items:[]},onboarding:null,billing:null}));
+ const[data,setData]=useState(()=>load(userKey,DEFAULT_DATA));
  const client=data.client||{company:"",siret:"",tva:"",address:"",email:"",phone:"",plan:"starter",billing:"monthly"};
  const setClient=(c)=>{const nd={...data,client:c};setData(nd);sv(SK,nd);};
  const isOnb=!!(data.onboarding?.completed);
+
+ /* Re-read from localStorage when sync from Supabase completes (fires after login) */
+ useEffect(()=>{
+  const onStorage=(e)=>{if(e.key===userKey&&e.newValue){try{const parsed=JSON.parse(e.newValue);setData(prev=>({...prev,...parsed}));}catch{}}};
+  window.addEventListener("storage",onStorage);
+  /* Also re-read once after short delay to catch syncFromSupabase writes (same-tab) */
+  const t=setTimeout(()=>{try{const s=localStorage.getItem(userKey);if(s){const parsed=JSON.parse(s);setData(prev=>{const prevStr=JSON.stringify(prev);const newStr=JSON.stringify({...prev,...parsed});return prevStr===newStr?prev:{...prev,...parsed};});}}catch{}},800);
+  return()=>{window.removeEventListener("storage",onStorage);clearTimeout(t);};
+ },[userKey]);
 
  useEffect(()=>{if(!isOnb&&!previewMode&&tab!==6&&tab!==5)setTab(6);},[isOnb,previewMode,tab]);
 
@@ -830,9 +858,9 @@ export function SaaSClientPortal({previewMode}){
   {tab===1&&<CRMTab data={data} setData={setData}/>}
   {tab===2&&<DataTab data={data} setData={setData}/>}
   {tab===3&&<AgendaTab data={data} setData={setData}/>}
-  {tab===4&&<Suspense fallback={LF}><ClientSettingsPanel data={data} setData={setData} client={client} setClient={setClient}/></Suspense>}
-  {tab===5&&<Suspense fallback={LF}><ClientBilling data={data} setData={setData} client={client} setClient={setClient} onSuccess={()=>setTab(6)}/></Suspense>}
-  {tab===6&&<Suspense fallback={LF}><ClientOnboarding data={data} setData={setData} client={client} setClient={setClient} onComplete={()=>setTab(0)}/></Suspense>}
-  {tab===7&&<Suspense fallback={LF}><DataHealth data={data} setData={setData}/></Suspense>}
+  {tab===4&&<Suspense fallback={LF}><ClientSettingsPanel data={data} setData={setData} client={client} setClient={setClient} storageKey={SK}/></Suspense>}
+  {tab===5&&<Suspense fallback={LF}><ClientBilling data={data} setData={setData} client={client} setClient={setClient} onSuccess={()=>setTab(6)} storageKey={SK}/></Suspense>}
+  {tab===6&&<Suspense fallback={LF}><ClientOnboarding data={data} setData={setData} client={client} setClient={setClient} onComplete={()=>setTab(0)} storageKey={SK}/></Suspense>}
+  {tab===7&&<Suspense fallback={LF}><DataHealth data={data} setData={setData} storageKey={SK}/></Suspense>}
  </div>;
 }
