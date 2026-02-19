@@ -32,6 +32,7 @@ import { GlobalSearch } from "./components/GlobalSearch.jsx";
 import { SkeletonDashboard, SkeletonKPI, SkeletonCard, SkeletonTable, SkeletonStyles } from "./components/Skeletons.jsx";
 import { POLISH_CSS, ToastProvider, useToast, setGlobalToast, showToast, PageTransition, Breadcrumbs, AnimatedThemeToggle, PullToRefresh, ConfettiBurst, OnboardingTour, EmptyState } from "./ui-polish.jsx";
 import { ConsentBanner, PrivacyPolicyPage, MentionsLegalesPage, RGPDSettingsPanel, LoginFooter } from "./rgpd.jsx";
+import { LandingPage } from "./components/LandingPage.jsx";
 
 /* LAZY-LOADED HEAVY VIEWS */
 // Lazy-loaded components — imported directly from chunk files (not via components.jsx barrel)
@@ -232,43 +233,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  if(hash.startsWith("#board/")){const bPin=hash.replace("#board/","");return <><style>{CSS}{POLISH_CSS}</style><InvestorBoard socs={socs} reps={reps} allM={allM} hold={hold} pin={bPin}/></>;}
 
  /* Onboarding removed */;
- if(!role)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT,padding:16}}>
-  <style>{CSS}{POLISH_CSS}</style>
-  {/* TUTORIAL OVERLAY ON LOGIN */}
-  {false&&<div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(0,0,0,.6)",backdropFilter:"blur(3px)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT}}>
-   <div className="si glass-modal" style={{borderRadius:20,padding:0,width:500,maxWidth:"95vw",overflow:"hidden"}}>
-    <div style={{padding:"24px 28px",background:`linear-gradient(135deg,${C.accD},transparent)`,borderBottom:`1px solid ${C.brd}`,textAlign:"center"}}>
-     <div style={{width:64,height:64,borderRadius:16,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:30,marginBottom:12,boxShadow:`0 8px 32px ${C.accD}`}}>🎓</div>
-     <h2 style={{margin:0,fontSize:22,fontWeight:800,color:C.t,fontFamily:FONT_TITLE}}>Bienvenue  !</h2>
-     <p style={{color:C.td,fontSize:13,margin:"8px 0 0",lineHeight:1.5}}>Votre espace est configuré. Connectez-vous puis découvrez la plateforme avec un tutoriel guidé de chaque onglet.</p>
-    </div>
-    <div style={{padding:"20px 28px"}}>
-     <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{[{icon:"📊",label:"Dashboard",desc:"Pilotage global"},{icon:"🏆",label:"Milestones",desc:"Trophées & progrès"},{icon:"🤖",label:"AI Copilot",desc:"Insights IA"},{icon:"📈",label:"Analytique",desc:"Tendances & comparaisons"}].map(it=>
-      <div key={it.label} style={{padding:"12px 14px",borderRadius:10,background:C.bg,border:`1px solid ${C.brd}`,display:"flex",alignItems:"center",gap:8}}>
-       <span style={{fontSize:18}}>{it.icon}</span><div><div style={{fontWeight:700,fontSize:11,color:C.t}}>{it.label}</div><div style={{fontSize:10,color:C.td}}>{it.desc}</div></div></div>)}</div>
-    </div>
-    <div style={{padding:"14px 28px",borderTop:`1px solid ${C.brd}`,textAlign:"center"}}>
-     <button onClick={()=>setShowTour(false)} style={{padding:"10px 28px",borderRadius:9,border:"none",background:`linear-gradient(135deg,${C.acc},#FF9D00)`,color:"#0a0a0f",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT,boxShadow:`0 4px 16px ${C.accD}`}}>Se connecter →</button>
-    </div>
-   </div>
-  </div>}
-  <div style={{position:"fixed",top:16,right:16,zIndex:100}}><AnimatedThemeToggle onToggle={toggleTheme}/></div>
-  <div className="si glass-modal" style={{borderRadius:20,padding:28,width:340,maxWidth:"95vw"}}>
-   <div style={{textAlign:"center",marginBottom:24}}>
-    <div className="fl glow-accent-strong" style={{width:64,height:64,background:"transparent",borderRadius:12,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,color:"#0a0a0f",marginBottom:10,overflow:"hidden"}}>{hold.brand?.logoUrl?<img loading="lazy" src={hold.brand.logoUrl} alt={hold.brand?.name||"Logo"} style={{width:"100%",height:"100%",objectFit:"contain"}}/>:(hold.brand?.logoLetter||"E")}</div>
-    <h1 style={{margin:0,fontSize:18,fontWeight:900,letterSpacing:.5,fontFamily:FONT_TITLE,color:"#fff"}}>{hold.brand?.name||"L'INCUBATEUR ECS"}</h1>
-    <p style={{color:C.td,fontSize:11,margin:"4px 0 0"}}>{hold.brand?.sub||"Plateforme de pilotage"}</p>
-   </div>
-   <div style={{animation:shake?"sh .4s ease":"none"}}>
-    <Inp label="Email" value={loginEmail} onChange={v=>{setLoginEmail(v);setLErr("");}} type="email" placeholder="votre@email.com" required onKeyDown={e=>{if(e.key==="Enter"&&loginEmail&&loginPass)loginEmail2();}}/>
-    <Inp label="Mot de passe" value={loginPass} onChange={v=>{setLoginPass(v);setLErr("");}} type="password" placeholder="••••••••" required onKeyDown={e=>{if(e.key==="Enter")loginEmail2();}}/>
-   </div>
-   {lErr&&<div style={{color:C.r,fontSize:11,marginBottom:8,textAlign:"center"}}>⚠ {lErr}</div>}
-   <Btn onClick={loginEmail2} full disabled={authLoading}>{authLoading?"Connexion...":"Connexion"}</Btn>
-   <LoginFooter/>
-  </div>
-  <ConsentBanner/>
- </div>;
+ if(!role)return <LandingPage hold={hold} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPass={loginPass} setLoginPass={setLoginPass} loginEmail2={loginEmail2} lErr={lErr} setLErr={setLErr} shake={shake} authLoading={authLoading} toggleTheme={toggleTheme}/>;
  if(role!=="admin"){const soc=socs.find(s=>s.id===role);if(!soc)return null;
   const porteurSetTab=(t)=>{const btn=document.querySelector(`[data-tour="porteur-tab-${t}"]`);if(btn)btn.click();};
   const switchSoc=(newSocId)=>{setRole(newSocId);setCurrentSocId(newSocId);syncFromSupabase(newSocId).catch(()=>{});};
