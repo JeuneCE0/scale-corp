@@ -5346,7 +5346,8 @@ export const SB_ADMIN=[
  {id:"sales",icon:"📞",label:"Sales",tab:15,accent:"#34d399"},
  {id:"pub",icon:"📣",label:"Publicité",tab:16,accent:"#f472b6"},
  {id:"rapports",icon:"📋",label:"Rapports",tab:17,accent:C.v},
- {id:"saas",icon:"⚙️",label:"SaaS Admin",tab:18,accent:"#f59e0b"},
+ {id:"access",icon:"🔐",label:"Accès",tab:14,accent:"#f59e0b"},
+ {id:"params",icon:"⚙️",label:"Paramètres",tab:18,accent:C.td},
  {id:"pulse",icon:"⚡",label:"PULSE",tab:99,accent:"#FFAA00"},
 ];
 

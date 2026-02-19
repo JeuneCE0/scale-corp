@@ -58,7 +58,7 @@ function AppInner(){
  const[subs,setSubs]=useState([]);const[team,setTeam]=useState([]);const[clients,setClients]=useState([]);const[invoices,setInvoices]=useState([]);
  const[pin,setPin]=useState("");const[lErr,setLErr]=useState("");const[shake,setShake]=useState(false);
  const[loginMode,setLoginMode]=useState("email");const[loginEmail,setLoginEmail]=useState("");const[loginPass,setLoginPass]=useState("");const[authUser,setAuthUser]=useState(null);const[authLoading,setAuthLoading]=useState(false);
- const[tab,setTab]=useState(0);const[eSoc,setESoc]=useState(null);const[eHold,setEHold]=useState(false);const[saasSubTab,setSaasSubTab]=useState("params");
+ const[tab,setTab]=useState(0);const[eSoc,setESoc]=useState(null);const[eHold,setEHold]=useState(false);
  const[deferredPrompt,setDeferredPrompt]=useState(null);
  useEffect(()=>{const h=e=>{e.preventDefault();setDeferredPrompt(e);window.__pwaPrompt=e;};window.addEventListener("beforeinstallprompt",h);return()=>window.removeEventListener("beforeinstallprompt",h);},[]);
  const[saving,setSaving]=useState(false);const[meeting,setMeeting]=useState(false);const[adminSocView,setAdminSocView]=useState(null);
@@ -750,7 +750,8 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   {tab===8&&<Suspense fallback={<LazyFallback/>}><BankingPanel revData={revData} onSync={syncRev} clients={clients}/></Suspense>}
   {tab===10&&<SynergiesPanel socs={socs} synergies={synergies} saveSynergies={saveSynergies}/>}
   {tab===11&&<KnowledgeBase socs={socs} kb={kb} saveKb={saveKb}/>}
-  {/* tabs 13/14 merged into tab 18 SaaS */}
+  {tab===13&&<SubsTeamPanel socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId="all" reps={reps} revData={revData}/>}
+  {tab===14&&<UserAccessPanel socs={socs}/>}
   {tab===15&&<>
    {/* SALES GLOBAL */}
    <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>📞 Sales — Vue consolidée</div>
@@ -851,13 +852,8 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </Card>
   </>}
   {tab===18&&<>
-   {/* UNIFIED SAAS ADMIN TAB */}
-   <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:4}}>SaaS Administration</div>
-   <div style={{fontSize:10,color:C.td,marginBottom:14}}>Parametres, templates et gestion des acces</div>
-   <div className="panel-tabs" style={{display:"flex",gap:4,marginBottom:16,flexWrap:"wrap"}}>
-    {[{k:"params",l:"Parametres",icon:"⚙️"},{k:"templates",l:"Templates",icon:"📋"},{k:"access",l:"Acces Clients",icon:"🔐"}].map(t=><button key={t.k} onClick={()=>setSaasSubTab(t.k)} style={{padding:"8px 16px",borderRadius:10,border:`1px solid ${saasSubTab===t.k?C.acc+"55":C.brd}`,background:saasSubTab===t.k?C.accD:"transparent",color:saasSubTab===t.k?C.acc:C.td,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:5,transition:"all .2s"}}><span>{t.icon}</span>{t.l}</button>)}
-   </div>
-   {saasSubTab==="params"&&<>
+   {/* PARAMÈTRES */}
+   <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>⚙️ Paramètres Holding</div>
    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
     <Card style={{padding:16}}>
      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>🎨</span><span style={{fontWeight:700,fontSize:12}}>Branding</span></div>
@@ -900,6 +896,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     {actS.filter(s=>s.id!=="eco").map(s=><WidgetEmbed key={s.id} soc={s} clients={clients}/>)}
    </Sect>
    <RGPDSettingsPanel role={role} socs={socs} reps={reps} clients={clients} team={team} invoices={invoices} actions={actions} journal={journal} subs={subs} porteurSocIds={porteurSocIds}/>
+   {/* 🔀 Data Lineage (dev/niche) */}
    <Card style={{padding:16,marginTop:12}}>
     <details style={{cursor:"pointer"}}>
      <summary style={{display:"flex",alignItems:"center",gap:8,listStyle:"none",userSelect:"none"}}>
@@ -911,9 +908,6 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </details>
    </Card>
    <div style={{marginTop:12}}><Btn onClick={()=>{save(null,null,hold);}}>💾 Sauvegarder les paramètres</Btn></div>
-   </>}
-   {saasSubTab==="templates"&&<SubsTeamPanel socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId="all" reps={reps} revData={revData}/>}
-   {saasSubTab==="access"&&<UserAccessPanel socs={socs}/>}
   </>}
   </PageTransition>
   </div>
