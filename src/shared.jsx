@@ -82,6 +82,12 @@ button,a,[role=button]{-webkit-tap-highlight-color:transparent;touch-action:mani
 input[type=range]{-webkit-appearance:none;background:${C.brd};height:3px;border-radius:4px;outline:none}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:${C.acc};cursor:pointer;box-shadow:0 2px 6px rgba(255,170,0,.3)}
 select{cursor:pointer}select:focus{border-color:${C.acc}44}
+input[type=date],input[type=datetime-local],input[type=time]{color-scheme:dark}
+input[type=date]::-webkit-calendar-picker-indicator,input[type=datetime-local]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-calendar-picker-indicator{filter:invert(0.7) sepia(1) saturate(5) hue-rotate(5deg);cursor:pointer;opacity:.7;transition:opacity .2s}
+input[type=date]::-webkit-calendar-picker-indicator:hover,input[type=datetime-local]::-webkit-calendar-picker-indicator:hover,input[type=time]::-webkit-calendar-picker-indicator:hover{opacity:1}
+[data-theme="light"] input[type=date],[data-theme="light"] input[type=datetime-local],[data-theme="light"] input[type=time]{color-scheme:light}
+[data-theme="light"] input[type=date]::-webkit-calendar-picker-indicator,[data-theme="light"] input[type=datetime-local]::-webkit-calendar-picker-indicator,[data-theme="light"] input[type=time]::-webkit-calendar-picker-indicator{filter:none;opacity:.6}
+[data-theme="light"] input[type=date]::-webkit-calendar-picker-indicator:hover,[data-theme="light"] input[type=datetime-local]::-webkit-calendar-picker-indicator:hover,[data-theme="light"] input[type=time]::-webkit-calendar-picker-indicator:hover{opacity:1}
 *:focus-visible{outline:2px solid #6366f1;outline-offset:2px;border-radius:4px}
 .glass-bg{background:#06060b;background-image:radial-gradient(at 20% 30%,rgba(255,170,0,.03) 0%,transparent 50%),radial-gradient(at 80% 70%,rgba(255,157,0,.02) 0%,transparent 50%),radial-gradient(at 50% 50%,rgba(96,165,250,.015) 0%,transparent 60%)}
 .glass-card{background:rgba(14,14,22,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.06);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.3);transition:all .3s cubic-bezier(.4,0,.2,1)}

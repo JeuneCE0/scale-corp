@@ -967,7 +967,7 @@ function UserAccessPanel({socs}){
    <div style={{fontSize:10,color:C.td}}>{accessModal?.email}</div>
   </div>
   <div style={{fontSize:10,fontWeight:700,color:C.td,letterSpacing:.5,marginBottom:8}}>PROJETS ACCESSIBLES</div>
-  <div style={{maxHeight:300,overflowY:"auto"}}>
+  <div style={{maxHeight:"50vh",overflowY:"auto"}}>
    {socs.map(s=>{const checked=accessIds.includes(s.id);return <div key={s.id} onClick={()=>toggleSocAccess(s.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",marginBottom:4,borderRadius:10,border:`1px solid ${checked?(s.color||C.acc)+"55":C.brd}`,background:checked?(s.color||C.acc)+"0C":C.bg,cursor:"pointer",transition:"all .15s"}}>
     <div style={{width:18,height:18,borderRadius:5,border:`2px solid ${checked?(s.color||C.acc):C.brd}`,background:checked?(s.color||C.acc):"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"}}>
      {checked&&<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5L4.5 7.5L8 3" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
