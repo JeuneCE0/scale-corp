@@ -909,6 +909,69 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </Card>
    <div style={{marginTop:12}}><Btn onClick={()=>{save(null,null,hold);}}>💾 Sauvegarder les paramètres</Btn></div>
   </>}
+  {tab===30&&<>
+   {/* PARAMÈTRES SAAS */}
+   <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>☁️ Paramètres SaaS</div>
+   <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+    <Card style={{padding:16}}>
+     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>🎨</span><span style={{fontWeight:700,fontSize:12}}>Template Client</span></div>
+     <Inp label="Nom plateforme client" value={hold.saas?.platformName||hold.brand?.name||""} onChange={v=>setHold({...hold,saas:{...(hold.saas||{}),platformName:v}})}/>
+     <Inp label="Logo URL client" value={hold.saas?.logoUrl||hold.brand?.logoUrl||""} onChange={v=>setHold({...hold,saas:{...(hold.saas||{}),logoUrl:v}})} placeholder="https://..."/>
+     <Inp label="Couleur accent portail" value={hold.saas?.accentColor||hold.brand?.accentColor||"#FFAA00"} onChange={v=>setHold({...hold,saas:{...(hold.saas||{}),accentColor:v}})}/>
+     <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6}}>
+      <label style={{fontSize:10,color:C.td,fontWeight:600}}>Aperçu couleur</label>
+      <input type="color" value={hold.saas?.accentColor||hold.brand?.accentColor||"#FFAA00"} onChange={e=>setHold({...hold,saas:{...(hold.saas||{}),accentColor:e.target.value}})} style={{width:28,height:22,border:`1px solid ${C.brd}`,borderRadius:6,cursor:"pointer"}}/>
+     </div>
+    </Card>
+    <Card style={{padding:16}}>
+     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>📦</span><span style={{fontWeight:700,fontSize:12}}>Plans & Tarifs</span></div>
+     <Inp label="Plan Starter (€/mois)" type="number" value={hold.saas?.planStarter||0} onChange={v=>setHold({...hold,saas:{...(hold.saas||{}),planStarter:pf(v)}})} suffix="€"/>
+     <Inp label="Plan Pro (€/mois)" type="number" value={hold.saas?.planPro||0} onChange={v=>setHold({...hold,saas:{...(hold.saas||{}),planPro:pf(v)}})} suffix="€"/>
+     <Inp label="Plan Enterprise (€/mois)" type="number" value={hold.saas?.planEnterprise||0} onChange={v=>setHold({...hold,saas:{...(hold.saas||{}),planEnterprise:pf(v)}})} suffix="€"/>
+    </Card>
+    <Card style={{padding:16}}>
+     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>🔗</span><span style={{fontWeight:700,fontSize:12}}>Portail Client</span></div>
+     <div style={{fontSize:10,color:C.td,marginBottom:8}}>URL du portail : <strong style={{color:C.acc}}>{window.location.origin}/#portal/</strong></div>
+     <Toggle label="Portail actif" value={hold.saas?.portalEnabled!==false} onChange={v=>setHold({...hold,saas:{...(hold.saas||{}),portalEnabled:v}})}/>
+     <Toggle label="Inscription ouverte" value={hold.saas?.openSignup||false} onChange={v=>setHold({...hold,saas:{...(hold.saas||{}),openSignup:v}})}/>
+    </Card>
+    <Card style={{padding:16}}>
+     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>📧</span><span style={{fontWeight:700,fontSize:12}}>Notifications SaaS</span></div>
+     <Toggle label="Email bienvenue" value={hold.saas?.welcomeEmail!==false} onChange={v=>setHold({...hold,saas:{...(hold.saas||{}),welcomeEmail:v}})}/>
+     <Toggle label="Rappels paiement" value={hold.saas?.paymentReminders!==false} onChange={v=>setHold({...hold,saas:{...(hold.saas||{}),paymentReminders:v}})}/>
+     <Toggle label="Rapport mensuel client" value={hold.saas?.monthlyReport||false} onChange={v=>setHold({...hold,saas:{...(hold.saas||{}),monthlyReport:v}})}/>
+    </Card>
+   </div>
+   <div style={{marginTop:12}}><Btn onClick={()=>{save(null,null,hold);}}>💾 Sauvegarder les paramètres SaaS</Btn></div>
+  </>}
+  {tab===31&&<>
+   {/* CLIENTS SAAS */}
+   <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>👥 Clients SaaS</div>
+   <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:14}}>
+    <KPI label="Total Clients" value={clients.length} accent={C.b} icon="👥" delay={1}/>
+    <KPI label="Actifs" value={clients.filter(c=>c.status==="active"||c.stat==="active").length} accent={C.g} icon="✅" delay={2}/>
+    <KPI label="MRR" value={`${fmt(clients.reduce((a,c)=>a+(c.mrr||c.monthly||0),0))}€`} accent={C.acc} icon="💰" delay={3}/>
+    <KPI label="Churn" value={`${clients.filter(c=>c.status==="churned"||c.stat==="churned").length}`} accent={C.r} icon="📉" delay={4}/>
+   </div>
+   <Card style={{padding:14}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📋 LISTE DES CLIENTS SAAS</div>
+    <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+     <thead><tr style={{borderBottom:`2px solid ${C.brd}`}}>{["Client","Société","Plan","MRR","Statut","Depuis"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:C.td,fontWeight:600,fontSize:9}}>{h}</th>)}</tr></thead>
+     <tbody>{clients.length>0?clients.map((c,i)=>{
+      const soc=socs.find(s=>s.id===c.socId)||{};
+      return <tr key={c.id||i} style={{borderBottom:`1px solid ${C.brd}08`}}>
+       <td style={{padding:"6px 8px",fontWeight:600}}>{c.name||c.nom||"—"}</td>
+       <td style={{padding:"6px 8px"}}><span style={{width:5,height:5,borderRadius:3,background:soc.color||C.td,display:"inline-block",marginRight:4}}/>{soc.nom||"—"}</td>
+       <td style={{padding:"6px 8px"}}><span style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:C.accD,color:C.acc,fontWeight:600}}>{c.plan||"Standard"}</span></td>
+       <td style={{padding:"6px 8px",fontWeight:700,color:C.acc}}>{c.mrr||c.monthly?fmt(c.mrr||c.monthly)+"€/m":"—"}</td>
+       <td style={{padding:"6px 8px"}}><Badge s={c.status||c.stat||"active"}/></td>
+       <td style={{padding:"6px 8px",color:C.td,fontSize:10}}>{c.since||c.created||"—"}</td>
+      </tr>;}):
+      <tr><td colSpan={6} style={{padding:20,textAlign:"center",color:C.td,fontSize:11}}>Aucun client SaaS pour le moment</td></tr>}
+     </tbody>
+    </table></div>
+   </Card>
+  </>}
   </PageTransition>
   </div>
   </div>
