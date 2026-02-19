@@ -970,8 +970,14 @@ export function OfflineBanner(){
 
 /* ============ OFFLINE CACHE HELPERS ============ */
 const CACHE_PREFIX="sc_cache_";
-export function cacheSet(key,data){try{localStorage.setItem(CACHE_PREFIX+key,JSON.stringify({data,ts:Date.now()}));}catch{}}
-export function cacheGet(key,maxAgeMs=86400000){try{const raw=localStorage.getItem(CACHE_PREFIX+key);if(!raw)return null;const{data,ts}=JSON.parse(raw);if(Date.now()-ts>maxAgeMs)return null;return data;}catch{return null;}}
+const CACHE_VERSION=2; // Bump to invalidate all caches
+export function cacheSet(key,data,ttlMs=86400000){try{localStorage.setItem(CACHE_PREFIX+key,JSON.stringify({data,ts:Date.now(),v:CACHE_VERSION,ttl:ttlMs}));}catch(e){
+  // If quota exceeded, evict oldest entries
+  if(e.name==='QuotaExceededError'){cacheEvict(5);try{localStorage.setItem(CACHE_PREFIX+key,JSON.stringify({data,ts:Date.now(),v:CACHE_VERSION,ttl:ttlMs}));}catch{}}
+}}
+export function cacheGet(key,maxAgeMs=86400000){try{const raw=localStorage.getItem(CACHE_PREFIX+key);if(!raw)return null;const parsed=JSON.parse(raw);if(parsed.v!==CACHE_VERSION){localStorage.removeItem(CACHE_PREFIX+key);return null;}const ttl=parsed.ttl||maxAgeMs;if(Date.now()-parsed.ts>ttl){localStorage.removeItem(CACHE_PREFIX+key);return null;}return parsed.data;}catch{return null;}}
+export function cacheInvalidate(key){try{localStorage.removeItem(CACHE_PREFIX+key);}catch{}}
+export function cacheEvict(count=5){try{const entries=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k?.startsWith(CACHE_PREFIX)){try{const p=JSON.parse(localStorage.getItem(k));entries.push({k,ts:p.ts||0});}catch{entries.push({k,ts:0});}}}entries.sort((a,b)=>a.ts-b.ts).slice(0,count).forEach(e=>localStorage.removeItem(e.k));}catch{}}
 
 export const TX_CATEGORIES=[
  {id:"all",label:"Toutes",icon:""},

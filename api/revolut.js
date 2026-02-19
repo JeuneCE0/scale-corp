@@ -1,6 +1,5 @@
 // Vercel Serverless Function - Revolut Business API Proxy
-// Access tokens are stored server-side only (Vercel env vars)
-import { verifyAuth, getAllowedRevolutCompany } from './_middleware.js';
+import { applyHeaders, verifyAuth, getAllowedRevolutCompany, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest } from './_middleware.js';
 
 const COMPANY_TOKEN_MAP = {
   eco: "REVOLUT_ECO_TOKEN",
@@ -9,70 +8,34 @@ const COMPANY_TOKEN_MAP = {
 };
 
 const REV_BASE = "https://b2b.revolut.com/api/1.0";
-
-// Action whitelist
 const VALID_ACTIONS = ['accounts', 'transactions'];
 
-// Basic in-memory rate limiting (per serverless instance)
-if (!globalThis._revRateLimit) globalThis._revRateLimit = {};
-const RATE_LIMIT_WINDOW = 60_000;
-const RATE_LIMIT_MAX = 30;
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const rateLimit = globalThis._revRateLimit;
-  if (!rateLimit[ip] || now - rateLimit[ip].start > RATE_LIMIT_WINDOW) {
-    rateLimit[ip] = { start: now, count: 1 };
-    return true;
-  }
-  rateLimit[ip].count++;
-  return rateLimit[ip].count <= RATE_LIMIT_MAX;
-}
-
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
+  applyHeaders(req, res);
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  // Rate limit
-  const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
-  if (!checkRateLimit(ip)) return res.status(429).json({ error: "Too many requests" });
+  const ip = getClientIP(req);
+  if (!rateLimit('revolut', ip)) return tooManyRequests(res);
 
   const { action, company } = req.body || {};
 
   // Auth check
   const auth = await verifyAuth(req);
   if (!auth) {
-    console.warn(`[${new Date().toISOString()}] REV UNAUTHED action=${action} company=${company}`);
+    apiLog('warn', { api: 'revolut', action, reason: 'unauthed', ip });
   } else if (company && !getAllowedRevolutCompany(auth, company)) {
     return res.status(403).json({ error: "Access denied to this company" });
   }
 
-  if (!action || !company) {
-    return res.status(400).json({ error: "Missing action or company" });
-  }
-
-  // Validate action
-  if (!VALID_ACTIONS.includes(action)) {
-    console.log(`[${new Date().toISOString()}] REV BLOCKED invalid action="${action}" ip=${ip}`);
-    return res.status(400).json({ error: "Invalid action" });
-  }
-
-  console.log(`[${new Date().toISOString()}] REV action=${action} company=${company} ip=${ip}`);
+  if (!action || !company) return badRequest(res, "Missing action or company");
+  if (!VALID_ACTIONS.includes(action)) return badRequest(res, "Invalid action");
 
   const envVar = COMPANY_TOKEN_MAP[company];
-  if (!envVar) {
-    return res.status(403).json({ error: "Invalid company" });
-  }
+  if (!envVar) return res.status(403).json({ error: "Invalid company" });
 
   const token = process.env[envVar];
-  if (!token) {
-    return res.status(500).json({ error: `Token not configured for ${company}` });
-  }
+  if (!token) return res.status(500).json({ error: "Token not configured" });
 
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -92,21 +55,19 @@ export default async function handler(req, res) {
         break;
       }
       default:
-        return res.status(400).json({ error: `Unknown action: ${action}` });
+        return badRequest(res, `Unknown action: ${action}`);
     }
 
     const revRes = await fetch(url, { headers });
     if (!revRes.ok) {
       const text = await revRes.text();
-      console.error(`Revolut API error ${revRes.status}:`, text);
+      apiLog('error', { api: 'revolut', action }, { status: revRes.status });
       return res.status(revRes.status).json({ error: `Revolut API error: ${revRes.status}` });
     }
 
-    const data = await revRes.json();
-    return res.status(200).json(data);
+    return res.status(200).json(await revRes.json());
   } catch (e) {
-    console.error("Revolut proxy error:", e.message);
+    apiLog('error', { api: 'revolut', action }, { error: e.message });
     return res.status(500).json({ error: "Internal proxy error" });
   }
 }
-// 1771146986

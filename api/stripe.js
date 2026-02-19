@@ -1,46 +1,28 @@
 // Vercel Serverless Function - Stripe API Proxy
-import { verifyAuth } from './_middleware.js';
+import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest } from './_middleware.js';
 
 const STRIPE_BASE = "https://api.stripe.com";
-
-const rateLimit = {};
-const RATE_LIMIT_WINDOW = 60000;
-const RATE_LIMIT_MAX = 30;
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-  if (!rateLimit[ip] || now - rateLimit[ip].start > RATE_LIMIT_WINDOW) {
-    rateLimit[ip] = { start: now, count: 1 };
-    return true;
-  }
-  rateLimit[ip].count++;
-  return rateLimit[ip].count <= RATE_LIMIT_MAX;
-}
+const VALID_ACTIONS = ['customers_list', 'charges_list', 'subscriptions_list', 'balance_transactions', 'invoices_list'];
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
+  applyHeaders(req, res);
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
-  if (!checkRateLimit(ip)) return res.status(429).json({ error: "Too many requests" });
+  const ip = getClientIP(req);
+  if (!rateLimit('stripe', ip)) return tooManyRequests(res);
 
-  // Auth check (log-only for now)
   const auth = await verifyAuth(req);
-  if (!auth) console.warn(`[${new Date().toISOString()}] STRIPE UNAUTHED ip=${ip}`);
+  if (!auth) apiLog('warn', { api: 'stripe', reason: 'unauthed', ip });
 
   const { action, customer } = req.body || {};
-  if (!action) return res.status(400).json({ error: "Missing action" });
+  if (!action) return badRequest(res, "Missing action");
+  if (!VALID_ACTIONS.includes(action)) return badRequest(res, "Invalid action");
 
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return res.status(500).json({ error: "STRIPE_SECRET_KEY not configured" });
 
-  const headers = {
-    Authorization: `Bearer ${key}`,
-  };
+  const headers = { Authorization: `Bearer ${key}` };
 
   let url;
   try {
@@ -61,20 +43,18 @@ export default async function handler(req, res) {
         url = `${STRIPE_BASE}/v1/invoices?limit=100`;
         break;
       default:
-        return res.status(400).json({ error: `Unknown action: ${action}` });
+        return badRequest(res, `Unknown action: ${action}`);
     }
 
     const stripeRes = await fetch(url, { headers });
     if (!stripeRes.ok) {
-      const text = await stripeRes.text();
-      console.error(`Stripe API error ${stripeRes.status}:`, text);
+      apiLog('error', { api: 'stripe', action }, { status: stripeRes.status });
       return res.status(stripeRes.status).json({ error: `Stripe API error: ${stripeRes.status}` });
     }
 
-    const data = await stripeRes.json();
-    return res.status(200).json(data);
+    return res.status(200).json(await stripeRes.json());
   } catch (e) {
-    console.error("Stripe proxy error:", e.message);
+    apiLog('error', { api: 'stripe', action }, { error: e.message });
     return res.status(500).json({ error: "Internal proxy error" });
   }
 }

@@ -1,16 +1,21 @@
-// Vercel Serverless — JSON KV Store (file-based for /tmp, or use Vercel KV later)
-// Stores user data server-side so it persists across devices/browsers
-
-import { readFile, writeFile, mkdir } from 'fs/promises';
+// Vercel Serverless — JSON KV Store (file-based for /tmp)
+import { readFile, writeFile, mkdir, readdir } from 'fs/promises';
 import { join } from 'path';
+import { applyHeaders, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest } from './_middleware.js';
 
 const STORE_DIR = '/tmp/scale-store';
-// Accept STORE_SECRET or known PINs
-const STORE_SECRET = process.env.STORE_SECRET || 'scale2026';
-const VALID_TOKENS = new Set([STORE_SECRET, '0000', 'admin']);
+const STORE_SECRET = process.env.STORE_SECRET || '';
+
+function getValidTokens() {
+  const tokens = new Set();
+  if (STORE_SECRET) tokens.add(STORE_SECRET);
+  const allPins = (process.env.SOC_PINS || '').split(',').filter(Boolean);
+  allPins.forEach(p => tokens.add(p));
+  return tokens;
+}
 
 async function ensureDir() {
-  try { await mkdir(STORE_DIR, { recursive: true }); } catch {}
+  try { await mkdir(STORE_DIR, { recursive: true }); } catch { /* dir exists */ }
 }
 
 function sanitizeKey(k) {
@@ -30,25 +35,22 @@ async function setData(key, value) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
+  applyHeaders(req, res);
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  // Simple auth
+  const ip = getClientIP(req);
+  if (!rateLimit('store', ip, 60)) return tooManyRequests(res);
+
+  // Auth: check token against env-configured valid tokens
   const auth = (req.headers.authorization || '').replace('Bearer ', '');
-  // Check against valid tokens + society PINs from env
-  const allPins = (process.env.SOC_PINS || '').split(',').filter(Boolean);
-  const allValid = new Set([...VALID_TOKENS, ...allPins]);
-  if (!allValid.has(auth)) {
+  const validTokens = getValidTokens();
+  if (!auth || validTokens.size === 0 || !validTokens.has(auth)) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
   const { action, key, value } = req.body || {};
-
-  if (!action || !key) return res.status(400).json({ error: "Missing action or key" });
+  if (!action || !key) return badRequest(res, "Missing action or key");
 
   try {
     switch (action) {
@@ -61,17 +63,16 @@ export default async function handler(req, res) {
         return res.status(200).json({ key, ok: true });
       }
       case "keys": {
-        const { readdir } = await import('fs/promises');
         await ensureDir();
         const files = await readdir(STORE_DIR);
         const keys = files.filter(f => f.endsWith('.json')).map(f => f.replace('.json', ''));
         return res.status(200).json({ keys });
       }
       default:
-        return res.status(400).json({ error: `Unknown action: ${action}` });
+        return badRequest(res, `Unknown action: ${action}`);
     }
   } catch (e) {
-    console.error("Store error:", e.message);
+    apiLog('error', { api: 'store', action }, { error: e.message });
     return res.status(500).json({ error: "Internal store error" });
   }
 }
