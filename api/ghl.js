@@ -1,8 +1,6 @@
 // Vercel Serverless Function - GHL API v2 Proxy
-// API keys are stored server-side only (Vercel env vars)
-
 import { readFileSync, existsSync } from 'fs';
-import { verifyAuth, canAccessGHLLocation } from './_middleware.js';
+import { applyHeaders, verifyAuth, canAccessGHLLocation, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest } from './_middleware.js';
 
 const LOCATION_KEY_MAP = {
   "NsV7HI2MbE6qHtRp410y": "GHL_ECO_KEY",
@@ -12,56 +10,26 @@ const LOCATION_KEY_MAP = {
 };
 
 const GHL_BASE = "https://services.leadconnectorhq.com";
-
-// Action whitelist
-const VALID_ACTIONS = ['contacts','pipelines','opportunities','contacts_list','opportunities_all','calendars','conversations','contact_update','contact_create','contact_delete','calendar_events','conversations_list','conversations_messages','conversation_send','calendar_slots','notes_list','notes_create','webhook_events'];
-
-// Basic in-memory rate limiting (per serverless instance)
-if (!globalThis._ghlRateLimit) globalThis._ghlRateLimit = {};
-const RATE_LIMIT_WINDOW = 60_000; // 1 minute
-const RATE_LIMIT_MAX = 30; // max requests per window per IP
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const rateLimit = globalThis._ghlRateLimit;
-  if (!rateLimit[ip] || now - rateLimit[ip].start > RATE_LIMIT_WINDOW) {
-    rateLimit[ip] = { start: now, count: 1 };
-    return true;
-  }
-  rateLimit[ip].count++;
-  return rateLimit[ip].count <= RATE_LIMIT_MAX;
-}
+const VALID_ACTIONS = ['contacts', 'pipelines', 'opportunities', 'contacts_list', 'opportunities_all', 'calendars', 'conversations', 'contact_update', 'contact_create', 'contact_delete', 'calendar_events', 'conversations_list', 'conversations_messages', 'conversation_send', 'calendar_slots', 'notes_list', 'notes_create', 'webhook_events'];
 
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
+  applyHeaders(req, res);
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  // Rate limit
-  const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
-  if (!checkRateLimit(ip)) return res.status(429).json({ error: "Too many requests" });
+  const ip = getClientIP(req);
+  if (!rateLimit('ghl', ip)) return tooManyRequests(res);
 
   const { action, locationId, ...params } = req.body || {};
+  if (!action || !VALID_ACTIONS.includes(action)) return badRequest(res, "Invalid action");
 
-  // Validate action
-  if (!action || !VALID_ACTIONS.includes(action)) {
-    console.log(`[${new Date().toISOString()}] GHL BLOCKED invalid action="${action}" ip=${ip}`);
-    return res.status(400).json({ error: "Invalid action" });
-  }
-
-  // Auth check (log-only for now, will enforce later)
+  // Auth check
   const auth = await verifyAuth(req);
   if (!auth) {
-    console.warn(`[${new Date().toISOString()}] GHL UNAUTHED action=${action} ip=${ip}`);
+    apiLog('warn', { api: 'ghl', action, reason: 'unauthed', ip });
   } else if (locationId && !canAccessGHLLocation(auth, locationId)) {
-    console.warn(`[${new Date().toISOString()}] GHL FORBIDDEN user=${auth.userId} loc=${locationId} ip=${ip}`);
     return res.status(403).json({ error: "Access denied to this location" });
   }
-  console.log(`[${new Date().toISOString()}] GHL action=${action} loc=${locationId||'-'} user=${auth?.userId||'anon'} ip=${ip}`);
 
   // webhook_events doesn't need locationId
   if (action === "webhook_events") {
@@ -72,20 +40,13 @@ export default async function handler(req, res) {
     } catch { return res.status(200).json({ events: [] }); }
   }
 
-  if (!action || !locationId) {
-    return res.status(400).json({ error: "Missing action or locationId" });
-  }
+  if (!locationId) return badRequest(res, "Missing locationId");
 
-  // Validate locationId
   const envVar = LOCATION_KEY_MAP[locationId];
-  if (!envVar) {
-    return res.status(403).json({ error: "Invalid locationId" });
-  }
+  if (!envVar) return res.status(403).json({ error: "Invalid locationId" });
 
   const apiKey = process.env[envVar];
-  if (!apiKey) {
-    return res.status(500).json({ error: `API key not configured for ${envVar}` });
-  }
+  if (!apiKey) return res.status(500).json({ error: "API key not configured" });
 
   const headers = {
     Authorization: `Bearer ${apiKey}`,
@@ -103,11 +64,12 @@ export default async function handler(req, res) {
         url = `${GHL_BASE}/opportunities/pipelines?locationId=${locationId}`;
         break;
       case "opportunities":
-        if (!params.pipeline_id) return res.status(400).json({ error: "Missing pipeline_id" });
-        url = `${GHL_BASE}/opportunities/search?location_id=${locationId}&pipeline_id=${params.pipeline_id}&limit=100`;
+        if (!params.pipeline_id) return badRequest(res, "Missing pipeline_id");
+        url = `${GHL_BASE}/opportunities/search?location_id=${locationId}&pipeline_id=${encodeURIComponent(params.pipeline_id)}&limit=100`;
         break;
       case "contacts_list": {
-        // Paginated fetch — get ALL contacts
+        // Paginated fetch with configurable max pages
+        const maxPages = Math.min(parseInt(params.maxPages) || 20, 50);
         let allContacts = [];
         let startAfter = null;
         let startAfterId = null;
@@ -123,12 +85,12 @@ export default async function handler(req, res) {
           startAfterId = pData.meta?.startAfterId || null;
           startAfter = pData.meta?.startAfter || null;
           page++;
-        } while (startAfterId && page < 20); // max 2000 contacts safety
-        return res.status(200).json({ contacts: allContacts, meta: { total: allContacts.length } });
+        } while (startAfterId && page < maxPages);
+        return res.status(200).json({ contacts: allContacts, meta: { total: allContacts.length, pages: page } });
       }
       case "opportunities_all":
-        if (!params.pipeline_id) return res.status(400).json({ error: "Missing pipeline_id" });
-        url = `${GHL_BASE}/opportunities/search?location_id=${locationId}&pipeline_id=${params.pipeline_id}&limit=100&status=all`;
+        if (!params.pipeline_id) return badRequest(res, "Missing pipeline_id");
+        url = `${GHL_BASE}/opportunities/search?location_id=${locationId}&pipeline_id=${encodeURIComponent(params.pipeline_id)}&limit=100&status=all`;
         break;
       case "calendars":
         url = `${GHL_BASE}/calendars/?locationId=${locationId}`;
@@ -137,8 +99,8 @@ export default async function handler(req, res) {
         url = `${GHL_BASE}/conversations/search?locationId=${locationId}&limit=20`;
         break;
       case "contact_update": {
-        if (!params.contactId) return res.status(400).json({ error: "Missing contactId" });
-        const updRes = await fetch(`${GHL_BASE}/contacts/${params.contactId}`, {
+        if (!params.contactId) return badRequest(res, "Missing contactId");
+        const updRes = await fetch(`${GHL_BASE}/contacts/${encodeURIComponent(params.contactId)}`, {
           method: "PUT", headers, body: JSON.stringify(params.data || {})
         });
         if (!updRes.ok) { const t = await updRes.text(); return res.status(updRes.status).json({ error: t }); }
@@ -153,29 +115,33 @@ export default async function handler(req, res) {
         return res.status(200).json(await crRes.json());
       }
       case "contact_delete": {
-        if (!params.contactId) return res.status(400).json({ error: "Missing contactId" });
-        const delRes = await fetch(`${GHL_BASE}/contacts/${params.contactId}`, {
+        if (!params.contactId) return badRequest(res, "Missing contactId");
+        const delRes = await fetch(`${GHL_BASE}/contacts/${encodeURIComponent(params.contactId)}`, {
           method: "DELETE", headers
         });
         if (!delRes.ok) { const t = await delRes.text(); return res.status(delRes.status).json({ error: t }); }
         return res.status(200).json({ success: true });
       }
       case "calendar_events": {
-        const st = params.startTime || (Date.now() - 365*24*60*60*1000);
+        const st = params.startTime || (Date.now() - 365 * 24 * 60 * 60 * 1000);
         const et = params.endTime || Date.now();
-        // Fetch all calendars if no calendarId
         if (!params.calendarId) {
+          // Fetch all calendars then events in parallel (fixes N+1)
           const calRes = await fetch(`${GHL_BASE}/calendars/?locationId=${locationId}`, { headers });
           if (!calRes.ok) return res.status(calRes.status).json({ error: "Failed to fetch calendars" });
           const calData = await calRes.json();
-          let allEvents = [];
-          for (const cal of (calData.calendars || [])) {
-            const evRes = await fetch(`${GHL_BASE}/calendars/events?locationId=${locationId}&calendarId=${cal.id}&startTime=${st}&endTime=${et}`, { headers });
-            if (evRes.ok) { const evData = await evRes.json(); allEvents = allEvents.concat((evData.events || []).map(e => ({ ...e, calendarName: cal.name }))); }
-          }
+          const calendars = calData.calendars || [];
+          const results = await Promise.allSettled(
+            calendars.map(cal =>
+              fetch(`${GHL_BASE}/calendars/events?locationId=${locationId}&calendarId=${cal.id}&startTime=${st}&endTime=${et}`, { headers })
+                .then(r => r.ok ? r.json() : { events: [] })
+                .then(d => (d.events || []).map(e => ({ ...e, calendarName: cal.name })))
+            )
+          );
+          const allEvents = results.filter(r => r.status === 'fulfilled').flatMap(r => r.value);
           return res.status(200).json({ events: allEvents, total: allEvents.length });
         }
-        const evRes = await fetch(`${GHL_BASE}/calendars/events?locationId=${locationId}&calendarId=${params.calendarId}&startTime=${st}&endTime=${et}`, { headers });
+        const evRes = await fetch(`${GHL_BASE}/calendars/events?locationId=${locationId}&calendarId=${encodeURIComponent(params.calendarId)}&startTime=${st}&endTime=${et}`, { headers });
         if (!evRes.ok) { const t = await evRes.text(); return res.status(evRes.status).json({ error: t }); }
         return res.status(200).json(await evRes.json());
       }
@@ -183,12 +149,12 @@ export default async function handler(req, res) {
         url = `${GHL_BASE}/conversations/search?locationId=${locationId}&limit=50&sortBy=last_message_date&sortOrder=desc`;
         break;
       case "conversations_messages": {
-        if (!params.conversationId) return res.status(400).json({ error: "Missing conversationId" });
-        url = `${GHL_BASE}/conversations/${params.conversationId}/messages`;
+        if (!params.conversationId) return badRequest(res, "Missing conversationId");
+        url = `${GHL_BASE}/conversations/${encodeURIComponent(params.conversationId)}/messages`;
         break;
       }
       case "conversation_send": {
-        if (!params.contactId || !params.message) return res.status(400).json({ error: "Missing contactId or message" });
+        if (!params.contactId || !params.message) return badRequest(res, "Missing contactId or message");
         const sendRes = await fetch(`${GHL_BASE}/conversations/messages`, {
           method: "POST", headers, body: JSON.stringify({ type: params.type || "SMS", contactId: params.contactId, message: params.message })
         });
@@ -196,41 +162,40 @@ export default async function handler(req, res) {
         return res.status(200).json(await sendRes.json());
       }
       case "calendar_slots": {
-        if (!params.calendarId) return res.status(400).json({ error: "Missing calendarId" });
-        let slotsUrl = `${GHL_BASE}/calendars/${params.calendarId}/free-slots?`;
-        if (params.startDate) slotsUrl += `startDate=${params.startDate}&`;
-        if (params.endDate) slotsUrl += `endDate=${params.endDate}&`;
+        if (!params.calendarId) return badRequest(res, "Missing calendarId");
+        let slotsUrl = `${GHL_BASE}/calendars/${encodeURIComponent(params.calendarId)}/free-slots?`;
+        if (params.startDate) slotsUrl += `startDate=${encodeURIComponent(params.startDate)}&`;
+        if (params.endDate) slotsUrl += `endDate=${encodeURIComponent(params.endDate)}&`;
         url = slotsUrl.replace(/[&?]$/, '');
         break;
       }
       case "notes_list": {
-        if (!params.contactId) return res.status(400).json({ error: "Missing contactId" });
-        url = `${GHL_BASE}/contacts/${params.contactId}/notes`;
+        if (!params.contactId) return badRequest(res, "Missing contactId");
+        url = `${GHL_BASE}/contacts/${encodeURIComponent(params.contactId)}/notes`;
         break;
       }
       case "notes_create": {
-        if (!params.contactId) return res.status(400).json({ error: "Missing contactId" });
-        const noteRes = await fetch(`${GHL_BASE}/contacts/${params.contactId}/notes`, {
+        if (!params.contactId) return badRequest(res, "Missing contactId");
+        const noteRes = await fetch(`${GHL_BASE}/contacts/${encodeURIComponent(params.contactId)}/notes`, {
           method: "POST", headers, body: JSON.stringify(params.data || {})
         });
         if (!noteRes.ok) { const t = await noteRes.text(); return res.status(noteRes.status).json({ error: t }); }
         return res.status(200).json(await noteRes.json());
       }
       default:
-        return res.status(400).json({ error: `Unknown action: ${action}` });
+        return badRequest(res, `Unknown action: ${action}`);
     }
 
     const ghlRes = await fetch(url, { headers });
     if (!ghlRes.ok) {
       const text = await ghlRes.text();
-      console.error(`GHL API error ${ghlRes.status}:`, text);
+      apiLog('error', { api: 'ghl', action }, { status: ghlRes.status });
       return res.status(ghlRes.status).json({ error: `GHL API error: ${ghlRes.status}` });
     }
 
-    const data = await ghlRes.json();
-    return res.status(200).json(data);
+    return res.status(200).json(await ghlRes.json());
   } catch (e) {
-    console.error("GHL proxy error:", e.message);
+    apiLog('error', { api: 'ghl', action }, { error: e.message });
     return res.status(500).json({ error: "Internal proxy error" });
   }
 }
