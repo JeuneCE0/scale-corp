@@ -5340,14 +5340,18 @@ export function TutorialOverlay({steps,onFinish,onSkip,setActiveTab}){
 /* SIDEBAR NAVIGATION */
 export const SB_ADMIN=[
  {id:"dash",icon:"◉",label:"Dashboard",tab:0,accent:C.acc},
- {id:"societes",icon:"🏢",label:"Sociétés",tab:1,accent:C.b},
- {id:"finances",icon:"💰",label:"Finances",tab:2,accent:C.g},
- {id:"clients",icon:"👥",label:"Clients",tab:3,accent:C.o},
- {id:"sales",icon:"📞",label:"Sales",tab:15,accent:"#34d399"},
- {id:"pub",icon:"📣",label:"Publicité",tab:16,accent:"#f472b6"},
- {id:"rapports",icon:"📋",label:"Rapports",tab:17,accent:C.v},
- {id:"access",icon:"🔐",label:"Accès",tab:14,accent:"#f59e0b"},
- {id:"params",icon:"⚙️",label:"Paramètres",tab:18,accent:C.td},
+ {id:"holding",icon:"🏛️",label:"Holding",accent:C.b,children:[
+  {tab:1,icon:"🏢",label:"Sociétés"},
+  {tab:2,icon:"💰",label:"Finances"},
+  {tab:17,icon:"📋",label:"Rapports"},
+  {tab:18,icon:"⚙️",label:"Paramètres"},
+ ]},
+ {id:"saas",icon:"☁️",label:"SaaS / Clients",accent:C.o,children:[
+  {tab:3,icon:"👥",label:"Clients"},
+  {tab:15,icon:"📞",label:"Sales"},
+  {tab:16,icon:"📣",label:"Publicité"},
+  {tab:14,icon:"🔐",label:"Accès"},
+ ]},
  {id:"pulse",icon:"⚡",label:"PULSE",tab:99,accent:"#FFAA00"},
 ];
 
