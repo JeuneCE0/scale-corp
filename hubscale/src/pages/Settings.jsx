@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { T } from '../lib/theme.js';
-import { Card, Section, Btn, Inp, Sel } from '../components/ui.jsx';
+import { store, load } from '../lib/store.js';
+import { Card, Section, Btn, Inp, Sel, Badge } from '../components/ui.jsx';
 
 const SUB_TABS = ['Compte', 'Utilisateurs', 'Facturation', 'Intégrations', 'Data & Export', 'RGPD & Légal'];
 
@@ -16,13 +17,114 @@ const SECTORS = [
   { value: 'autre', label: 'Autre' },
 ];
 
+const PLANS = [
+  {
+    id: 'starter', name: 'Starter', monthly: 99,
+    features: ['Dashboard Overview', 'CRM basique (100 contacts)', 'Données financières', '1 utilisateur', 'Support email'],
+  },
+  {
+    id: 'professional', name: 'Professional', monthly: 249, recommended: true,
+    features: ['Tout Starter +', 'CRM avancé (illimité)', 'Sales Pipeline & Pub', 'Agenda complet', '5 utilisateurs', 'Intégrations API', 'Support prioritaire'],
+  },
+  {
+    id: 'enterprise', name: 'Enterprise', monthly: 499,
+    features: ['Tout Professional +', 'CI/CD Data Monitoring', 'Backup automatique 24h', 'KPI personnalisés', 'Utilisateurs illimités', 'Onboarding dédié', 'SLA 99.9%', 'Account manager'],
+  },
+];
+
+const INTEGRATIONS = [
+  { name: 'Stripe', desc: 'Paiements et facturation', icon: '💳' },
+  { name: 'Revolut', desc: 'Données bancaires', icon: '🏦' },
+  { name: 'GoHighLevel', desc: 'CRM et marketing', icon: '📈' },
+  { name: 'Meta Ads', desc: 'Publicité Facebook/Instagram', icon: '📣' },
+];
+
 export default function Settings() {
   const [subTab, setSubTab] = useState('Compte');
-  const [company, setCompany] = useState({
+  const [company, setCompany] = useState(() => load('settings_company') || {
     name: '', siret: '', tva: '', sector: '', address: '', city: '', zip: '', email: '', phone: '', website: '',
   });
+  const [savedCompany, setSavedCompany] = useState(false);
+  const [integrations, setIntegrations] = useState(() => load('integrations') || {});
+  const [annual, setAnnual] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState(() => load('plan') || 'professional');
+  const [users, setUsers] = useState(() => load('users') || [
+    { name: 'Admin', email: 'admin@entreprise.fr', role: 'Owner' },
+  ]);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
-  const upd = (k, v) => setCompany({ ...company, [k]: v });
+  const upd = (k, v) => setCompany((prev) => ({ ...prev, [k]: v }));
+
+  const saveCompany = () => {
+    store('settings_company', company);
+    setSavedCompany(true);
+    setTimeout(() => setSavedCompany(false), 2000);
+  };
+
+  const toggleIntegration = (name) => {
+    const updated = { ...integrations, [name]: !integrations[name] };
+    setIntegrations(updated);
+    store('integrations', updated);
+  };
+
+  const selectPlan = (id) => {
+    setSelectedPlan(id);
+    store('plan', id);
+  };
+
+  const inviteUser = () => {
+    if (!inviteEmail.trim() || !inviteEmail.includes('@')) return;
+    const updated = [...users, { name: inviteEmail.split('@')[0], email: inviteEmail, role: 'Membre' }];
+    setUsers(updated);
+    store('users', updated);
+    setInviteEmail('');
+  };
+
+  const removeUser = (email) => {
+    const updated = users.filter((u) => u.email !== email);
+    setUsers(updated);
+    store('users', updated);
+  };
+
+  const exportData = (type) => {
+    const data = {
+      contacts: load('contacts') || [],
+      finances: load('finHistory') || [],
+      events: load('events') || [],
+      settings: load('settings_company') || {},
+    };
+    let content, filename, mime;
+    if (type === 'contacts') {
+      const rows = data.contacts.map((c) => `${c.name},${c.email},${c.company},${c.phone},${c.status}`);
+      content = 'Nom,Email,Société,Téléphone,Statut\n' + rows.join('\n');
+      filename = 'contacts.csv'; mime = 'text/csv';
+    } else if (type === 'finances') {
+      const rows = data.finances.map((r) => `${r.key},${r.ca},${r.charges},${r.result}`);
+      content = 'Mois,CA,Charges,Résultat\n' + rows.join('\n');
+      filename = 'finances.csv'; mime = 'text/csv';
+    } else if (type === 'events') {
+      const rows = data.events.map((e) => `${e.title},${e.date},${e.time},${e.type}`);
+      content = 'Titre,Date,Heure,Type\n' + rows.join('\n');
+      filename = 'events.csv'; mime = 'text/csv';
+    } else {
+      content = JSON.stringify(data, null, 2);
+      filename = 'backup_hubscale.json'; mime = 'application/json';
+    }
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const deleteAccount = () => {
+    if (deleteConfirmText !== 'SUPPRIMER') return;
+    ['contacts', 'events', 'finHistory', 'settings_company', 'integrations', 'plan', 'users', 'onboarded', 'company', 'tools', 'apiKeys', 'dataSources'].forEach((k) => {
+      try { localStorage.removeItem('hs_' + k); } catch {}
+    });
+    window.location.reload();
+  };
 
   return (
     <div>
@@ -31,31 +133,32 @@ export default function Settings() {
         <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Configuration de votre espace client</p>
       </div>
 
-      {/* Sub-tabs */}
-      <div className="fade-up d1" style={{ display: 'flex', gap: 0, background: T.surface, borderRadius: 10, border: `1px solid ${T.border}`, overflow: 'hidden', marginBottom: 24, flexWrap: 'wrap' }}>
+      {/* Sub-tabs — scrollable on mobile */}
+      <div className="fade-up d1 subtabs" style={{ background: T.surface, borderRadius: 10, border: `1px solid ${T.border}`, marginBottom: 24 }}>
         {SUB_TABS.map((t) => {
           const active = subTab === t;
           return (
             <button key={t} onClick={() => setSubTab(t)} style={{
               background: active ? T.accentBg : 'transparent', border: 'none', cursor: 'pointer',
-              padding: '8px 16px', fontSize: 11, fontWeight: active ? 700 : 500, fontFamily: 'inherit',
-              color: active ? T.accent : T.textMuted, transition: 'all .15s', whiteSpace: 'nowrap',
+              padding: '8px 14px', fontSize: 11, fontWeight: active ? 700 : 500, fontFamily: 'inherit',
+              color: active ? T.accent : T.textMuted, transition: 'all .15s', whiteSpace: 'nowrap', flexShrink: 0,
             }}>{t}</button>
           );
         })}
       </div>
 
+      {/* -------- COMPTE -------- */}
       {subTab === 'Compte' && (
         <>
           <Section title="INFORMATIONS DE LA SOCIÉTÉ" sub="Données légales et coordonnées">
             <Card>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 0, columnGap: 16 }}>
+              <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 0, columnGap: 16 }}>
                 <Inp label="Raison sociale" value={company.name} onChange={(v) => upd('name', v)} placeholder="Nom de votre société" />
                 <Inp label="SIRET" value={company.siret} onChange={(v) => upd('siret', v)} placeholder="123 456 789 00012" />
                 <Inp label="N° TVA intracommunautaire" value={company.tva} onChange={(v) => upd('tva', v)} placeholder="FR 12 345678901" />
                 <Sel label="Secteur d'activité" value={company.sector} onChange={(v) => upd('sector', v)} options={SECTORS} />
                 <Inp label="Adresse" value={company.address} onChange={(v) => upd('address', v)} placeholder="Rue, numéro" />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid-2-mobile-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <Inp label="Ville" value={company.city} onChange={(v) => upd('city', v)} placeholder="Paris" />
                   <Inp label="Code postal" value={company.zip} onChange={(v) => upd('zip', v)} placeholder="75001" />
                 </div>
@@ -63,13 +166,13 @@ export default function Settings() {
                 <Inp label="Téléphone" value={company.phone} onChange={(v) => upd('phone', v)} placeholder="+33 1 23 45 67 89" />
                 <Inp label="Site web" value={company.website} onChange={(v) => upd('website', v)} placeholder="https://www.societe.fr" />
               </div>
-              <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
-                <Btn style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Sauvegarder</Btn>
+              <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+                {savedCompany && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>✓ Sauvegardé</span>}
+                <Btn onClick={saveCompany} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Sauvegarder</Btn>
               </div>
             </Card>
           </Section>
 
-          {/* Danger zone */}
           <Section title="ZONE DANGEREUSE">
             <Card style={{ borderLeft: `3px solid ${T.red}` }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -79,85 +182,46 @@ export default function Settings() {
                     Cette action est irréversible. Toutes les données seront définitivement supprimées.
                   </div>
                 </div>
-                <Btn v="danger">Supprimer mon compte</Btn>
+                <Btn v="danger" onClick={() => setShowDeleteConfirm(true)}>Supprimer mon compte</Btn>
               </div>
+              {showDeleteConfirm && (
+                <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: T.redBg, border: `1px solid ${T.red}22` }}>
+                  <div style={{ fontSize: 11, color: T.red, marginBottom: 8 }}>Tapez SUPPRIMER pour confirmer :</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Inp small value={deleteConfirmText} onChange={setDeleteConfirmText} placeholder="SUPPRIMER" />
+                    <Btn v="danger" small onClick={deleteAccount} disabled={deleteConfirmText !== 'SUPPRIMER'}>Confirmer</Btn>
+                    <Btn v="ghost" small onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}>Annuler</Btn>
+                  </div>
+                </div>
+              )}
             </Card>
           </Section>
         </>
       )}
 
+      {/* -------- UTILISATEURS -------- */}
       {subTab === 'Utilisateurs' && (
         <Section title="GESTION DES UTILISATEURS" sub="Ajoutez et gérez les membres de votre équipe">
           <Card>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ fontSize: 12, color: T.textSecondary }}>1 utilisateur sur votre forfait</div>
-              <Btn style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>+ Inviter</Btn>
-            </div>
-            <div style={{ padding: '12px 14px', borderRadius: 10, background: T.surface2, display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 18, background: T.accentBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: T.accent, fontSize: 14 }}>A</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: T.text }}>Admin</div>
-                <div style={{ fontSize: 11, color: T.textSecondary }}>admin@entreprise.fr</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ fontSize: 12, color: T.textSecondary }}>{users.length} utilisateur{users.length > 1 ? 's' : ''} sur votre forfait</div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <Inp small value={inviteEmail} onChange={setInviteEmail} placeholder="email@exemple.com" onKeyDown={(e) => e.key === 'Enter' && inviteUser()} />
+                <Btn onClick={inviteUser} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>+ Inviter</Btn>
               </div>
-              <span style={{ fontSize: 10, fontWeight: 600, color: T.accent, background: T.accentBg, padding: '3px 8px', borderRadius: 6 }}>Owner</span>
             </div>
-          </Card>
-        </Section>
-      )}
-
-      {subTab === 'Facturation' && (
-        <Section title="ABONNEMENT" sub="Gérez votre forfait et vos paiements">
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: T.accentBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>💳</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: T.text }}>Plan Starter</div>
-                <div style={{ fontSize: 12, color: T.textSecondary }}>99€/mois — Renouvellement le 1er mars 2026</div>
-              </div>
-              <Btn v="secondary">Changer de plan</Btn>
-            </div>
-          </Card>
-        </Section>
-      )}
-
-      {subTab === 'Intégrations' && (
-        <Section title="INTÉGRATIONS API" sub="Connectez vos outils et services externes">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[
-              { name: 'Stripe', desc: 'Paiements et facturation', icon: '💳', connected: false },
-              { name: 'Revolut', desc: 'Données bancaires', icon: '🏦', connected: false },
-              { name: 'GoHighLevel', desc: 'CRM et marketing', icon: '📈', connected: false },
-              { name: 'Meta Ads', desc: 'Publicité Facebook/Instagram', icon: '📣', connected: false },
-            ].map((i) => (
-              <Card key={i.name} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: T.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{i.icon}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{i.name}</div>
-                  <div style={{ fontSize: 11, color: T.textSecondary }}>{i.desc}</div>
-                </div>
-                <Btn v={i.connected ? 'success' : 'secondary'} small>{i.connected ? 'Connecté' : 'Connecter'}</Btn>
-              </Card>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {subTab === 'Data & Export' && (
-        <Section title="EXPORT DE DONNÉES" sub="Téléchargez vos données">
-          <Card>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[
-                { label: 'Exporter les contacts (CSV)', icon: '👥' },
-                { label: 'Exporter les finances (CSV)', icon: '💰' },
-                { label: 'Exporter les événements (CSV)', icon: '📅' },
-                { label: 'Backup complet (JSON)', icon: '💾' },
-              ].map((e) => (
-                <div key={e.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: 8, background: T.surface2 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 16 }}>{e.icon}</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{e.label}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {users.map((u) => (
+                <div key={u.email} style={{ padding: '12px 14px', borderRadius: 10, background: T.surface2, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 18, background: T.accentBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: T.accent, fontSize: 14, flexShrink: 0 }}>
+                    {u.name.charAt(0).toUpperCase()}
                   </div>
-                  <Btn v="secondary" small>Télécharger</Btn>
+                  <div style={{ flex: 1, minWidth: 100 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: T.text }}>{u.name}</div>
+                    <div style={{ fontSize: 11, color: T.textSecondary }}>{u.email}</div>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: T.accent, background: T.accentBg, padding: '3px 8px', borderRadius: 6 }}>{u.role}</span>
+                  {u.role !== 'Owner' && <Btn v="ghost" small onClick={() => removeUser(u.email)}>✕</Btn>}
                 </div>
               ))}
             </div>
@@ -165,6 +229,119 @@ export default function Settings() {
         </Section>
       )}
 
+      {/* -------- FACTURATION -------- */}
+      {subTab === 'Facturation' && (
+        <>
+          <div className="fade-up" style={{ textAlign: 'center', marginBottom: 24 }}>
+            <p style={{ color: T.textSecondary, fontSize: 12 }}>Paiement sécurisé via Stripe. Annulez à tout moment.</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 12 }}>
+              <span style={{ fontSize: 12, fontWeight: annual ? 500 : 700, color: annual ? T.textMuted : T.text }}>Mensuel</span>
+              <div onClick={() => setAnnual(!annual)} style={{
+                width: 44, height: 22, borderRadius: 11, cursor: 'pointer', position: 'relative',
+                background: annual ? T.green : T.border, transition: 'background .2s',
+              }}>
+                <div style={{
+                  width: 18, height: 18, borderRadius: 9, background: '#fff',
+                  position: 'absolute', top: 2, left: annual ? 24 : 2, transition: 'left .2s',
+                }} />
+              </div>
+              <span style={{ fontSize: 12, fontWeight: annual ? 700 : 500, color: annual ? T.text : T.textMuted }}>
+                Annuel <span style={{ color: T.green, fontWeight: 700 }}>-20%</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16, marginBottom: 24 }}>
+            {PLANS.map((plan, i) => {
+              const price = annual ? Math.round(plan.monthly * 0.8) : plan.monthly;
+              const active = selectedPlan === plan.id;
+              return (
+                <div key={plan.id} className={`fade-up d${i + 1}`} onClick={() => selectPlan(plan.id)} style={{
+                  background: T.surface, border: `2px solid ${active ? '#f97316' : plan.recommended ? T.accent + '44' : T.border}`,
+                  borderRadius: 16, padding: 20, cursor: 'pointer', position: 'relative', transition: 'all .2s ease',
+                  boxShadow: active ? '0 0 24px rgba(249,115,22,.15)' : 'none',
+                }}>
+                  {plan.recommended && (
+                    <div style={{
+                      position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
+                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#fff',
+                      padding: '3px 12px', borderRadius: 20, fontSize: 9, fontWeight: 700, letterSpacing: .5,
+                    }}>RECOMMANDÉ</div>
+                  )}
+                  <div style={{ textAlign: 'center', marginBottom: 14 }}>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: T.text, marginBottom: 6 }}>{plan.name}</div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 2 }}>
+                      <span style={{ fontSize: 36, fontWeight: 800, color: T.text }}>{price}</span>
+                      <span style={{ fontSize: 13, color: T.textMuted }}>€/mois</span>
+                    </div>
+                    {annual && <div style={{ fontSize: 11, color: T.green, marginTop: 4 }}>{plan.monthly * 12}€ → {price * 12}€/an</div>}
+                  </div>
+                  <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {plan.features.map((f) => (
+                      <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ color: T.green, fontSize: 11, flexShrink: 0 }}>✓</span>
+                        <span style={{ fontSize: 11, color: T.textSecondary }}>{f}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 16 }}>
+                    <Btn full v={active ? 'primary' : 'secondary'}
+                      style={active ? { background: 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: '0 2px 12px rgba(249,115,22,.3)' } : {}}>
+                      {active ? 'Plan actuel' : 'Choisir'}
+                    </Btn>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* -------- INTÉGRATIONS -------- */}
+      {subTab === 'Intégrations' && (
+        <Section title="INTÉGRATIONS API" sub="Connectez vos outils et services externes">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {INTEGRATIONS.map((i) => (
+              <Card key={i.name} style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: T.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{i.icon}</div>
+                <div style={{ flex: 1, minWidth: 120 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{i.name}</div>
+                  <div style={{ fontSize: 11, color: T.textSecondary }}>{i.desc}</div>
+                </div>
+                <Btn v={integrations[i.name] ? 'success' : 'secondary'} small onClick={() => toggleIntegration(i.name)}>
+                  {integrations[i.name] ? '✓ Connecté' : 'Connecter'}
+                </Btn>
+              </Card>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* -------- DATA & EXPORT -------- */}
+      {subTab === 'Data & Export' && (
+        <Section title="EXPORT DE DONNÉES" sub="Téléchargez vos données">
+          <Card>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[
+                { label: 'Exporter les contacts (CSV)', icon: '👥', type: 'contacts' },
+                { label: 'Exporter les finances (CSV)', icon: '💰', type: 'finances' },
+                { label: 'Exporter les événements (CSV)', icon: '📅', type: 'events' },
+                { label: 'Backup complet (JSON)', icon: '💾', type: 'backup' },
+              ].map((e) => (
+                <div key={e.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: 8, background: T.surface2, flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>{e.icon}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{e.label}</span>
+                  </div>
+                  <Btn v="secondary" small onClick={() => exportData(e.type)}>Télécharger</Btn>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </Section>
+      )}
+
+      {/* -------- RGPD -------- */}
       {subTab === 'RGPD & Légal' && (
         <Section title="RGPD & CONFORMITÉ" sub="Gestion des données personnelles">
           <Card>
@@ -180,14 +357,14 @@ export default function Settings() {
                 <div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 8 }}>
                   Conformément au RGPD, vous pouvez demander la suppression complète de toutes vos données personnelles.
                 </div>
-                <Btn v="danger" small>Demander la suppression</Btn>
+                <Btn v="danger" small onClick={() => { setSubTab('Compte'); setShowDeleteConfirm(true); }}>Demander la suppression</Btn>
               </div>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 4 }}>Export des données (RGPD Art. 20)</div>
                 <div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 8 }}>
                   Téléchargez l'intégralité de vos données dans un format portable.
                 </div>
-                <Btn v="secondary" small>Exporter mes données</Btn>
+                <Btn v="secondary" small onClick={() => exportData('backup')}>Exporter mes données</Btn>
               </div>
             </div>
           </Card>

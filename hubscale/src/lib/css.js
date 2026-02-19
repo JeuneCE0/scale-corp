@@ -35,22 +35,39 @@ body{margin:0;overflow-x:hidden;font-family:${FONT};background:${T.bg};color:${T
 /* Focus */
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid ${T.accent}44;outline-offset:2px}
 
-/* Responsive */
-@media(max-width:768px){
-  .hide-mobile{display:none !important}
-  .sidebar-desktop{display:none !important}
-  .main-content{margin-left:0 !important;padding:12px !important;padding-top:56px !important}
-  .mobile-header{display:flex !important}
-  .kpi-grid{grid-template-columns:1fr 1fr !important}
-}
-@media(min-width:769px){
-  .mobile-header{display:none !important}
-}
-
 /* Glass morphism */
 .glass{background:rgba(17,17,19,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.06);border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.2)}
 .glass:hover{border-color:rgba(99,102,241,.15)}
 .glass-static{background:rgba(17,17,19,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.06);border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.2)}
 .glass-input{background:rgba(9,9,11,.5);border:1px solid rgba(255,255,255,.06);border-radius:10px;transition:all .2s ease}
 .glass-input:focus-within{border-color:rgba(99,102,241,.4);box-shadow:0 0 12px rgba(99,102,241,.08)}
+
+/* Table responsive */
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.table-wrap table{min-width:500px}
+
+/* Sub-tabs scrollable */
+.subtabs{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.subtabs::-webkit-scrollbar{display:none}
+
+/* Responsive */
+@media(max-width:768px){
+  .hide-mobile{display:none !important}
+  .mobile-header{display:flex !important}
+  .kpi-grid{grid-template-columns:1fr 1fr !important}
+  .grid-desktop-2{grid-template-columns:1fr !important}
+  .grid-desktop-3{grid-template-columns:1fr !important}
+  .grid-desktop-15-1{grid-template-columns:1fr !important}
+  .nav-tabs-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .nav-tabs-scroll::-webkit-scrollbar{display:none}
+  .page-pad{padding:12px 14px 30px !important}
+  .modal-inner{width:100% !important;max-width:100% !important;margin:8px !important;padding:16px !important}
+}
+@media(min-width:769px){
+  .mobile-header{display:none !important}
+}
+@media(max-width:480px){
+  .kpi-grid{grid-template-columns:1fr !important}
+  .grid-2-mobile-1{grid-template-columns:1fr !important}
+}
 `;
