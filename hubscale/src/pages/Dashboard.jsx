@@ -1,13 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { T } from '../lib/theme.js';
-import { fmt, fK, MONTHS_FR } from '../lib/utils.js';
-import { KPI, Card, Section, Btn, Badge, ProgressBar, EmptyState } from '../components/ui.jsx';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { fK, fmt } from '../lib/utils.js';
+import { KPI, Card, Badge, ProgressBar, Spinner } from '../components/ui.jsx';
 
-const CA_DATA = [
-  { month: 'Sep', ca: 18500 }, { month: 'Oct', ca: 22000 }, { month: 'Nov', ca: 19800 },
-  { month: 'Déc', ca: 27500 }, { month: 'Jan', ca: 24000 }, { month: 'Fév', ca: 31200 },
-];
+const LazyChart = lazy(() =>
+  import('recharts').then((mod) => ({
+    default: function CAChart() {
+      const { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } = mod;
+      const CA_DATA = [
+        { month: 'Sep', ca: 18500 }, { month: 'Oct', ca: 22000 }, { month: 'Nov', ca: 19800 },
+        { month: 'Déc', ca: 27500 }, { month: 'Jan', ca: 24000 }, { month: 'Fév', ca: 31200 },
+      ];
+      return (
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={CA_DATA}>
+            <defs>
+              <linearGradient id="caGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={T.green} stopOpacity={0.3} />
+                <stop offset="100%" stopColor={T.green} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="month" tick={{ fill: T.textMuted, fontSize: 10 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: T.textMuted, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fK} />
+            <Tooltip
+              contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 11 }}
+              formatter={(v) => [`${fmt(v)}€`, 'CA']}
+            />
+            <Area type="monotone" dataKey="ca" stroke={T.green} strokeWidth={2} fill="url(#caGrad)" />
+          </AreaChart>
+        </ResponsiveContainer>
+      );
+    },
+  }))
+);
 
 const PIPELINE = [
   { stage: 'Prospect', count: 12, color: T.orange },
@@ -37,17 +62,17 @@ const HEALTH_ITEMS = [
   { label: 'Meta Ads', status: 'error' },
 ];
 
-const QUICK_ACTIONS = [
-  { label: 'Ajouter un contact', icon: '👤', color: T.blue },
-  { label: 'Saisir des données', icon: '📊', color: T.green },
-  { label: 'Créer un événement', icon: '📅', color: T.purple },
-  { label: 'Voir paramètres', icon: '⚙️', color: T.orange },
-];
-
-export default function Dashboard() {
+export default function Dashboard({ onNavigate }) {
   const [tasksDone, setTasksDone] = useState(TASKS.map((t) => t.done));
 
   const toggleTask = (i) => setTasksDone((prev) => prev.map((v, j) => j === i ? !v : v));
+
+  const QUICK_ACTIONS = [
+    { label: 'Ajouter un contact', icon: '👤', target: 'crm' },
+    { label: 'Saisir des données', icon: '📊', target: 'data' },
+    { label: 'Créer un événement', icon: '📅', target: 'agenda' },
+    { label: 'Voir paramètres', icon: '⚙️', target: 'settings' },
+  ];
 
   return (
     <div>
@@ -63,7 +88,7 @@ export default function Dashboard() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ position: 'relative', width: 48, height: 48 }}>
-            <svg width="48" height="48" viewBox="0 0 48 48">
+            <svg width="48" height="48" viewBox="0 0 48 48" aria-label="Score de santé: 75%">
               <circle cx="24" cy="24" r="20" fill="none" stroke={T.border} strokeWidth="4" />
               <circle cx="24" cy="24" r="20" fill="none" stroke={T.green} strokeWidth="4"
                 strokeDasharray={`${0.75 * 125.6} ${125.6}`} strokeLinecap="round"
@@ -85,43 +110,35 @@ export default function Dashboard() {
         <KPI label="RÉSULTAT NET" value={`${fK(12600)}€`} sub="Marge: 40.4%" accent={T.orange} icon="📊" delay={3} />
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions — connected to navigation */}
       <div className="fade-up d2 kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 20 }}>
-        {QUICK_ACTIONS.map((a, i) => (
-          <button key={i} className="glass hoverable pressable" style={{
-            padding: '12px 14px', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-            display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(17,17,19,.6)',
-          }}>
+        {QUICK_ACTIONS.map((a) => (
+          <button
+            key={a.label}
+            className="glass hoverable pressable"
+            aria-label={a.label}
+            onClick={() => onNavigate?.(a.target)}
+            style={{
+              padding: '12px 14px', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(17,17,19,.6)',
+            }}
+          >
             <span style={{ fontSize: 16 }}>{a.icon}</span>
             <span style={{ fontSize: 11, fontWeight: 600, color: T.text }}>{a.label}</span>
           </button>
         ))}
       </div>
 
-      {/* Two columns: Chart + Pipeline — stack on mobile */}
+      {/* Two columns: Chart + Pipeline */}
       <div className="grid-desktop-15-1" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 14, marginBottom: 20 }}>
         <Card delay={3}>
           <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
             Évolution CA — 6 derniers mois
           </div>
           <div style={{ height: 180 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={CA_DATA}>
-                <defs>
-                  <linearGradient id="caGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={T.green} stopOpacity={0.3} />
-                    <stop offset="100%" stopColor={T.green} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="month" tick={{ fill: T.textMuted, fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: T.textMuted, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fK} />
-                <Tooltip
-                  contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 11 }}
-                  formatter={(v) => [`${fmt(v)}€`, 'CA']}
-                />
-                <Area type="monotone" dataKey="ca" stroke={T.green} strokeWidth={2} fill="url(#caGrad)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Spinner size={20} /></div>}>
+              <LazyChart />
+            </Suspense>
           </div>
         </Card>
 
@@ -141,7 +158,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Three columns — stack on mobile */}
+      {/* Three columns */}
       <div className="grid-desktop-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
         <Card delay={5}>
           <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
@@ -184,7 +201,9 @@ export default function Dashboard() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {TASKS.map((t, i) => (
-              <div key={i} onClick={() => toggleTask(i)} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <div key={i} onClick={() => toggleTask(i)} role="checkbox" aria-checked={tasksDone[i]} tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTask(i); } }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                 <div style={{
                   width: 16, height: 16, borderRadius: 4, flexShrink: 0,
                   border: `2px solid ${tasksDone[i] ? T.green : T.border}`,
@@ -202,7 +221,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Bottom: Contacts CRM + Publicité — stack on mobile */}
+      {/* Bottom: CRM + Publicité */}
       <div className="grid-desktop-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <Card delay={6}>
           <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>

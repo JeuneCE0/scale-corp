@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { T } from '../lib/theme.js';
 import { store } from '../lib/store.js';
 import { Card, Btn, Inp, Sel, ProgressBar } from '../components/ui.jsx';
@@ -49,20 +49,20 @@ export default function Onboarding({ onComplete }) {
   const [dataSources, setDataSources] = useState([]);
 
   const progress = (step / STEPS.length) * 100;
-  const toggleTool = (id) => setSelectedTools((prev) => prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]);
-  const toggleSource = (id) => setDataSources((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
-  const next = () => step < 5 && setStep(step + 1);
-  const prev = () => step > 1 && setStep(step - 1);
+  const toggleTool = useCallback((id) => setSelectedTools((prev) => prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]), []);
+  const toggleSource = useCallback((id) => setDataSources((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]), []);
+  const next = useCallback(() => setStep((s) => Math.min(s + 1, 5)), []);
+  const prev = useCallback(() => setStep((s) => Math.max(s - 1, 1)), []);
 
-  const finish = () => {
+  const finish = useCallback(() => {
     store('company', company);
     store('tools', selectedTools);
     store('apiKeys', apiKeys);
     store('dataSources', dataSources);
     if (onComplete) onComplete();
-  };
+  }, [company, selectedTools, apiKeys, dataSources, onComplete]);
 
-  const skip = () => { if (onComplete) onComplete(); };
+  const skip = useCallback(() => { if (onComplete) onComplete(); }, [onComplete]);
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto', padding: '20px 16px' }}>
@@ -71,25 +71,25 @@ export default function Onboarding({ onComplete }) {
         <p style={{ color: T.textSecondary, fontSize: 13, marginTop: 6 }}>
           Étape {step}/{STEPS.length} — {STEPS[step - 1].label}
         </p>
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 12 }} role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} aria-label="Progression onboarding">
           <ProgressBar value={progress} max={100} color="#f97316" h={6} />
           <div style={{ fontSize: 10, color: T.textMuted, marginTop: 4 }}>{Math.round(progress)}%</div>
         </div>
       </div>
 
-      <div className="fade-up d1 subtabs" style={{ gap: 4, marginBottom: 24, justifyContent: 'center' }}>
+      <nav className="fade-up d1 subtabs" aria-label="Étapes d'onboarding" style={{ gap: 4, marginBottom: 24, justifyContent: 'center' }}>
         {STEPS.map((s) => (
-          <div key={s.id} onClick={() => setStep(s.id)} style={{
+          <button key={s.id} onClick={() => setStep(s.id)} aria-current={s.id === step ? 'step' : undefined} style={{
             padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 11, fontWeight: 600,
             background: s.id === step ? T.accentBg : s.id < step ? T.greenBg : T.surface2,
             color: s.id === step ? T.accent : s.id < step ? T.green : T.textMuted,
             border: `1px solid ${s.id === step ? T.accent + '44' : 'transparent'}`,
-            transition: 'all .15s', whiteSpace: 'nowrap', flexShrink: 0,
+            transition: 'all .15s', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'inherit',
           }}>
             {s.id < step ? '✓ ' : ''}{s.label}
-          </div>
+          </button>
         ))}
-      </div>
+      </nav>
 
       {step === 1 && (
         <Card className="fade-up d2">
@@ -113,12 +113,14 @@ export default function Onboarding({ onComplete }) {
             {TOOLS.map((t) => {
               const sel = selectedTools.includes(t.id);
               return (
-                <div key={t.id} onClick={() => toggleTool(t.id)} style={{
-                  padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
-                  background: sel ? T.accentBg : T.surface2,
-                  border: `1px solid ${sel ? T.accent + '66' : T.border}`,
-                  display: 'flex', alignItems: 'center', gap: 10, transition: 'all .15s',
-                }}>
+                <div key={t.id} onClick={() => toggleTool(t.id)} role="checkbox" aria-checked={sel} tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTool(t.id); } }}
+                  style={{
+                    padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
+                    background: sel ? T.accentBg : T.surface2,
+                    border: `1px solid ${sel ? T.accent + '66' : T.border}`,
+                    display: 'flex', alignItems: 'center', gap: 10, transition: 'all .15s',
+                  }}>
                   <span style={{ fontSize: 20 }}>{t.icon}</span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 12, color: sel ? T.accent : T.text }}>{t.label}</div>
@@ -154,11 +156,13 @@ export default function Onboarding({ onComplete }) {
             {DATA_SOURCES.map((s) => {
               const sel = dataSources.includes(s.id);
               return (
-                <div key={s.id} onClick={() => toggleSource(s.id)} style={{
-                  padding: 16, borderRadius: 12, cursor: 'pointer', textAlign: 'center',
-                  background: sel ? T.accentBg : T.surface2,
-                  border: `1px solid ${sel ? T.accent + '66' : T.border}`, transition: 'all .15s',
-                }}>
+                <div key={s.id} onClick={() => toggleSource(s.id)} role="checkbox" aria-checked={sel} tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSource(s.id); } }}
+                  style={{
+                    padding: 16, borderRadius: 12, cursor: 'pointer', textAlign: 'center',
+                    background: sel ? T.accentBg : T.surface2,
+                    border: `1px solid ${sel ? T.accent + '66' : T.border}`, transition: 'all .15s',
+                  }}>
                   <div style={{ fontSize: 28, marginBottom: 6 }}>{s.icon}</div>
                   <div style={{ fontWeight: 600, fontSize: 12, color: sel ? T.accent : T.text, marginBottom: 2 }}>{s.label}</div>
                   <div style={{ fontSize: 10, color: T.textMuted }}>{s.desc}</div>
@@ -196,14 +200,14 @@ export default function Onboarding({ onComplete }) {
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, flexWrap: 'wrap', gap: 8 }}>
-        <div>{step > 1 && <Btn v="ghost" onClick={prev}>← Précédent</Btn>}</div>
+        <div>{step > 1 && <Btn v="ghost" onClick={prev} aria-label="Étape précédente">← Précédent</Btn>}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={skip} style={{
+          <button onClick={skip} aria-label="Passer l'onboarding" style={{
             background: 'none', border: 'none', color: T.textMuted, fontSize: 11,
             cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline',
           }}>Passer l'onboarding</button>
           {step < 5 ? (
-            <Btn onClick={next} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Suivant →</Btn>
+            <Btn onClick={next} aria-label="Étape suivante" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Suivant →</Btn>
           ) : (
             <Btn onClick={finish} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Accéder au Dashboard →</Btn>
           )}

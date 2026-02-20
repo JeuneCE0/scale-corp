@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { T } from '../lib/theme.js';
 import { uid } from '../lib/utils.js';
 import { store, load } from '../lib/store.js';
-import { Card, Section, Btn, Inp, Sel, Modal, EmptyState, Badge } from '../components/ui.jsx';
+import { Card, Section, Btn, Inp, Sel, Modal, EmptyState, Badge, ConfirmDialog } from '../components/ui.jsx';
 
 const EVENT_TYPES = [
   { value: 'reunion', label: 'Réunion' },
@@ -19,29 +19,63 @@ export default function Agenda() {
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ title: '', date: '', time: '', type: 'reunion', description: '' });
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => { store('events', events); }, [events]);
 
-  const now = new Date();
-  const upcoming = events
-    .filter((e) => new Date(`${e.date}T${e.time || '23:59'}`) >= now)
-    .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`));
-  const past = events
-    .filter((e) => new Date(`${e.date}T${e.time || '23:59'}`) < now)
-    .sort((a, b) => new Date(`${b.date}T${b.time || '00:00'}`) - new Date(`${a.date}T${a.time || '00:00'}`));
+  const now = useMemo(() => new Date(), []);
 
-  const openNew = () => { setEditId(null); setForm({ title: '', date: '', time: '', type: 'reunion', description: '' }); setShowModal(true); };
-  const openEdit = (e) => { setEditId(e.id); setForm({ title: e.title, date: e.date, time: e.time, type: e.type, description: e.description || '' }); setShowModal(true); };
+  const upcoming = useMemo(() =>
+    events
+      .filter((e) => new Date(`${e.date}T${e.time || '23:59'}`) >= now)
+      .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`)),
+    [events, now]
+  );
 
-  const saveEvent = () => {
+  const past = useMemo(() =>
+    events
+      .filter((e) => new Date(`${e.date}T${e.time || '23:59'}`) < now)
+      .sort((a, b) => new Date(`${b.date}T${b.time || '00:00'}`) - new Date(`${a.date}T${a.time || '00:00'}`)),
+    [events, now]
+  );
+
+  const openNew = useCallback(() => {
+    setEditId(null);
+    setForm({ title: '', date: '', time: '', type: 'reunion', description: '' });
+    setShowModal(true);
+  }, []);
+
+  const openEdit = useCallback((e) => {
+    setEditId(e.id);
+    setForm({ title: e.title, date: e.date, time: e.time, type: e.type, description: e.description || '' });
+    setShowModal(true);
+  }, []);
+
+  const saveEvent = useCallback(() => {
     if (!form.title.trim() || !form.date) return;
-    if (editId) { setEvents(events.map((e) => e.id === editId ? { ...e, ...form } : e)); }
-    else { setEvents([...events, { ...form, id: uid() }]); }
-    setForm({ title: '', date: '', time: '', type: 'reunion', description: '' }); setEditId(null); setShowModal(false);
-  };
+    if (editId) { setEvents((prev) => prev.map((e) => e.id === editId ? { ...e, ...form } : e)); }
+    else { setEvents((prev) => [...prev, { ...form, id: uid() }]); }
+    setForm({ title: '', date: '', time: '', type: 'reunion', description: '' });
+    setEditId(null);
+    setShowModal(false);
+  }, [form, editId]);
 
-  const deleteEvent = (id) => setEvents(events.filter((e) => e.id !== id));
-  const formatDate = (d) => new Date(d).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+  const confirmDelete = useCallback((id, ev) => {
+    ev.stopPropagation();
+    setDeleteTarget(id);
+  }, []);
+
+  const executeDelete = useCallback(() => {
+    if (deleteTarget) {
+      setEvents((prev) => prev.filter((e) => e.id !== deleteTarget));
+      setDeleteTarget(null);
+    }
+  }, [deleteTarget]);
+
+  const formatDate = useCallback((d) =>
+    new Date(d).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' }),
+    []
+  );
 
   const renderEvent = (e, faded) => (
     <Card key={e.id} onClick={() => openEdit(e)} style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: faded ? .6 : 1, flexWrap: 'wrap' }}>
@@ -56,7 +90,7 @@ export default function Agenda() {
         {e.description && <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{e.description}</div>}
       </div>
       {!faded && <Badge label={EVENT_TYPES.find((t) => t.value === e.type)?.label} color={TYPE_COLORS[e.type]} bg={TYPE_COLORS[e.type] + '15'} />}
-      <Btn v="ghost" small onClick={(ev) => { ev.stopPropagation(); deleteEvent(e.id); }}>✕</Btn>
+      <Btn v="ghost" small aria-label={`Supprimer ${e.title}`} onClick={(ev) => confirmDelete(e.id, ev)}>✕</Btn>
     </Card>
   );
 
@@ -67,7 +101,7 @@ export default function Agenda() {
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Agenda</h1>
           <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Réunions, deadlines et événements</p>
         </div>
-        <Btn onClick={openNew} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: '0 2px 12px rgba(249,115,22,.3)' }}>+ Événement</Btn>
+        <Btn onClick={openNew} aria-label="Créer un événement" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: '0 2px 12px rgba(249,115,22,.3)' }}>+ Événement</Btn>
       </div>
 
       <Section title="À VENIR" sub={`${upcoming.length} événement${upcoming.length !== 1 ? 's' : ''}`}>
@@ -98,6 +132,14 @@ export default function Agenda() {
           <Btn onClick={saveEvent} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>{editId ? 'Enregistrer' : 'Créer'}</Btn>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Supprimer cet événement ?"
+        message="L'événement sera définitivement supprimé. Cette action est irréversible."
+        onConfirm={executeDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { T } from '../lib/theme.js';
 import { store, load } from '../lib/store.js';
-import { Card, Section, Btn, Inp, Sel, Badge } from '../components/ui.jsx';
+import { Card, Section, Btn, Inp, Sel, TabBar, Toggle, ConfirmDialog } from '../components/ui.jsx';
 
 const SUB_TABS = ['Compte', 'Utilisateurs', 'Facturation', 'Intégrations', 'Data & Export', 'RGPD & Légal'];
 
@@ -39,6 +39,11 @@ const INTEGRATIONS = [
   { name: 'Meta Ads', desc: 'Publicité Facebook/Instagram', icon: '📣' },
 ];
 
+function csvEscape(val) {
+  const s = String(val ?? '');
+  return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
 export default function Settings() {
   const [subTab, setSubTab] = useState('Compte');
   const [company, setCompany] = useState(() => load('settings_company') || {
@@ -54,41 +59,53 @@ export default function Settings() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [removeTarget, setRemoveTarget] = useState(null);
 
-  const upd = (k, v) => setCompany((prev) => ({ ...prev, [k]: v }));
+  const upd = useCallback((k, v) => setCompany((prev) => ({ ...prev, [k]: v })), []);
 
-  const saveCompany = () => {
+  const saveCompany = useCallback(() => {
     store('settings_company', company);
     setSavedCompany(true);
     setTimeout(() => setSavedCompany(false), 2000);
-  };
+  }, [company]);
 
-  const toggleIntegration = (name) => {
-    const updated = { ...integrations, [name]: !integrations[name] };
-    setIntegrations(updated);
-    store('integrations', updated);
-  };
+  const toggleIntegration = useCallback((name) => {
+    setIntegrations((prev) => {
+      const updated = { ...prev, [name]: !prev[name] };
+      store('integrations', updated);
+      return updated;
+    });
+  }, []);
 
-  const selectPlan = (id) => {
+  const selectPlan = useCallback((id) => {
     setSelectedPlan(id);
     store('plan', id);
-  };
+  }, []);
 
-  const inviteUser = () => {
+  const inviteUser = useCallback(() => {
     if (!inviteEmail.trim() || !inviteEmail.includes('@')) return;
-    const updated = [...users, { name: inviteEmail.split('@')[0], email: inviteEmail, role: 'Membre' }];
-    setUsers(updated);
-    store('users', updated);
+    setUsers((prev) => {
+      const updated = [...prev, { name: inviteEmail.split('@')[0], email: inviteEmail, role: 'Membre' }];
+      store('users', updated);
+      return updated;
+    });
     setInviteEmail('');
-  };
+  }, [inviteEmail]);
 
-  const removeUser = (email) => {
-    const updated = users.filter((u) => u.email !== email);
-    setUsers(updated);
-    store('users', updated);
-  };
+  const confirmRemoveUser = useCallback((email) => setRemoveTarget(email), []);
 
-  const exportData = (type) => {
+  const executeRemoveUser = useCallback(() => {
+    if (removeTarget) {
+      setUsers((prev) => {
+        const updated = prev.filter((u) => u.email !== removeTarget);
+        store('users', updated);
+        return updated;
+      });
+      setRemoveTarget(null);
+    }
+  }, [removeTarget]);
+
+  const exportData = useCallback((type) => {
     const data = {
       contacts: load('contacts') || [],
       finances: load('finHistory') || [],
@@ -97,34 +114,38 @@ export default function Settings() {
     };
     let content, filename, mime;
     if (type === 'contacts') {
-      const rows = data.contacts.map((c) => `${c.name},${c.email},${c.company},${c.phone},${c.status}`);
-      content = 'Nom,Email,Société,Téléphone,Statut\n' + rows.join('\n');
-      filename = 'contacts.csv'; mime = 'text/csv';
+      const header = 'Nom,Email,Société,Téléphone,Statut';
+      const rows = data.contacts.map((c) => [c.name, c.email, c.company, c.phone, c.status].map(csvEscape).join(','));
+      content = header + '\n' + rows.join('\n');
+      filename = 'hubscale_contacts.csv'; mime = 'text/csv;charset=utf-8';
     } else if (type === 'finances') {
-      const rows = data.finances.map((r) => `${r.key},${r.ca},${r.charges},${r.result}`);
-      content = 'Mois,CA,Charges,Résultat\n' + rows.join('\n');
-      filename = 'finances.csv'; mime = 'text/csv';
+      const header = 'Mois,CA,Charges,Résultat';
+      const rows = data.finances.map((r) => [r.key, r.ca, r.charges, r.result].map(csvEscape).join(','));
+      content = header + '\n' + rows.join('\n');
+      filename = 'hubscale_finances.csv'; mime = 'text/csv;charset=utf-8';
     } else if (type === 'events') {
-      const rows = data.events.map((e) => `${e.title},${e.date},${e.time},${e.type}`);
-      content = 'Titre,Date,Heure,Type\n' + rows.join('\n');
-      filename = 'events.csv'; mime = 'text/csv';
+      const header = 'Titre,Date,Heure,Type';
+      const rows = data.events.map((e) => [e.title, e.date, e.time, e.type].map(csvEscape).join(','));
+      content = header + '\n' + rows.join('\n');
+      filename = 'hubscale_events.csv'; mime = 'text/csv;charset=utf-8';
     } else {
       content = JSON.stringify(data, null, 2);
-      filename = 'backup_hubscale.json'; mime = 'application/json';
+      filename = 'hubscale_backup.json'; mime = 'application/json';
     }
-    const blob = new Blob([content], { type: mime });
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + content], { type: mime });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
-  };
+  }, []);
 
-  const deleteAccount = () => {
+  const deleteAccount = useCallback(() => {
     if (deleteConfirmText !== 'SUPPRIMER') return;
     ['contacts', 'events', 'finHistory', 'settings_company', 'integrations', 'plan', 'users', 'onboarded', 'company', 'tools', 'apiKeys', 'dataSources'].forEach((k) => {
       try { localStorage.removeItem('hs_' + k); } catch {}
     });
     window.location.reload();
-  };
+  }, [deleteConfirmText]);
 
   return (
     <div>
@@ -133,18 +154,8 @@ export default function Settings() {
         <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Configuration de votre espace client</p>
       </div>
 
-      {/* Sub-tabs — scrollable on mobile */}
-      <div className="fade-up d1 subtabs" style={{ background: T.surface, borderRadius: 10, border: `1px solid ${T.border}`, marginBottom: 24 }}>
-        {SUB_TABS.map((t) => {
-          const active = subTab === t;
-          return (
-            <button key={t} onClick={() => setSubTab(t)} style={{
-              background: active ? T.accentBg : 'transparent', border: 'none', cursor: 'pointer',
-              padding: '8px 14px', fontSize: 11, fontWeight: active ? 700 : 500, fontFamily: 'inherit',
-              color: active ? T.accent : T.textMuted, transition: 'all .15s', whiteSpace: 'nowrap', flexShrink: 0,
-            }}>{t}</button>
-          );
-        })}
+      <div className="fade-up d1" style={{ marginBottom: 24 }}>
+        <TabBar items={SUB_TABS} active={subTab} onChange={setSubTab} />
       </div>
 
       {/* -------- COMPTE -------- */}
@@ -207,7 +218,7 @@ export default function Settings() {
               <div style={{ fontSize: 12, color: T.textSecondary }}>{users.length} utilisateur{users.length > 1 ? 's' : ''} sur votre forfait</div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <Inp small value={inviteEmail} onChange={setInviteEmail} placeholder="email@exemple.com" onKeyDown={(e) => e.key === 'Enter' && inviteUser()} />
-                <Btn onClick={inviteUser} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>+ Inviter</Btn>
+                <Btn onClick={inviteUser} aria-label="Inviter un utilisateur" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>+ Inviter</Btn>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -221,11 +232,19 @@ export default function Settings() {
                     <div style={{ fontSize: 11, color: T.textSecondary }}>{u.email}</div>
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 600, color: T.accent, background: T.accentBg, padding: '3px 8px', borderRadius: 6 }}>{u.role}</span>
-                  {u.role !== 'Owner' && <Btn v="ghost" small onClick={() => removeUser(u.email)}>✕</Btn>}
+                  {u.role !== 'Owner' && <Btn v="ghost" small aria-label={`Retirer ${u.name}`} onClick={() => confirmRemoveUser(u.email)}>✕</Btn>}
                 </div>
               ))}
             </div>
           </Card>
+
+          <ConfirmDialog
+            open={removeTarget !== null}
+            title="Retirer cet utilisateur ?"
+            message="L'utilisateur n'aura plus accès à votre espace client."
+            onConfirm={executeRemoveUser}
+            onCancel={() => setRemoveTarget(null)}
+          />
         </Section>
       )}
 
@@ -236,18 +255,7 @@ export default function Settings() {
             <p style={{ color: T.textSecondary, fontSize: 12 }}>Paiement sécurisé via Stripe. Annulez à tout moment.</p>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 12 }}>
               <span style={{ fontSize: 12, fontWeight: annual ? 500 : 700, color: annual ? T.textMuted : T.text }}>Mensuel</span>
-              <div onClick={() => setAnnual(!annual)} style={{
-                width: 44, height: 22, borderRadius: 11, cursor: 'pointer', position: 'relative',
-                background: annual ? T.green : T.border, transition: 'background .2s',
-              }}>
-                <div style={{
-                  width: 18, height: 18, borderRadius: 9, background: '#fff',
-                  position: 'absolute', top: 2, left: annual ? 24 : 2, transition: 'left .2s',
-                }} />
-              </div>
-              <span style={{ fontSize: 12, fontWeight: annual ? 700 : 500, color: annual ? T.text : T.textMuted }}>
-                Annuel <span style={{ color: T.green, fontWeight: 700 }}>-20%</span>
-              </span>
+              <Toggle on={annual} onToggle={() => setAnnual(!annual)} label={<><span>Annuel</span> <span style={{ color: T.green, fontWeight: 700 }}>-20%</span></>} />
             </div>
           </div>
 
@@ -256,11 +264,13 @@ export default function Settings() {
               const price = annual ? Math.round(plan.monthly * 0.8) : plan.monthly;
               const active = selectedPlan === plan.id;
               return (
-                <div key={plan.id} className={`fade-up d${i + 1}`} onClick={() => selectPlan(plan.id)} style={{
-                  background: T.surface, border: `2px solid ${active ? '#f97316' : plan.recommended ? T.accent + '44' : T.border}`,
-                  borderRadius: 16, padding: 20, cursor: 'pointer', position: 'relative', transition: 'all .2s ease',
-                  boxShadow: active ? '0 0 24px rgba(249,115,22,.15)' : 'none',
-                }}>
+                <div key={plan.id} className={`fade-up d${i + 1}`} onClick={() => selectPlan(plan.id)} role="button" aria-pressed={active} tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectPlan(plan.id); } }}
+                  style={{
+                    background: T.surface, border: `2px solid ${active ? '#f97316' : plan.recommended ? T.accent + '44' : T.border}`,
+                    borderRadius: 16, padding: 20, cursor: 'pointer', position: 'relative', transition: 'all .2s ease',
+                    boxShadow: active ? '0 0 24px rgba(249,115,22,.15)' : 'none',
+                  }}>
                   {plan.recommended && (
                     <div style={{
                       position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
@@ -301,15 +311,15 @@ export default function Settings() {
       {subTab === 'Intégrations' && (
         <Section title="INTÉGRATIONS API" sub="Connectez vos outils et services externes">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {INTEGRATIONS.map((i) => (
-              <Card key={i.name} style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: T.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{i.icon}</div>
+            {INTEGRATIONS.map((ig) => (
+              <Card key={ig.name} style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: T.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{ig.icon}</div>
                 <div style={{ flex: 1, minWidth: 120 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{i.name}</div>
-                  <div style={{ fontSize: 11, color: T.textSecondary }}>{i.desc}</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{ig.name}</div>
+                  <div style={{ fontSize: 11, color: T.textSecondary }}>{ig.desc}</div>
                 </div>
-                <Btn v={integrations[i.name] ? 'success' : 'secondary'} small onClick={() => toggleIntegration(i.name)}>
-                  {integrations[i.name] ? '✓ Connecté' : 'Connecter'}
+                <Btn v={integrations[ig.name] ? 'success' : 'secondary'} small onClick={() => toggleIntegration(ig.name)}>
+                  {integrations[ig.name] ? '✓ Connecté' : 'Connecter'}
                 </Btn>
               </Card>
             ))}

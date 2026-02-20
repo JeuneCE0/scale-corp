@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { T } from '../lib/theme.js';
 import { fmt, fK, pf, curMonth, monthLabel } from '../lib/utils.js';
 import { store, load } from '../lib/store.js';
-import { KPI, Card, Section, Btn, Inp } from '../components/ui.jsx';
+import { KPI, Card, Section, Btn, Inp, TabBar } from '../components/ui.jsx';
 
 const SUB_TABS = ['Finances', 'Sales', 'Publicité'];
 
@@ -31,9 +31,9 @@ export default function Data() {
 
   useEffect(() => { store('finHistory', history); }, [history]);
 
-  const lastRow = history[history.length - 1] || {};
+  const lastRow = useMemo(() => history[history.length - 1] || {}, [history]);
 
-  const saveEntry = () => {
+  const saveEntry = useCallback(() => {
     const ca = pf(formCA);
     const fixed = pf(formFixed);
     const variable = pf(formVar);
@@ -47,7 +47,7 @@ export default function Data() {
     }
     setFormCA(''); setFormFixed(''); setFormVar(''); setFormTreso('');
     setSaved(true); setTimeout(() => setSaved(false), 2000);
-  };
+  }, [formCA, formFixed, formVar, formTreso, formMonth, history]);
 
   return (
     <div>
@@ -56,17 +56,8 @@ export default function Data() {
         <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Vos données financières, commerciales et publicitaires</p>
       </div>
 
-      <div className="fade-up d1 subtabs" style={{ background: T.surface, borderRadius: 10, border: `1px solid ${T.border}`, marginBottom: 20, width: 'fit-content' }}>
-        {SUB_TABS.map((t) => {
-          const active = subTab === t;
-          return (
-            <button key={t} onClick={() => setSubTab(t)} style={{
-              background: active ? T.accentBg : 'transparent', border: 'none', cursor: 'pointer',
-              padding: '8px 18px', fontSize: 12, fontWeight: active ? 700 : 500, fontFamily: 'inherit',
-              color: active ? T.accent : T.textMuted, transition: 'all .15s', whiteSpace: 'nowrap', flexShrink: 0,
-            }}>{t}</button>
-          );
-        })}
+      <div className="fade-up d1" style={{ marginBottom: 20, width: 'fit-content' }}>
+        <TabBar items={SUB_TABS} active={subTab} onChange={setSubTab} />
       </div>
 
       {subTab === 'Finances' && (
@@ -101,7 +92,7 @@ export default function Data() {
                   <thead>
                     <tr style={{ borderBottom: `1px solid ${T.border}` }}>
                       {['Mois', 'CA', 'Charges', 'Résultat'].map((h) => (
-                        <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: T.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: .5 }}>{h}</th>
+                        <th key={h} scope="col" style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: T.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: .5 }}>{h}</th>
                       ))}
                     </tr>
                   </thead>

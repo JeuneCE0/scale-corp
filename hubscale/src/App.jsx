@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { T, FONT } from './lib/theme.js';
 import { GLOBAL_CSS } from './lib/css.js';
 import { load, store } from './lib/store.js';
-import Dashboard from './pages/Dashboard.jsx';
-import CRM from './pages/CRM.jsx';
-import Data from './pages/Data.jsx';
-import Agenda from './pages/Agenda.jsx';
-import Settings from './pages/Settings.jsx';
-import Onboarding from './pages/Onboarding.jsx';
+import { Spinner } from './components/ui.jsx';
+
+const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
+const CRM = lazy(() => import('./pages/CRM.jsx'));
+const Data = lazy(() => import('./pages/Data.jsx'));
+const Agenda = lazy(() => import('./pages/Agenda.jsx'));
+const Settings = lazy(() => import('./pages/Settings.jsx'));
+const Onboarding = lazy(() => import('./pages/Onboarding.jsx'));
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: '📊' },
@@ -17,13 +19,14 @@ const TABS = [
   { id: 'settings', label: 'Paramètres', icon: '⚙️' },
 ];
 
-const PAGE_MAP = {
-  overview: Dashboard,
-  crm: CRM,
-  data: Data,
-  agenda: Agenda,
-  settings: Settings,
-};
+function LoadingFallback() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 10 }}>
+      <Spinner size={24} />
+      <span style={{ color: T.textMuted, fontSize: 12 }}>Chargement...</span>
+    </div>
+  );
+}
 
 export default function App() {
   const [tab, setTab] = useState('overview');
@@ -38,24 +41,26 @@ export default function App() {
     }
   }, []);
 
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = useCallback(() => {
     store('onboarded', true);
     setOnboarded(true);
-  };
+  }, []);
+
+  const navigate = useCallback((tabId) => setTab(tabId), []);
 
   if (!onboarded) {
     return (
       <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
-        <Onboarding onComplete={handleOnboardingComplete} />
+        <Suspense fallback={<LoadingFallback />}>
+          <Onboarding onComplete={handleOnboardingComplete} />
+        </Suspense>
       </div>
     );
   }
 
-  const Page = PAGE_MAP[tab];
-
   return (
     <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
-      <nav style={{
+      <nav role="navigation" aria-label="Navigation principale" style={{
         position: 'sticky', top: 0, zIndex: 100,
         background: 'rgba(9,9,11,.85)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         borderBottom: `1px solid ${T.border}`,
@@ -82,12 +87,15 @@ export default function App() {
           </div>
         </div>
 
-        <div className="nav-tabs-scroll" style={{ display: 'flex', gap: 0 }}>
+        <div className="nav-tabs-scroll" role="tablist" style={{ display: 'flex', gap: 0 }}>
           {TABS.map((t) => {
             const active = tab === t.id;
             return (
               <button
                 key={t.id}
+                role="tab"
+                aria-selected={active}
+                aria-label={t.label}
                 onClick={() => setTab(t.id)}
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
@@ -108,7 +116,13 @@ export default function App() {
       </nav>
 
       <main className="page-pad" style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px 40px' }}>
-        <Page />
+        <Suspense fallback={<LoadingFallback />}>
+          {tab === 'overview' && <Dashboard onNavigate={navigate} />}
+          {tab === 'crm' && <CRM />}
+          {tab === 'data' && <Data />}
+          {tab === 'agenda' && <Agenda />}
+          {tab === 'settings' && <Settings />}
+        </Suspense>
       </main>
     </div>
   );

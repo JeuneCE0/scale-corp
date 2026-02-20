@@ -33,7 +33,7 @@ body{margin:0;overflow-x:hidden;font-family:${FONT};background:${T.bg};color:${T
 ::-webkit-scrollbar-thumb{background:${T.border};border-radius:4px}
 
 /* Focus */
-button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid ${T.accent}44;outline-offset:2px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid ${T.accent}44;outline-offset:2px}
 
 /* Glass morphism */
 .glass{background:rgba(17,17,19,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.06);border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.2)}
@@ -50,7 +50,15 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .subtabs{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .subtabs::-webkit-scrollbar{display:none}
 
-/* Responsive */
+/* Tablet (769px - 1024px) */
+@media(min-width:769px) and (max-width:1024px){
+  .kpi-grid{grid-template-columns:repeat(2, 1fr) !important}
+  .grid-desktop-3{grid-template-columns:repeat(2, 1fr) !important}
+  .grid-desktop-15-1{grid-template-columns:1fr !important}
+  .grid-desktop-2{grid-template-columns:1fr !important}
+}
+
+/* Mobile (<768px) */
 @media(max-width:768px){
   .hide-mobile{display:none !important}
   .mobile-header{display:flex !important}

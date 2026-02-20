@@ -1,5 +1,5 @@
 // HubScale — Base UI Components
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { T, FONT } from '../lib/theme.js';
 import { clamp, pct } from '../lib/utils.js';
 
@@ -26,12 +26,13 @@ const BTN_VARIANTS = {
   success: { background: 'rgba(34,197,94,.1)', color: T.green, border: '1px solid rgba(34,197,94,.15)' },
 };
 
-export function Btn({ children, onClick, v = 'primary', small, style: sx, disabled, full }) {
+export function Btn({ children, onClick, v = 'primary', small, style: sx, disabled, full, 'aria-label': ariaLabel }) {
   return (
     <button
       className="pressable"
       disabled={disabled}
       onClick={onClick}
+      aria-label={ariaLabel}
       style={{
         border: 'none', borderRadius: 10, fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer',
         fontFamily: FONT, opacity: disabled ? .4 : 1,
@@ -89,15 +90,24 @@ export function Card({ children, style: sx, onClick, accent, delay = 0 }) {
 
 // --- Modal ---
 export function Modal({ open, onClose, title, children, wide }) {
+  const modalRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [open, onClose]);
+
   if (!open) return null;
   return (
-    <div className="fade-in" onClick={onClose}
+    <div className="fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={title}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', overflowY: 'auto', backdropFilter: 'blur(8px)' }}>
-      <div className="scale-in" onClick={(e) => e.stopPropagation()}
+      <div ref={modalRef} className="scale-in modal-inner" onClick={(e) => e.stopPropagation()}
         style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 24, width: wide ? 700 : 480, maxWidth: '100%', boxShadow: '0 24px 64px rgba(0,0,0,.4)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{title}</h3>
-          <Btn v="ghost" small onClick={onClose}>✕</Btn>
+          <Btn v="ghost" small onClick={onClose} aria-label="Fermer">✕</Btn>
         </div>
         {children}
       </div>
@@ -143,7 +153,9 @@ export function Badge({ label, color, bg }) {
 // --- Toggle ---
 export function Toggle({ on, onToggle, label }) {
   return (
-    <div onClick={onToggle} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '6px 12px', borderRadius: 8, background: on ? T.accentBg : T.surface2, border: `1px solid ${on ? T.accent + '44' : T.border}`, transition: 'all .15s' }}>
+    <div onClick={onToggle} role="switch" aria-checked={on} aria-label={label} tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '6px 12px', borderRadius: 8, background: on ? T.accentBg : T.surface2, border: `1px solid ${on ? T.accent + '44' : T.border}`, transition: 'all .15s' }}>
       <div style={{ width: 28, height: 14, borderRadius: 7, background: on ? T.accent : T.border, position: 'relative', transition: 'background .2s' }}>
         <div style={{ width: 10, height: 10, borderRadius: 5, background: on ? '#fff' : T.textMuted, position: 'absolute', top: 2, left: on ? 16 : 2, transition: 'left .2s' }} />
       </div>
@@ -155,7 +167,7 @@ export function Toggle({ on, onToggle, label }) {
 // --- Spinner ---
 export function Spinner({ size = 20, color }) {
   return (
-    <div style={{ width: size, height: size, border: `2px solid ${T.border}`, borderTopColor: color || T.accent, borderRadius: '50%', animation: 'spin .6s linear infinite' }} />
+    <div role="status" aria-label="Chargement" style={{ width: size, height: size, border: `2px solid ${T.border}`, borderTopColor: color || T.accent, borderRadius: '50%', animation: 'spin .6s linear infinite' }} />
   );
 }
 
@@ -167,6 +179,53 @@ export function EmptyState({ icon, title, sub, action }) {
       <div style={{ fontWeight: 700, fontSize: 15, color: T.text, marginBottom: 4 }}>{title}</div>
       {sub && <div style={{ color: T.textSecondary, fontSize: 12, marginBottom: 16 }}>{sub}</div>}
       {action}
+    </div>
+  );
+}
+
+// --- TabBar (reusable sub-tabs) ---
+export function TabBar({ items, active, onChange, counts, compact, style: sx }) {
+  return (
+    <div className="subtabs" role="tablist" style={{ background: T.surface, borderRadius: 10, border: `1px solid ${T.border}`, ...sx }}>
+      {items.map((item) => {
+        const isActive = active === item;
+        const count = counts?.[item];
+        return (
+          <button key={item} role="tab" aria-selected={isActive} onClick={() => onChange(item)} style={{
+            background: isActive ? T.accentBg : 'transparent', border: 'none', cursor: 'pointer',
+            padding: compact ? '7px 10px' : '8px 14px', fontSize: compact ? 10 : 11,
+            fontWeight: isActive ? 700 : 500, fontFamily: FONT,
+            color: isActive ? T.accent : T.textMuted, transition: 'all .15s', whiteSpace: 'nowrap', flexShrink: 0,
+          }}>{count != null ? `${item} (${count})` : item}</button>
+        );
+      })}
+    </div>
+  );
+}
+
+// --- ConfirmDialog ---
+export function ConfirmDialog({ open, onConfirm, onCancel, title, message }) {
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e) => { if (e.key === 'Escape') onCancel(); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [open, onCancel]);
+
+  if (!open) return null;
+  return (
+    <div className="fade-in" onClick={onCancel} role="alertdialog" aria-modal="true" aria-label={title || 'Confirmation'}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, backdropFilter: 'blur(8px)' }}>
+      <div className="scale-in" onClick={(e) => e.stopPropagation()}
+        style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: 24, width: 360, maxWidth: '100%', boxShadow: '0 24px 64px rgba(0,0,0,.4)', textAlign: 'center' }}>
+        <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
+        <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: T.text }}>{title || 'Confirmer la suppression'}</h3>
+        <p style={{ color: T.textSecondary, fontSize: 12, marginBottom: 20 }}>{message || 'Cette action est irréversible.'}</p>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          <Btn v="ghost" onClick={onCancel}>Annuler</Btn>
+          <Btn v="danger" onClick={onConfirm}>Supprimer</Btn>
+        </div>
+      </div>
     </div>
   );
 }
