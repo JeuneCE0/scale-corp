@@ -3,6 +3,7 @@ import { T, FONT } from './lib/theme.js';
 import { GLOBAL_CSS } from './lib/css.js';
 import { load, store } from './lib/store.js';
 import { Spinner, ErrorBoundary, Btn } from './components/ui.jsx';
+import { t, getLang, setLang, onLangChange, AVAILABLE_LANGS } from './lib/i18n.js';
 
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
 const CRM = lazy(() => import('./pages/CRM.jsx'));
@@ -112,6 +113,65 @@ const SHORTCUTS = [
   { keys: ['Enter'], desc: 'Valider formulaire' },
 ];
 
+// --- Guided Tour ---
+const TOUR_STEPS = [
+  { target: 'overview', title: '📊 Dashboard', desc: () => t('tour.step1') },
+  { target: 'crm', title: '👥 CRM', desc: () => t('tour.step2') },
+  { target: 'data', title: '💰 Data', desc: () => t('tour.step3') },
+  { target: 'agenda', title: '📅 Agenda', desc: () => t('tour.step4') },
+  { target: 'settings', title: '⚙️ Paramètres', desc: () => t('tour.step5') },
+];
+
+function GuidedTour({ open, onClose, onNavigate }) {
+  const [step, setStep] = useState(0);
+
+  useEffect(() => { if (open) setStep(0); }, [open]);
+
+  const goNext = useCallback(() => {
+    if (step < TOUR_STEPS.length - 1) {
+      const next = step + 1;
+      setStep(next);
+      onNavigate(TOUR_STEPS[next].target);
+    } else {
+      store('tourDone', true);
+      onClose();
+    }
+  }, [step, onClose, onNavigate]);
+
+  const goPrev = useCallback(() => {
+    if (step > 0) {
+      const prev = step - 1;
+      setStep(prev);
+      onNavigate(TOUR_STEPS[prev].target);
+    }
+  }, [step, onNavigate]);
+
+  if (!open) return null;
+  const s = TOUR_STEPS[step];
+  return (
+    <div className="fade-in" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+      <div className="scale-in" onClick={(e) => e.stopPropagation()} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 28, width: 400, maxWidth: '90%', boxShadow: '0 24px 64px rgba(0,0,0,.5)', textAlign: 'center' }}>
+        <div style={{ fontSize: 36, marginBottom: 12 }}>{s.title.split(' ')[0]}</div>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: T.text, margin: '0 0 8px' }}>{s.title}</h3>
+        <p style={{ color: T.textSecondary, fontSize: 12, lineHeight: 1.6, marginBottom: 20 }}>{s.desc()}</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 16 }}>
+          {TOUR_STEPS.map((_, i) => (
+            <div key={i} style={{ width: i === step ? 18 : 6, height: 6, borderRadius: 3, background: i === step ? T.accent : T.border, transition: 'all .2s' }} />
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          {step > 0 && <Btn v="ghost" small onClick={goPrev}>{t('tour.prev')}</Btn>}
+          <Btn v="ghost" small onClick={() => { store('tourDone', true); onClose(); }}>{t('tour.skip')}</Btn>
+          <Btn onClick={goNext} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>
+            {step < TOUR_STEPS.length - 1 ? t('tour.next') : t('tour.finish')}
+          </Btn>
+        </div>
+        <div style={{ fontSize: 10, color: T.textMuted, marginTop: 12 }}>{step + 1} / {TOUR_STEPS.length}</div>
+      </div>
+    </div>
+  );
+}
+
 function ShortcutsHelp({ open, onClose }) {
   useEffect(() => {
     if (!open) return;
@@ -153,6 +213,10 @@ export default function App() {
   const [onboarded, setOnboarded] = useState(() => load('onboarded') === true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [pageKey, setPageKey] = useState(0);
+  const [lang, setLangState] = useState(getLang);
+  const mainRef = useRef(null);
 
   useEffect(() => {
     if (!document.getElementById('hs-css')) {
@@ -162,6 +226,9 @@ export default function App() {
       document.head.appendChild(style);
     }
   }, []);
+
+  // Sync lang state with i18n module
+  useEffect(() => onLangChange(setLangState), []);
 
   // Global keyboard shortcuts: Cmd+K (search), Cmd+? (shortcuts help)
   useEffect(() => {
@@ -176,9 +243,14 @@ export default function App() {
   const handleOnboardingComplete = useCallback(() => {
     store('onboarded', true);
     setOnboarded(true);
+    if (!load('tourDone')) setTourOpen(true);
   }, []);
 
-  const navigate = useCallback((tabId) => setTab(tabId), []);
+  const navigate = useCallback((tabId) => {
+    setTab(tabId);
+    setPageKey((k) => k + 1);
+    mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   if (!onboarded) {
     return (
@@ -190,8 +262,21 @@ export default function App() {
     );
   }
 
+  const handleTabChange = useCallback((tabId) => {
+    setTab(tabId);
+    setPageKey((k) => k + 1);
+  }, []);
+
+  const handleLangToggle = useCallback(() => {
+    const next = getLang() === 'fr' ? 'en' : 'fr';
+    setLang(next);
+  }, []);
+
   return (
     <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
+      {/* Skip nav (a11y) */}
+      <a href="#main-content" className="skip-nav" style={{ fontFamily: FONT }}>Aller au contenu</a>
+
       <nav role="navigation" aria-label="Navigation principale" style={{
         position: 'sticky', top: 0, zIndex: 100,
         background: 'rgba(9,9,11,.85)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
@@ -212,12 +297,17 @@ export default function App() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={handleLangToggle} aria-label="Changer de langue" title={t('lang.label')}
+              style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: T.textMuted, fontFamily: FONT }}>
+              {getLang().toUpperCase()}
+            </button>
             <button onClick={() => setSearchOpen(true)} aria-label="Recherche globale"
               style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8, padding: '5px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 11, color: T.textMuted }}>🔍</span>
-              <span className="hide-mobile" style={{ fontSize: 11, color: T.textMuted }}>Rechercher</span>
+              <span className="hide-mobile" style={{ fontSize: 11, color: T.textMuted }}>{t('common.search').replace('...', '')}</span>
               <kbd className="hide-mobile" style={{ fontSize: 9, color: T.textMuted, background: T.bg, padding: '1px 4px', borderRadius: 3, border: `1px solid ${T.border}`, marginLeft: 4 }}>⌘K</kbd>
             </button>
+            {!load('tourDone') && <button onClick={() => setTourOpen(true)} aria-label="Visite guidée" style={{ background: T.orangeBg, border: `1px solid ${T.orange}33`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: T.orange, fontFamily: FONT }}>Tour</button>}
             <span style={{
               fontSize: 9, fontWeight: 700, color: T.orange, border: `1px solid ${T.orange}44`,
               borderRadius: 4, padding: '2px 6px', letterSpacing: .5,
@@ -234,7 +324,7 @@ export default function App() {
                 role="tab"
                 aria-selected={active}
                 aria-label={t.label}
-                onClick={() => setTab(t.id)}
+                onClick={() => handleTabChange(t.id)}
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   padding: '8px 12px', fontFamily: FONT,
@@ -253,20 +343,23 @@ export default function App() {
         </div>
       </nav>
 
-      <main className="page-pad" style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px 40px' }}>
+      <main id="main-content" ref={mainRef} className="page-pad" style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px 40px' }}>
         <ErrorBoundary fallbackTitle={`Erreur dans ${TAB_LABELS[tab] || 'la page'}`}>
           <Suspense fallback={<LoadingFallback page={TAB_LABELS[tab]} />}>
-            {tab === 'overview' && <Dashboard onNavigate={navigate} />}
-            {tab === 'crm' && <CRM />}
-            {tab === 'data' && <Data />}
-            {tab === 'agenda' && <Agenda />}
-            {tab === 'settings' && <Settings />}
+            <div key={pageKey} className="page-transition">
+              {tab === 'overview' && <Dashboard onNavigate={navigate} />}
+              {tab === 'crm' && <CRM />}
+              {tab === 'data' && <Data />}
+              {tab === 'agenda' && <Agenda />}
+              {tab === 'settings' && <Settings />}
+            </div>
           </Suspense>
         </ErrorBoundary>
       </main>
 
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} onNavigate={navigate} />
       <ShortcutsHelp open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <GuidedTour open={tourOpen} onClose={() => setTourOpen(false)} onNavigate={navigate} />
     </div>
   );
 }

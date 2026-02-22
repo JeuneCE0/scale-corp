@@ -13,6 +13,8 @@ body{margin:0;overflow-x:hidden;font-family:${FONT};background:${T.bg};color:${T
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 @keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes pageEnter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pagePulse{0%{opacity:.5}50%{opacity:1}100%{opacity:.5}}
 
 .fade-up{animation:fadeUp .4s ease forwards;opacity:0}
 .fade-in{animation:fadeIn .3s ease forwards}
@@ -93,4 +95,21 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover{opacity:1}
 /* Smart compact numbers on mobile */
 .compact-num{display:none}
 @media(max-width:640px){.full-num{display:none !important}.compact-num{display:inline !important}}
+
+/* Skip nav link (a11y) */
+.skip-nav{position:absolute;top:-40px;left:0;background:${T.accent};color:#fff;padding:8px 16px;z-index:9999;font-size:13px;font-weight:600;border-radius:0 0 8px 0;transition:top .2s}
+.skip-nav:focus{top:0}
+
+/* Page transition */
+.page-transition{animation:pageEnter .3s ease forwards}
+
+/* Drag handle */
+.drag-handle{cursor:grab;opacity:.3;transition:opacity .15s;user-select:none}
+.drag-handle:hover{opacity:.8}
+.drag-handle:active{cursor:grabbing}
+
+/* Tour overlay */
+.tour-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1200}
+.tour-spotlight{position:fixed;z-index:1201;box-shadow:0 0 0 9999px rgba(0,0,0,.6);border-radius:12px;pointer-events:none;transition:all .4s ease}
+.tour-popover{position:fixed;z-index:1202;max-width:320px}
 `;

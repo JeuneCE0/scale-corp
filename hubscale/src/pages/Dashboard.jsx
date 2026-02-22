@@ -126,6 +126,26 @@ export default function Dashboard({ onNavigate }) {
     });
   }, []);
 
+  // Draggable widget order
+  const [widgetOrder, setWidgetOrder] = useState(() => load('dashWidgetOrder') || ['chart-pipeline', 'health-activity-tasks', 'crm-pub']);
+  const [dragWidget, setDragWidget] = useState(null);
+  const handleWidgetDragStart = useCallback((e, id) => { setDragWidget(id); e.dataTransfer.effectAllowed = 'move'; }, []);
+  const handleWidgetDrop = useCallback((e, targetId) => {
+    e.preventDefault();
+    if (!dragWidget || dragWidget === targetId) return;
+    setWidgetOrder(prev => {
+      const from = prev.indexOf(dragWidget);
+      const to = prev.indexOf(targetId);
+      const next = [...prev];
+      next.splice(from, 1);
+      next.splice(to, 0, dragWidget);
+      store('dashWidgetOrder', next);
+      return next;
+    });
+    setDragWidget(null);
+  }, [dragWidget]);
+  const handleWidgetDragOver = useCallback((e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }, []);
+
   // Health from real integrations
   const healthItems = useMemo(() =>
     HEALTH_ITEMS.map((h) => ({
@@ -226,144 +246,160 @@ export default function Dashboard({ onNavigate }) {
         ))}
       </div>
 
-      {/* Two columns: Chart + Pipeline */}
-      <div className="grid-desktop-15-1" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 14, marginBottom: 20 }}>
-        <Card delay={3}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 12 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
-              Évolution CA — 6 derniers mois
-            </span>
-            <HelpTip text="Vert = CA, Rouge pointillé = Charges, Lignes = seuils" />
-          </div>
-          <div style={{ height: 180 }}>
-            <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Spinner size={20} /></div>}>
-              <LazyChart />
-            </Suspense>
-          </div>
-        </Card>
-
-        <Card delay={4}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-            Pipeline commercial
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {pipeline.map((p) => (
-              <div key={p.stage} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 80, fontSize: 11, fontWeight: 600, color: T.textSecondary }}>{p.stage}</div>
-                <div style={{ flex: 1 }}><ProgressBar value={p.count} max={maxPipeline} color={p.color} h={6} /></div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: p.color, width: 24, textAlign: 'right' }}>{p.count}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* Three columns */}
-      <div className="grid-desktop-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
-        <Card delay={5}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-            Santé système
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {healthItems.map((h) => (
-              <div key={h.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 12, color: T.text }}>{h.label}</span>
-                <Badge
-                  label={h.status === 'ok' ? 'Connecté' : 'Non connecté'}
-                  color={h.status === 'ok' ? T.green : T.textMuted}
-                  bg={h.status === 'ok' ? T.greenBg : T.surface2}
-                />
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card delay={5}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-            Activité récente
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {activity.length === 0 ? (
-              <div style={{ fontSize: 11, color: T.textMuted, textAlign: 'center', padding: 12 }}>Aucune activité récente</div>
-            ) : activity.map((a, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: 14, flexShrink: 0 }}>{a.icon}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: T.text, lineHeight: 1.4 }}>{a.text}</div>
-                  {a.time && <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>{a.time}</div>}
+      {/* Draggable widget sections */}
+      {widgetOrder.map((id) => {
+        const WIDGETS = {
+          'chart-pipeline': (
+            <div className="grid-desktop-15-1" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 14, marginBottom: 20 }}>
+              <Card delay={3}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 12 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
+                    Évolution CA — 6 derniers mois
+                  </span>
+                  <HelpTip text="Vert = CA, Rouge pointillé = Charges, Lignes = seuils" />
                 </div>
-              </div>
-            ))}
-          </div>
-        </Card>
+                <div style={{ height: 180 }}>
+                  <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Spinner size={20} /></div>}>
+                    <LazyChart />
+                  </Suspense>
+                </div>
+              </Card>
 
-        <Card delay={6}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-            Tâches
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {tasks.map((t, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div onClick={() => toggleTask(i)} role="checkbox" aria-checked={t.done} tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTask(i); } }}
-                  style={{
-                    width: 16, height: 16, borderRadius: 4, flexShrink: 0, cursor: 'pointer',
-                    border: `2px solid ${t.done ? T.green : T.border}`,
-                    background: t.done ? T.greenBg : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 9, color: T.green, transition: 'all .15s',
-                  }}>{t.done ? '✓' : ''}</div>
-                <div style={{ flex: 1, fontSize: 11, color: t.done ? T.textMuted : T.text, textDecoration: t.done ? 'line-through' : 'none', transition: 'all .15s' }}>{t.text}</div>
-                <span onClick={() => removeTask(i)} style={{ fontSize: 10, color: T.textMuted, cursor: 'pointer', padding: '0 4px' }} aria-label="Supprimer">✕</span>
-              </div>
-            ))}
-            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-              <input value={newTask} onChange={(e) => setNewTask(e.target.value)} placeholder="Nouvelle tâche..."
-                onKeyDown={(e) => e.key === 'Enter' && addTask()}
-                style={{ flex: 1, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 6, color: T.text, padding: '5px 8px', fontSize: 10, fontFamily: 'inherit', outline: 'none' }} />
-              <Btn v="ghost" small onClick={addTask} disabled={!newTask.trim()}>+</Btn>
+              <Card delay={4}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
+                  Pipeline commercial
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {pipeline.map((p) => (
+                    <div key={p.stage} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 80, fontSize: 11, fontWeight: 600, color: T.textSecondary }}>{p.stage}</div>
+                      <div style={{ flex: 1 }}><ProgressBar value={p.count} max={maxPipeline} color={p.color} h={6} /></div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: p.color, width: 24, textAlign: 'right' }}>{p.count}</div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
             </div>
-          </div>
-        </Card>
-      </div>
+          ),
+          'health-activity-tasks': (
+            <div className="grid-desktop-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
+              <Card delay={5}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
+                  Santé système
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {healthItems.map((h) => (
+                    <div key={h.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 12, color: T.text }}>{h.label}</span>
+                      <Badge
+                        label={h.status === 'ok' ? 'Connecté' : 'Non connecté'}
+                        color={h.status === 'ok' ? T.green : T.textMuted}
+                        bg={h.status === 'ok' ? T.greenBg : T.surface2}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </Card>
 
-      {/* Bottom: CRM + Publicité */}
-      <div className="grid-desktop-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <Card delay={6}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-            Contacts CRM
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-            {crmStats.map((s) => (
-              <div key={s.l} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, background: s.c + '15' }}>
-                <div style={{ width: 8, height: 8, borderRadius: 4, background: s.c }} />
-                <span style={{ fontSize: 11, fontWeight: 600, color: s.c }}>{s.n}</span>
-                <span style={{ fontSize: 10, color: T.textSecondary }}>{s.l}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize: 11, color: T.textMuted }}>{contacts.length} contact{contacts.length !== 1 ? 's' : ''} au total</div>
-        </Card>
+              <Card delay={5}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
+                  Activité récente
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {activity.length === 0 ? (
+                    <div style={{ fontSize: 11, color: T.textMuted, textAlign: 'center', padding: 12 }}>Aucune activité récente</div>
+                  ) : activity.map((a, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: 14, flexShrink: 0 }}>{a.icon}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 11, color: T.text, lineHeight: 1.4 }}>{a.text}</div>
+                        {a.time && <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>{a.time}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
 
-        <Card delay={6}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-            Publicité
+              <Card delay={6}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
+                  Tâches
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {tasks.map((t, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div onClick={() => toggleTask(i)} role="checkbox" aria-checked={t.done} tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTask(i); } }}
+                        style={{
+                          width: 16, height: 16, borderRadius: 4, flexShrink: 0, cursor: 'pointer',
+                          border: `2px solid ${t.done ? T.green : T.border}`,
+                          background: t.done ? T.greenBg : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 9, color: T.green, transition: 'all .15s',
+                        }}>{t.done ? '✓' : ''}</div>
+                      <div style={{ flex: 1, fontSize: 11, color: t.done ? T.textMuted : T.text, textDecoration: t.done ? 'line-through' : 'none', transition: 'all .15s' }}>{t.text}</div>
+                      <span onClick={() => removeTask(i)} style={{ fontSize: 10, color: T.textMuted, cursor: 'pointer', padding: '0 4px' }} aria-label="Supprimer">✕</span>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                    <input value={newTask} onChange={(e) => setNewTask(e.target.value)} placeholder="Nouvelle tâche..."
+                      onKeyDown={(e) => e.key === 'Enter' && addTask()}
+                      style={{ flex: 1, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 6, color: T.text, padding: '5px 8px', fontSize: 10, fontFamily: 'inherit', outline: 'none' }} />
+                    <Btn v="ghost" small onClick={addTask} disabled={!newTask.trim()}>+</Btn>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          ),
+          'crm-pub': (
+            <div className="grid-desktop-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
+              <Card delay={6}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
+                  Contacts CRM
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                  {crmStats.map((s) => (
+                    <div key={s.l} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, background: s.c + '15' }}>
+                      <div style={{ width: 8, height: 8, borderRadius: 4, background: s.c }} />
+                      <span style={{ fontSize: 11, fontWeight: 600, color: s.c }}>{s.n}</span>
+                      <span style={{ fontSize: 10, color: T.textSecondary }}>{s.l}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: T.textMuted }}>{contacts.length} contact{contacts.length !== 1 ? 's' : ''} au total</div>
+              </Card>
+
+              <Card delay={6}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
+                  Publicité
+                </div>
+                <div className="grid-2-mobile-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {[
+                    { l: 'Dépenses', v: '1 240€', c: T.orange },
+                    { l: 'Impressions', v: '45.2K', c: T.blue },
+                    { l: 'Clics', v: '1 832', c: T.purple },
+                    { l: 'CPA', v: '12.40€', c: T.green },
+                  ].map((m) => (
+                    <div key={m.l} style={{ padding: 8, borderRadius: 8, background: m.c + '10' }}>
+                      <div style={{ fontSize: 9, color: T.textMuted, textTransform: 'uppercase', fontWeight: 600 }}>{m.l}</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: m.c, marginTop: 2 }}>{m.v}</div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          ),
+        };
+        const content = WIDGETS[id];
+        if (!content) return null;
+        return (
+          <div key={id} draggable onDragStart={(e) => handleWidgetDragStart(e, id)}
+            onDragOver={handleWidgetDragOver} onDrop={(e) => handleWidgetDrop(e, id)}
+            style={{ opacity: dragWidget === id ? 0.5 : 1, transition: 'opacity .2s' }}>
+            <div className="drag-handle" style={{ fontSize: 14, marginBottom: 4, textAlign: 'center', cursor: 'grab', color: T.textMuted }}>⠿</div>
+            {content}
           </div>
-          <div className="grid-2-mobile-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {[
-              { l: 'Dépenses', v: '1 240€', c: T.orange },
-              { l: 'Impressions', v: '45.2K', c: T.blue },
-              { l: 'Clics', v: '1 832', c: T.purple },
-              { l: 'CPA', v: '12.40€', c: T.green },
-            ].map((m) => (
-              <div key={m.l} style={{ padding: 8, borderRadius: 8, background: m.c + '10' }}>
-                <div style={{ fontSize: 9, color: T.textMuted, textTransform: 'uppercase', fontWeight: 600 }}>{m.l}</div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: m.c, marginTop: 2 }}>{m.v}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+        );
+      })}
     </div>
   );
 }

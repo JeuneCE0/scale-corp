@@ -1,12 +1,138 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { T } from '../lib/theme.js';
-import { uid } from '../lib/utils.js';
+import { uid, ago, fmt } from '../lib/utils.js';
 import { storeDebounced, load } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
 import { Card, Btn, Inp, Badge, Modal, EmptyState, Sel, TabBar, ConfirmDialog, Pagination } from '../components/ui.jsx';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { useUndoStack } from '../hooks/useUndoStack.js';
 import { CRM_STATUSES as STATUSES, CRM_FILTER_TABS as FILTER_TABS } from '../lib/constants.js';
+
+/** Compute days since a given ISO date string */
+function daysSince(isoDate) {
+  if (!isoDate) return 0;
+  return Math.floor((Date.now() - new Date(isoDate).getTime()) / 86400000);
+}
+
+/** Check if a contact needs a relance alert */
+function getRelanceInfo(contact) {
+  const days = daysSince(contact.createdAt);
+  if (contact.status === 'prospect' && days > 14) return days;
+  if (contact.status === 'lead' && days > 21) return days;
+  return null;
+}
+
+/** Generate a printable invoice HTML in a new window */
+function generateInvoice(contact) {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const invoiceNum = `HS-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Facture ${invoiceNum}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; color: #1a1a2e; padding: 40px; max-width: 800px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 3px solid #f97316; padding-bottom: 20px; }
+    .brand { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #f97316, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .brand-sub { font-size: 11px; color: #666; margin-top: 4px; }
+    .invoice-meta { text-align: right; }
+    .invoice-meta h2 { font-size: 22px; color: #f97316; margin-bottom: 8px; }
+    .invoice-meta p { font-size: 12px; color: #666; line-height: 1.6; }
+    .client-section { background: #f8f9fa; border-radius: 10px; padding: 20px; margin-bottom: 30px; }
+    .client-section h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 10px; }
+    .client-section p { font-size: 13px; line-height: 1.8; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+    thead th { background: #1a1a2e; color: #fff; padding: 12px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; }
+    thead th:last-child, thead th:nth-child(2), thead th:nth-child(3) { text-align: right; }
+    tbody td { padding: 14px 16px; border-bottom: 1px solid #eee; font-size: 13px; }
+    tbody td:last-child, tbody td:nth-child(2), tbody td:nth-child(3) { text-align: right; }
+    tbody tr:hover { background: #fafafa; }
+    .totals { display: flex; justify-content: flex-end; }
+    .totals-table { width: 280px; }
+    .totals-table .row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; border-bottom: 1px solid #eee; }
+    .totals-table .row.total { border-bottom: none; border-top: 2px solid #1a1a2e; padding-top: 12px; margin-top: 4px; font-weight: 800; font-size: 16px; color: #f97316; }
+    .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; font-size: 11px; color: #999; line-height: 1.8; }
+    .footer strong { color: #666; }
+    @media print {
+      body { padding: 20px; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="text-align:center;margin-bottom:20px;">
+    <button onclick="window.print()" style="background:linear-gradient(135deg,#f97316,#f59e0b);color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Imprimer / PDF</button>
+  </div>
+
+  <div class="header">
+    <div>
+      <div class="brand">HubScale</div>
+      <div class="brand-sub">Plateforme de gestion commerciale</div>
+    </div>
+    <div class="invoice-meta">
+      <h2>FACTURE</h2>
+      <p>
+        <strong>N\u00b0 :</strong> ${invoiceNum}<br>
+        <strong>Date :</strong> ${dateStr}
+      </p>
+    </div>
+  </div>
+
+  <div class="client-section">
+    <h3>Facturer \u00e0</h3>
+    <p>
+      <strong>${contact.name || ''}</strong><br>
+      ${contact.company ? contact.company + '<br>' : ''}
+      ${contact.email ? contact.email : ''}
+      ${contact.phone ? '<br>' + contact.phone : ''}
+    </p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:50%">Description</th>
+        <th style="width:10%">Qt\u00e9</th>
+        <th style="width:20%">Prix unitaire HT</th>
+        <th style="width:20%">Total HT</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td contenteditable="true" style="min-height:20px">&nbsp;</td><td contenteditable="true">&nbsp;</td><td contenteditable="true">&nbsp;</td><td contenteditable="true">&nbsp;</td></tr>
+      <tr><td contenteditable="true">&nbsp;</td><td contenteditable="true">&nbsp;</td><td contenteditable="true">&nbsp;</td><td contenteditable="true">&nbsp;</td></tr>
+      <tr><td contenteditable="true">&nbsp;</td><td contenteditable="true">&nbsp;</td><td contenteditable="true">&nbsp;</td><td contenteditable="true">&nbsp;</td></tr>
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <div class="totals-table">
+      <div class="row"><span>Sous-total HT</span><span contenteditable="true">0,00 \u20ac</span></div>
+      <div class="row"><span>TVA (20%)</span><span contenteditable="true">0,00 \u20ac</span></div>
+      <div class="row total"><span>Total TTC</span><span contenteditable="true">0,00 \u20ac</span></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>
+      <strong>Conditions de paiement :</strong> Paiement \u00e0 30 jours \u00e0 compter de la date de facturation.<br>
+      <strong>Coordonn\u00e9es bancaires :</strong> IBAN FR76 XXXX XXXX XXXX XXXX XXXX XXX &bull; BIC XXXXXXXX<br>
+      <strong>HubScale SAS</strong> &mdash; SIRET 000 000 000 00000 &mdash; TVA FR00 000000000<br>
+      Merci pour votre confiance.
+    </p>
+  </div>
+</body>
+</html>`;
+
+  const w = window.open('', '_blank');
+  if (w) {
+    w.document.write(html);
+    w.document.close();
+  }
+}
 
 export default function CRM() {
   const [contacts, setContacts] = useState(() => load('contacts') || []);
@@ -25,6 +151,9 @@ export default function CRM() {
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '' });
+
+  // New comment input state
+  const [newComment, setNewComment] = useState('');
 
   // Undo stack for deletions
   const undoRestore = useCallback((item) => {
@@ -103,12 +232,14 @@ export default function CRM() {
   const openNew = useCallback(() => {
     setEditId(null);
     setForm({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '' });
+    setNewComment('');
     setShowModal(true);
   }, []);
 
   const openEdit = useCallback((c) => {
     setEditId(c.id);
     setForm({ name: c.name, email: c.email, company: c.company, phone: c.phone, status: c.status, notes: c.notes || '' });
+    setNewComment('');
     setShowModal(true);
   }, []);
 
@@ -131,16 +262,36 @@ export default function CRM() {
     if (!form.name.trim()) return;
     const emailErr = validateEmail(form.email);
     if (emailErr) { setEmailError(emailErr); return; }
-    if (editId) { setContacts((prev) => prev.map((c) => c.id === editId ? { ...c, ...form } : c)); }
-    else { setContacts((prev) => [...prev, { ...form, id: uid(), createdAt: new Date().toISOString() }]); }
+
+    // Build new comment if provided
+    const commentToAdd = newComment.trim() ? { text: newComment.trim(), date: new Date().toISOString() } : null;
+
+    if (editId) {
+      setContacts((prev) => prev.map((c) => {
+        if (c.id !== editId) return c;
+        const updatedComments = [...(c.commentaires || [])];
+        if (commentToAdd) updatedComments.push(commentToAdd);
+        return { ...c, ...form, commentaires: updatedComments };
+      }));
+    } else {
+      const newContact = {
+        ...form,
+        id: uid(),
+        createdAt: new Date().toISOString(),
+        commentaires: commentToAdd ? [commentToAdd] : [],
+      };
+      setContacts((prev) => [...prev, newContact]);
+    }
+
     setForm({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '' });
+    setNewComment('');
     setEditId(null);
     setShowModal(false);
     setEmailError('');
     setDuplicateWarning('');
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-  }, [form, editId, validateEmail]);
+  }, [form, editId, validateEmail, newComment]);
 
   // --- CSV Import ---
   const csvInputRef = useRef(null);
@@ -189,7 +340,7 @@ export default function CRM() {
 
         if (isDup) { skipped++; continue; }
 
-        newContacts.push({ id: uid(), name, email, company, phone, status, notes: '', createdAt: new Date().toISOString() });
+        newContacts.push({ id: uid(), name, email, company, phone, status, notes: '', commentaires: [], createdAt: new Date().toISOString() });
         imported++;
       }
 
@@ -223,6 +374,10 @@ export default function CRM() {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   }, []);
+
+  // Get the currently-edited contact's comments for the modal
+  const editContact = editId ? contacts.find((c) => c.id === editId) : null;
+  const editComments = editContact?.commentaires || [];
 
   return (
     <div>
@@ -306,9 +461,17 @@ export default function CRM() {
                   <tbody>
                     {paginated.map((c) => {
                       const st = STATUSES.find((s) => s.id === c.status);
+                      const relanceDays = getRelanceInfo(c);
                       return (
                         <tr key={c.id} onClick={() => openEdit(c)} style={{ borderBottom: `1px solid ${T.border}22`, cursor: 'pointer' }}>
-                          <td style={{ padding: '10px 14px', fontWeight: 600, color: T.text }}>{c.name}</td>
+                          <td style={{ padding: '10px 14px', fontWeight: 600, color: T.text }}>
+                            {c.name}
+                            {relanceDays && (
+                              <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 600, color: T.orange, background: T.orangeBg, padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>
+                                ⚠️ Relance {relanceDays}j
+                              </span>
+                            )}
+                          </td>
                           <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.email || '—'}</td>
                           <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.company || '—'}</td>
                           <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.phone || '—'}</td>
@@ -349,23 +512,31 @@ export default function CRM() {
                   {colContacts.length === 0 && (
                     <div style={{ textAlign: 'center', padding: 16, fontSize: 11, color: T.textMuted }}>Aucun contact</div>
                   )}
-                  {colContacts.map((c) => (
-                    <div key={c.id} draggable onDragStart={(e) => handleDragStart(e, c.id)}
-                      onClick={() => openEdit(c)}
-                      style={{
-                        padding: '10px 12px', borderRadius: 10, background: T.surface2,
-                        border: `1px solid ${dragId === c.id ? status.color : T.border}`,
-                        cursor: 'grab', transition: 'all .15s',
-                        opacity: dragId === c.id ? 0.5 : 1,
-                      }}>
-                      <div style={{ fontWeight: 600, fontSize: 12, color: T.text, marginBottom: 2 }}>{c.name}</div>
-                      {c.company && <div style={{ fontSize: 10, color: T.textSecondary }}>{c.company}</div>}
-                      {c.email && <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{c.email}</div>}
-                      <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end' }}>
-                        <Btn v="danger" small aria-label={`Supprimer ${c.name}`} onClick={(e) => del.request(c.id, e)}>✕</Btn>
+                  {colContacts.map((c) => {
+                    const relanceDays = getRelanceInfo(c);
+                    return (
+                      <div key={c.id} draggable onDragStart={(e) => handleDragStart(e, c.id)}
+                        onClick={() => openEdit(c)}
+                        style={{
+                          padding: '10px 12px', borderRadius: 10, background: T.surface2,
+                          border: `1px solid ${dragId === c.id ? status.color : T.border}`,
+                          cursor: 'grab', transition: 'all .15s',
+                          opacity: dragId === c.id ? 0.5 : 1,
+                        }}>
+                        <div style={{ fontWeight: 600, fontSize: 12, color: T.text, marginBottom: 2 }}>{c.name}</div>
+                        {c.company && <div style={{ fontSize: 10, color: T.textSecondary }}>{c.company}</div>}
+                        {c.email && <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{c.email}</div>}
+                        {relanceDays && (
+                          <div style={{ marginTop: 4, fontSize: 10, fontWeight: 600, color: T.orange, background: T.orangeBg, padding: '2px 6px', borderRadius: 6, display: 'inline-block' }}>
+                            ⚠️ Relance {relanceDays}j
+                          </div>
+                        )}
+                        <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end' }}>
+                          <Btn v="danger" small aria-label={`Supprimer ${c.name}`} onClick={(e) => del.request(c.id, e)}>✕</Btn>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -373,7 +544,7 @@ export default function CRM() {
         </div>
       )}
 
-      <Modal open={showModal} onClose={() => { setShowModal(false); setEmailError(''); setDuplicateWarning(''); }} title={editId ? 'Modifier le contact' : 'Nouveau contact'}>
+      <Modal open={showModal} onClose={() => { setShowModal(false); setEmailError(''); setDuplicateWarning(''); }} title={editId ? 'Modifier le contact' : 'Nouveau contact'} wide={!!editId}>
         <Inp label="Nom *" value={form.name} onChange={(v) => { setForm({ ...form, name: v }); setDuplicateWarning(checkDuplicate(v, form.email)); }} placeholder="Nom complet" />
         <Inp label="Email" value={form.email} onChange={(v) => { setForm({ ...form, email: v }); setEmailError(''); setDuplicateWarning(checkDuplicate(form.name, v)); }} type="email" placeholder="email@exemple.com" />
         {emailError && <div style={{ fontSize: 11, color: T.red, marginTop: -8, marginBottom: 8 }}>{emailError}</div>}
@@ -381,9 +552,74 @@ export default function CRM() {
         <Inp label="Société" value={form.company} onChange={(v) => setForm({ ...form, company: v })} placeholder="Nom de la société" />
         <Inp label="Téléphone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="+33 6 00 00 00 00" />
         <Sel label="Statut" value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={STATUSES.map((s) => ({ value: s.id, label: s.label }))} />
-        <Inp label="Notes" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} textarea placeholder="Notes..." />
-        <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+        <Inp label="Notes" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} placeholder="Notes..." />
+
+        {/* Comments/Notes History Section */}
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'block', color: T.textSecondary, fontSize: 11, fontWeight: 600, marginBottom: 4, letterSpacing: .3 }}>Ajouter un commentaire</label>
+          <div className="glass-input" style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+            <input
+              type="text"
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newComment.trim() && editId) {
+                  e.preventDefault();
+                  setContacts((prev) => prev.map((c) => {
+                    if (c.id !== editId) return c;
+                    return { ...c, commentaires: [...(c.commentaires || []), { text: newComment.trim(), date: new Date().toISOString() }] };
+                  }));
+                  setNewComment('');
+                }
+              }}
+              placeholder="Écrire un commentaire..."
+              style={{ flex: 1, background: 'transparent', border: 'none', color: T.text, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none', width: '100%' }}
+            />
+            {editId && (
+              <Btn v="ghost" small style={{ marginRight: 4, flexShrink: 0 }} onClick={() => {
+                if (!newComment.trim()) return;
+                setContacts((prev) => prev.map((c) => {
+                  if (c.id !== editId) return c;
+                  return { ...c, commentaires: [...(c.commentaires || []), { text: newComment.trim(), date: new Date().toISOString() }] };
+                }));
+                setNewComment('');
+              }}>Ajouter</Btn>
+            )}
+          </div>
+          <div style={{ color: T.textMuted, fontSize: 10, marginTop: 2 }}>
+            {editId ? 'Appuyez sur Entrée ou cliquez Ajouter. Le commentaire sera aussi ajouté à l\'enregistrement.' : 'Le commentaire sera ajouté à la création du contact.'}
+          </div>
+        </div>
+
+        {/* Comments Timeline (only when editing and there are comments) */}
+        {editId && editComments.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'block', color: T.textSecondary, fontSize: 11, fontWeight: 600, marginBottom: 8, letterSpacing: .3 }}>Historique des commentaires ({editComments.length})</label>
+            <div style={{ maxHeight: 200, overflowY: 'auto', borderRadius: 10, border: `1px solid ${T.border}`, background: T.surface2 }}>
+              {[...editComments].reverse().map((comment, idx) => (
+                <div key={idx} style={{
+                  padding: '10px 14px',
+                  borderBottom: idx < editComments.length - 1 ? `1px solid ${T.border}` : 'none',
+                  display: 'flex', flexDirection: 'column', gap: 4,
+                }}>
+                  <div style={{ fontSize: 12, color: T.text, lineHeight: 1.4 }}>{comment.text}</div>
+                  <div style={{ fontSize: 10, color: T.textMuted }}>
+                    {new Date(comment.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {' — '}{ago(comment.date)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
           {saved && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>✓ Enregistré</span>}
+          {editId && (
+            <Btn v="secondary" small onClick={() => generateInvoice(editContact)} style={{ marginRight: 'auto' }}>
+              Facturer
+            </Btn>
+          )}
           <Btn v="ghost" onClick={() => { setShowModal(false); setEmailError(''); setDuplicateWarning(''); }}>Annuler</Btn>
           <Btn onClick={saveContact} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>{editId ? 'Enregistrer' : 'Ajouter'}</Btn>
         </div>

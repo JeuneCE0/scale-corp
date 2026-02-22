@@ -1,9 +1,35 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { T } from '../lib/theme.js';
 import { fmt, fK, pf, curMonth, monthLabel, prevMonth, sameMonthLastYear } from '../lib/utils.js';
 import { storeDebounced, load, store } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
-import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState, Pagination, ProgressBar, HelpTip } from '../components/ui.jsx';
+import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState, Pagination, ProgressBar, HelpTip, Spinner } from '../components/ui.jsx';
+
+const LazyFinChart = lazy(() =>
+  import('recharts').then((mod) => ({
+    default: function FinChart() {
+      const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } = mod;
+      const history = load('finHistory') || [];
+      const data = history.slice(-6).map((r) => ({
+        name: monthLabel(r.key),
+        CA: r.ca || 0,
+        Charges: r.charges || 0,
+      }));
+      return (
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+            <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+            <YAxis tickFormatter={fK} tick={{ fontSize: 10 }} />
+            <Tooltip formatter={(v) => fmt(v) + '€'} />
+            <Legend wrapperStyle={{ fontSize: 10 }} />
+            <Bar dataKey="CA" fill="#16a34a" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Charges" fill="#dc2626" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      );
+    },
+  }))
+);
 
 const SUB_TABS = ['Finances', 'Sales', 'Publicité'];
 
@@ -195,6 +221,39 @@ export default function Data() {
     setTimeout(() => w.print(), 300);
   }, [history, lastRow, ytd, caGoal]);
 
+  // FEC Export (Fichier des Écritures Comptables)
+  const exportFEC = useCallback(() => {
+    const header = 'JournalCode|JournalLib|EcritureNum|EcritureDate|CompteNum|CompteLib|CompAuxNum|CompAuxLib|PieceRef|PieceDate|EcritureLib|Debit|Credit|EcrtureLet|DateLet|ValidDate|Montantdevise|Idevise';
+    const rows = [...history].sort((a, b) => a.key.localeCompare(b.key));
+    const lines = [header];
+    rows.forEach((r, idx) => {
+      const [y, m] = r.key.split('-');
+      const dateStr = `${y}${m}01`;
+      const num = String(idx + 1).padStart(4, '0');
+      const ca = (r.ca || 0).toFixed(2);
+      const charges = (r.charges || 0).toFixed(2);
+      const result = (r.result || 0).toFixed(2);
+      // Line 1: CA entry (credit)
+      lines.push(`VE|Journal des Ventes|${num}|${dateStr}|701000|Ventes|||FA${num}|${dateStr}|CA ${monthLabel(r.key)}|0.00|${ca}||||${ca}|EUR`);
+      // Line 2: Charges entry (debit)
+      lines.push(`AC|Journal des Achats|${num}|${dateStr}|601000|Charges|||AC${num}|${dateStr}|Charges ${monthLabel(r.key)}|${charges}|0.00||||${charges}|EUR`);
+      // Line 3: Result / Bank entry
+      const debit = parseFloat(result) >= 0 ? result : '0.00';
+      const credit = parseFloat(result) < 0 ? Math.abs(parseFloat(result)).toFixed(2) : '0.00';
+      lines.push(`BQ|Journal de Banque|${num}|${dateStr}|512000|Banque|||BQ${num}|${dateStr}|Solde ${monthLabel(r.key)}|${debit}|${credit}||||${Math.abs(parseFloat(result)).toFixed(2)}|EUR`);
+    });
+    const content = lines.join('\n');
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `FEC_HubScale_${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [history]);
+
   const thStyle = { padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: T.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: .5, cursor: 'pointer', userSelect: 'none' };
   const tdStyle = { padding: '10px 14px' };
 
@@ -206,7 +265,10 @@ export default function Data() {
           <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Vos données financières, commerciales et publicitaires</p>
         </div>
         {subTab === 'Finances' && (
-          <Btn v="secondary" small onClick={exportPDF} aria-label="Exporter en PDF">📄 Export PDF</Btn>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn v="secondary" small onClick={exportPDF} aria-label="Exporter en PDF">📄 Export PDF</Btn>
+            <Btn v="secondary" small onClick={exportFEC} aria-label="Exporter FEC">📋 Export FEC</Btn>
+          </div>
         )}
       </div>
 
@@ -243,6 +305,19 @@ export default function Data() {
               </Card>
             </div>
           )}
+
+          <div className="fade-up d3" style={{ marginBottom: 16 }}>
+            <Card>
+              <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
+                ÉVOLUTION CA / CHARGES
+              </div>
+              <div style={{ height: 200 }}>
+                <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Spinner size={20} /></div>}>
+                  <LazyFinChart />
+                </Suspense>
+              </div>
+            </Card>
+          </div>
 
           <Section title="SAISIE" sub="Renseignez vos données du mois">
             <Card>
