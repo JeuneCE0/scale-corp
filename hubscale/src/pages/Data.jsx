@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { T } from '../lib/theme.js';
-import { fmt, fK, pf, curMonth, monthLabel } from '../lib/utils.js';
+import { fmt, fK, pf, curMonth, monthLabel, prevMonth } from '../lib/utils.js';
 import { storeDebounced, load } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
 import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState, Pagination } from '../components/ui.jsx';
@@ -18,6 +18,20 @@ function generateDefaultHistory() {
     rows.push({ key, ca, charges, result: ca - charges });
   }
   return rows;
+}
+
+function EvoBadge({ value, invert }) {
+  // invert: for charges, a decrease is positive (green)
+  const isPositive = invert ? value < 0 : value > 0;
+  const color = isPositive ? T.green : T.red;
+  const arrow = value > 0 ? '↑' : '↓';
+  return (
+    <span style={{
+      fontSize: 9, fontWeight: 700, color, marginLeft: 6,
+      padding: '1px 5px', borderRadius: 4, background: color + '15',
+      whiteSpace: 'nowrap',
+    }}>{arrow}{Math.abs(value)}%</span>
+  );
 }
 
 export default function Data() {
@@ -42,6 +56,21 @@ export default function Data() {
       return sortDir === 'asc' ? cmp : -cmp;
     });
   }, [history, sortCol, sortDir]);
+
+  // Lookup map key -> row for previous-month evolution
+  const histByKey = useMemo(() => {
+    const map = {};
+    history.forEach((r) => { map[r.key] = r; });
+    return map;
+  }, [history]);
+
+  const evo = useCallback((current, field) => {
+    const prev = histByKey[prevMonth(current.key)];
+    if (!prev || !prev[field]) return null;
+    const pctChange = Math.round(((current[field] - prev[field]) / Math.abs(prev[field])) * 100);
+    if (pctChange === 0) return null;
+    return pctChange;
+  }, [histByKey]);
 
   const toggleSort = useCallback((col) => {
     setSortCol((prev) => { if (prev === col) { setSortDir((d) => d === 'asc' ? 'desc' : 'asc'); } else { setSortDir('asc'); } return col; });
@@ -130,14 +159,28 @@ export default function Data() {
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedHistory.slice((histPage - 1) * HIST_PAGE_SIZE, histPage * HIST_PAGE_SIZE).map((r) => (
-                        <tr key={r.key} style={{ borderBottom: `1px solid ${T.border}22` }}>
-                          <td style={{ padding: '10px 14px', fontWeight: 600, color: T.text }}>{monthLabel(r.key)}</td>
-                          <td style={{ padding: '10px 14px', color: T.green, fontWeight: 600 }}>{fmt(r.ca)}€</td>
-                          <td style={{ padding: '10px 14px', color: T.red, fontWeight: 600 }}>{fmt(r.charges)}€</td>
-                          <td style={{ padding: '10px 14px', color: r.result >= 0 ? T.orange : T.red, fontWeight: 700 }}>{fmt(r.result)}€</td>
-                        </tr>
-                      ))}
+                      {sortedHistory.slice((histPage - 1) * HIST_PAGE_SIZE, histPage * HIST_PAGE_SIZE).map((r) => {
+                        const evoCa = evo(r, 'ca');
+                        const evoCharges = evo(r, 'charges');
+                        const evoResult = evo(r, 'result');
+                        return (
+                          <tr key={r.key} style={{ borderBottom: `1px solid ${T.border}22` }}>
+                            <td style={{ padding: '10px 14px', fontWeight: 600, color: T.text }}>{monthLabel(r.key)}</td>
+                            <td style={{ padding: '10px 14px', color: T.green, fontWeight: 600 }}>
+                              {fmt(r.ca)}€
+                              {evoCa != null && <EvoBadge value={evoCa} invert={false} />}
+                            </td>
+                            <td style={{ padding: '10px 14px', color: T.red, fontWeight: 600 }}>
+                              {fmt(r.charges)}€
+                              {evoCharges != null && <EvoBadge value={evoCharges} invert />}
+                            </td>
+                            <td style={{ padding: '10px 14px', color: r.result >= 0 ? T.orange : T.red, fontWeight: 700 }}>
+                              {fmt(r.result)}€
+                              {evoResult != null && <EvoBadge value={evoResult} invert={false} />}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
