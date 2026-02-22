@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { T } from '../lib/theme.js';
 import { uid } from '../lib/utils.js';
 import { storeDebounced, load } from '../lib/store.js';
-import { Card, Btn, Inp, Badge, Modal, EmptyState, Sel, TabBar, ConfirmDialog } from '../components/ui.jsx';
+import { Card, Btn, Inp, Badge, Modal, EmptyState, Sel, TabBar, ConfirmDialog, Pagination } from '../components/ui.jsx';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { CRM_STATUSES as STATUSES, CRM_FILTER_TABS as FILTER_TABS } from '../lib/constants.js';
 
@@ -28,6 +28,8 @@ export default function CRM() {
   const [duplicateWarning, setDuplicateWarning] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [sortDir, setSortDir] = useState('asc');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   useEffect(() => { storeDebounced('contacts', contacts); }, [contacts]);
 
@@ -62,6 +64,12 @@ export default function CRM() {
       return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
     });
   }, [filtered, sortBy, sortDir]);
+
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+  const paginated = useMemo(() => sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [sorted, page]);
+
+  // Reset page when filter changes
+  useEffect(() => { setPage(1); }, [filter, debouncedSearch]);
 
   const toggleSort = useCallback((col) => {
     setSortBy((prev) => { if (prev === col) { setSortDir((d) => d === 'asc' ? 'desc' : 'asc'); } else { setSortDir('asc'); } return col; });
@@ -159,7 +167,7 @@ export default function CRM() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((c) => {
+                {paginated.map((c) => {
                   const st = STATUSES.find((s) => s.id === c.status);
                   return (
                     <tr key={c.id} onClick={() => openEdit(c)} style={{ borderBottom: `1px solid ${T.border}22`, cursor: 'pointer' }}>
@@ -177,6 +185,7 @@ export default function CRM() {
               </tbody>
             </table>
           </div>
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
         </Card>
       )}
 

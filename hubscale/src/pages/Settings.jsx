@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { T } from '../lib/theme.js';
+import { T, getTheme, applyTheme } from '../lib/theme.js';
 import { store, load } from '../lib/store.js';
 import { Card, Section, Btn, Inp, Sel, TabBar, Toggle, ConfirmDialog } from '../components/ui.jsx';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
@@ -29,6 +29,7 @@ export default function Settings() {
     { name: 'Admin', email: 'admin@entreprise.fr', role: 'Owner' },
   ]);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [theme, setTheme] = useState(() => getTheme());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const removeUser = useCallback((email) => {
@@ -152,6 +153,27 @@ export default function Settings() {
               <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
                 {savedCompany && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>✓ Sauvegardé</span>}
                 <Btn onClick={saveCompany} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Sauvegarder</Btn>
+              </div>
+            </Card>
+          </Section>
+
+          <Section title="APPARENCE" sub="Personnalisez l'affichage de votre espace">
+            <Card>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>Thème</div>
+                  <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>Basculez entre le mode sombre et clair</div>
+                </div>
+                <Toggle
+                  on={theme === 'light'}
+                  onToggle={() => {
+                    const next = theme === 'dark' ? 'light' : 'dark';
+                    applyTheme(next);
+                    setTheme(next);
+                    window.location.reload();
+                  }}
+                  label={theme === 'dark' ? '🌙 Sombre' : '☀️ Clair'}
+                />
               </div>
             </Card>
           </Section>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { T } from '../lib/theme.js';
 import { fmt, fK, pf, curMonth, monthLabel } from '../lib/utils.js';
 import { storeDebounced, load } from '../lib/store.js';
-import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState } from '../components/ui.jsx';
+import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState, Pagination } from '../components/ui.jsx';
 
 const SUB_TABS = ['Finances', 'Sales', 'Publicité'];
 
@@ -30,6 +30,8 @@ export default function Data() {
   const [saved, setSaved] = useState(false);
   const [sortCol, setSortCol] = useState('key');
   const [sortDir, setSortDir] = useState('asc');
+  const [histPage, setHistPage] = useState(1);
+  const HIST_PAGE_SIZE = 12;
 
   const sortedHistory = useMemo(() => {
     return [...history].sort((a, b) => {
@@ -122,7 +124,7 @@ export default function Data() {
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedHistory.map((r) => (
+                      {sortedHistory.slice((histPage - 1) * HIST_PAGE_SIZE, histPage * HIST_PAGE_SIZE).map((r) => (
                         <tr key={r.key} style={{ borderBottom: `1px solid ${T.border}22` }}>
                           <td style={{ padding: '10px 14px', fontWeight: 600, color: T.text }}>{monthLabel(r.key)}</td>
                           <td style={{ padding: '10px 14px', color: T.green, fontWeight: 600 }}>{fmt(r.ca)}€</td>
@@ -133,6 +135,7 @@ export default function Data() {
                     </tbody>
                   </table>
                 </div>
+                <Pagination page={histPage} totalPages={Math.ceil(sortedHistory.length / HIST_PAGE_SIZE)} onChange={setHistPage} />
               </Card>
             )}
           </Section>

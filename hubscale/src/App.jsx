@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { T, FONT } from './lib/theme.js';
 import { GLOBAL_CSS } from './lib/css.js';
 import { load, store } from './lib/store.js';
@@ -30,9 +30,83 @@ function LoadingFallback({ page }) {
   );
 }
 
+// --- Global Search (Cmd+K) ---
+function GlobalSearch({ open, onClose, onNavigate }) {
+  const [query, setQuery] = useState('');
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (open) { setQuery(''); setTimeout(() => inputRef.current?.focus(), 50); }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [open, onClose]);
+
+  const results = useMemo(() => {
+    if (!query || query.length < 2) return [];
+    const q = query.toLowerCase();
+    const items = [];
+    const contacts = load('contacts') || [];
+    contacts.filter((c) => (c.name || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q) || (c.company || '').toLowerCase().includes(q))
+      .slice(0, 5).forEach((c) => items.push({ type: 'contact', label: c.name, sub: c.email || c.company || '', tab: 'crm', icon: '👤' }));
+    const events = load('events') || [];
+    events.filter((e) => (e.title || '').toLowerCase().includes(q))
+      .slice(0, 5).forEach((e) => items.push({ type: 'event', label: e.title, sub: e.date || '', tab: 'agenda', icon: '📅' }));
+    const finances = load('finHistory') || [];
+    finances.filter((f) => (f.key || '').includes(q))
+      .slice(0, 3).forEach((f) => items.push({ type: 'finance', label: `Mois ${f.key}`, sub: `CA: ${f.ca}€`, tab: 'data', icon: '💰' }));
+    [{ label: 'Dashboard', tab: 'overview', icon: '📊' }, { label: 'CRM', tab: 'crm', icon: '👥' },
+     { label: 'Data', tab: 'data', icon: '💰' }, { label: 'Agenda', tab: 'agenda', icon: '📅' },
+     { label: 'Paramètres', tab: 'settings', icon: '⚙️' }]
+      .filter((p) => p.label.toLowerCase().includes(q))
+      .forEach((p) => items.push({ type: 'page', label: p.label, sub: 'Naviguer', tab: p.tab, icon: p.icon }));
+    return items;
+  }, [query]);
+
+  if (!open) return null;
+  return (
+    <div className="fade-in" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '80px 16px', backdropFilter: 'blur(8px)' }}>
+      <div className="scale-in" onClick={(e) => e.stopPropagation()} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, width: 520, maxWidth: '100%', boxShadow: '0 24px 64px rgba(0,0,0,.5)', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: `1px solid ${T.border}` }}>
+          <span style={{ fontSize: 16, color: T.textMuted }}>🔍</span>
+          <input ref={inputRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher contacts, événements, pages..."
+            style={{ flex: 1, background: 'transparent', border: 'none', color: T.text, fontSize: 14, fontFamily: FONT, outline: 'none' }} />
+          <kbd style={{ fontSize: 10, color: T.textMuted, background: T.surface2, padding: '2px 6px', borderRadius: 4, border: `1px solid ${T.border}` }}>ESC</kbd>
+        </div>
+        {results.length > 0 && (
+          <div style={{ maxHeight: 320, overflowY: 'auto', padding: 8 }}>
+            {results.map((r, i) => (
+              <div key={`${r.type}-${i}`} onClick={() => { onNavigate(r.tab); onClose(); }}
+                className="hoverable" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer' }}>
+                <span style={{ fontSize: 16, width: 28, textAlign: 'center' }}>{r.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</div>
+                  <div style={{ fontSize: 10, color: T.textMuted }}>{r.sub}</div>
+                </div>
+                <span style={{ fontSize: 9, color: T.textMuted, background: T.surface2, padding: '2px 6px', borderRadius: 4, textTransform: 'uppercase', fontWeight: 600 }}>{r.type}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {query.length >= 2 && results.length === 0 && (
+          <div style={{ padding: 24, textAlign: 'center', color: T.textMuted, fontSize: 12 }}>Aucun résultat pour "{query}"</div>
+        )}
+        {query.length < 2 && (
+          <div style={{ padding: 24, textAlign: 'center', color: T.textMuted, fontSize: 11 }}>Tapez au moins 2 caractères pour chercher</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState('overview');
   const [onboarded, setOnboarded] = useState(() => load('onboarded') === true);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     if (!document.getElementById('hs-css')) {
@@ -41,6 +115,15 @@ export default function App() {
       style.textContent = GLOBAL_CSS;
       document.head.appendChild(style);
     }
+  }, []);
+
+  // Cmd+K / Ctrl+K global shortcut
+  useEffect(() => {
+    const handleKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setSearchOpen(true); }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
   }, []);
 
   const handleOnboardingComplete = useCallback(() => {
@@ -82,6 +165,12 @@ export default function App() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => setSearchOpen(true)} aria-label="Recherche globale"
+              style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8, padding: '5px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 11, color: T.textMuted }}>🔍</span>
+              <span className="hide-mobile" style={{ fontSize: 11, color: T.textMuted }}>Rechercher</span>
+              <kbd className="hide-mobile" style={{ fontSize: 9, color: T.textMuted, background: T.bg, padding: '1px 4px', borderRadius: 3, border: `1px solid ${T.border}`, marginLeft: 4 }}>⌘K</kbd>
+            </button>
             <span style={{
               fontSize: 9, fontWeight: 700, color: T.orange, border: `1px solid ${T.orange}44`,
               borderRadius: 4, padding: '2px 6px', letterSpacing: .5,
@@ -128,6 +217,8 @@ export default function App() {
           </Suspense>
         </ErrorBoundary>
       </main>
+
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} onNavigate={navigate} />
     </div>
   );
 }

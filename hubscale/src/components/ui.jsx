@@ -1,5 +1,5 @@
 // HubScale — Base UI Components
-import React, { useEffect, useRef, Component } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Component } from 'react';
 import { T, FONT } from '../lib/theme.js';
 import { clamp, pct } from '../lib/utils.js';
 
@@ -234,6 +234,46 @@ export function TabBar({ items, active, onChange, counts, compact, style: sx }) 
           }}>{count != null ? `${item} (${count})` : item}</button>
         );
       })}
+    </div>
+  );
+}
+
+// --- Toast ---
+export function useToast() {
+  const [toasts, setToasts] = useState([]);
+  const add = useCallback((msg, type = 'success', duration = 3000) => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, msg, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), duration);
+  }, []);
+  return { toasts, add };
+}
+
+const TOAST_COLORS = { success: T.green, error: T.red, info: T.blue, warning: T.orange };
+export function ToastContainer({ toasts }) {
+  if (!toasts.length) return null;
+  return (
+    <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 2000, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {toasts.map((t) => (
+        <div key={t.id} className="slide-down" style={{
+          background: T.surface, border: `1px solid ${TOAST_COLORS[t.type] || T.border}44`,
+          borderLeft: `3px solid ${TOAST_COLORS[t.type] || T.accent}`,
+          borderRadius: 10, padding: '10px 16px', fontSize: 12, fontWeight: 600, color: T.text,
+          boxShadow: '0 8px 24px rgba(0,0,0,.3)', animation: 'slideDown .25s ease', maxWidth: 320,
+        }}>{t.msg}</div>
+      ))}
+    </div>
+  );
+}
+
+// --- Pagination ---
+export function Pagination({ page, totalPages, onChange }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 }}>
+      <Btn v="ghost" small disabled={page <= 1} onClick={() => onChange(page - 1)} aria-label="Page précédente">← Préc</Btn>
+      <span style={{ fontSize: 11, color: T.textSecondary, fontWeight: 600 }}>{page} / {totalPages}</span>
+      <Btn v="ghost" small disabled={page >= totalPages} onClick={() => onChange(page + 1)} aria-label="Page suivante">Suiv →</Btn>
     </div>
   );
 }

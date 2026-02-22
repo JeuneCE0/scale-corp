@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { T } from '../lib/theme.js';
 import { uid } from '../lib/utils.js';
 import { storeDebounced, load } from '../lib/store.js';
-import { Card, Section, Btn, Inp, Sel, Modal, EmptyState, Badge, ConfirmDialog } from '../components/ui.jsx';
+import { Card, Section, Btn, Inp, Sel, Modal, EmptyState, Badge, ConfirmDialog, Pagination } from '../components/ui.jsx';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { EVENT_TYPES, EVENT_TYPE_COLORS as TYPE_COLORS, EVENT_TYPE_ICONS as TYPE_ICONS } from '../lib/constants.js';
 
@@ -10,7 +10,7 @@ export default function Agenda() {
   const [events, setEvents] = useState(() => load('events') || []);
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({ title: '', date: '', time: '', type: 'reunion', description: '' });
+  const [form, setForm] = useState({ title: '', date: '', time: '', type: 'reunion', description: '', recurrence: 'none' });
   const deleteEvent = useCallback((id) => setEvents((prev) => prev.filter((e) => e.id !== id)), []);
   const del = useConfirmDialog(deleteEvent);
 
@@ -38,24 +38,43 @@ export default function Agenda() {
 
   const openNew = useCallback(() => {
     setEditId(null);
-    setForm({ title: '', date: '', time: '', type: 'reunion', description: '' });
+    setForm({ title: '', date: '', time: '', type: 'reunion', description: '', recurrence: 'none' });
     setShowModal(true);
+    setConflict(null);
   }, []);
 
   const openEdit = useCallback((e) => {
     setEditId(e.id);
-    setForm({ title: e.title, date: e.date, time: e.time, type: e.type, description: e.description || '' });
+    setForm({ title: e.title, date: e.date, time: e.time, type: e.type, description: e.description || '', recurrence: e.recurrence || 'none' });
     setShowModal(true);
+    setConflict(null);
   }, []);
+
+  const [conflict, setConflict] = useState(null);
+
+  const checkConflict = useCallback((date, time) => {
+    if (!date || !time) return null;
+    const newStart = new Date(`${date}T${time}`);
+    const newEnd = new Date(newStart.getTime() + 60 * 60 * 1000); // assume 1h duration
+    return events.find((e) => {
+      if (e.id === editId || !e.time || e.date !== date) return false;
+      const eStart = new Date(`${e.date}T${e.time}`);
+      const eEnd = new Date(eStart.getTime() + 60 * 60 * 1000);
+      return newStart < eEnd && newEnd > eStart;
+    });
+  }, [events, editId]);
 
   const saveEvent = useCallback(() => {
     if (!form.title.trim() || !form.date) return;
-    if (editId) { setEvents((prev) => prev.map((e) => e.id === editId ? { ...e, ...form } : e)); }
+    const c = checkConflict(form.date, form.time);
+    if (c) { setConflict(c); return; }
+    if (editId) { setEvents((prev) => prev.map((e) => e.id === editId ? { ...e, ...form, recurrence: form.recurrence } : e)); }
     else { setEvents((prev) => [...prev, { ...form, id: uid() }]); }
-    setForm({ title: '', date: '', time: '', type: 'reunion', description: '' });
+    setForm({ title: '', date: '', time: '', type: 'reunion', description: '', recurrence: 'none' });
     setEditId(null);
     setShowModal(false);
-  }, [form, editId]);
+    setConflict(null);
+  }, [form, editId, checkConflict]);
 
 
   const formatDate = useCallback((d) =>
@@ -75,6 +94,7 @@ export default function Agenda() {
         <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>{formatDate(e.date)}{e.time ? ` à ${e.time}` : ''}</div>
         {e.description && <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{e.description}</div>}
       </div>
+      {e.recurrence && e.recurrence !== 'none' && <Badge label={e.recurrence === 'weekly' ? '🔁 Hebdo' : '🔁 Mensuel'} color={T.blue} bg={T.blueBg} />}
       {!faded && <Badge label={EVENT_TYPES.find((t) => t.value === e.type)?.label} color={TYPE_COLORS[e.type]} bg={TYPE_COLORS[e.type] + '15'} />}
       <Btn v="ghost" small aria-label={`Supprimer ${e.title}`} onClick={(ev) => del.request(e.id, ev)}>✕</Btn>
     </Card>
@@ -112,7 +132,18 @@ export default function Agenda() {
           <Inp label="Heure" type="time" value={form.time} onChange={(v) => setForm({ ...form, time: v })} />
         </div>
         <Sel label="Type" value={form.type} onChange={(v) => setForm({ ...form, type: v })} options={EVENT_TYPES} />
+        <Sel label="Récurrence" value={form.recurrence} onChange={(v) => setForm({ ...form, recurrence: v })} options={[
+          { value: 'none', label: 'Aucune' }, { value: 'weekly', label: 'Hebdomadaire' }, { value: 'monthly', label: 'Mensuelle' },
+        ]} />
         <Inp label="Description" value={form.description} onChange={(v) => setForm({ ...form, description: v })} textarea placeholder="Détails..." />
+        {conflict && (
+          <div style={{ fontSize: 11, color: T.orange, padding: '8px 10px', borderRadius: 6, background: T.orangeBg, marginBottom: 8 }}>
+            Conflit horaire avec "{conflict.title}" le {conflict.date} à {conflict.time}
+            <div style={{ marginTop: 4 }}>
+              <Btn v="ghost" small onClick={() => { setConflict(null); const ev = form; if (editId) { setEvents((prev) => prev.map((e) => e.id === editId ? { ...e, ...ev } : e)); } else { setEvents((prev) => [...prev, { ...ev, id: uid() }]); } setForm({ title: '', date: '', time: '', type: 'reunion', description: '', recurrence: 'none' }); setEditId(null); setShowModal(false); }}>Créer quand même</Btn>
+            </div>
+          </div>
+        )}
         <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Btn v="ghost" onClick={() => setShowModal(false)}>Annuler</Btn>
           <Btn onClick={saveEvent} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>{editId ? 'Enregistrer' : 'Créer'}</Btn>
