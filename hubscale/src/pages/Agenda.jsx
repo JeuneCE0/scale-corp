@@ -12,7 +12,7 @@ export default function Agenda() {
   const [events, setEvents] = useState(() => load('events') || []);
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({ title: '', date: '', time: '', type: 'reunion', description: '', recurrence: 'none' });
+  const [form, setForm] = useState({ title: '', date: '', time: '', type: 'reunion', description: '', recurrence: 'none', meetingLink: '' });
   const [undoMsg, setUndoMsg] = useState('');
 
   // Undo stack for deletions
@@ -100,14 +100,14 @@ export default function Agenda() {
 
   const openNew = useCallback(() => {
     setEditId(null);
-    setForm({ title: '', date: '', time: '', type: 'reunion', description: '', recurrence: 'none' });
+    setForm({ title: '', date: '', time: '', type: 'reunion', description: '', recurrence: 'none', meetingLink: '' });
     setShowModal(true);
     setConflict(null);
   }, []);
 
   const openEdit = useCallback((e) => {
     setEditId(e.id);
-    setForm({ title: e.title, date: e.date, time: e.time, type: e.type, description: e.description || '', recurrence: e.recurrence || 'none' });
+    setForm({ title: e.title, date: e.date, time: e.time, type: e.type, description: e.description || '', recurrence: e.recurrence || 'none', meetingLink: e.meetingLink || '' });
     setShowModal(true);
     setConflict(null);
   }, []);
@@ -132,7 +132,7 @@ export default function Agenda() {
     if (c) { setConflict(c); return; }
     if (editId) { setEvents((prev) => prev.map((e) => e.id === editId ? { ...e, ...form, recurrence: form.recurrence } : e)); }
     else { setEvents((prev) => [...prev, { ...form, id: uid() }]); }
-    setForm({ title: '', date: '', time: '', type: 'reunion', description: '', recurrence: 'none' });
+    setForm({ title: '', date: '', time: '', type: 'reunion', description: '', recurrence: 'none', meetingLink: '' });
     setEditId(null);
     setShowModal(false);
     setConflict(null);
@@ -154,6 +154,12 @@ export default function Agenda() {
         <div style={{ fontWeight: 700, fontSize: 13, color: faded ? T.textMuted : T.text }}>{e.title}</div>
         <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>{formatDate(e.date)}{e.time ? ` à ${e.time}` : ''}</div>
         {e.description && <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{e.description}</div>}
+        {e.meetingLink && (
+          <a href={e.meetingLink} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()}
+            style={{ fontSize: 10, color: T.accent, fontWeight: 600, marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
+            {e.meetingLink.includes('meet.google') ? '📹 Google Meet' : e.meetingLink.includes('zoom') ? '📹 Zoom' : '🔗 Lien visio'}
+          </a>
+        )}
       </div>
       {e.recurrence && e.recurrence !== 'none' && <Badge label={e.recurrence === 'weekly' ? '🔁 Hebdo' : '🔁 Mensuel'} color={T.blue} bg={T.blueBg} />}
       {!faded && <Badge label={EVENT_TYPES.find((t) => t.value === e.type)?.label} color={TYPE_COLORS[e.type]} bg={TYPE_COLORS[e.type] + '15'} />}
@@ -217,12 +223,13 @@ export default function Agenda() {
         <Sel label="Récurrence" value={form.recurrence} onChange={(v) => setForm({ ...form, recurrence: v })} options={[
           { value: 'none', label: 'Aucune' }, { value: 'weekly', label: 'Hebdomadaire' }, { value: 'monthly', label: 'Mensuelle' },
         ]} />
+        <Inp label="Lien visio (Meet, Zoom...)" value={form.meetingLink} onChange={(v) => setForm({ ...form, meetingLink: v })} placeholder="https://meet.google.com/xxx ou https://zoom.us/j/xxx" />
         <Inp label="Description" value={form.description} onChange={(v) => setForm({ ...form, description: v })} textarea placeholder="Détails..." />
         {conflict && (
           <div style={{ fontSize: 11, color: T.orange, padding: '8px 10px', borderRadius: 6, background: T.orangeBg, marginBottom: 8 }}>
             Conflit horaire avec "{conflict.title}" le {conflict.date} à {conflict.time}
             <div style={{ marginTop: 4 }}>
-              <Btn v="ghost" small onClick={() => { setConflict(null); const ev = form; if (editId) { setEvents((prev) => prev.map((e) => e.id === editId ? { ...e, ...ev } : e)); } else { setEvents((prev) => [...prev, { ...ev, id: uid() }]); } setForm({ title: '', date: '', time: '', type: 'reunion', description: '', recurrence: 'none' }); setEditId(null); setShowModal(false); }}>Créer quand même</Btn>
+              <Btn v="ghost" small onClick={() => { setConflict(null); const ev = form; if (editId) { setEvents((prev) => prev.map((e) => e.id === editId ? { ...e, ...ev } : e)); } else { setEvents((prev) => [...prev, { ...ev, id: uid() }]); } setForm({ title: '', date: '', time: '', type: 'reunion', description: '', recurrence: 'none', meetingLink: '' }); setEditId(null); setShowModal(false); }}>Créer quand même</Btn>
             </div>
           </div>
         )}

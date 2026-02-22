@@ -1,16 +1,20 @@
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { T } from '../lib/theme.js';
-import { fK, fmt } from '../lib/utils.js';
-import { KPI, Card, Badge, ProgressBar, Spinner } from '../components/ui.jsx';
+import { fK, fmt, ago } from '../lib/utils.js';
+import { load, store } from '../lib/store.js';
+import { KPI, Card, Badge, ProgressBar, Spinner, Btn, Inp } from '../components/ui.jsx';
 
 const LazyChart = lazy(() =>
   import('recharts').then((mod) => ({
     default: function CAChart() {
       const { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } = mod;
-      const CA_DATA = [
-        { month: 'Sep', ca: 18500 }, { month: 'Oct', ca: 22000 }, { month: 'Nov', ca: 19800 },
-        { month: 'Déc', ca: 27500 }, { month: 'Jan', ca: 24000 }, { month: 'Fév', ca: 31200 },
-      ];
+      const history = load('finHistory') || [];
+      const CA_DATA = history.slice(-6).map((r) => {
+        const [, m] = (r.key || '').split('-');
+        const months = ['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+        return { month: months[parseInt(m)] || r.key, ca: r.ca || 0 };
+      });
+      if (CA_DATA.length === 0) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 11, color: T.textMuted }}>Aucune donnée financière</div>;
       return (
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={CA_DATA}>
@@ -34,38 +38,100 @@ const LazyChart = lazy(() =>
   }))
 );
 
-const PIPELINE = [
-  { stage: 'Prospect', count: 12, color: T.orange },
-  { stage: 'Lead', count: 8, color: T.blue },
-  { stage: 'Négociation', count: 5, color: T.purple },
-  { stage: 'Gagné', count: 15, color: T.green },
-  { stage: 'Perdu', count: 3, color: T.red },
-];
-
-const ACTIVITY = [
-  { text: 'Nouveau contact ajouté : Dupont SARL', time: 'il y a 2h', icon: '👤' },
-  { text: 'Facture #1042 payée — 2 400€', time: 'il y a 5h', icon: '💰' },
-  { text: 'Pipeline mis à jour : Lead → Négociation', time: 'il y a 1j', icon: '📈' },
-  { text: 'Backup automatique effectué', time: 'il y a 1j', icon: '💾' },
-];
-
-const TASKS = [
-  { text: 'Relancer prospect TechVision', due: 'Aujourd\'hui', done: false },
-  { text: 'Vérifier intégration Stripe', due: 'Demain', done: false },
-  { text: 'Envoyer devis client Nexus', due: '22 Fév', done: true },
-];
-
 const HEALTH_ITEMS = [
-  { label: 'Stripe API', status: 'ok' },
-  { label: 'Revolut API', status: 'ok' },
-  { label: 'GoHighLevel', status: 'warning' },
-  { label: 'Meta Ads', status: 'error' },
+  { label: 'Stripe API', key: 'Stripe' },
+  { label: 'Revolut API', key: 'Revolut' },
+  { label: 'Google Calendar', key: 'Google Calendar' },
+  { label: 'GoHighLevel', key: 'GoHighLevel' },
+  { label: 'Meta Ads', key: 'Meta Ads' },
 ];
 
 export default function Dashboard({ onNavigate }) {
-  const [tasksDone, setTasksDone] = useState(TASKS.map((t) => t.done));
+  // --- Real data from localStorage ---
+  const contacts = useMemo(() => load('contacts') || [], []);
+  const events = useMemo(() => load('events') || [], []);
+  const finHistory = useMemo(() => load('finHistory') || [], []);
+  const integrations = useMemo(() => load('integrations') || {}, []);
 
-  const toggleTask = (i) => setTasksDone((prev) => prev.map((v, j) => j === i ? !v : v));
+  // Pipeline from real CRM contacts
+  const pipeline = useMemo(() => [
+    { stage: 'Prospect', count: contacts.filter((c) => c.status === 'prospect').length, color: T.orange },
+    { stage: 'Lead', count: contacts.filter((c) => c.status === 'lead').length, color: T.blue },
+    { stage: 'Client', count: contacts.filter((c) => c.status === 'client').length, color: T.green },
+    { stage: 'Partenaire', count: contacts.filter((c) => c.status === 'partenaire').length, color: T.purple },
+    { stage: 'Perdu', count: contacts.filter((c) => c.status === 'perdu').length, color: T.red },
+  ], [contacts]);
+
+  const maxPipeline = useMemo(() => Math.max(...pipeline.map((p) => p.count), 1), [pipeline]);
+
+  // KPIs from real financial data
+  const lastRow = useMemo(() => finHistory[finHistory.length - 1] || {}, [finHistory]);
+  const prevRow = useMemo(() => finHistory.length >= 2 ? finHistory[finHistory.length - 2] : null, [finHistory]);
+  const caEvo = prevRow && prevRow.ca ? Math.round(((lastRow.ca - prevRow.ca) / prevRow.ca) * 100) : null;
+
+  // Activity feed from real data (most recent contacts + events)
+  const activity = useMemo(() => {
+    const items = [];
+    contacts.filter((c) => c.createdAt).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3)
+      .forEach((c) => items.push({ text: `Nouveau contact : ${c.name}${c.company ? ` (${c.company})` : ''}`, time: ago(c.createdAt), icon: '👤', ts: new Date(c.createdAt) }));
+    events.sort((a, b) => (b.id || '').localeCompare(a.id || '')).slice(0, 3)
+      .forEach((e) => items.push({ text: `Événement : ${e.title}`, time: e.date ? `le ${new Date(e.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : '', icon: '📅', ts: new Date(e.date || 0) }));
+    const lastFin = finHistory[finHistory.length - 1];
+    if (lastFin) items.push({ text: `Données financières saisies — ${fmt(lastFin.ca || 0)}€ CA`, time: '', icon: '💰', ts: new Date(0) });
+    return items.sort((a, b) => b.ts - a.ts).slice(0, 5);
+  }, [contacts, events, finHistory]);
+
+  // Persisted tasks
+  const [tasks, setTasks] = useState(() => load('dashboard_tasks') || [
+    { text: 'Relancer les prospects', done: false },
+    { text: 'Vérifier les intégrations', done: false },
+    { text: 'Saisir les données du mois', done: false },
+  ]);
+  const [newTask, setNewTask] = useState('');
+
+  const toggleTask = useCallback((i) => {
+    setTasks((prev) => {
+      const updated = prev.map((t, j) => j === i ? { ...t, done: !t.done } : t);
+      store('dashboard_tasks', updated);
+      return updated;
+    });
+  }, []);
+
+  const addTask = useCallback(() => {
+    if (!newTask.trim()) return;
+    setTasks((prev) => {
+      const updated = [...prev, { text: newTask.trim(), done: false }];
+      store('dashboard_tasks', updated);
+      return updated;
+    });
+    setNewTask('');
+  }, [newTask]);
+
+  const removeTask = useCallback((i) => {
+    setTasks((prev) => {
+      const updated = prev.filter((_, j) => j !== i);
+      store('dashboard_tasks', updated);
+      return updated;
+    });
+  }, []);
+
+  // Health from real integrations
+  const healthItems = useMemo(() =>
+    HEALTH_ITEMS.map((h) => ({
+      label: h.label,
+      status: integrations[h.key] ? 'ok' : 'off',
+    })),
+    [integrations]
+  );
+  const connectedCount = healthItems.filter((h) => h.status === 'ok').length;
+  const healthPct = Math.round((connectedCount / healthItems.length) * 100);
+
+  // CRM stats from real data
+  const crmStats = useMemo(() => [
+    { l: 'Prospects', n: contacts.filter((c) => c.status === 'prospect').length, c: T.orange },
+    { l: 'Leads', n: contacts.filter((c) => c.status === 'lead').length, c: T.blue },
+    { l: 'Clients', n: contacts.filter((c) => c.status === 'client').length, c: T.green },
+  ], [contacts]);
 
   const QUICK_ACTIONS = [
     { label: 'Ajouter un contact', icon: '👤', target: 'crm' },
@@ -88,26 +154,26 @@ export default function Dashboard({ onNavigate }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ position: 'relative', width: 48, height: 48 }}>
-            <svg width="48" height="48" viewBox="0 0 48 48" aria-label="Score de santé: 75%">
+            <svg width="48" height="48" viewBox="0 0 48 48" aria-label={`Score de santé: ${healthPct}%`}>
               <circle cx="24" cy="24" r="20" fill="none" stroke={T.border} strokeWidth="4" />
-              <circle cx="24" cy="24" r="20" fill="none" stroke={T.green} strokeWidth="4"
-                strokeDasharray={`${0.75 * 125.6} ${125.6}`} strokeLinecap="round"
+              <circle cx="24" cy="24" r="20" fill="none" stroke={healthPct > 50 ? T.green : healthPct > 0 ? T.orange : T.red} strokeWidth="4"
+                strokeDasharray={`${(healthPct / 100) * 125.6} ${125.6}`} strokeLinecap="round"
                 transform="rotate(-90 24 24)" style={{ transition: 'stroke-dasharray .8s ease' }} />
             </svg>
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: T.green }}>75%</div>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: healthPct > 50 ? T.green : healthPct > 0 ? T.orange : T.red }}>{healthPct}%</div>
           </div>
           <div className="hide-mobile">
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.green }}>Santé globale</div>
-            <div style={{ fontSize: 9, color: T.textMuted }}>3/4 APIs connectées</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: healthPct > 50 ? T.green : T.orange }}>Santé globale</div>
+            <div style={{ fontSize: 9, color: T.textMuted }}>{connectedCount}/{healthItems.length} APIs connectées</div>
           </div>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <KPI label="CA MENSUEL" value={`${fK(31200)}€`} sub="+12.4% vs mois dernier" accent={T.green} icon="💰" delay={1} />
-        <KPI label="CHARGES" value={`${fK(18600)}€`} sub="Fixes + Variables" accent={T.red} icon="📉" delay={2} />
-        <KPI label="RÉSULTAT NET" value={`${fK(12600)}€`} sub="Marge: 40.4%" accent={T.orange} icon="📊" delay={3} />
+        <KPI label="CA MENSUEL" value={`${fK(lastRow.ca || 0)}€`} sub={caEvo != null ? `${caEvo >= 0 ? '+' : ''}${caEvo}% vs mois dernier` : 'Aucune donnée précédente'} accent={T.green} icon="💰" delay={1} />
+        <KPI label="CHARGES" value={`${fK(lastRow.charges || 0)}€`} sub="Fixes + Variables" accent={T.red} icon="📉" delay={2} />
+        <KPI label="RÉSULTAT NET" value={`${fK(lastRow.result || 0)}€`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '—'} accent={T.orange} icon="📊" delay={3} />
       </div>
 
       {/* Quick Actions — connected to navigation */}
@@ -147,10 +213,10 @@ export default function Dashboard({ onNavigate }) {
             Pipeline commercial
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {PIPELINE.map((p) => (
+            {pipeline.map((p) => (
               <div key={p.stage} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 80, fontSize: 11, fontWeight: 600, color: T.textSecondary }}>{p.stage}</div>
-                <div style={{ flex: 1 }}><ProgressBar value={p.count} max={20} color={p.color} h={6} /></div>
+                <div style={{ flex: 1 }}><ProgressBar value={p.count} max={maxPipeline} color={p.color} h={6} /></div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: p.color, width: 24, textAlign: 'right' }}>{p.count}</div>
               </div>
             ))}
@@ -165,13 +231,13 @@ export default function Dashboard({ onNavigate }) {
             Santé système
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {HEALTH_ITEMS.map((h) => (
+            {healthItems.map((h) => (
               <div key={h.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 12, color: T.text }}>{h.label}</span>
                 <Badge
-                  label={h.status === 'ok' ? 'Connecté' : h.status === 'warning' ? 'Attention' : 'Erreur'}
-                  color={h.status === 'ok' ? T.green : h.status === 'warning' ? T.orange : T.red}
-                  bg={h.status === 'ok' ? T.greenBg : h.status === 'warning' ? T.orangeBg : T.redBg}
+                  label={h.status === 'ok' ? 'Connecté' : 'Non connecté'}
+                  color={h.status === 'ok' ? T.green : T.textMuted}
+                  bg={h.status === 'ok' ? T.greenBg : T.surface2}
                 />
               </div>
             ))}
@@ -183,12 +249,14 @@ export default function Dashboard({ onNavigate }) {
             Activité récente
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {ACTIVITY.map((a, i) => (
+            {activity.length === 0 ? (
+              <div style={{ fontSize: 11, color: T.textMuted, textAlign: 'center', padding: 12 }}>Aucune activité récente</div>
+            ) : activity.map((a, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                 <span style={{ fontSize: 14, flexShrink: 0 }}>{a.icon}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 11, color: T.text, lineHeight: 1.4 }}>{a.text}</div>
-                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>{a.time}</div>
+                  {a.time && <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>{a.time}</div>}
                 </div>
               </div>
             ))}
@@ -200,23 +268,27 @@ export default function Dashboard({ onNavigate }) {
             Tâches
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {TASKS.map((t, i) => (
-              <div key={i} onClick={() => toggleTask(i)} role="checkbox" aria-checked={tasksDone[i]} tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTask(i); } }}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <div style={{
-                  width: 16, height: 16, borderRadius: 4, flexShrink: 0,
-                  border: `2px solid ${tasksDone[i] ? T.green : T.border}`,
-                  background: tasksDone[i] ? T.greenBg : 'transparent',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 9, color: T.green, transition: 'all .15s',
-                }}>{tasksDone[i] ? '✓' : ''}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: tasksDone[i] ? T.textMuted : T.text, textDecoration: tasksDone[i] ? 'line-through' : 'none', transition: 'all .15s' }}>{t.text}</div>
-                </div>
-                <span style={{ fontSize: 9, color: T.textMuted }}>{t.due}</span>
+            {tasks.map((t, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div onClick={() => toggleTask(i)} role="checkbox" aria-checked={t.done} tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTask(i); } }}
+                  style={{
+                    width: 16, height: 16, borderRadius: 4, flexShrink: 0, cursor: 'pointer',
+                    border: `2px solid ${t.done ? T.green : T.border}`,
+                    background: t.done ? T.greenBg : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 9, color: T.green, transition: 'all .15s',
+                  }}>{t.done ? '✓' : ''}</div>
+                <div style={{ flex: 1, fontSize: 11, color: t.done ? T.textMuted : T.text, textDecoration: t.done ? 'line-through' : 'none', transition: 'all .15s' }}>{t.text}</div>
+                <span onClick={() => removeTask(i)} style={{ fontSize: 10, color: T.textMuted, cursor: 'pointer', padding: '0 4px' }} aria-label="Supprimer">✕</span>
               </div>
             ))}
+            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+              <input value={newTask} onChange={(e) => setNewTask(e.target.value)} placeholder="Nouvelle tâche..."
+                onKeyDown={(e) => e.key === 'Enter' && addTask()}
+                style={{ flex: 1, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 6, color: T.text, padding: '5px 8px', fontSize: 10, fontFamily: 'inherit', outline: 'none' }} />
+              <Btn v="ghost" small onClick={addTask} disabled={!newTask.trim()}>+</Btn>
+            </div>
           </div>
         </Card>
       </div>
@@ -228,7 +300,7 @@ export default function Dashboard({ onNavigate }) {
             Contacts CRM
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-            {[{ l: 'Prospects', n: 12, c: T.orange }, { l: 'Leads', n: 8, c: T.blue }, { l: 'Clients', n: 15, c: T.green }].map((s) => (
+            {crmStats.map((s) => (
               <div key={s.l} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, background: s.c + '15' }}>
                 <div style={{ width: 8, height: 8, borderRadius: 4, background: s.c }} />
                 <span style={{ fontSize: 11, fontWeight: 600, color: s.c }}>{s.n}</span>
@@ -236,7 +308,7 @@ export default function Dashboard({ onNavigate }) {
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 11, color: T.textMuted }}>35 contacts au total — Dernière synchro il y a 2h</div>
+          <div style={{ fontSize: 11, color: T.textMuted }}>{contacts.length} contact{contacts.length !== 1 ? 's' : ''} au total</div>
         </Card>
 
         <Card delay={6}>

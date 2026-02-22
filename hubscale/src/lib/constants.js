@@ -51,6 +51,7 @@ export const PLANS = [
 export const INTEGRATIONS = [
   { name: 'Stripe', desc: 'Paiements et facturation', icon: '💳' },
   { name: 'Revolut', desc: 'Données bancaires', icon: '🏦' },
+  { name: 'Google Calendar', desc: 'Synchronisation agenda et événements', icon: '📅' },
   { name: 'GoHighLevel', desc: 'CRM et marketing', icon: '📈' },
   { name: 'Meta Ads', desc: 'Publicité Facebook/Instagram', icon: '📣' },
 ];

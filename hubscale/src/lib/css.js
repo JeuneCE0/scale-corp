@@ -42,6 +42,17 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .glass-input{background:rgba(9,9,11,.5);border:1px solid rgba(255,255,255,.06);border-radius:10px;transition:all .2s ease}
 .glass-input:focus-within{border-color:rgba(99,102,241,.4);box-shadow:0 0 12px rgba(99,102,241,.08)}
 
+/* Dark-friendly date/time pickers */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator{filter:invert(1) brightness(1.8);opacity:.6;cursor:pointer}
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover,
+input[type="month"]::-webkit-calendar-picker-indicator:hover{opacity:1}
+::-webkit-datetime-edit-fields-wrapper{color:${T.text}}
+::-webkit-datetime-edit{color:${T.text}}
+::-webkit-datetime-edit-text{color:${T.textMuted}}
+
 /* Table responsive */
 .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .table-wrap table{min-width:500px}
