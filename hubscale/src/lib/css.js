@@ -89,4 +89,8 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover{opacity:1}
   .kpi-grid{grid-template-columns:1fr !important}
   .grid-2-mobile-1{grid-template-columns:1fr !important}
 }
+
+/* Smart compact numbers on mobile */
+.compact-num{display:none}
+@media(max-width:640px){.full-num{display:none !important}.compact-num{display:inline !important}}
 `;

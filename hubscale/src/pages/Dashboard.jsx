@@ -2,19 +2,21 @@ import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { T } from '../lib/theme.js';
 import { fK, fmt, ago } from '../lib/utils.js';
 import { load, store } from '../lib/store.js';
-import { KPI, Card, Badge, ProgressBar, Spinner, Btn, Inp } from '../components/ui.jsx';
+import { KPI, Card, Badge, ProgressBar, Spinner, Btn, Inp, HelpTip } from '../components/ui.jsx';
 
 const LazyChart = lazy(() =>
   import('recharts').then((mod) => ({
     default: function CAChart() {
-      const { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } = mod;
+      const { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } = mod;
       const history = load('finHistory') || [];
+      const caGoal = load('caGoal') || 0;
       const CA_DATA = history.slice(-6).map((r) => {
         const [, m] = (r.key || '').split('-');
         const months = ['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-        return { month: months[parseInt(m)] || r.key, ca: r.ca || 0 };
+        return { month: months[parseInt(m)] || r.key, ca: r.ca || 0, charges: r.charges || 0 };
       });
       if (CA_DATA.length === 0) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 11, color: T.textMuted }}>Aucune donnée financière</div>;
+      const avgCharges = Math.round(CA_DATA.reduce((s, d) => s + d.charges, 0) / CA_DATA.length);
       return (
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={CA_DATA}>
@@ -28,9 +30,12 @@ const LazyChart = lazy(() =>
             <YAxis tick={{ fill: T.textMuted, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fK} />
             <Tooltip
               contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 11 }}
-              formatter={(v) => [`${fmt(v)}€`, 'CA']}
+              formatter={(v, name) => [`${fmt(v)}€`, name === 'ca' ? 'CA' : 'Charges']}
             />
             <Area type="monotone" dataKey="ca" stroke={T.green} strokeWidth={2} fill="url(#caGrad)" />
+            <Area type="monotone" dataKey="charges" stroke={T.red} strokeWidth={1.5} fill="none" strokeDasharray="4 3" />
+            {avgCharges > 0 && <ReferenceLine y={avgCharges} stroke={T.red} strokeDasharray="3 3" strokeWidth={1} label={{ value: `Seuil: ${fK(avgCharges)}€`, fill: T.textMuted, fontSize: 8, position: 'left' }} />}
+            {caGoal > 0 && <ReferenceLine y={caGoal} stroke={T.orange} strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Objectif: ${fK(caGoal)}€`, fill: T.orange, fontSize: 9, position: 'right' }} />}
           </AreaChart>
         </ResponsiveContainer>
       );
@@ -52,6 +57,7 @@ export default function Dashboard({ onNavigate }) {
   const events = useMemo(() => load('events') || [], []);
   const finHistory = useMemo(() => load('finHistory') || [], []);
   const integrations = useMemo(() => load('integrations') || {}, []);
+  const caGoal = useMemo(() => load('caGoal') || 0, []);
 
   // Pipeline from real CRM contacts
   const pipeline = useMemo(() => [
@@ -68,6 +74,11 @@ export default function Dashboard({ onNavigate }) {
   const lastRow = useMemo(() => finHistory[finHistory.length - 1] || {}, [finHistory]);
   const prevRow = useMemo(() => finHistory.length >= 2 ? finHistory[finHistory.length - 2] : null, [finHistory]);
   const caEvo = prevRow && prevRow.ca ? Math.round(((lastRow.ca - prevRow.ca) / prevRow.ca) * 100) : null;
+
+  // Sparkline data (last 6 months)
+  const sparkCA = useMemo(() => finHistory.slice(-6).map((r) => r.ca || 0), [finHistory]);
+  const sparkCharges = useMemo(() => finHistory.slice(-6).map((r) => r.charges || 0), [finHistory]);
+  const sparkResult = useMemo(() => finHistory.slice(-6).map((r) => r.result || 0), [finHistory]);
 
   // Activity feed from real data (most recent contacts + events)
   const activity = useMemo(() => {
@@ -169,12 +180,32 @@ export default function Dashboard({ onNavigate }) {
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards with sparklines + tooltips */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <KPI label="CA MENSUEL" value={`${fK(lastRow.ca || 0)}€`} sub={caEvo != null ? `${caEvo >= 0 ? '+' : ''}${caEvo}% vs mois dernier` : 'Aucune donnée précédente'} accent={T.green} icon="💰" delay={1} />
-        <KPI label="CHARGES" value={`${fK(lastRow.charges || 0)}€`} sub="Fixes + Variables" accent={T.red} icon="📉" delay={2} />
-        <KPI label="RÉSULTAT NET" value={`${fK(lastRow.result || 0)}€`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '—'} accent={T.orange} icon="📊" delay={3} />
+        <KPI label="CA MENSUEL" value={`${fK(lastRow.ca || 0)}€`} sub={caEvo != null ? `${caEvo >= 0 ? '+' : ''}${caEvo}% vs mois dernier` : 'Aucune donnée précédente'} accent={T.green} icon="💰" delay={1} sparkData={sparkCA} helpTip="Chiffre d'affaires du dernier mois saisi" />
+        <KPI label="CHARGES" value={`${fK(lastRow.charges || 0)}€`} sub="Fixes + Variables" accent={T.red} icon="📉" delay={2} sparkData={sparkCharges} helpTip="Total des charges fixes et variables" />
+        <KPI label="RÉSULTAT NET" value={`${fK(lastRow.result || 0)}€`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '—'} accent={T.orange} icon="📊" delay={3} sparkData={sparkResult} helpTip="CA moins charges = bénéfice net" />
       </div>
+
+      {/* CA Goal Progress */}
+      {caGoal > 0 && (
+        <div className="fade-up d2" style={{ marginBottom: 16 }}>
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5, whiteSpace: 'nowrap' }}>
+                🎯 Objectif CA
+                <HelpTip text="Progression vers votre objectif mensuel de CA" />
+              </div>
+              <div style={{ flex: 1, minWidth: 120 }}>
+                <ProgressBar value={lastRow.ca || 0} max={caGoal} color={(lastRow.ca || 0) >= caGoal ? T.green : T.orange} h={8} />
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: (lastRow.ca || 0) >= caGoal ? T.green : T.orange, whiteSpace: 'nowrap' }}>
+                {fK(lastRow.ca || 0)}€ / {fK(caGoal)}€ ({Math.min(Math.round(((lastRow.ca || 0) / caGoal) * 100), 999)}%)
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Quick Actions — connected to navigation */}
       <div className="fade-up d2 kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 20 }}>
@@ -198,8 +229,11 @@ export default function Dashboard({ onNavigate }) {
       {/* Two columns: Chart + Pipeline */}
       <div className="grid-desktop-15-1" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 14, marginBottom: 20 }}>
         <Card delay={3}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-            Évolution CA — 6 derniers mois
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 12 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
+              Évolution CA — 6 derniers mois
+            </span>
+            <HelpTip text="Vert = CA, Rouge pointillé = Charges, Lignes = seuils" />
           </div>
           <div style={{ height: 180 }}>
             <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Spinner size={20} /></div>}>

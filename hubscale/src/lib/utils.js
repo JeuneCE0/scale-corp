@@ -41,6 +41,12 @@ export const nextMonth = (m) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
 
+/** Same month previous year */
+export const sameMonthLastYear = (m) => {
+  const [y, mo] = m.split('-');
+  return `${parseInt(y) - 1}-${mo}`;
+};
+
 /** Format month label: "Jan 2026" */
 export const monthLabel = (k) => {
   if (!k) return '';

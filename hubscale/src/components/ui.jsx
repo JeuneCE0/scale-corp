@@ -39,14 +39,18 @@ export class ErrorBoundary extends Component {
 }
 
 // --- KPI Card ---
-export function KPI({ label, value, sub, accent, icon, delay = 0 }) {
+export function KPI({ label, value, sub, accent, icon, delay = 0, sparkData, helpTip }) {
   return (
     <div className={`fade-up d${delay} glass-static`} style={{ padding: '16px 18px', flex: '1 1 140px', minWidth: 120, transition: 'all .2s ease' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
         {icon && <span style={{ fontSize: 12 }}>{icon}</span>}
         <span style={{ color: T.textSecondary, fontSize: 10, fontWeight: 600, letterSpacing: .5, textTransform: 'uppercase' }}>{label}</span>
+        {helpTip && <HelpTip text={helpTip} />}
       </div>
-      <div style={{ fontSize: 26, fontWeight: 800, color: accent || T.text, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+        <div style={{ fontSize: 26, fontWeight: 800, color: accent || T.text, lineHeight: 1.1 }}>{value}</div>
+        {sparkData && sparkData.length > 1 && <Sparkline data={sparkData} color={accent || T.accent} />}
+      </div>
       {sub && <div style={{ color: T.textSecondary, fontSize: 10, marginTop: 3 }}>{sub}</div>}
     </div>
   );
@@ -173,6 +177,36 @@ export function ProgressBar({ value, max, color, h = 5 }) {
     <div style={{ background: T.border, borderRadius: h, height: h, overflow: 'hidden' }}>
       <div style={{ background: color || T.accent, height: '100%', width: `${w}%`, borderRadius: h, transition: 'width .5s ease', transformOrigin: 'left' }} />
     </div>
+  );
+}
+
+// --- Sparkline (mini inline chart) ---
+export function Sparkline({ data = [], color = T.accent, width = 56, height = 20 }) {
+  if (data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const points = data.map((v, i) => `${(i / (data.length - 1)) * width},${height - 2 - ((v - min) / range) * (height - 4)}`).join(' ');
+  return (
+    <svg width={width} height={height} style={{ display: 'block', flexShrink: 0 }}>
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".7" />
+    </svg>
+  );
+}
+
+// --- Help Tooltip ---
+export function HelpTip({ text }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex', marginLeft: 3, verticalAlign: 'middle' }}
+      onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} onClick={() => setShow(!show)}>
+      <span style={{ width: 13, height: 13, borderRadius: 7, background: T.border, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: T.textMuted, cursor: 'help' }} aria-label={text}>?</span>
+      {show && (
+        <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: 6, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: '6px 10px', fontSize: 10, color: T.textSecondary, whiteSpace: 'nowrap', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,.3)', pointerEvents: 'none' }}>
+          {text}
+        </div>
+      )}
+    </span>
   );
 }
 

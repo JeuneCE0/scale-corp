@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { T } from '../lib/theme.js';
-import { fmt, fK, pf, curMonth, monthLabel, prevMonth } from '../lib/utils.js';
-import { storeDebounced, load } from '../lib/store.js';
+import { fmt, fK, pf, curMonth, monthLabel, prevMonth, sameMonthLastYear } from '../lib/utils.js';
+import { storeDebounced, load, store } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
-import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState, Pagination } from '../components/ui.jsx';
+import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState, Pagination, ProgressBar, HelpTip } from '../components/ui.jsx';
 
 const SUB_TABS = ['Finances', 'Sales', 'Publicité'];
 
@@ -21,7 +21,6 @@ function generateDefaultHistory() {
 }
 
 function EvoBadge({ value, invert }) {
-  // invert: for charges, a decrease is positive (green)
   const isPositive = invert ? value < 0 : value > 0;
   const color = isPositive ? T.green : T.red;
   const arrow = value > 0 ? '↑' : '↓';
@@ -31,6 +30,18 @@ function EvoBadge({ value, invert }) {
       padding: '1px 5px', borderRadius: 4, background: color + '15',
       whiteSpace: 'nowrap',
     }}>{arrow}{Math.abs(value)}%</span>
+  );
+}
+
+function MarginBar({ ratio }) {
+  const color = ratio > 30 ? T.green : ratio > 10 ? T.orange : T.red;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 70 }}>
+      <div style={{ flex: 1, height: 4, borderRadius: 2, background: T.border, overflow: 'hidden', minWidth: 28 }}>
+        <div style={{ height: '100%', width: `${Math.min(Math.max(ratio, 0), 100)}%`, background: color, borderRadius: 2, transition: 'width .5s ease' }} />
+      </div>
+      <span style={{ fontSize: 10, fontWeight: 700, color, whiteSpace: 'nowrap' }}>{ratio}%</span>
+    </div>
   );
 }
 
@@ -48,6 +59,17 @@ export default function Data() {
   const [histPage, setHistPage] = useState(1);
   const HIST_PAGE_SIZE = 12;
 
+  // CA Goal (persisted)
+  const [caGoal, setCaGoal] = useState(() => load('caGoal') || 0);
+  const [goalInput, setGoalInput] = useState('');
+  const saveCaGoal = useCallback(() => {
+    const val = Math.round(pf(goalInput));
+    if (!val) return;
+    setCaGoal(val);
+    store('caGoal', val);
+    setGoalInput('');
+  }, [goalInput]);
+
   const sortedHistory = useMemo(() => {
     return [...history].sort((a, b) => {
       const va = a[sortCol] ?? 0;
@@ -57,11 +79,22 @@ export default function Data() {
     });
   }, [history, sortCol, sortDir]);
 
-  // Lookup map key -> row for previous-month evolution
   const histByKey = useMemo(() => {
     const map = {};
     history.forEach((r) => { map[r.key] = r; });
     return map;
+  }, [history]);
+
+  // YTD totals for current year
+  const ytd = useMemo(() => {
+    const year = new Date().getFullYear().toString();
+    const yearRows = history.filter((r) => r.key.startsWith(year));
+    return {
+      ca: yearRows.reduce((s, r) => s + (r.ca || 0), 0),
+      charges: yearRows.reduce((s, r) => s + (r.charges || 0), 0),
+      result: yearRows.reduce((s, r) => s + (r.result || 0), 0),
+      count: yearRows.length,
+    };
   }, [history]);
 
   const evo = useCallback((current, field) => {
@@ -70,6 +103,13 @@ export default function Data() {
     const pctChange = Math.round(((current[field] - prev[field]) / Math.abs(prev[field])) * 100);
     if (pctChange === 0) return null;
     return pctChange;
+  }, [histByKey]);
+
+  // N-1 comparison: same month last year
+  const evoN1 = useCallback((current) => {
+    const lastYearRow = histByKey[sameMonthLastYear(current.key)];
+    if (!lastYearRow || !lastYearRow.ca) return null;
+    return Math.round(((current.ca - lastYearRow.ca) / Math.abs(lastYearRow.ca)) * 100);
   }, [histByKey]);
 
   const toggleSort = useCallback((col) => {
@@ -84,6 +124,11 @@ export default function Data() {
   useEffect(() => subscribe('finHistory', (data) => setHistory(data)), []);
 
   const lastRow = useMemo(() => history[history.length - 1] || {}, [history]);
+
+  // Sparkline data for KPIs
+  const sparkCA = useMemo(() => history.slice(-6).map((r) => r.ca || 0), [history]);
+  const sparkCharges = useMemo(() => history.slice(-6).map((r) => r.charges || 0), [history]);
+  const sparkResult = useMemo(() => history.slice(-6).map((r) => r.result || 0), [history]);
 
   const saveEntry = useCallback(() => {
     const ca = Math.round(pf(formCA) * 100) / 100;
@@ -103,11 +148,66 @@ export default function Data() {
     setSaved(true); setTimeout(() => setSaved(false), 2000);
   }, [formCA, formFixed, formVar, formTreso, formMonth, history]);
 
+  // PDF Export
+  const exportPDF = useCallback(() => {
+    const w = window.open('', '_blank');
+    if (!w) return;
+    const rows = [...history].sort((a, b) => a.key.localeCompare(b.key));
+    w.document.write(`<!DOCTYPE html><html><head><title>Rapport HubScale</title>
+    <style>
+      body{font-family:'Inter',-apple-system,sans-serif;padding:40px;color:#111;max-width:800px;margin:0 auto}
+      h1{font-size:22px;margin:0 0 4px}h2{font-size:14px;margin:24px 0 4px}
+      .sub{color:#666;font-size:12px;margin-bottom:24px}
+      .kpis{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+      .kpi{flex:1;min-width:140px;padding:16px;border-radius:12px;border:1px solid #e4e4e7}
+      .kpi-label{font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.5px}
+      .kpi-value{font-size:24px;font-weight:800;margin-top:4px}
+      table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+      th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #e4e4e7}
+      th{font-size:10px;text-transform:uppercase;color:#888;font-weight:600}
+      .g{color:#16a34a}.r{color:#dc2626}.o{color:#ea580c}
+      .ytd-row{font-weight:800;border-top:2px solid #333}
+      .footer{margin-top:32px;font-size:10px;color:#aaa;text-align:center}
+      @media print{body{padding:20px}}
+    </style></head><body>
+    <h1>Rapport Financier</h1>
+    <div class="sub">Généré le ${new Date().toLocaleDateString('fr-FR')} — HubScale</div>
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-label">CA Dernier mois</div><div class="kpi-value g">${fmt(lastRow.ca || 0)}\u20AC</div></div>
+      <div class="kpi"><div class="kpi-label">Charges</div><div class="kpi-value r">${fmt(lastRow.charges || 0)}\u20AC</div></div>
+      <div class="kpi"><div class="kpi-label">Résultat</div><div class="kpi-value o">${fmt(lastRow.result || 0)}\u20AC</div></div>
+      ${caGoal > 0 ? `<div class="kpi"><div class="kpi-label">Objectif CA</div><div class="kpi-value">${fmt(caGoal)}\u20AC</div></div>` : ''}
+    </div>
+    <h2>Historique</h2>
+    <table>
+      <thead><tr><th>Mois</th><th>CA</th><th>Charges</th><th>Marge</th><th>Résultat</th></tr></thead>
+      <tbody>
+        ${rows.map(r => {
+          const margin = r.ca ? Math.round((r.result / r.ca) * 100) : 0;
+          return `<tr><td>${monthLabel(r.key)}</td><td class="g">${fmt(r.ca)}\u20AC</td><td class="r">${fmt(r.charges)}\u20AC</td><td>${margin}%</td><td class="${r.result >= 0 ? 'o' : 'r'}">${fmt(r.result)}\u20AC</td></tr>`;
+        }).join('')}
+        <tr class="ytd-row"><td>TOTAL YTD ${new Date().getFullYear()}</td><td class="g">${fmt(ytd.ca)}\u20AC</td><td class="r">${fmt(ytd.charges)}\u20AC</td><td>${ytd.ca ? Math.round((ytd.result / ytd.ca) * 100) : 0}%</td><td class="${ytd.result >= 0 ? 'o' : 'r'}">${fmt(ytd.result)}\u20AC</td></tr>
+      </tbody>
+    </table>
+    <div class="footer">Rapport confidentiel — HubScale ${new Date().getFullYear()}</div>
+    </body></html>`);
+    w.document.close();
+    setTimeout(() => w.print(), 300);
+  }, [history, lastRow, ytd, caGoal]);
+
+  const thStyle = { padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: T.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: .5, cursor: 'pointer', userSelect: 'none' };
+  const tdStyle = { padding: '10px 14px' };
+
   return (
     <div>
-      <div className="fade-up" style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Data</h1>
-        <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Vos données financières, commerciales et publicitaires</p>
+      <div className="fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Data</h1>
+          <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Vos données financières, commerciales et publicitaires</p>
+        </div>
+        {subTab === 'Finances' && (
+          <Btn v="secondary" small onClick={exportPDF} aria-label="Exporter en PDF">📄 Export PDF</Btn>
+        )}
       </div>
 
       <div className="fade-up d1" style={{ marginBottom: 20, width: 'fit-content' }}>
@@ -117,11 +217,32 @@ export default function Data() {
       {subTab === 'Finances' && (
         <>
           <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 20 }}>
-            <KPI label="CA MENSUEL" value={`${fK(lastRow.ca || 0)}€`} sub="Ce mois-ci" accent={T.green} icon="💰" delay={1} />
-            <KPI label="CHARGES FIXES" value={`${fK(pf(formFixed) || 8500)}€`} sub="Loyer, salaires" accent={T.red} icon="🏢" delay={2} />
-            <KPI label="CHARGES VAR." value={`${fK(pf(formVar) || 4200)}€`} sub="Pub, freelances" accent={T.orange} icon="📊" delay={3} />
-            <KPI label="TRÉSORERIE" value={`${fK(pf(formTreso) || 42000)}€`} sub="Solde disponible" accent={T.blue} icon="🏦" delay={4} />
+            <KPI label="CA MENSUEL" value={`${fK(lastRow.ca || 0)}€`} sub="Ce mois-ci" accent={T.green} icon="💰" delay={1} sparkData={sparkCA} helpTip="Chiffre d'affaires total du mois" />
+            <KPI label="CHARGES" value={`${fK(lastRow.charges || 0)}€`} sub="Fixes + Variables" accent={T.red} icon="📉" delay={2} sparkData={sparkCharges} helpTip="Total charges fixes + variables" />
+            <KPI label="RÉSULTAT" value={`${fK(lastRow.result || 0)}€`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '—'} accent={T.orange} icon="📊" delay={3} sparkData={sparkResult} helpTip="CA moins charges = résultat net" />
+            <KPI label="TRÉSORERIE" value={`${fK(lastRow.treso || pf(formTreso) || 0)}€`} sub="Solde disponible" accent={T.blue} icon="🏦" delay={4} helpTip="Solde bancaire disponible" />
           </div>
+
+          {/* CA Goal */}
+          {caGoal > 0 && (
+            <div className="fade-up d2" style={{ marginBottom: 16 }}>
+              <Card>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5, whiteSpace: 'nowrap' }}>
+                    🎯 Objectif CA
+                    <HelpTip text="Progression vers votre objectif mensuel" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 120 }}>
+                    <ProgressBar value={lastRow.ca || 0} max={caGoal} color={(lastRow.ca || 0) >= caGoal ? T.green : T.orange} h={8} />
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: (lastRow.ca || 0) >= caGoal ? T.green : T.orange, whiteSpace: 'nowrap' }}>
+                    {fK(lastRow.ca || 0)}€ / {fK(caGoal)}€ ({Math.min(Math.round(((lastRow.ca || 0) / caGoal) * 100), 999)}%)
+                  </div>
+                  <Btn v="ghost" small onClick={() => { setCaGoal(0); store('caGoal', 0); }}>✕</Btn>
+                </div>
+              </Card>
+            </div>
+          )}
 
           <Section title="SAISIE" sub="Renseignez vos données du mois">
             <Card>
@@ -132,9 +253,17 @@ export default function Data() {
                 <Inp label="Charges variables (€)" value={formVar} onChange={setFormVar} type="number" placeholder="0" suffix="€" />
                 <Inp label="Trésorerie (€)" value={formTreso} onChange={setFormTreso} type="number" placeholder="0" suffix="€" />
               </div>
-              <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
-                {saved && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>✓ Enregistré</span>}
-                <Btn onClick={saveEntry} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Enregistrer</Btn>
+              <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                {!caGoal && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Inp label="" value={goalInput} onChange={setGoalInput} type="number" placeholder="Objectif CA mensuel" small suffix="€" />
+                    <Btn v="ghost" small onClick={saveCaGoal} disabled={!goalInput}>🎯 Définir</Btn>
+                  </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+                  {saved && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>✓ Enregistré</span>}
+                  <Btn onClick={saveEntry} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Enregistrer</Btn>
+                </div>
               </div>
             </Card>
           </Section>
@@ -150,10 +279,19 @@ export default function Data() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
                       <tr style={{ borderBottom: `1px solid ${T.border}` }}>
-                        {[{ label: 'Mois', key: 'key' }, { label: 'CA', key: 'ca' }, { label: 'Charges', key: 'charges' }, { label: 'Résultat', key: 'result' }].map((h) => (
-                          <th key={h.label} scope="col" onClick={() => toggleSort(h.key)}
-                            style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: T.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: .5, cursor: 'pointer', userSelect: 'none' }}>
-                            {h.label}{sortCol === h.key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                        {[
+                          { label: 'Mois', key: 'key' },
+                          { label: 'CA', key: 'ca' },
+                          { label: 'Charges', key: 'charges' },
+                          { label: 'Marge', key: null, tip: 'Ratio résultat / CA' },
+                          { label: 'Résultat', key: 'result' },
+                          { label: 'N-1', key: null, tip: 'Comparaison avec le même mois l\'année précédente' },
+                        ].map((h) => (
+                          <th key={h.label} scope="col" onClick={h.key ? () => toggleSort(h.key) : undefined}
+                            style={{ ...thStyle, cursor: h.key ? 'pointer' : 'default' }}>
+                            {h.label}
+                            {h.tip && <HelpTip text={h.tip} />}
+                            {h.key && sortCol === h.key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </th>
                         ))}
                       </tr>
@@ -163,24 +301,55 @@ export default function Data() {
                         const evoCa = evo(r, 'ca');
                         const evoCharges = evo(r, 'charges');
                         const evoResult = evo(r, 'result');
+                        const margin = r.ca ? Math.round((r.result / r.ca) * 100) : 0;
+                        const n1 = evoN1(r);
                         return (
                           <tr key={r.key} style={{ borderBottom: `1px solid ${T.border}22` }}>
-                            <td style={{ padding: '10px 14px', fontWeight: 600, color: T.text }}>{monthLabel(r.key)}</td>
-                            <td style={{ padding: '10px 14px', color: T.green, fontWeight: 600 }}>
-                              {fmt(r.ca)}€
+                            <td style={{ ...tdStyle, fontWeight: 600, color: T.text }}>{monthLabel(r.key)}</td>
+                            <td style={{ ...tdStyle, color: T.green, fontWeight: 600 }}>
+                              <span className="full-num">{fmt(r.ca)}€</span>
+                              <span className="compact-num">{fK(r.ca)}€</span>
                               {evoCa != null && <EvoBadge value={evoCa} invert={false} />}
                             </td>
-                            <td style={{ padding: '10px 14px', color: T.red, fontWeight: 600 }}>
-                              {fmt(r.charges)}€
+                            <td style={{ ...tdStyle, color: T.red, fontWeight: 600 }}>
+                              <span className="full-num">{fmt(r.charges)}€</span>
+                              <span className="compact-num">{fK(r.charges)}€</span>
                               {evoCharges != null && <EvoBadge value={evoCharges} invert />}
                             </td>
-                            <td style={{ padding: '10px 14px', color: r.result >= 0 ? T.orange : T.red, fontWeight: 700 }}>
-                              {fmt(r.result)}€
+                            <td style={tdStyle}>
+                              <MarginBar ratio={margin} />
+                            </td>
+                            <td style={{ ...tdStyle, color: r.result >= 0 ? T.orange : T.red, fontWeight: 700 }}>
+                              <span className="full-num">{fmt(r.result)}€</span>
+                              <span className="compact-num">{fK(r.result)}€</span>
                               {evoResult != null && <EvoBadge value={evoResult} invert={false} />}
+                            </td>
+                            <td style={tdStyle}>
+                              {n1 != null ? <EvoBadge value={n1} invert={false} /> : <span style={{ fontSize: 10, color: T.textMuted }}>—</span>}
                             </td>
                           </tr>
                         );
                       })}
+                      {/* YTD Summary Row */}
+                      <tr style={{ borderTop: `2px solid ${T.border}`, background: T.surface2 }}>
+                        <td style={{ ...tdStyle, fontWeight: 800, color: T.text, fontSize: 11 }}>YTD {new Date().getFullYear()}</td>
+                        <td style={{ ...tdStyle, color: T.green, fontWeight: 800, fontSize: 11 }}>
+                          <span className="full-num">{fmt(ytd.ca)}€</span>
+                          <span className="compact-num">{fK(ytd.ca)}€</span>
+                        </td>
+                        <td style={{ ...tdStyle, color: T.red, fontWeight: 800, fontSize: 11 }}>
+                          <span className="full-num">{fmt(ytd.charges)}€</span>
+                          <span className="compact-num">{fK(ytd.charges)}€</span>
+                        </td>
+                        <td style={tdStyle}>
+                          <MarginBar ratio={ytd.ca ? Math.round((ytd.result / ytd.ca) * 100) : 0} />
+                        </td>
+                        <td style={{ ...tdStyle, color: ytd.result >= 0 ? T.orange : T.red, fontWeight: 800, fontSize: 11 }}>
+                          <span className="full-num">{fmt(ytd.result)}€</span>
+                          <span className="compact-num">{fK(ytd.result)}€</span>
+                        </td>
+                        <td style={{ ...tdStyle, fontSize: 10, color: T.textMuted }}>—</td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
