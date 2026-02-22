@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { T } from '../lib/theme.js';
 import { fmt, fK, pf, curMonth, monthLabel } from '../lib/utils.js';
 import { storeDebounced, load } from '../lib/store.js';
+import { broadcast, subscribe } from '../lib/sync.js';
 import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState, Pagination } from '../components/ui.jsx';
 
 const SUB_TABS = ['Finances', 'Sales', 'Publicité'];
@@ -46,7 +47,12 @@ export default function Data() {
     setSortCol((prev) => { if (prev === col) { setSortDir((d) => d === 'asc' ? 'desc' : 'asc'); } else { setSortDir('asc'); } return col; });
   }, []);
 
-  useEffect(() => { storeDebounced('finHistory', history); }, [history]);
+  useEffect(() => {
+    storeDebounced('finHistory', history);
+    broadcast('finHistory', history);
+  }, [history]);
+
+  useEffect(() => subscribe('finHistory', (data) => setHistory(data)), []);
 
   const lastRow = useMemo(() => history[history.length - 1] || {}, [history]);
 

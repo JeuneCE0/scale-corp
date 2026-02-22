@@ -2,8 +2,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { T } from '../lib/theme.js';
 import { uid } from '../lib/utils.js';
 import { storeDebounced, load } from '../lib/store.js';
-import { Card, Section, Btn, Inp, Sel, Modal, EmptyState, Badge, ConfirmDialog, Pagination } from '../components/ui.jsx';
+import { broadcast, subscribe } from '../lib/sync.js';
+import { Card, Section, Btn, Inp, Sel, Modal, EmptyState, Badge, ConfirmDialog } from '../components/ui.jsx';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
+import { useUndoStack } from '../hooks/useUndoStack.js';
 import { EVENT_TYPES, EVENT_TYPE_COLORS as TYPE_COLORS, EVENT_TYPE_ICONS as TYPE_ICONS } from '../lib/constants.js';
 
 export default function Agenda() {
@@ -11,15 +13,75 @@ export default function Agenda() {
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ title: '', date: '', time: '', type: 'reunion', description: '', recurrence: 'none' });
-  const deleteEvent = useCallback((id) => setEvents((prev) => prev.filter((e) => e.id !== id)), []);
+  const [undoMsg, setUndoMsg] = useState('');
+
+  // Undo stack for deletions
+  const undoRestore = useCallback((item) => {
+    setEvents((prev) => [...prev, item]);
+    setUndoMsg(`"${item.title}" restauré`);
+    setTimeout(() => setUndoMsg(''), 3000);
+  }, []);
+  const undo = useUndoStack(undoRestore);
+
+  const deleteEvent = useCallback((id) => {
+    setEvents((prev) => {
+      const evt = prev.find((e) => e.id === id);
+      if (evt) undo.push(evt);
+      return prev.filter((e) => e.id !== id);
+    });
+  }, [undo]);
   const del = useConfirmDialog(deleteEvent);
 
-  useEffect(() => { storeDebounced('events', events); }, [events]);
+  // Persist + multi-tab sync
+  useEffect(() => {
+    storeDebounced('events', events);
+    broadcast('events', events);
+  }, [events]);
+
+  useEffect(() => subscribe('events', (data) => setEvents(data)), []);
 
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(id);
+  }, []);
+
+  // Browser notification reminders for events within the next 15 minutes
+  useEffect(() => {
+    if (!('Notification' in window)) return;
+    const checkReminders = () => {
+      const currentTime = new Date();
+      const soon = new Date(currentTime.getTime() + 15 * 60 * 1000);
+      events.forEach((e) => {
+        if (!e.date || !e.time) return;
+        const eventTime = new Date(`${e.date}T${e.time}`);
+        if (eventTime > currentTime && eventTime <= soon) {
+          const notifKey = `hs_notif_${e.id}_${e.date}`;
+          if (sessionStorage.getItem(notifKey)) return;
+          sessionStorage.setItem(notifKey, '1');
+          if (Notification.permission === 'granted') {
+            new Notification(`HubScale — ${e.title}`, {
+              body: `Commence ${e.time ? `à ${e.time}` : 'bientôt'}`,
+              icon: TYPE_ICONS[e.type] || '📅',
+            });
+          }
+        }
+      });
+    };
+    checkReminders();
+    const id = setInterval(checkReminders, 60000);
+    return () => clearInterval(id);
+  }, [events]);
+
+  const [notifPermission, setNotifPermission] = useState(() => {
+    try { return Notification.permission; } catch { return 'denied'; }
+  });
+
+  const requestNotifPermission = useCallback(async () => {
+    try {
+      const perm = await Notification.requestPermission();
+      setNotifPermission(perm);
+    } catch {}
   }, []);
 
   const upcoming = useMemo(() =>
@@ -55,7 +117,7 @@ export default function Agenda() {
   const checkConflict = useCallback((date, time) => {
     if (!date || !time) return null;
     const newStart = new Date(`${date}T${time}`);
-    const newEnd = new Date(newStart.getTime() + 60 * 60 * 1000); // assume 1h duration
+    const newEnd = new Date(newStart.getTime() + 60 * 60 * 1000);
     return events.find((e) => {
       if (e.id === editId || !e.time || e.date !== date) return false;
       const eStart = new Date(`${e.date}T${e.time}`);
@@ -75,7 +137,6 @@ export default function Agenda() {
     setShowModal(false);
     setConflict(null);
   }, [form, editId, checkConflict]);
-
 
   const formatDate = useCallback((d) =>
     new Date(d).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' }),
@@ -107,8 +168,29 @@ export default function Agenda() {
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Agenda</h1>
           <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Réunions, deadlines et événements</p>
         </div>
-        <Btn onClick={openNew} aria-label="Créer un événement" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: '0 2px 12px rgba(249,115,22,.3)' }}>+ Événement</Btn>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {notifPermission !== 'granted' && 'Notification' in window && (
+            <Btn v="secondary" small onClick={requestNotifPermission} aria-label="Activer les notifications">🔔 Notifications</Btn>
+          )}
+          {notifPermission === 'granted' && (
+            <span style={{ fontSize: 10, color: T.green, fontWeight: 600 }}>🔔 Rappels activés</span>
+          )}
+          <Btn onClick={openNew} aria-label="Créer un événement" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: '0 2px 12px rgba(249,115,22,.3)' }}>+ Événement</Btn>
+        </div>
       </div>
+
+      {/* Undo bar */}
+      {undoMsg && (
+        <div style={{ marginBottom: 12, fontSize: 11, color: T.green, fontWeight: 600, padding: '6px 12px', borderRadius: 8, background: T.greenBg, border: `1px solid ${T.green}22`, display: 'inline-block' }}>
+          ↩ {undoMsg}
+        </div>
+      )}
+      {undo.canUndo && !undoMsg && (
+        <div style={{ marginBottom: 12, fontSize: 11, color: T.textMuted, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Btn v="ghost" small onClick={undo.undo}>↩ Annuler ({undo.stackSize})</Btn>
+          <span>Ctrl+Z pour annuler la dernière suppression</span>
+        </div>
+      )}
 
       <Section title="À VENIR" sub={`${upcoming.length} événement${upcoming.length !== 1 ? 's' : ''}`}>
         {upcoming.length === 0 ? (

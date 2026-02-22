@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspens
 import { T, FONT } from './lib/theme.js';
 import { GLOBAL_CSS } from './lib/css.js';
 import { load, store } from './lib/store.js';
-import { Spinner, ErrorBoundary } from './components/ui.jsx';
+import { Spinner, ErrorBoundary, Btn } from './components/ui.jsx';
 
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
 const CRM = lazy(() => import('./pages/CRM.jsx'));
@@ -103,10 +103,56 @@ function GlobalSearch({ open, onClose, onNavigate }) {
   );
 }
 
+// --- Keyboard Shortcuts Help (Cmd+?) ---
+const SHORTCUTS = [
+  { keys: ['⌘', 'K'], desc: 'Recherche globale' },
+  { keys: ['⌘', '?'], desc: 'Aide raccourcis clavier' },
+  { keys: ['Ctrl', 'Z'], desc: 'Annuler la dernière suppression' },
+  { keys: ['Esc'], desc: 'Fermer modale / recherche' },
+  { keys: ['Enter'], desc: 'Valider formulaire' },
+];
+
+function ShortcutsHelp({ open, onClose }) {
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+  return (
+    <div className="fade-in" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, backdropFilter: 'blur(8px)' }}>
+      <div className="scale-in" onClick={(e) => e.stopPropagation()} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 24, width: 400, maxWidth: '100%', boxShadow: '0 24px 64px rgba(0,0,0,.5)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: T.text }}>Raccourcis clavier</h3>
+          <Btn v="ghost" small onClick={onClose} aria-label="Fermer">✕</Btn>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {SHORTCUTS.map((s) => (
+            <div key={s.desc} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <span style={{ fontSize: 12, color: T.textSecondary }}>{s.desc}</span>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {s.keys.map((k) => (
+                  <kbd key={k} style={{ fontSize: 11, color: T.text, background: T.surface2, padding: '3px 8px', borderRadius: 5, border: `1px solid ${T.border}`, fontFamily: FONT, fontWeight: 600, minWidth: 24, textAlign: 'center' }}>{k}</kbd>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 16, textAlign: 'center' }}>
+          <span style={{ fontSize: 10, color: T.textMuted }}>Sur Mac, ⌘ = Cmd. Sur Windows/Linux, ⌘ = Ctrl.</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState('overview');
   const [onboarded, setOnboarded] = useState(() => load('onboarded') === true);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   useEffect(() => {
     if (!document.getElementById('hs-css')) {
@@ -117,10 +163,11 @@ export default function App() {
     }
   }, []);
 
-  // Cmd+K / Ctrl+K global shortcut
+  // Global keyboard shortcuts: Cmd+K (search), Cmd+? (shortcuts help)
   useEffect(() => {
     const handleKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setSearchOpen(true); }
+      if ((e.metaKey || e.ctrlKey) && (e.key === '?' || (e.shiftKey && e.key === '/'))) { e.preventDefault(); setShortcutsOpen(true); }
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
@@ -219,6 +266,7 @@ export default function App() {
       </main>
 
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} onNavigate={navigate} />
+      <ShortcutsHelp open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }
