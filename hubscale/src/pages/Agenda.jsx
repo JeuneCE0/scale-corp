@@ -3,23 +3,16 @@ import { T } from '../lib/theme.js';
 import { uid } from '../lib/utils.js';
 import { storeDebounced, load } from '../lib/store.js';
 import { Card, Section, Btn, Inp, Sel, Modal, EmptyState, Badge, ConfirmDialog } from '../components/ui.jsx';
-
-const EVENT_TYPES = [
-  { value: 'reunion', label: 'Réunion' },
-  { value: 'deadline', label: 'Deadline' },
-  { value: 'call', label: 'Appel' },
-  { value: 'event', label: 'Événement' },
-];
-
-const TYPE_COLORS = { reunion: T.blue, deadline: T.red, call: T.green, event: T.purple };
-const TYPE_ICONS = { reunion: '🤝', deadline: '⏰', call: '📞', event: '🎉' };
+import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
+import { EVENT_TYPES, EVENT_TYPE_COLORS as TYPE_COLORS, EVENT_TYPE_ICONS as TYPE_ICONS } from '../lib/constants.js';
 
 export default function Agenda() {
   const [events, setEvents] = useState(() => load('events') || []);
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ title: '', date: '', time: '', type: 'reunion', description: '' });
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const deleteEvent = useCallback((id) => setEvents((prev) => prev.filter((e) => e.id !== id)), []);
+  const del = useConfirmDialog(deleteEvent);
 
   useEffect(() => { storeDebounced('events', events); }, [events]);
 
@@ -64,17 +57,6 @@ export default function Agenda() {
     setShowModal(false);
   }, [form, editId]);
 
-  const confirmDelete = useCallback((id, ev) => {
-    ev.stopPropagation();
-    setDeleteTarget(id);
-  }, []);
-
-  const executeDelete = useCallback(() => {
-    if (deleteTarget) {
-      setEvents((prev) => prev.filter((e) => e.id !== deleteTarget));
-      setDeleteTarget(null);
-    }
-  }, [deleteTarget]);
 
   const formatDate = useCallback((d) =>
     new Date(d).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' }),
@@ -94,7 +76,7 @@ export default function Agenda() {
         {e.description && <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{e.description}</div>}
       </div>
       {!faded && <Badge label={EVENT_TYPES.find((t) => t.value === e.type)?.label} color={TYPE_COLORS[e.type]} bg={TYPE_COLORS[e.type] + '15'} />}
-      <Btn v="ghost" small aria-label={`Supprimer ${e.title}`} onClick={(ev) => confirmDelete(e.id, ev)}>✕</Btn>
+      <Btn v="ghost" small aria-label={`Supprimer ${e.title}`} onClick={(ev) => del.request(e.id, ev)}>✕</Btn>
     </Card>
   );
 
@@ -138,11 +120,11 @@ export default function Agenda() {
       </Modal>
 
       <ConfirmDialog
-        open={deleteTarget !== null}
+        open={del.isOpen}
         title="Supprimer cet événement ?"
         message="L'événement sera définitivement supprimé. Cette action est irréversible."
-        onConfirm={executeDelete}
-        onCancel={() => setDeleteTarget(null)}
+        onConfirm={del.execute}
+        onCancel={del.cancel}
       />
     </div>
   );

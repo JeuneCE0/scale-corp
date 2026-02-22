@@ -2,47 +2,19 @@ import React, { useState, useCallback } from 'react';
 import { T } from '../lib/theme.js';
 import { store, load } from '../lib/store.js';
 import { Card, Section, Btn, Inp, Sel, TabBar, Toggle, ConfirmDialog } from '../components/ui.jsx';
+import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
+import { SECTORS, PLANS, INTEGRATIONS } from '../lib/constants.js';
 
 const SUB_TABS = ['Compte', 'Utilisateurs', 'Facturation', 'Intégrations', 'Data & Export', 'RGPD & Légal'];
 
-const SECTORS = [
-  { value: '', label: 'Sélectionner...' },
-  { value: 'tech', label: 'Tech / SaaS' },
-  { value: 'ecommerce', label: 'E-commerce' },
-  { value: 'services', label: 'Services' },
-  { value: 'consulting', label: 'Consulting' },
-  { value: 'industrie', label: 'Industrie' },
-  { value: 'immobilier', label: 'Immobilier' },
-  { value: 'sante', label: 'Santé' },
-  { value: 'autre', label: 'Autre' },
-];
-
-const PLANS = [
-  {
-    id: 'starter', name: 'Starter', monthly: 99,
-    features: ['Dashboard Overview', 'CRM basique (100 contacts)', 'Données financières', '1 utilisateur', 'Support email'],
-  },
-  {
-    id: 'professional', name: 'Professional', monthly: 249, recommended: true,
-    features: ['Tout Starter +', 'CRM avancé (illimité)', 'Sales Pipeline & Pub', 'Agenda complet', '5 utilisateurs', 'Intégrations API', 'Support prioritaire'],
-  },
-  {
-    id: 'enterprise', name: 'Enterprise', monthly: 499,
-    features: ['Tout Professional +', 'CI/CD Data Monitoring', 'Backup automatique 24h', 'KPI personnalisés', 'Utilisateurs illimités', 'Onboarding dédié', 'SLA 99.9%', 'Account manager'],
-  },
-];
-
-const INTEGRATIONS = [
-  { name: 'Stripe', desc: 'Paiements et facturation', icon: '💳' },
-  { name: 'Revolut', desc: 'Données bancaires', icon: '🏦' },
-  { name: 'GoHighLevel', desc: 'CRM et marketing', icon: '📈' },
-  { name: 'Meta Ads', desc: 'Publicité Facebook/Instagram', icon: '📣' },
-];
-
 function csvEscape(val) {
-  const s = String(val ?? '');
+  let s = String(val ?? '');
+  // Prevent Excel formula injection
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
   return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
 }
+
+const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
 export default function Settings() {
   const [subTab, setSubTab] = useState('Compte');
@@ -59,7 +31,14 @@ export default function Settings() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
-  const [removeTarget, setRemoveTarget] = useState(null);
+  const removeUser = useCallback((email) => {
+    setUsers((prev) => {
+      const updated = prev.filter((u) => u.email !== email);
+      store('users', updated);
+      return updated;
+    });
+  }, []);
+  const del = useConfirmDialog(removeUser);
 
   const upd = useCallback((k, v) => setCompany((prev) => ({ ...prev, [k]: v })), []);
 
@@ -82,28 +61,21 @@ export default function Settings() {
     store('plan', id);
   }, []);
 
+  const [inviteError, setInviteError] = useState('');
+
   const inviteUser = useCallback(() => {
-    if (!inviteEmail.trim() || !inviteEmail.includes('@')) return;
+    if (!inviteEmail.trim()) return;
+    if (!isValidEmail(inviteEmail)) { setInviteError('Format email invalide'); return; }
+    if (users.some((u) => u.email.toLowerCase() === inviteEmail.trim().toLowerCase())) { setInviteError('Utilisateur déjà ajouté'); return; }
     setUsers((prev) => {
       const updated = [...prev, { name: inviteEmail.split('@')[0], email: inviteEmail, role: 'Membre' }];
       store('users', updated);
       return updated;
     });
     setInviteEmail('');
-  }, [inviteEmail]);
+    setInviteError('');
+  }, [inviteEmail, users]);
 
-  const confirmRemoveUser = useCallback((email) => setRemoveTarget(email), []);
-
-  const executeRemoveUser = useCallback(() => {
-    if (removeTarget) {
-      setUsers((prev) => {
-        const updated = prev.filter((u) => u.email !== removeTarget);
-        store('users', updated);
-        return updated;
-      });
-      setRemoveTarget(null);
-    }
-  }, [removeTarget]);
 
   const exportData = useCallback((type) => {
     const data = {
@@ -216,9 +188,10 @@ export default function Settings() {
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
               <div style={{ fontSize: 12, color: T.textSecondary }}>{users.length} utilisateur{users.length > 1 ? 's' : ''} sur votre forfait</div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <Inp small value={inviteEmail} onChange={setInviteEmail} placeholder="email@exemple.com" onKeyDown={(e) => e.key === 'Enter' && inviteUser()} />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Inp small value={inviteEmail} onChange={(v) => { setInviteEmail(v); setInviteError(''); }} placeholder="email@exemple.com" onKeyDown={(e) => e.key === 'Enter' && inviteUser()} />
                 <Btn onClick={inviteUser} aria-label="Inviter un utilisateur" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>+ Inviter</Btn>
+                {inviteError && <span style={{ fontSize: 11, color: T.red, fontWeight: 600, width: '100%' }}>{inviteError}</span>}
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -232,18 +205,18 @@ export default function Settings() {
                     <div style={{ fontSize: 11, color: T.textSecondary }}>{u.email}</div>
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 600, color: T.accent, background: T.accentBg, padding: '3px 8px', borderRadius: 6 }}>{u.role}</span>
-                  {u.role !== 'Owner' && <Btn v="ghost" small aria-label={`Retirer ${u.name}`} onClick={() => confirmRemoveUser(u.email)}>✕</Btn>}
+                  {u.role !== 'Owner' && <Btn v="ghost" small aria-label={`Retirer ${u.name}`} onClick={() => del.request(u.email)}>✕</Btn>}
                 </div>
               ))}
             </div>
           </Card>
 
           <ConfirmDialog
-            open={removeTarget !== null}
+            open={del.isOpen}
             title="Retirer cet utilisateur ?"
             message="L'utilisateur n'aura plus accès à votre espace client."
-            onConfirm={executeRemoveUser}
-            onCancel={() => setRemoveTarget(null)}
+            onConfirm={del.execute}
+            onCancel={del.cancel}
           />
         </Section>
       )}

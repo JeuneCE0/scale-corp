@@ -28,6 +28,21 @@ export default function Data() {
   const [formVar, setFormVar] = useState('');
   const [formTreso, setFormTreso] = useState('');
   const [saved, setSaved] = useState(false);
+  const [sortCol, setSortCol] = useState('key');
+  const [sortDir, setSortDir] = useState('asc');
+
+  const sortedHistory = useMemo(() => {
+    return [...history].sort((a, b) => {
+      const va = a[sortCol] ?? 0;
+      const vb = b[sortCol] ?? 0;
+      const cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [history, sortCol, sortDir]);
+
+  const toggleSort = useCallback((col) => {
+    setSortCol((prev) => { if (prev === col) { setSortDir((d) => d === 'asc' ? 'desc' : 'asc'); } else { setSortDir('asc'); } return col; });
+  }, []);
 
   useEffect(() => { storeDebounced('finHistory', history); }, [history]);
 
@@ -98,13 +113,16 @@ export default function Data() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
                       <tr style={{ borderBottom: `1px solid ${T.border}` }}>
-                        {['Mois', 'CA', 'Charges', 'Résultat'].map((h) => (
-                          <th key={h} scope="col" style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: T.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: .5 }}>{h}</th>
+                        {[{ label: 'Mois', key: 'key' }, { label: 'CA', key: 'ca' }, { label: 'Charges', key: 'charges' }, { label: 'Résultat', key: 'result' }].map((h) => (
+                          <th key={h.label} scope="col" onClick={() => toggleSort(h.key)}
+                            style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: T.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: .5, cursor: 'pointer', userSelect: 'none' }}>
+                            {h.label}{sortCol === h.key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                          </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {history.map((r) => (
+                      {sortedHistory.map((r) => (
                         <tr key={r.key} style={{ borderBottom: `1px solid ${T.border}22` }}>
                           <td style={{ padding: '10px 14px', fontWeight: 600, color: T.text }}>{monthLabel(r.key)}</td>
                           <td style={{ padding: '10px 14px', color: T.green, fontWeight: 600 }}>{fmt(r.ca)}€</td>

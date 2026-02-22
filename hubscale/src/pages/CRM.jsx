@@ -1,30 +1,33 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { T } from '../lib/theme.js';
 import { uid } from '../lib/utils.js';
 import { storeDebounced, load } from '../lib/store.js';
 import { Card, Btn, Inp, Badge, Modal, EmptyState, Sel, TabBar, ConfirmDialog } from '../components/ui.jsx';
-
-const STATUSES = [
-  { id: 'prospect', label: 'PROSPECT', color: T.orange, bg: T.orangeBg },
-  { id: 'lead', label: 'LEAD', color: T.orange, bg: T.orangeBg },
-  { id: 'client', label: 'CLIENT', color: T.green, bg: T.greenBg },
-  { id: 'perdu', label: 'PERDU', color: T.red, bg: T.redBg },
-  { id: 'partenaire', label: 'PARTENAIRE', color: T.purple, bg: T.purpleBg },
-];
-
-const FILTER_TABS = ['Tous', 'Prospect', 'Lead', 'Client', 'Perdu', 'Partenaire'];
+import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
+import { CRM_STATUSES as STATUSES, CRM_FILTER_TABS as FILTER_TABS } from '../lib/constants.js';
 
 export default function CRM() {
   const [contacts, setContacts] = useState(() => load('contacts') || []);
   const [filter, setFilter] = useState('Tous');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimer = useRef(null);
+
+  const handleSearch = useCallback((v) => {
+    setSearch(v);
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => setDebouncedSearch(v), 200);
+  }, []);
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '' });
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const deleteContact = useCallback((id) => setContacts((prev) => prev.filter((c) => c.id !== id)), []);
+  const del = useConfirmDialog(deleteContact);
   const [saved, setSaved] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [duplicateWarning, setDuplicateWarning] = useState('');
+  const [sortBy, setSortBy] = useState('name');
+  const [sortDir, setSortDir] = useState('asc');
 
   useEffect(() => { storeDebounced('contacts', contacts); }, [contacts]);
 
@@ -44,13 +47,25 @@ export default function CRM() {
   const filtered = useMemo(() => {
     return contacts.filter((c) => {
       if (filter !== 'Tous' && c.status !== filter.toLowerCase()) return false;
-      if (search) {
-        const q = search.toLowerCase();
+      if (debouncedSearch) {
+        const q = debouncedSearch.toLowerCase();
         return (c.name || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q) || (c.company || '').toLowerCase().includes(q);
       }
       return true;
     });
-  }, [contacts, filter, search]);
+  }, [contacts, filter, debouncedSearch]);
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const va = (a[sortBy] || '').toLowerCase();
+      const vb = (b[sortBy] || '').toLowerCase();
+      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+  }, [filtered, sortBy, sortDir]);
+
+  const toggleSort = useCallback((col) => {
+    setSortBy((prev) => { if (prev === col) { setSortDir((d) => d === 'asc' ? 'desc' : 'asc'); } else { setSortDir('asc'); } return col; });
+  }, []);
 
   const openNew = useCallback(() => {
     setEditId(null);
@@ -94,17 +109,6 @@ export default function CRM() {
     setTimeout(() => setSaved(false), 2000);
   }, [form, editId, validateEmail]);
 
-  const confirmDelete = useCallback((id, e) => {
-    e.stopPropagation();
-    setDeleteTarget(id);
-  }, []);
-
-  const executeDelete = useCallback(() => {
-    if (deleteTarget) {
-      setContacts((prev) => prev.filter((c) => c.id !== deleteTarget));
-      setDeleteTarget(null);
-    }
-  }, [deleteTarget]);
 
   return (
     <div>
@@ -127,7 +131,7 @@ export default function CRM() {
         <div style={{ flex: 1, minWidth: 140 }}>
           <div className="glass-input" style={{ display: 'flex', alignItems: 'center' }}>
             <span style={{ padding: '0 8px 0 12px', color: T.textMuted, fontSize: 13 }}>🔍</span>
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..."
+            <input value={search} onChange={(e) => handleSearch(e.target.value)} placeholder="Rechercher..."
               aria-label="Rechercher un contact"
               style={{ flex: 1, background: 'transparent', border: 'none', color: T.text, padding: '8px 12px 8px 0', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
           </div>
@@ -146,13 +150,16 @@ export default function CRM() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${T.border}` }}>
-                  {['Nom', 'Email', 'Société', 'Téléphone', 'Statut', ''].map((h) => (
-                    <th key={h} scope="col" style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: T.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: .5 }}>{h}</th>
+                  {[{ label: 'Nom', key: 'name' }, { label: 'Email', key: 'email' }, { label: 'Société', key: 'company' }, { label: 'Téléphone', key: null }, { label: 'Statut', key: 'status' }, { label: '', key: null }].map((h) => (
+                    <th key={h.label} scope="col" onClick={h.key ? () => toggleSort(h.key) : undefined}
+                      style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: T.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: .5, cursor: h.key ? 'pointer' : 'default', userSelect: 'none' }}>
+                      {h.label}{h.key && sortBy === h.key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((c) => {
+                {sorted.map((c) => {
                   const st = STATUSES.find((s) => s.id === c.status);
                   return (
                     <tr key={c.id} onClick={() => openEdit(c)} style={{ borderBottom: `1px solid ${T.border}22`, cursor: 'pointer' }}>
@@ -162,7 +169,7 @@ export default function CRM() {
                       <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.phone || '—'}</td>
                       <td style={{ padding: '10px 14px' }}><Badge label={st?.label} color={st?.color} bg={st?.bg} /></td>
                       <td style={{ padding: '10px 14px' }}>
-                        <Btn v="danger" small aria-label={`Supprimer ${c.name}`} onClick={(e) => confirmDelete(c.id, e)}>✕</Btn>
+                        <Btn v="danger" small aria-label={`Supprimer ${c.name}`} onClick={(e) => del.request(c.id, e)}>✕</Btn>
                       </td>
                     </tr>
                   );
@@ -190,11 +197,11 @@ export default function CRM() {
       </Modal>
 
       <ConfirmDialog
-        open={deleteTarget !== null}
+        open={del.isOpen}
         title="Supprimer ce contact ?"
         message="Le contact sera définitivement supprimé. Cette action est irréversible."
-        onConfirm={executeDelete}
-        onCancel={() => setDeleteTarget(null)}
+        onConfirm={del.execute}
+        onCancel={del.cancel}
       />
     </div>
   );
