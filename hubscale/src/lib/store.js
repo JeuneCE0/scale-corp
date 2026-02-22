@@ -47,6 +47,13 @@ export function loadWithTTL(key, maxAgeMs = 86400000) {
   }
 }
 
+/** Debounced store — batches rapid writes */
+const _timers = {};
+export function storeDebounced(key, value, delay = 300) {
+  clearTimeout(_timers[key]);
+  _timers[key] = setTimeout(() => store(key, value), delay);
+}
+
 /** Remove a key */
 export function remove(key) {
   try { localStorage.removeItem(PREFIX + key); } catch {}

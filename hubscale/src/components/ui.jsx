@@ -1,7 +1,42 @@
 // HubScale — Base UI Components
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, Component } from 'react';
 import { T, FONT } from '../lib/theme.js';
 import { clamp, pct } from '../lib/utils.js';
+
+// --- Error Boundary ---
+export class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: T.text, marginBottom: 4 }}>
+            {this.props.fallbackTitle || 'Erreur de chargement'}
+          </div>
+          <div style={{ color: T.textSecondary, fontSize: 12, marginBottom: 16 }}>
+            Une erreur est survenue. Rechargez la page ou réessayez.
+          </div>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            style={{
+              background: 'linear-gradient(135deg, #f97316, #f59e0b)', color: '#fff',
+              border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 13,
+              fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+            }}
+          >Réessayer</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // --- KPI Card ---
 export function KPI({ label, value, sub, accent, icon, delay = 0 }) {

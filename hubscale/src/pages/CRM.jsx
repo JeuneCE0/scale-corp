@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { T } from '../lib/theme.js';
 import { uid } from '../lib/utils.js';
-import { store, load } from '../lib/store.js';
+import { storeDebounced, load } from '../lib/store.js';
 import { Card, Btn, Inp, Badge, Modal, EmptyState, Sel, TabBar, ConfirmDialog } from '../components/ui.jsx';
 
 const STATUSES = [
@@ -22,8 +22,11 @@ export default function CRM() {
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '' });
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [saved, setSaved] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [duplicateWarning, setDuplicateWarning] = useState('');
 
-  useEffect(() => { store('contacts', contacts); }, [contacts]);
+  useEffect(() => { storeDebounced('contacts', contacts); }, [contacts]);
 
   const counts = useMemo(() =>
     STATUSES.reduce((acc, s) => { acc[s.id] = contacts.filter((c) => c.status === s.id).length; return acc; }, {}),
@@ -43,7 +46,7 @@ export default function CRM() {
       if (filter !== 'Tous' && c.status !== filter.toLowerCase()) return false;
       if (search) {
         const q = search.toLowerCase();
-        return c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || (c.company || '').toLowerCase().includes(q);
+        return (c.name || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q) || (c.company || '').toLowerCase().includes(q);
       }
       return true;
     });
@@ -61,14 +64,35 @@ export default function CRM() {
     setShowModal(true);
   }, []);
 
+  const validateEmail = useCallback((email) => {
+    if (!email) return '';
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? '' : 'Format email invalide';
+  }, []);
+
+  const checkDuplicate = useCallback((name, email) => {
+    const match = contacts.find((c) =>
+      c.id !== editId && (
+        (email && c.email && c.email.toLowerCase() === email.toLowerCase()) ||
+        (name && c.name && c.name.toLowerCase() === name.trim().toLowerCase())
+      )
+    );
+    return match ? `Doublon possible : ${match.name} (${match.email || 'pas d\'email'})` : '';
+  }, [contacts, editId]);
+
   const saveContact = useCallback(() => {
     if (!form.name.trim()) return;
+    const emailErr = validateEmail(form.email);
+    if (emailErr) { setEmailError(emailErr); return; }
     if (editId) { setContacts((prev) => prev.map((c) => c.id === editId ? { ...c, ...form } : c)); }
     else { setContacts((prev) => [...prev, { ...form, id: uid(), createdAt: new Date().toISOString() }]); }
     setForm({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '' });
     setEditId(null);
     setShowModal(false);
-  }, [form, editId]);
+    setEmailError('');
+    setDuplicateWarning('');
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }, [form, editId, validateEmail]);
 
   const confirmDelete = useCallback((id, e) => {
     e.stopPropagation();
@@ -149,15 +173,18 @@ export default function CRM() {
         </Card>
       )}
 
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={editId ? 'Modifier le contact' : 'Nouveau contact'}>
-        <Inp label="Nom *" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nom complet" />
-        <Inp label="Email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} type="email" placeholder="email@exemple.com" />
+      <Modal open={showModal} onClose={() => { setShowModal(false); setEmailError(''); setDuplicateWarning(''); }} title={editId ? 'Modifier le contact' : 'Nouveau contact'}>
+        <Inp label="Nom *" value={form.name} onChange={(v) => { setForm({ ...form, name: v }); setDuplicateWarning(checkDuplicate(v, form.email)); }} placeholder="Nom complet" />
+        <Inp label="Email" value={form.email} onChange={(v) => { setForm({ ...form, email: v }); setEmailError(''); setDuplicateWarning(checkDuplicate(form.name, v)); }} type="email" placeholder="email@exemple.com" />
+        {emailError && <div style={{ fontSize: 11, color: T.red, marginTop: -8, marginBottom: 8 }}>{emailError}</div>}
+        {duplicateWarning && <div style={{ fontSize: 11, color: T.orange, padding: '6px 10px', borderRadius: 6, background: T.orangeBg, marginTop: -4, marginBottom: 8 }}>{duplicateWarning}</div>}
         <Inp label="Société" value={form.company} onChange={(v) => setForm({ ...form, company: v })} placeholder="Nom de la société" />
         <Inp label="Téléphone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="+33 6 00 00 00 00" />
         <Sel label="Statut" value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={STATUSES.map((s) => ({ value: s.id, label: s.label }))} />
         <Inp label="Notes" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} textarea placeholder="Notes..." />
-        <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Btn v="ghost" onClick={() => setShowModal(false)}>Annuler</Btn>
+        <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+          {saved && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>✓ Enregistré</span>}
+          <Btn v="ghost" onClick={() => { setShowModal(false); setEmailError(''); setDuplicateWarning(''); }}>Annuler</Btn>
           <Btn onClick={saveContact} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>{editId ? 'Enregistrer' : 'Ajouter'}</Btn>
         </div>
       </Modal>

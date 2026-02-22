@@ -57,10 +57,10 @@ export default function Onboarding({ onComplete }) {
   const finish = useCallback(() => {
     store('company', company);
     store('tools', selectedTools);
-    store('apiKeys', apiKeys);
+    // API keys are not stored in localStorage for security — they should be sent to a secure backend
     store('dataSources', dataSources);
     if (onComplete) onComplete();
-  }, [company, selectedTools, apiKeys, dataSources, onComplete]);
+  }, [company, selectedTools, dataSources, onComplete]);
 
   const skip = useCallback(() => { if (onComplete) onComplete(); }, [onComplete]);
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { T, FONT } from './lib/theme.js';
 import { GLOBAL_CSS } from './lib/css.js';
 import { load, store } from './lib/store.js';
-import { Spinner } from './components/ui.jsx';
+import { Spinner, ErrorBoundary } from './components/ui.jsx';
 
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
 const CRM = lazy(() => import('./pages/CRM.jsx'));
@@ -19,11 +19,13 @@ const TABS = [
   { id: 'settings', label: 'Paramètres', icon: '⚙️' },
 ];
 
-function LoadingFallback() {
+const TAB_LABELS = { overview: 'Dashboard', crm: 'CRM', data: 'Data', agenda: 'Agenda', settings: 'Paramètres' };
+
+function LoadingFallback({ page }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 10 }}>
       <Spinner size={24} />
-      <span style={{ color: T.textMuted, fontSize: 12 }}>Chargement...</span>
+      <span style={{ color: T.textMuted, fontSize: 12 }}>Chargement {page ? `de ${page}` : ''}...</span>
     </div>
   );
 }
@@ -116,13 +118,15 @@ export default function App() {
       </nav>
 
       <main className="page-pad" style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px 40px' }}>
-        <Suspense fallback={<LoadingFallback />}>
-          {tab === 'overview' && <Dashboard onNavigate={navigate} />}
-          {tab === 'crm' && <CRM />}
-          {tab === 'data' && <Data />}
-          {tab === 'agenda' && <Agenda />}
-          {tab === 'settings' && <Settings />}
-        </Suspense>
+        <ErrorBoundary fallbackTitle={`Erreur dans ${TAB_LABELS[tab] || 'la page'}`}>
+          <Suspense fallback={<LoadingFallback page={TAB_LABELS[tab]} />}>
+            {tab === 'overview' && <Dashboard onNavigate={navigate} />}
+            {tab === 'crm' && <CRM />}
+            {tab === 'data' && <Data />}
+            {tab === 'agenda' && <Agenda />}
+            {tab === 'settings' && <Settings />}
+          </Suspense>
+        </ErrorBoundary>
       </main>
     </div>
   );

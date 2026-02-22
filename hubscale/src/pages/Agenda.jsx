@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { T } from '../lib/theme.js';
 import { uid } from '../lib/utils.js';
-import { store, load } from '../lib/store.js';
+import { storeDebounced, load } from '../lib/store.js';
 import { Card, Section, Btn, Inp, Sel, Modal, EmptyState, Badge, ConfirmDialog } from '../components/ui.jsx';
 
 const EVENT_TYPES = [
@@ -21,9 +21,13 @@ export default function Agenda() {
   const [form, setForm] = useState({ title: '', date: '', time: '', type: 'reunion', description: '' });
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  useEffect(() => { store('events', events); }, [events]);
+  useEffect(() => { storeDebounced('events', events); }, [events]);
 
-  const now = useMemo(() => new Date(), []);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
 
   const upcoming = useMemo(() =>
     events

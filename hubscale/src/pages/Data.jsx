@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { T } from '../lib/theme.js';
 import { fmt, fK, pf, curMonth, monthLabel } from '../lib/utils.js';
-import { store, load } from '../lib/store.js';
-import { KPI, Card, Section, Btn, Inp, TabBar } from '../components/ui.jsx';
+import { storeDebounced, load } from '../lib/store.js';
+import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState } from '../components/ui.jsx';
 
 const SUB_TABS = ['Finances', 'Sales', 'Publicité'];
 
@@ -29,17 +29,19 @@ export default function Data() {
   const [formTreso, setFormTreso] = useState('');
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => { store('finHistory', history); }, [history]);
+  useEffect(() => { storeDebounced('finHistory', history); }, [history]);
 
   const lastRow = useMemo(() => history[history.length - 1] || {}, [history]);
 
   const saveEntry = useCallback(() => {
-    const ca = pf(formCA);
-    const fixed = pf(formFixed);
-    const variable = pf(formVar);
+    const ca = Math.round(pf(formCA) * 100) / 100;
+    const fixed = Math.round(pf(formFixed) * 100) / 100;
+    const variable = Math.round(pf(formVar) * 100) / 100;
     if (!ca && !fixed && !variable) return;
     const existing = history.findIndex((r) => r.key === formMonth);
-    const row = { key: formMonth, ca, charges: fixed + variable, result: ca - fixed - variable, treso: pf(formTreso) };
+    const charges = Math.round((fixed + variable) * 100) / 100;
+    const result = Math.round((ca - fixed - variable) * 100) / 100;
+    const row = { key: formMonth, ca, charges, result, treso: Math.round(pf(formTreso) * 100) / 100 };
     if (existing >= 0) {
       const updated = [...history]; updated[existing] = row; setHistory(updated);
     } else {
@@ -86,29 +88,35 @@ export default function Data() {
           </Section>
 
           <Section title="HISTORIQUE" sub={`${history.length} derniers mois`}>
-            <Card style={{ padding: 0, overflow: 'hidden' }}>
-              <div className="table-wrap">
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                  <thead>
-                    <tr style={{ borderBottom: `1px solid ${T.border}` }}>
-                      {['Mois', 'CA', 'Charges', 'Résultat'].map((h) => (
-                        <th key={h} scope="col" style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: T.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: .5 }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.map((r) => (
-                      <tr key={r.key} style={{ borderBottom: `1px solid ${T.border}22` }}>
-                        <td style={{ padding: '10px 14px', fontWeight: 600, color: T.text }}>{monthLabel(r.key)}</td>
-                        <td style={{ padding: '10px 14px', color: T.green, fontWeight: 600 }}>{fmt(r.ca)}€</td>
-                        <td style={{ padding: '10px 14px', color: T.red, fontWeight: 600 }}>{fmt(r.charges)}€</td>
-                        <td style={{ padding: '10px 14px', color: r.result >= 0 ? T.orange : T.red, fontWeight: 700 }}>{fmt(r.result)}€</td>
+            {history.length === 0 ? (
+              <Card>
+                <EmptyState icon="📊" title="Aucun historique" sub="Saisissez vos premières données ci-dessus" />
+              </Card>
+            ) : (
+              <Card style={{ padding: 0, overflow: 'hidden' }}>
+                <div className="table-wrap">
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${T.border}` }}>
+                        {['Mois', 'CA', 'Charges', 'Résultat'].map((h) => (
+                          <th key={h} scope="col" style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: T.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: .5 }}>{h}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
+                    </thead>
+                    <tbody>
+                      {history.map((r) => (
+                        <tr key={r.key} style={{ borderBottom: `1px solid ${T.border}22` }}>
+                          <td style={{ padding: '10px 14px', fontWeight: 600, color: T.text }}>{monthLabel(r.key)}</td>
+                          <td style={{ padding: '10px 14px', color: T.green, fontWeight: 600 }}>{fmt(r.ca)}€</td>
+                          <td style={{ padding: '10px 14px', color: T.red, fontWeight: 600 }}>{fmt(r.charges)}€</td>
+                          <td style={{ padding: '10px 14px', color: r.result >= 0 ? T.orange : T.red, fontWeight: 700 }}>{fmt(r.result)}€</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
           </Section>
         </>
       )}
