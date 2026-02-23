@@ -6,6 +6,18 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { SECTORS, PLANS, INTEGRATIONS } from '../lib/constants.js';
 import { onIntegrationConnect, getIntegrationMeta } from '../lib/integrationData.js';
 
+const INTEGRATION_CATEGORIES = [
+  { label: 'Tous', cat: null },
+  { label: 'Paiements', cat: 'paiements' },
+  { label: 'Banque', cat: 'banque' },
+  { label: 'Agenda', cat: 'agenda' },
+  { label: 'CRM', cat: 'crm' },
+  { label: 'Marketing', cat: 'marketing' },
+  { label: 'Projet', cat: 'projet' },
+  { label: 'Publicite', cat: 'publicite' },
+  { label: 'Support', cat: 'support' },
+];
+
 const SUB_TABS = ['Compte', 'Utilisateurs', 'Facturation', 'Intégrations', 'Data & Export', 'RGPD & Légal'];
 
 const ACCENT_COLORS = [
@@ -74,6 +86,13 @@ export default function Settings() {
   // Integration toggle animation tracking
   const [bouncingIntegration, setBouncingIntegration] = useState(null);
 
+  // Integration search & filter
+  const [integrationSearch, setIntegrationSearch] = useState('');
+  const [integrationCatFilter, setIntegrationCatFilter] = useState(null);
+
+  // Integration detail modal
+  const [detailModal, setDetailModal] = useState(null); // integration name or null
+
   const removeUser = useCallback((email) => {
     setUsers((prev) => {
       const updated = prev.filter((u) => u.email !== email);
@@ -92,6 +111,19 @@ export default function Settings() {
   }, [company]);
 
   const [syncStatus, setSyncStatus] = useState({});
+
+  // Filtered integrations based on search + category
+  const filteredIntegrations = useMemo(() => {
+    let list = INTEGRATIONS;
+    if (integrationCatFilter) {
+      list = list.filter((ig) => ig.category === integrationCatFilter);
+    }
+    if (integrationSearch.trim()) {
+      const q = integrationSearch.trim().toLowerCase();
+      list = list.filter((ig) => ig.name.toLowerCase().includes(q) || ig.desc.toLowerCase().includes(q) || ig.category.toLowerCase().includes(q));
+    }
+    return list;
+  }, [integrationSearch, integrationCatFilter]);
 
   const toggleIntegration = useCallback((name) => {
     setBouncingIntegration(name);
@@ -514,6 +546,55 @@ export default function Settings() {
       {/* -------- INTÉGRATIONS -------- */}
       {subTab === 'Intégrations' && (
         <Section title="INTÉGRATIONS API" sub="Connectez vos outils et services externes">
+          {/* Search bar + Category filter */}
+          <Card style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ flex: '1 1 220px', position: 'relative' }}>
+                <input
+                  type="text"
+                  value={integrationSearch}
+                  onChange={(e) => setIntegrationSearch(e.target.value)}
+                  placeholder="Rechercher une intégration..."
+                  style={{
+                    width: '100%', padding: '9px 14px 9px 34px', borderRadius: 10, fontSize: 12,
+                    background: T.surface2, border: `1px solid ${T.border}`, color: T.text,
+                    fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
+                  }}
+                  onFocus={(e) => { e.target.style.borderColor = T.accent; }}
+                  onBlur={(e) => { e.target.style.borderColor = T.border; }}
+                />
+                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: T.textMuted, pointerEvents: 'none' }}>
+                  🔍
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: T.textSecondary }}>
+                {Object.values(integrations).filter(Boolean).length}/{INTEGRATIONS.length} connectées
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+              {INTEGRATION_CATEGORIES.map((c) => {
+                const active = integrationCatFilter === c.cat;
+                const count = c.cat ? INTEGRATIONS.filter((ig) => ig.category === c.cat).length : INTEGRATIONS.length;
+                return (
+                  <button
+                    key={c.label}
+                    onClick={() => setIntegrationCatFilter(active ? null : c.cat)}
+                    style={{
+                      padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 600,
+                      border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                      background: active ? T.accent + '22' : T.surface2,
+                      color: active ? T.accent : T.textSecondary,
+                      transition: 'all .15s',
+                    }}
+                  >
+                    {c.label} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+
+          {/* Filtered integration list grouped by category */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {[
               { label: '💳 Paiements & E-commerce', cat: 'paiements' },
@@ -525,7 +606,7 @@ export default function Settings() {
               { label: '📣 Publicité', cat: 'publicite' },
               { label: '🎧 Support Client', cat: 'support' },
             ].map(({ label, cat }) => {
-              const items = INTEGRATIONS.filter((ig) => ig.category === cat);
+              const items = filteredIntegrations.filter((ig) => ig.category === cat);
               if (items.length === 0) return null;
               return (
                 <div key={cat}>
@@ -541,7 +622,8 @@ export default function Settings() {
                       const justSynced = syncStatus[ig.name] === 'done';
                       const meta = connected ? getIntegrationMeta(ig.name) : null;
                       return (
-                        <Card key={ig.name} style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                        <Card key={ig.name} style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', cursor: connected ? 'pointer' : 'default' }}
+                          onClick={connected ? () => setDetailModal(ig.name) : undefined}>
                           <div style={{
                             width: 40, height: 40, borderRadius: 10,
                             background: connected ? T.greenBg : T.surface2,
@@ -576,7 +658,7 @@ export default function Settings() {
                           <div style={{
                             transition: 'transform .15s ease',
                             transform: isBouncing ? 'scale(1.2)' : 'scale(1)',
-                          }}>
+                          }} onClick={(e) => e.stopPropagation()}>
                             <Btn v={connected ? 'success' : 'secondary'} small onClick={() => toggleIntegration(ig.name)} disabled={syncing}>
                               {syncing ? '⟳ Sync...' : connected ? '✓ Connecté' : 'Connecter'}
                             </Btn>
@@ -588,6 +670,11 @@ export default function Settings() {
                 </div>
               );
             })}
+            {filteredIntegrations.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '24px 0', color: T.textMuted, fontSize: 12 }}>
+                Aucune intégration ne correspond à votre recherche
+              </div>
+            )}
           </div>
 
           {/* Integration status summary */}
@@ -601,9 +688,10 @@ export default function Settings() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
                 {INTEGRATIONS.filter((ig) => integrations[ig.name]).map((ig) => (
-                  <div key={ig.name} style={{
+                  <div key={ig.name} onClick={() => setDetailModal(ig.name)} style={{
                     padding: '10px 12px', borderRadius: 8, background: T.greenBg,
-                    border: `1px solid ${T.green}22`, textAlign: 'center',
+                    border: `1px solid ${T.green}22`, textAlign: 'center', cursor: 'pointer',
+                    transition: 'all .15s',
                   }}>
                     <div style={{ fontSize: 18, marginBottom: 4 }}>{ig.icon}</div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: T.green }}>{ig.name}</div>
@@ -613,6 +701,113 @@ export default function Settings() {
               </div>
             </Card>
           )}
+
+          {/* Integration Detail Modal */}
+          {detailModal && (() => {
+            const ig = INTEGRATIONS.find((i) => i.name === detailModal);
+            if (!ig) return null;
+            const meta = getIntegrationMeta(ig.name);
+            const timestamp = integrationTimestamps[ig.name];
+            const connected = !!integrations[ig.name];
+            const metaEntries = meta ? Object.entries(meta).filter(([k]) => k !== 'connectedAt') : [];
+            return (
+              <div onClick={() => setDetailModal(null)} style={{
+                position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 9999,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+              }}>
+                <div onClick={(e) => e.stopPropagation()} style={{
+                  background: T.surface, borderRadius: 16, padding: 24, maxWidth: 440, width: '100%',
+                  border: `1px solid ${T.border}`, boxShadow: '0 20px 60px rgba(0,0,0,.4)',
+                }}>
+                  {/* Header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+                    <div style={{
+                      width: 52, height: 52, borderRadius: 14, fontSize: 26,
+                      background: connected ? T.greenBg : T.surface2,
+                      border: connected ? `1px solid ${T.green}22` : 'none',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    }}>{ig.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, fontSize: 16, color: T.text }}>{ig.name}</div>
+                      <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>{ig.desc}</div>
+                    </div>
+                    <span onClick={() => setDetailModal(null)} style={{
+                      fontSize: 18, color: T.textMuted, cursor: 'pointer', padding: '4px 8px',
+                      borderRadius: 8, background: T.surface2,
+                    }}>✕</span>
+                  </div>
+
+                  {/* Status */}
+                  <div style={{
+                    padding: '12px 14px', borderRadius: 10, marginBottom: 16,
+                    background: connected ? T.greenBg : T.surface2,
+                    border: `1px solid ${connected ? T.green + '22' : T.border}`,
+                    display: 'flex', alignItems: 'center', gap: 10,
+                  }}>
+                    <div style={{
+                      width: 10, height: 10, borderRadius: '50%',
+                      background: connected ? T.green : T.textMuted,
+                      boxShadow: connected ? `0 0 8px ${T.green}66` : 'none',
+                    }} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: connected ? T.green : T.textMuted }}>
+                      {connected ? 'Connecté' : 'Déconnecté'}
+                    </span>
+                    {timestamp && (
+                      <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 'auto' }}>
+                        depuis le {new Date(timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Metadata */}
+                  {connected && metaEntries.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8 }}>
+                        Détails de connexion
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {metaEntries.map(([k, v]) => (
+                          <div key={k} style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            padding: '6px 10px', borderRadius: 6, background: T.surface2, fontSize: 11,
+                          }}>
+                            <span style={{ color: T.textSecondary, fontWeight: 600 }}>{k}</span>
+                            <span style={{ color: T.text, fontWeight: 500, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {Array.isArray(v) ? v.join(', ') : String(v)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {connected ? (
+                      <>
+                        <Btn v="danger" small onClick={() => { toggleIntegration(ig.name); setDetailModal(null); }} style={{ flex: 1 }}>
+                          Déconnecter
+                        </Btn>
+                        <Btn v="ghost" small onClick={() => setDetailModal(null)} style={{ flex: 1 }}>
+                          Fermer
+                        </Btn>
+                      </>
+                    ) : (
+                      <>
+                        <Btn v="primary" small onClick={() => { toggleIntegration(ig.name); setDetailModal(null); }}
+                          style={{ flex: 1, background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>
+                          Connecter
+                        </Btn>
+                        <Btn v="ghost" small onClick={() => setDetailModal(null)} style={{ flex: 1 }}>
+                          Fermer
+                        </Btn>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </Section>
       )}
 

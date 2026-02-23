@@ -3,7 +3,8 @@ import { T, FONT } from '../lib/theme.js';
 import { fK, fmt, ago, businessHealth, businessWeather, getStreak, forecastCA, daysSince, daysUntil, leadScore } from '../lib/utils.js';
 import { load, store } from '../lib/store.js';
 import { KPI, Card, Badge, ProgressBar, Spinner, Btn, Inp, HelpTip, ScoreRing, StreakBadge, WeatherWidget, ChecklistItem, AnimatedNumber, Sparkline } from '../components/ui.jsx';
-import { ONBOARDING_CHECKLIST, CRM_STATUSES, NOTIFICATION_TYPES } from '../lib/constants.js';
+import { ONBOARDING_CHECKLIST, CRM_STATUSES, NOTIFICATION_TYPES, INTEGRATIONS } from '../lib/constants.js';
+import { getIntegrationMeta } from '../lib/integrationData.js';
 
 /* ------------------------------------------------------------------ */
 /*  Lazy-loaded Recharts                                               */
@@ -67,13 +68,8 @@ const LazyChart = lazy(() =>
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
-const HEALTH_ITEMS = [
-  { label: 'Stripe API', key: 'Stripe' },
-  { label: 'Revolut API', key: 'Revolut' },
-  { label: 'Google Calendar', key: 'Google Calendar' },
-  { label: 'GoHighLevel', key: 'GoHighLevel' },
-  { label: 'Meta Ads', key: 'Meta Ads' },
-];
+// Key integrations to track in the health panel (top 8 most relevant)
+const KEY_INTEGRATIONS = ['Stripe', 'Revolut', 'Google Calendar', 'GoHighLevel', 'HubSpot', 'Meta Ads', 'Slack', 'Notion'];
 
 const GREETING = () => {
   const h = new Date().getHours();
@@ -369,8 +365,8 @@ export default function Dashboard({ onNavigate }) {
   /* ---------------------------------------------------------------- */
   const [widgetOrder, setWidgetOrder] = useState(() => {
     const saved = load('dashWidgetOrder');
-    if (saved && saved.includes('crm-banner')) return saved;
-    return ['chart-pipeline', 'crm-banner', 'pub-banner', 'activity-tasks'];
+    if (saved && saved.includes('integrations-hub')) return saved;
+    return ['chart-pipeline', 'crm-banner', 'pub-banner', 'integrations-hub', 'activity-tasks'];
   });
   const [dragWidget, setDragWidget] = useState(null);
   const handleWidgetDragStart = useCallback((e, id) => { setDragWidget(id); e.dataTransfer.effectAllowed = 'move'; }, []);
@@ -391,17 +387,36 @@ export default function Dashboard({ onNavigate }) {
   const handleWidgetDragOver = useCallback((e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }, []);
 
   /* ---------------------------------------------------------------- */
-  /*  Health from integrations                                         */
+  /*  Health from integrations (dynamic)                               */
   /* ---------------------------------------------------------------- */
+  const connectedIntegrations = useMemo(() =>
+    INTEGRATIONS.filter((ig) => integrations[ig.name]),
+    [integrations]
+  );
+  const totalConnected = connectedIntegrations.length;
+
   const healthItems = useMemo(() =>
-    HEALTH_ITEMS.map((h) => ({
-      label: h.label,
-      status: integrations[h.key] ? 'ok' : 'off',
+    KEY_INTEGRATIONS.map((key) => ({
+      label: key,
+      status: integrations[key] ? 'ok' : 'off',
     })),
     [integrations]
   );
   const connectedCount = healthItems.filter((h) => h.status === 'ok').length;
-  const healthPct = Math.round((connectedCount / healthItems.length) * 100);
+  const healthPct = totalConnected > 0
+    ? Math.min(Math.round((totalConnected / INTEGRATIONS.length) * 100 * 4), 100)
+    : 0;
+
+  // Integration summary by category
+  const integrationSummary = useMemo(() => {
+    const cats = {};
+    INTEGRATIONS.forEach((ig) => {
+      if (!cats[ig.category]) cats[ig.category] = { total: 0, connected: 0 };
+      cats[ig.category].total++;
+      if (integrations[ig.name]) cats[ig.category].connected++;
+    });
+    return cats;
+  }, [integrations]);
 
   /* ---------------------------------------------------------------- */
   /*  CRM stats                                                        */
@@ -420,10 +435,15 @@ export default function Dashboard({ onNavigate }) {
     return denom > 0 ? Math.round((clients / denom) * 100) : 0;
   }, [contacts]);
 
+  const adPlatforms = useMemo(() =>
+    ['Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads'].filter((n) => integrations[n]),
+    [integrations]
+  );
+
   const pubStats = useMemo(() => {
     const meta = load('metaAds') || {};
-    const connected = !!integrations.meta;
-    if (!connected) return null;
+    const hasAnyAd = adPlatforms.length > 0;
+    if (!hasAnyAd) return null;
     return {
       spend: meta.spend || 3240,
       impressions: meta.impressions || 125400,
@@ -433,8 +453,9 @@ export default function Dashboard({ onNavigate }) {
       cpc: meta.cpc || 0.67,
       cpa: meta.cpa || 22.82,
       roas: meta.roas || 4.2,
+      platforms: adPlatforms,
     };
-  }, [integrations]);
+  }, [integrations, adPlatforms]);
 
   /* ---------------------------------------------------------------- */
   /*  Quick Actions                                                    */
@@ -479,7 +500,7 @@ export default function Dashboard({ onNavigate }) {
               </ScoreRing>
               <div className="hide-mobile">
                 <div style={{ fontSize: 11, fontWeight: 700, color: healthPct > 50 ? T.green : T.orange }}>Sante globale</div>
-                <div style={{ fontSize: 9, color: T.textMuted }}>{connectedCount}/{healthItems.length} APIs connectees</div>
+                <div style={{ fontSize: 9, color: T.textMuted }}>{totalConnected}/{INTEGRATIONS.length} APIs connectees</div>
               </div>
             </div>
           </div>
@@ -910,8 +931,10 @@ export default function Dashboard({ onNavigate }) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 16 }}>📢</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Meta Ads</span>
-                  <Badge label="Connecte" color={T.green} bg={T.greenBg} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Publicite</span>
+                  {pubStats.platforms.map((p) => (
+                    <Badge key={p} label={p} color={T.green} bg={T.greenBg} />
+                  ))}
                 </div>
                 <Btn v="ghost" small onClick={() => onNavigate?.('data')}>Voir details →</Btn>
               </div>
@@ -962,13 +985,71 @@ export default function Dashboard({ onNavigate }) {
                 <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Publicite</span>
               </div>
               <div style={{ textAlign: 'center', padding: '16px 0', color: T.textMuted, fontSize: 11 }}>
-                Connectez Meta Ads dans les parametres pour voir vos stats publicitaires
+                Connectez une plateforme publicitaire dans les parametres pour voir vos stats
               </div>
               <div style={{ textAlign: 'center' }}>
-                <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>Connecter Meta Ads</Btn>
+                <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>Connecter une plateforme</Btn>
               </div>
             </Card>
           ),
+
+          /* ------ Integrations Hub ------ */
+          'integrations-hub': totalConnected > 0 ? (
+            <Card delay={8} style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>🔗</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Integrations</span>
+                  <Badge label={`${totalConnected} actives`} color={T.accent} bg={T.accent + '18'} />
+                </div>
+                <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>Gerer →</Btn>
+              </div>
+
+              {/* Category breakdown */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 8, marginBottom: 14 }}>
+                {Object.entries(integrationSummary)
+                  .filter(([, v]) => v.connected > 0)
+                  .map(([cat, v]) => {
+                    const catLabels = { paiements: 'Paiements', banque: 'Banque', agenda: 'Agenda', crm: 'CRM', marketing: 'Marketing', projet: 'Projet', publicite: 'Pub', support: 'Support' };
+                    const catColors = { paiements: T.orange, banque: T.blue, agenda: T.green, crm: T.purple, marketing: T.accent, projet: T.blue, publicite: T.red, support: T.green };
+                    const color = catColors[cat] || T.accent;
+                    return (
+                      <div key={cat} style={{
+                        padding: '10px 8px', borderRadius: 10, textAlign: 'center',
+                        background: color + '10', border: `1px solid ${color}22`,
+                      }}>
+                        <div style={{ fontSize: 18, fontWeight: 800, color }}>{v.connected}</div>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginTop: 2 }}>
+                          {catLabels[cat] || cat}
+                        </div>
+                        <div style={{ marginTop: 4, height: 3, borderRadius: 2, background: color + '22', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${(v.connected / v.total) * 100}%`, background: color, borderRadius: 2 }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {/* Connected integrations icons */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {connectedIntegrations.slice(0, 16).map((ig) => (
+                  <div key={ig.name} title={ig.name} style={{
+                    width: 34, height: 34, borderRadius: 8, fontSize: 16,
+                    background: T.greenBg, border: `1px solid ${T.green}22`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'default',
+                  }}>{ig.icon}</div>
+                ))}
+                {connectedIntegrations.length > 16 && (
+                  <div style={{
+                    width: 34, height: 34, borderRadius: 8, fontSize: 10, fontWeight: 700,
+                    background: T.surface2, color: T.textMuted,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>+{connectedIntegrations.length - 16}</div>
+                )}
+              </div>
+            </Card>
+          ) : null,
         };
 
         const content = WIDGETS[id];
