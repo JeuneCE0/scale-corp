@@ -4,6 +4,7 @@ import { store, load } from '../lib/store.js';
 import { Card, Section, Btn, Inp, Sel, TabBar, Toggle, ConfirmDialog, Badge, ProgressBar } from '../components/ui.jsx';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { SECTORS, PLANS, INTEGRATIONS } from '../lib/constants.js';
+import { onIntegrationConnect, getIntegrationMeta } from '../lib/integrationData.js';
 
 const SUB_TABS = ['Compte', 'Utilisateurs', 'Facturation', 'Intégrations', 'Data & Export', 'RGPD & Légal'];
 
@@ -90,9 +91,13 @@ export default function Settings() {
     setTimeout(() => setSavedCompany(false), 2000);
   }, [company]);
 
+  const [syncStatus, setSyncStatus] = useState({});
+
   const toggleIntegration = useCallback((name) => {
     setBouncingIntegration(name);
     setTimeout(() => setBouncingIntegration(null), 400);
+
+    const wasOff = !integrations[name];
 
     setIntegrations((prev) => {
       const updated = { ...prev, [name]: !prev[name] };
@@ -100,16 +105,21 @@ export default function Settings() {
       return updated;
     });
 
-    // Track timestamp when connecting
-    setIntegrationTimestamps((prev) => {
-      const updated = { ...prev };
-      if (!integrations[name]) {
-        // Was off, now turning on
-        updated[name] = new Date().toISOString();
-      }
-      store('integrationTimestamps', updated);
-      return updated;
-    });
+    // Track timestamp and seed data when connecting
+    if (wasOff) {
+      setIntegrationTimestamps((prev) => {
+        const updated = { ...prev, [name]: new Date().toISOString() };
+        store('integrationTimestamps', updated);
+        return updated;
+      });
+      // Show syncing state, then seed data
+      setSyncStatus((prev) => ({ ...prev, [name]: 'syncing' }));
+      setTimeout(() => {
+        onIntegrationConnect(name);
+        setSyncStatus((prev) => ({ ...prev, [name]: 'done' }));
+        setTimeout(() => setSyncStatus((prev) => ({ ...prev, [name]: null })), 2000);
+      }, 800);
+    }
   }, [integrations]);
 
   const selectPlan = useCallback((id) => {
@@ -509,23 +519,38 @@ export default function Settings() {
               const connected = !!integrations[ig.name];
               const timestamp = integrationTimestamps[ig.name];
               const isBouncing = bouncingIntegration === ig.name;
+              const syncing = syncStatus[ig.name] === 'syncing';
+              const justSynced = syncStatus[ig.name] === 'done';
+              const meta = connected ? getIntegrationMeta(ig.name) : null;
               return (
                 <Card key={ig.name} style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                   <div style={{
-                    width: 40, height: 40, borderRadius: 10, background: T.surface2,
+                    width: 40, height: 40, borderRadius: 10,
+                    background: connected ? T.greenBg : T.surface2,
+                    border: connected ? `1px solid ${T.green}22` : 'none',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0,
+                    transition: 'all .3s ease',
                   }}>{ig.icon}</div>
                   <div style={{ flex: 1, minWidth: 120 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{ig.name}</div>
-                      {connected && (
+                      {connected && !syncing && (
                         <Badge label="Connecté" color={T.green} bg={T.greenBg} />
+                      )}
+                      {syncing && (
+                        <Badge label="Synchronisation..." color={T.orange} bg={T.orangeBg} />
+                      )}
+                      {justSynced && (
+                        <Badge label="Données importées" color={T.green} bg={T.greenBg} />
                       )}
                     </div>
                     <div style={{ fontSize: 11, color: T.textSecondary }}>{ig.desc}</div>
                     {connected && timestamp && (
                       <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>
                         Connecté le {new Date(timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {meta && meta.accountId && <> — ID: {meta.accountId}</>}
+                        {meta && meta.syncedContacts && <> — {meta.syncedContacts} contacts importés</>}
+                        {meta && meta.syncedEvents && <> — {meta.syncedEvents} événements synchronisés</>}
                       </div>
                     )}
                   </div>
@@ -533,14 +558,38 @@ export default function Settings() {
                     transition: 'transform .15s ease',
                     transform: isBouncing ? 'scale(1.2)' : 'scale(1)',
                   }}>
-                    <Btn v={connected ? 'success' : 'secondary'} small onClick={() => toggleIntegration(ig.name)}>
-                      {connected ? '✓ Connecté' : 'Connecter'}
+                    <Btn v={connected ? 'success' : 'secondary'} small onClick={() => toggleIntegration(ig.name)} disabled={syncing}>
+                      {syncing ? '⟳ Sync...' : connected ? '✓ Connecté' : 'Connecter'}
                     </Btn>
                   </div>
                 </Card>
               );
             })}
           </div>
+
+          {/* Integration status summary */}
+          {Object.values(integrations).some(Boolean) && (
+            <Card style={{ marginTop: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 14 }}>{'🔗'}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
+                  Résumé des connexions
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+                {INTEGRATIONS.filter((ig) => integrations[ig.name]).map((ig) => (
+                  <div key={ig.name} style={{
+                    padding: '10px 12px', borderRadius: 8, background: T.greenBg,
+                    border: `1px solid ${T.green}22`, textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 18, marginBottom: 4 }}>{ig.icon}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: T.green }}>{ig.name}</div>
+                    <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>Actif</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
         </Section>
       )}
 

@@ -6,7 +6,9 @@ import { Spinner, ErrorBoundary, Btn, Badge, NotificationDot } from './component
 import { t, getLang, setLang, onLangChange, AVAILABLE_LANGS } from './lib/i18n.js';
 import { daysSince, daysUntil, ago } from './lib/utils.js';
 import { NOTIFICATION_TYPES } from './lib/constants.js';
+import { isAuthenticated, getCurrentUser, logout as authLogout } from './lib/auth.js';
 
+const Login = lazy(() => import('./pages/Login.jsx'));
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
 const CRM = lazy(() => import('./pages/CRM.jsx'));
 const Data = lazy(() => import('./pages/Data.jsx'));
@@ -471,7 +473,77 @@ function ShortcutsHelp({ open, onClose }) {
   );
 }
 
+// --- User Menu (avatar + dropdown) ---
+function UserMenu({ user, onLogout }) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setOpen(false); };
+    const handleEsc = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleEsc);
+    return () => { document.removeEventListener('mousedown', handleClick); document.removeEventListener('keydown', handleEsc); };
+  }, [open]);
+
+  if (!user) return null;
+
+  const initials = (user.name || user.email || '?').split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
+
+  return (
+    <div ref={menuRef} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-label="Menu utilisateur"
+        style={{
+          width: 30, height: 30, borderRadius: 8, cursor: 'pointer',
+          background: user.avatar ? 'transparent' : 'linear-gradient(135deg, #6366f1, #4f46e5)',
+          border: `1px solid ${T.border}`, display: 'flex', alignItems: 'center',
+          justifyContent: 'center', fontWeight: 700, fontSize: 11, color: '#fff',
+          fontFamily: FONT, overflow: 'hidden', flexShrink: 0,
+        }}
+      >
+        {user.avatar ? (
+          <img src={user.avatar} alt="" style={{ width: 30, height: 30, objectFit: 'cover' }} />
+        ) : initials}
+      </button>
+
+      {open && (
+        <div className="scale-in" style={{
+          position: 'absolute', right: 0, top: 38, width: 220,
+          background: T.surface, border: `1px solid ${T.border}`,
+          borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,.4)',
+          overflow: 'hidden', zIndex: 200,
+        }}>
+          <div style={{ padding: '14px 16px', borderBottom: `1px solid ${T.border}` }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 2 }}>{user.name}</div>
+            <div style={{ fontSize: 11, color: T.textMuted, wordBreak: 'break-all' }}>{user.email}</div>
+          </div>
+          <div style={{ padding: 6 }}>
+            <button
+              onClick={() => { setOpen(false); onLogout(); }}
+              className="hoverable"
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                padding: '8px 10px', borderRadius: 8, background: 'none',
+                border: 'none', cursor: 'pointer', fontFamily: FONT,
+                fontSize: 12, color: T.red, fontWeight: 600, textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: 14 }}>{'🚪'}</span>
+              Se déconnecter
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
+  const [authed, setAuthed] = useState(() => isAuthenticated());
+  const [user, setUser] = useState(() => getCurrentUser());
   const [tab, setTab] = useState('overview');
   const [onboarded, setOnboarded] = useState(() => load('onboarded') === true);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -493,6 +565,28 @@ export default function App() {
 
   // Sync lang state with i18n module
   useEffect(() => onLangChange(setLangState), []);
+
+  const handleAuth = useCallback((u) => {
+    setUser(u);
+    setAuthed(true);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    authLogout();
+    setUser(null);
+    setAuthed(false);
+  }, []);
+
+  // If not authenticated, show login
+  if (!authed) {
+    return (
+      <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
+        <Suspense fallback={<LoadingFallback />}>
+          <Login onAuth={handleAuth} />
+        </Suspense>
+      </div>
+    );
+  }
 
   // Global keyboard shortcuts: Cmd+K (search), Cmd+? (shortcuts help), 1-5 (tabs), N (new)
   useEffect(() => {
@@ -608,10 +702,7 @@ export default function App() {
             </button>
             <NotificationCenter onNavigate={navigate} />
             {!load('tourDone') && <button onClick={() => setTourOpen(true)} aria-label="Visite guidée" style={{ background: T.orangeBg, border: `1px solid ${T.orange}33`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: T.orange, fontFamily: FONT }}>Tour</button>}
-            <span style={{
-              fontSize: 9, fontWeight: 700, color: T.orange, border: `1px solid ${T.orange}44`,
-              borderRadius: 4, padding: '2px 6px', letterSpacing: .5,
-            }}>PREVIEW</span>
+            <UserMenu user={user} onLogout={handleLogout} />
           </div>
         </div>
 
