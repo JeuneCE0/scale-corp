@@ -135,18 +135,18 @@ function CGU() {
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', margin: '16px 0' }}>
         {[
-          { name: 'Starter', price: '99', features: ['Jusqu\'a 3 utilisateurs', 'CRM de base', '1 000 contacts', 'Tableau de bord standard', 'Support par email'] },
-          { name: 'Professional', price: '249', features: ['Jusqu\'a 10 utilisateurs', 'CRM avance + pipeline', '10 000 contacts', 'Analytics & rapports', 'API access', 'Support prioritaire'] },
-          { name: 'Enterprise', price: '499', features: ['Utilisateurs illimites', 'CRM complet + automatisations', 'Contacts illimites', 'Analytics avances + IA', 'API + webhooks', 'SSO & audit logs', 'Account manager dedie'] },
+          { name: 'Essentiel', price: '49', features: ['1 utilisateur', 'CRM (100 contacts)', 'Dashboard complet', 'Données financières', 'Export PDF & FEC', 'Support email'] },
+          { name: 'Business', price: '149', features: ['5 utilisateurs', 'CRM illimité', 'Analytics & rapports', 'Prévisions IA', 'Simulateur publicitaire', 'Intégrations API (60+)', 'Tous les exports', 'Support prioritaire'] },
+          { name: 'Scale', price: '349', features: ['Utilisateurs illimités', 'Tout Business +', 'KPI personnalisés', 'Backup automatique 24h', 'Webhooks avancés', 'Onboarding dédié', 'Account manager', 'SLA 99.9%'] },
         ].map((plan) => (
           <div key={plan.name} style={{
             flex: '1 1 200px',
-            background: plan.name === 'Professional' ? 'rgba(249,115,22,.06)' : 'rgba(255,255,255,.02)',
-            border: `1px solid ${plan.name === 'Professional' ? 'rgba(249,115,22,.25)' : T.border}`,
+            background: plan.name === 'Business' ? 'rgba(249,115,22,.06)' : 'rgba(255,255,255,.02)',
+            border: `1px solid ${plan.name === 'Business' ? 'rgba(249,115,22,.25)' : T.border}`,
             borderRadius: 14,
             padding: '20px 18px',
           }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: plan.name === 'Professional' ? T.orange : T.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: plan.name === 'Business' ? T.orange : T.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
               {plan.name}
             </div>
             <div style={{ fontSize: 28, fontWeight: 800, color: T.text, marginBottom: 4, fontFamily: FONT }}>

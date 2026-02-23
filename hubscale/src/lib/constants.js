@@ -35,16 +35,16 @@ export const SECTORS = [
 
 export const PLANS = [
   {
-    id: 'starter', name: 'Starter', monthly: 99,
-    features: ['Dashboard Overview', 'CRM basique (100 contacts)', 'Données financières', '1 utilisateur', 'Support email'],
+    id: 'starter', name: 'Essentiel', monthly: 49,
+    features: ['Dashboard complet', 'CRM (100 contacts)', 'Données financières', 'Agenda', 'Export PDF & FEC', '1 utilisateur', 'Support email'],
   },
   {
-    id: 'professional', name: 'Professional', monthly: 249, recommended: true,
-    features: ['Tout Starter +', 'CRM avancé (illimité)', 'Sales Pipeline & Pub', 'Agenda complet', '5 utilisateurs', 'Intégrations API', 'Support prioritaire'],
+    id: 'professional', name: 'Business', monthly: 149, recommended: true,
+    features: ['Tout Essentiel +', 'CRM illimité', 'Analytics & Rapports', 'Prévisions IA', 'Simulateur publicitaire', 'Intégrations API (60+)', 'Tous les exports', '5 utilisateurs', 'Support prioritaire'],
   },
   {
-    id: 'enterprise', name: 'Enterprise', monthly: 499,
-    features: ['Tout Professional +', 'CI/CD Data Monitoring', 'Backup automatique 24h', 'KPI personnalisés', 'Utilisateurs illimités', 'Onboarding dédié', 'SLA 99.9%', 'Account manager'],
+    id: 'enterprise', name: 'Scale', monthly: 349,
+    features: ['Tout Business +', 'Utilisateurs illimités', 'KPI personnalisés', 'Backup automatique 24h', 'Webhooks avancés', 'Onboarding dédié', 'Account manager', 'SLA 99.9%'],
   },
 ];
 

@@ -4,7 +4,7 @@ import { uid, ago, fmt, fK, daysSince, leadScore } from '../lib/utils.js';
 import { storeDebounced, load } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
 import { Card, Btn, Inp, Badge, Modal, EmptyState, Sel, TabBar, ConfirmDialog, Pagination, ScoreRing, triggerConfetti, PremiumGate } from '../components/ui.jsx';
-import { isPaid } from '../lib/plan.js';
+import { isPaid, canAccessPro } from '../lib/plan.js';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { useUndoStack } from '../hooks/useUndoStack.js';
 import { CRM_STATUSES as STATUSES, CRM_FILTER_TABS as FILTER_TABS, LEAD_SCORE_LABELS } from '../lib/constants.js';
@@ -169,8 +169,8 @@ export default function CRM() {
     searchTimer.current = setTimeout(() => setDebouncedSearch(v), 200);
   }, []);
 
-  const FREE_CONTACT_LIMIT = 20;
-  const atContactLimit = !isPaid() && contacts.length >= FREE_CONTACT_LIMIT;
+  const contactLimit = canAccessPro() ? Infinity : isPaid() ? 100 : 20;
+  const atContactLimit = contacts.length >= contactLimit;
 
   // ---- Modal state ----
   const [showModal, setShowModal] = useState(false);
@@ -652,6 +652,11 @@ export default function CRM() {
         </div>
         <Btn v="secondary" small onClick={() => csvInputRef.current?.click()} aria-label="Importer CSV">{'↑'} Import CSV</Btn>
         <input ref={csvInputRef} type="file" accept=".csv" onChange={handleCSVImport} style={{ display: 'none' }} />
+        {contactLimit < Infinity && (
+          <span style={{ fontSize: 10, color: atContactLimit ? T.red : T.textMuted, fontWeight: 600 }}>
+            {contacts.length}/{contactLimit}
+          </span>
+        )}
         <Btn onClick={openNew} aria-label="Ajouter un contact" style={{ background: atContactLimit ? T.surface2 : 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: atContactLimit ? 'none' : '0 2px 12px rgba(249,115,22,.3)', opacity: atContactLimit ? .7 : 1 }}>
           {atContactLimit ? '🔒 Limite atteinte' : '+ Contact'}
         </Btn>
@@ -1242,7 +1247,7 @@ export default function CRM() {
 
       {/* ---- CONTACT LIMIT GATE ---- */}
       <Modal open={showLimitGate} onClose={() => setShowLimitGate(false)} title="Limite atteinte">
-        <PremiumGate label={`Limite de ${FREE_CONTACT_LIMIT} contacts atteinte`} blur={false}>
+        <PremiumGate label={`Limite de ${contactLimit} contacts atteinte`} blur={false}>
           <div />
         </PremiumGate>
       </Modal>
