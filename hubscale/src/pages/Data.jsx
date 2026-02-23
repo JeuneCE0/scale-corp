@@ -36,8 +36,10 @@ const LazyFinChart = lazy(() =>
                 fmt(v) + '€' + (entry.payload.type === 'forecast' ? ' (prev.)' : ''),
                 name,
               ]}
-              contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 11 }}
+              contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 11, color: T.text }}
               labelStyle={{ fontWeight: 700, fontSize: 11, color: T.text }}
+              itemStyle={{ color: T.text }}
+              cursor={{ fill: 'rgba(255,255,255,.05)' }}
             />
             <Legend
               wrapperStyle={{ fontSize: 10 }}

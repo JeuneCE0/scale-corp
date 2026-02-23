@@ -43,7 +43,10 @@ const LazyChart = lazy(() =>
             <XAxis dataKey="month" tick={{ fill: T.textMuted, fontSize: 10 }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fill: T.textMuted, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fK} />
             <Tooltip
-              contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 11 }}
+              contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 11, color: T.text }}
+              labelStyle={{ color: T.text, fontWeight: 700 }}
+              itemStyle={{ color: T.text }}
+              cursor={{ fill: 'rgba(255,255,255,.05)' }}
               formatter={(v, name) => {
                 if (name === 'forecast') return [`${fmt(v)}EUR`, 'Prevision'];
                 return [`${fmt(v)}EUR`, name === 'ca' ? 'CA' : 'Charges'];
@@ -364,7 +367,11 @@ export default function Dashboard({ onNavigate }) {
   /* ---------------------------------------------------------------- */
   /*  Draggable widget order                                           */
   /* ---------------------------------------------------------------- */
-  const [widgetOrder, setWidgetOrder] = useState(() => load('dashWidgetOrder') || ['chart-pipeline', 'health-activity-tasks', 'crm-pub']);
+  const [widgetOrder, setWidgetOrder] = useState(() => {
+    const saved = load('dashWidgetOrder');
+    if (saved && saved.includes('crm-banner')) return saved;
+    return ['chart-pipeline', 'crm-banner', 'pub-banner', 'activity-tasks'];
+  });
   const [dragWidget, setDragWidget] = useState(null);
   const handleWidgetDragStart = useCallback((e, id) => { setDragWidget(id); e.dataTransfer.effectAllowed = 'move'; }, []);
   const handleWidgetDrop = useCallback((e, targetId) => {
@@ -403,7 +410,31 @@ export default function Dashboard({ onNavigate }) {
     { l: 'Prospects', n: contacts.filter((c) => c.status === 'prospect').length, c: T.orange },
     { l: 'Leads', n: contacts.filter((c) => c.status === 'lead').length, c: T.blue },
     { l: 'Clients', n: contacts.filter((c) => c.status === 'client').length, c: T.green },
+    { l: 'Perdus', n: contacts.filter((c) => c.status === 'perdu').length, c: T.red },
   ], [contacts]);
+
+  const crmConversion = useMemo(() => {
+    const clients = contacts.filter((c) => c.status === 'client').length;
+    const lost = contacts.filter((c) => c.status === 'perdu').length;
+    const denom = clients + lost;
+    return denom > 0 ? Math.round((clients / denom) * 100) : 0;
+  }, [contacts]);
+
+  const pubStats = useMemo(() => {
+    const meta = load('metaAds') || {};
+    const connected = !!integrations.meta;
+    if (!connected) return null;
+    return {
+      spend: meta.spend || 3240,
+      impressions: meta.impressions || 125400,
+      clicks: meta.clicks || 4832,
+      conversions: meta.conversions || 142,
+      ctr: meta.ctr || 3.85,
+      cpc: meta.cpc || 0.67,
+      cpa: meta.cpa || 22.82,
+      roas: meta.roas || 4.2,
+    };
+  }, [integrations]);
 
   /* ---------------------------------------------------------------- */
   /*  Quick Actions                                                    */
@@ -733,27 +764,9 @@ export default function Dashboard({ onNavigate }) {
             </div>
           ),
 
-          /* ------ Health + Activity + Tasks ------ */
-          'health-activity-tasks': (
-            <div className="grid-desktop-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
-              <Card delay={5}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-                  Sante systeme
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {healthItems.map((h) => (
-                    <div key={h.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 12, color: T.text }}>{h.label}</span>
-                      <Badge
-                        label={h.status === 'ok' ? 'Connecte' : 'Non connecte'}
-                        color={h.status === 'ok' ? T.green : T.textMuted}
-                        bg={h.status === 'ok' ? T.greenBg : T.surface2}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </Card>
-
+          /* ------ Activity + Tasks ------ */
+          'activity-tasks': (
+            <div className="grid-desktop-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 20 }}>
               <Card delay={5}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
                   Activite recente
@@ -804,44 +817,157 @@ export default function Dashboard({ onNavigate }) {
             </div>
           ),
 
-          /* ------ CRM + Pub ------ */
-          'crm-pub': (
-            <div className="grid-desktop-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
-              <Card delay={6}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-                  Contacts CRM
+          /* ------ CRM Banner ------ */
+          'crm-banner': (
+            <Card delay={6} style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>👥</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>CRM</span>
+                  <Badge label={`${contacts.length} contacts`} color={T.accent} bg={T.accent + '18'} />
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-                  {crmStats.map((s) => (
-                    <div key={s.l} onClick={() => onNavigate?.('crm')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, background: s.c + '15', cursor: 'pointer' }}>
-                      <div style={{ width: 8, height: 8, borderRadius: 4, background: s.c }} />
-                      <span style={{ fontSize: 11, fontWeight: 600, color: s.c }}>{s.n}</span>
-                      <span style={{ fontSize: 10, color: T.textSecondary }}>{s.l}</span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ fontSize: 11, color: T.textMuted }}>{contacts.length} contact{contacts.length !== 1 ? 's' : ''} au total</div>
-              </Card>
+                <Btn v="ghost" small onClick={() => onNavigate?.('crm')}>Voir tout →</Btn>
+              </div>
 
-              <Card delay={6}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-                  Publicite
+              {/* Distribution bar */}
+              {contacts.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', gap: 2 }}>
+                    {crmStats.filter((s) => s.n > 0).map((s) => (
+                      <div key={s.l} style={{ flex: s.n, background: s.c, borderRadius: 4, transition: 'flex .5s ease' }} />
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
+                    {crmStats.filter((s) => s.n > 0).map((s) => (
+                      <div key={s.l} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: 4, background: s.c }} />
+                        <span style={{ fontSize: 11, fontWeight: 700, color: s.c }}>{s.n}</span>
+                        <span style={{ fontSize: 10, color: T.textMuted }}>{s.l}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="grid-2-mobile-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              )}
+
+              {/* KPI row */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+                <div style={{ padding: '12px 14px', borderRadius: 10, background: T.green + '10', border: `1px solid ${T.green}22`, textAlign: 'center' }}>
+                  <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>Conversion</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: crmConversion >= 50 ? T.green : crmConversion >= 25 ? T.orange : T.red }}>
+                    {crmConversion}%
+                  </div>
+                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>Clients / Clos</div>
+                </div>
+                <div style={{ padding: '12px 14px', borderRadius: 10, background: T.blue + '10', border: `1px solid ${T.blue}22`, textAlign: 'center' }}>
+                  <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>Pipeline</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: T.blue }}>
+                    {fK(pipeline.reduce((s, p) => s + p.value, 0))}€
+                  </div>
+                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>Valeur estimee</div>
+                </div>
+                <div style={{ padding: '12px 14px', borderRadius: 10, background: T.orange + '10', border: `1px solid ${T.orange}22`, textAlign: 'center' }}>
+                  <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>A relancer</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: T.orange }}>
+                    {contacts.filter((c) => (c.status === 'prospect' && daysSince(c.createdAt) > 14) || (c.status === 'lead' && daysSince(c.createdAt) > 21)).length}
+                  </div>
+                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>Contacts inactifs</div>
+                </div>
+                <div style={{ padding: '12px 14px', borderRadius: 10, background: T.purple + '10', border: `1px solid ${T.purple}22`, textAlign: 'center' }}>
+                  <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>Entonnoir</div>
+                  <svg viewBox="0 0 80 40" style={{ width: 80, height: 40, margin: '0 auto', display: 'block' }}>
+                    {(() => {
+                      const total = contacts.length || 1;
+                      const prosp = contacts.filter((c) => c.status === 'prospect').length;
+                      const lead = contacts.filter((c) => c.status === 'lead').length;
+                      const client = contacts.filter((c) => c.status === 'client').length;
+                      const w1 = Math.max((prosp / total) * 80, 10);
+                      const w2 = Math.max((lead / total) * 80, 8);
+                      const w3 = Math.max((client / total) * 80, 6);
+                      return (
+                        <>
+                          <rect x={(80 - w1) / 2} y="2" width={w1} height="10" rx="2" fill={T.orange} opacity=".8" />
+                          <rect x={(80 - w2) / 2} y="15" width={w2} height="10" rx="2" fill={T.blue} opacity=".8" />
+                          <rect x={(80 - w3) / 2} y="28" width={w3} height="10" rx="2" fill={T.green} opacity=".8" />
+                        </>
+                      );
+                    })()}
+                  </svg>
+                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>Prospect → Client</div>
+                </div>
+              </div>
+
+              {contacts.length === 0 && (
+                <div style={{ textAlign: 'center', padding: 16, color: T.textMuted, fontSize: 11 }}>
+                  Ajoutez des contacts dans le CRM pour voir vos statistiques
+                </div>
+              )}
+            </Card>
+          ),
+
+          /* ------ Pub Banner ------ */
+          'pub-banner': pubStats ? (
+            <Card delay={7} style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>📢</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Meta Ads</span>
+                  <Badge label="Connecte" color={T.green} bg={T.greenBg} />
+                </div>
+                <Btn v="ghost" small onClick={() => onNavigate?.('data')}>Voir details →</Btn>
+              </div>
+
+              {/* Funnel visuel: Budget → Impressions → Clicks → Conversions */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   {[
-                    { l: 'Depenses', v: '1 240EUR', c: T.orange },
-                    { l: 'Impressions', v: '45.2K', c: T.blue },
-                    { l: 'Clics', v: '1 832', c: T.purple },
-                    { l: 'CPA', v: '12.40EUR', c: T.green },
-                  ].map((m) => (
-                    <div key={m.l} style={{ padding: 8, borderRadius: 8, background: m.c + '10' }}>
-                      <div style={{ fontSize: 9, color: T.textMuted, textTransform: 'uppercase', fontWeight: 600 }}>{m.l}</div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: m.c, marginTop: 2 }}>{m.v}</div>
-                    </div>
+                    { label: 'Budget', value: `${fK(pubStats.spend)}€`, pct: 100, color: T.orange },
+                    { label: 'Impressions', value: fK(pubStats.impressions), pct: 80, color: T.blue },
+                    { label: 'Clics', value: fmt(pubStats.clicks), pct: Math.round((pubStats.clicks / pubStats.impressions) * 100 * 10), color: T.purple },
+                    { label: 'Conversions', value: String(pubStats.conversions), pct: Math.round((pubStats.conversions / pubStats.clicks) * 100 * 5), color: T.green },
+                  ].map((step, i) => (
+                    <React.Fragment key={step.label}>
+                      <div style={{ flex: 1, textAlign: 'center' }}>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>{step.label}</div>
+                        <div style={{ height: 6, borderRadius: 3, background: step.color + '22', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${Math.min(step.pct, 100)}%`, background: step.color, borderRadius: 3, transition: 'width .6s ease' }} />
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: step.color, marginTop: 4 }}>{step.value}</div>
+                      </div>
+                      {i < 3 && <span style={{ fontSize: 10, color: T.textMuted, flexShrink: 0 }}>→</span>}
+                    </React.Fragment>
                   ))}
                 </div>
-              </Card>
-            </div>
+              </div>
+
+              {/* Performance KPIs */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 10 }}>
+                {[
+                  { l: 'CTR', v: `${pubStats.ctr}%`, c: T.green, icon: '📈' },
+                  { l: 'CPC', v: `${pubStats.cpc}€`, c: T.blue, icon: '👆' },
+                  { l: 'CPA', v: `${pubStats.cpa}€`, c: T.orange, icon: '🎯' },
+                  { l: 'ROAS', v: `${pubStats.roas}x`, c: pubStats.roas >= 3 ? T.green : pubStats.roas >= 1 ? T.orange : T.red, icon: '💎' },
+                ].map((m) => (
+                  <div key={m.l} style={{ padding: '10px 12px', borderRadius: 10, background: m.c + '10', border: `1px solid ${m.c}22`, textAlign: 'center' }}>
+                    <div style={{ fontSize: 12, marginBottom: 2 }}>{m.icon}</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: m.c }}>{m.v}</div>
+                    <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginTop: 2 }}>{m.l}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : (
+            <Card delay={7} style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 16 }}>📢</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Publicite</span>
+              </div>
+              <div style={{ textAlign: 'center', padding: '16px 0', color: T.textMuted, fontSize: 11 }}>
+                Connectez Meta Ads dans les parametres pour voir vos stats publicitaires
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>Connecter Meta Ads</Btn>
+              </div>
+            </Card>
           ),
         };
 
