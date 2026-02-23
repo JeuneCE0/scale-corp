@@ -43,6 +43,13 @@ async function supabaseSignup({ name, email, password }) {
 
   setOrgId(org.id);
 
+  // Send welcome email (fire-and-forget)
+  fetch('/api/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token}` },
+    body: JSON.stringify({ action: 'welcome', name, email }),
+  }).catch(() => {});
+
   const profile = { id: user.id, name, email, avatar: null, createdAt: user.created_at, orgId: org.id };
   _emit('signin', profile);
   return { ok: true, user: profile };

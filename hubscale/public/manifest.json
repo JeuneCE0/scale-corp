@@ -1,7 +1,7 @@
 {
-  "name": "HubScale — Client Portal",
+  "name": "HubScale",
   "short_name": "HubScale",
-  "description": "Dashboard temps réel pour piloter votre holding et vos sociétés",
+  "description": "Espace client B2B — Pilotez votre activité",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",

@@ -19,6 +19,7 @@ const Analytics = lazy(() => import('./pages/Analytics.jsx'));
 const Settings = lazy(() => import('./pages/Settings.jsx'));
 const Onboarding = lazy(() => import('./pages/Onboarding.jsx'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
+const Legal = lazy(() => import('./pages/Legal.jsx'));
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: '📊' },
@@ -729,6 +730,17 @@ export default function App() {
     return (
       <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Spinner size={32} />
+      </div>
+    );
+  }
+
+  // Legal pages (CGU / Privacy)
+  if (view === 'legal') {
+    return (
+      <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
+        <Suspense fallback={<LoadingFallback />}>
+          <Legal onBack={() => setView(authed ? 'app' : 'landing')} />
+        </Suspense>
       </div>
     );
   }
