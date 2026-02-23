@@ -1,11 +1,20 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { T, getTheme, applyTheme } from '../lib/theme.js';
 import { store, load } from '../lib/store.js';
-import { Card, Section, Btn, Inp, Sel, TabBar, Toggle, ConfirmDialog } from '../components/ui.jsx';
+import { Card, Section, Btn, Inp, Sel, TabBar, Toggle, ConfirmDialog, Badge, ProgressBar } from '../components/ui.jsx';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { SECTORS, PLANS, INTEGRATIONS } from '../lib/constants.js';
 
 const SUB_TABS = ['Compte', 'Utilisateurs', 'Facturation', 'Intégrations', 'Data & Export', 'RGPD & Légal'];
+
+const ACCENT_COLORS = [
+  { name: 'Orange', value: '#f97316' },
+  { name: 'Indigo', value: '#6366f1' },
+  { name: 'Green', value: '#22c55e' },
+  { name: 'Blue', value: '#3b82f6' },
+  { name: 'Purple', value: '#a855f7' },
+  { name: 'Red', value: '#ef4444' },
+];
 
 function csvEscape(val) {
   let s = String(val ?? '');
@@ -15,6 +24,20 @@ function csvEscape(val) {
 }
 
 const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+function getLocalStorageSize() {
+  try {
+    let total = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      const value = localStorage.getItem(key);
+      total += (key.length + value.length) * 2; // UTF-16 = 2 bytes per char
+    }
+    return total;
+  } catch {
+    return 0;
+  }
+}
 
 export default function Settings() {
   const [subTab, setSubTab] = useState('Compte');
@@ -32,6 +55,24 @@ export default function Settings() {
   const [theme, setTheme] = useState(() => getTheme());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
+  // Logo upload state
+  const [logo, setLogo] = useState(() => {
+    try { return localStorage.getItem('settings_logo') || null; } catch { return null; }
+  });
+  const logoInputRef = useRef(null);
+
+  // Accent color state
+  const [accentColor, setAccentColor] = useState(() => {
+    try { return localStorage.getItem('settings_accentColor') || '#f97316'; } catch { return '#f97316'; }
+  });
+
+  // Integration connection timestamps
+  const [integrationTimestamps, setIntegrationTimestamps] = useState(() => load('integrationTimestamps') || {});
+
+  // Integration toggle animation tracking
+  const [bouncingIntegration, setBouncingIntegration] = useState(null);
+
   const removeUser = useCallback((email) => {
     setUsers((prev) => {
       const updated = prev.filter((u) => u.email !== email);
@@ -50,12 +91,26 @@ export default function Settings() {
   }, [company]);
 
   const toggleIntegration = useCallback((name) => {
+    setBouncingIntegration(name);
+    setTimeout(() => setBouncingIntegration(null), 400);
+
     setIntegrations((prev) => {
       const updated = { ...prev, [name]: !prev[name] };
       store('integrations', updated);
       return updated;
     });
-  }, []);
+
+    // Track timestamp when connecting
+    setIntegrationTimestamps((prev) => {
+      const updated = { ...prev };
+      if (!integrations[name]) {
+        // Was off, now turning on
+        updated[name] = new Date().toISOString();
+      }
+      store('integrationTimestamps', updated);
+      return updated;
+    });
+  }, [integrations]);
 
   const selectPlan = useCallback((id) => {
     setSelectedPlan(id);
@@ -77,6 +132,48 @@ export default function Settings() {
     setInviteError('');
   }, [inviteEmail, users]);
 
+  // Logo upload handler
+  const handleLogoUpload = useCallback((e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = ev.target.result;
+      try {
+        localStorage.setItem('settings_logo', base64);
+        setLogo(base64);
+      } catch {}
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const removeLogo = useCallback(() => {
+    try { localStorage.removeItem('settings_logo'); } catch {}
+    setLogo(null);
+    if (logoInputRef.current) logoInputRef.current.value = '';
+  }, []);
+
+  // Accent color handler
+  const selectAccentColor = useCallback((color) => {
+    setAccentColor(color);
+    try { localStorage.setItem('settings_accentColor', color); } catch {}
+  }, []);
+
+  // Usage stats
+  const usageStats = useMemo(() => {
+    const contacts = load('contacts') || [];
+    const events = load('events') || [];
+    const finHistory = load('finHistory') || [];
+    const storageBytes = getLocalStorageSize();
+    const storageKB = Math.round(storageBytes / 1024);
+    return {
+      contacts: contacts.length,
+      events: events.length,
+      months: finHistory.length,
+      users: users.length,
+      storageKB,
+    };
+  }, [users]);
 
   const exportData = useCallback((type) => {
     const data = {
@@ -114,9 +211,11 @@ export default function Settings() {
 
   const deleteAccount = useCallback(() => {
     if (deleteConfirmText !== 'SUPPRIMER') return;
-    ['contacts', 'events', 'finHistory', 'settings_company', 'integrations', 'plan', 'users', 'onboarded', 'company', 'tools', 'apiKeys', 'dataSources'].forEach((k) => {
+    ['contacts', 'events', 'finHistory', 'settings_company', 'integrations', 'integrationTimestamps', 'plan', 'users', 'onboarded', 'company', 'tools', 'apiKeys', 'dataSources'].forEach((k) => {
       try { localStorage.removeItem('hs_' + k); } catch {}
     });
+    try { localStorage.removeItem('settings_logo'); } catch {}
+    try { localStorage.removeItem('settings_accentColor'); } catch {}
     window.location.reload();
   }, [deleteConfirmText]);
 
@@ -159,6 +258,7 @@ export default function Settings() {
 
           <Section title="APPARENCE" sub="Personnalisez l'affichage de votre espace">
             <Card>
+              {/* Theme toggle */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>Thème</div>
@@ -174,6 +274,105 @@ export default function Settings() {
                   }}
                   label={theme === 'dark' ? '🌙 Sombre' : '☀️ Clair'}
                 />
+              </div>
+
+              {/* Logo upload */}
+              <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${T.border}` }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 4 }}>Logo de l'entreprise</div>
+                <div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 12 }}>Uploadez le logo de votre société (PNG, JPG, SVG)</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                  {/* Logo preview */}
+                  <div style={{
+                    width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
+                    background: logo ? 'transparent' : T.surface2,
+                    border: `2px dashed ${logo ? 'transparent' : T.border}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    overflow: 'hidden',
+                  }}>
+                    {logo ? (
+                      <img src={logo} alt="Logo" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: '50%' }} />
+                    ) : (
+                      <span style={{ fontSize: 18, color: T.textMuted }}>🏢</span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                      onChange={handleLogoUpload}
+                      style={{ display: 'none' }}
+                      id="logo-upload"
+                    />
+                    <Btn v="secondary" small onClick={() => logoInputRef.current?.click()}>
+                      {logo ? 'Changer le logo' : 'Uploader un logo'}
+                    </Btn>
+                    {logo && (
+                      <Btn v="ghost" small onClick={removeLogo}>Supprimer le logo</Btn>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Accent color picker */}
+              <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${T.border}` }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 4 }}>Couleur d'accent</div>
+                <div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 12 }}>Choisissez la couleur principale de votre interface</div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {ACCENT_COLORS.map((c) => {
+                    const selected = accentColor === c.value;
+                    return (
+                      <div
+                        key={c.value}
+                        onClick={() => selectAccentColor(c.value)}
+                        role="radio"
+                        aria-checked={selected}
+                        aria-label={c.name}
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectAccentColor(c.value); } }}
+                        title={c.name}
+                        style={{
+                          width: 32, height: 32, borderRadius: '50%', cursor: 'pointer',
+                          background: c.value, transition: 'all .15s',
+                          border: selected ? '3px solid ' + T.text : '3px solid transparent',
+                          boxShadow: selected ? `0 0 0 3px ${c.value}44` : 'none',
+                          transform: selected ? 'scale(1.15)' : 'scale(1)',
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: 10, color: T.textMuted, marginTop: 8 }}>Rechargez la page pour appliquer</div>
+              </div>
+            </Card>
+          </Section>
+
+          {/* Usage stats */}
+          <Section title="UTILISATION" sub="Aperçu de vos données et stockage">
+            <Card>
+              <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
+                {[
+                  { label: 'Contacts', value: usageStats.contacts, icon: '👥', color: T.accent },
+                  { label: 'Événements', value: usageStats.events, icon: '📅', color: T.blue },
+                  { label: 'Mois de données', value: usageStats.months, icon: '💰', color: T.green },
+                  { label: 'Utilisateurs', value: usageStats.users, icon: '🧑‍💼', color: T.purple },
+                ].map((stat) => (
+                  <div key={stat.label} style={{
+                    padding: '12px 14px', borderRadius: 10, background: T.surface2,
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 18, marginBottom: 4 }}>{stat.icon}</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: stat.color, lineHeight: 1.2 }}>{stat.value}</div>
+                    <div style={{ fontSize: 10, color: T.textSecondary, marginTop: 2 }}>{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: T.textSecondary }}>Espace utilisé</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: T.textMuted }}>~{usageStats.storageKB}KB / 5MB</span>
+                </div>
+                <ProgressBar value={usageStats.storageKB} max={5120} color={usageStats.storageKB > 4096 ? T.red : usageStats.storageKB > 2560 ? T.orange : T.green} h={5} />
               </div>
             </Card>
           </Section>
@@ -306,18 +505,41 @@ export default function Settings() {
       {subTab === 'Intégrations' && (
         <Section title="INTÉGRATIONS API" sub="Connectez vos outils et services externes">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {INTEGRATIONS.map((ig) => (
-              <Card key={ig.name} style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: T.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{ig.icon}</div>
-                <div style={{ flex: 1, minWidth: 120 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{ig.name}</div>
-                  <div style={{ fontSize: 11, color: T.textSecondary }}>{ig.desc}</div>
-                </div>
-                <Btn v={integrations[ig.name] ? 'success' : 'secondary'} small onClick={() => toggleIntegration(ig.name)}>
-                  {integrations[ig.name] ? '✓ Connecté' : 'Connecter'}
-                </Btn>
-              </Card>
-            ))}
+            {INTEGRATIONS.map((ig) => {
+              const connected = !!integrations[ig.name];
+              const timestamp = integrationTimestamps[ig.name];
+              const isBouncing = bouncingIntegration === ig.name;
+              return (
+                <Card key={ig.name} style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10, background: T.surface2,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0,
+                  }}>{ig.icon}</div>
+                  <div style={{ flex: 1, minWidth: 120 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{ig.name}</div>
+                      {connected && (
+                        <Badge label="Connecté" color={T.green} bg={T.greenBg} />
+                      )}
+                    </div>
+                    <div style={{ fontSize: 11, color: T.textSecondary }}>{ig.desc}</div>
+                    {connected && timestamp && (
+                      <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>
+                        Connecté le {new Date(timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{
+                    transition: 'transform .15s ease',
+                    transform: isBouncing ? 'scale(1.2)' : 'scale(1)',
+                  }}>
+                    <Btn v={connected ? 'success' : 'secondary'} small onClick={() => toggleIntegration(ig.name)}>
+                      {connected ? '✓ Connecté' : 'Connecter'}
+                    </Btn>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         </Section>
       )}

@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspens
 import { T, FONT } from './lib/theme.js';
 import { GLOBAL_CSS } from './lib/css.js';
 import { load, store } from './lib/store.js';
-import { Spinner, ErrorBoundary, Btn } from './components/ui.jsx';
+import { Spinner, ErrorBoundary, Btn, Badge, NotificationDot } from './components/ui.jsx';
 import { t, getLang, setLang, onLangChange, AVAILABLE_LANGS } from './lib/i18n.js';
+import { daysSince, daysUntil, ago } from './lib/utils.js';
+import { NOTIFICATION_TYPES } from './lib/constants.js';
 
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
 const CRM = lazy(() => import('./pages/CRM.jsx'));
@@ -13,20 +15,279 @@ const Settings = lazy(() => import('./pages/Settings.jsx'));
 const Onboarding = lazy(() => import('./pages/Onboarding.jsx'));
 
 const TABS = [
-  { id: 'overview', label: 'Overview', icon: '📊' },
-  { id: 'crm', label: 'CRM', icon: '👥' },
-  { id: 'data', label: 'Data', icon: '💰' },
-  { id: 'agenda', label: 'Agenda', icon: '📅' },
-  { id: 'settings', label: 'Paramètres', icon: '⚙️' },
+  { id: 'overview', label: 'Overview', icon: '\u{1F4CA}' },
+  { id: 'crm', label: 'CRM', icon: '\u{1F465}' },
+  { id: 'data', label: 'Data', icon: '\u{1F4B0}' },
+  { id: 'agenda', label: 'Agenda', icon: '\u{1F4C5}' },
+  { id: 'settings', label: 'Param\u00E8tres', icon: '\u2699\uFE0F' },
 ];
 
-const TAB_LABELS = { overview: 'Dashboard', crm: 'CRM', data: 'Data', agenda: 'Agenda', settings: 'Paramètres' };
+const TAB_LABELS = { overview: 'Dashboard', crm: 'CRM', data: 'Data', agenda: 'Agenda', settings: 'Param\u00E8tres' };
 
+// --- Session Greeting ---
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Bonjour';
+  if (h < 18) return 'Bon apr\u00E8s-midi';
+  return 'Bonsoir';
+}
+
+// --- Loading Fallback ---
 function LoadingFallback({ page }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 10 }}>
       <Spinner size={24} />
       <span style={{ color: T.textMuted, fontSize: 12 }}>Chargement {page ? `de ${page}` : ''}...</span>
+    </div>
+  );
+}
+
+// --- useNotifications Hook ---
+function useNotifications() {
+  const compute = useCallback(() => {
+    const notifs = [];
+    const now = new Date();
+
+    // 1. Contacts needing follow-up
+    const contacts = load('contacts') || [];
+    contacts.forEach((c) => {
+      if (!c.createdAt) return;
+      const days = daysSince(c.createdAt);
+      const lastActivity = c.commentaires && c.commentaires.length > 0
+        ? c.commentaires[c.commentaires.length - 1].date
+        : c.createdAt;
+      const daysSinceActivity = daysSince(lastActivity);
+
+      if (c.status === 'prospect' && daysSinceActivity > 14) {
+        notifs.push({
+          id: `relance-${c.id}`,
+          type: 'relance',
+          message: `${c.name} (prospect) sans activit\u00E9 depuis ${daysSinceActivity}j`,
+          time: lastActivity,
+          tab: 'crm',
+        });
+      }
+      if (c.status === 'lead' && daysSinceActivity > 21) {
+        notifs.push({
+          id: `relance-${c.id}`,
+          type: 'relance',
+          message: `${c.name} (lead) sans activit\u00E9 depuis ${daysSinceActivity}j`,
+          time: lastActivity,
+          tab: 'crm',
+        });
+      }
+    });
+
+    // 2. Events happening today or tomorrow
+    const events = load('events') || [];
+    const todayStr = now.toISOString().split('T')[0];
+    const tomorrowDate = new Date(now);
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
+
+    events.forEach((ev) => {
+      if (ev.date === todayStr) {
+        notifs.push({
+          id: `event-today-${ev.id}`,
+          type: 'event',
+          message: `Aujourd'hui : ${ev.title}${ev.time ? ` \u00E0 ${ev.time}` : ''}`,
+          time: ev.date,
+          tab: 'agenda',
+        });
+      } else if (ev.date === tomorrowStr) {
+        notifs.push({
+          id: `event-tomorrow-${ev.id}`,
+          type: 'event',
+          message: `Demain : ${ev.title}${ev.time ? ` \u00E0 ${ev.time}` : ''}`,
+          time: ev.date,
+          tab: 'agenda',
+        });
+      }
+    });
+
+    // 3. Missing financial data for current month
+    const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const finHistory = load('finHistory') || [];
+    const hasCurrentMonth = finHistory.some((f) => f.key === curMonth);
+    if (!hasCurrentMonth) {
+      notifs.push({
+        id: 'finance-missing',
+        type: 'finance',
+        message: `Donn\u00E9es financi\u00E8res manquantes pour ${curMonth}`,
+        time: now.toISOString(),
+        tab: 'data',
+      });
+    }
+
+    // 4. Tip: connect integrations
+    const integrations = load('integrations') || {};
+    const connectedCount = Object.values(integrations).filter(Boolean).length;
+    if (connectedCount < 2) {
+      notifs.push({
+        id: 'tip-integrations',
+        type: 'tip',
+        message: 'Connectez vos int\u00E9grations pour plus de donn\u00E9es',
+        time: now.toISOString(),
+        tab: 'settings',
+      });
+    }
+
+    return notifs;
+  }, []);
+
+  return compute;
+}
+
+// --- Notification Center ---
+function NotificationCenter({ onNavigate }) {
+  const [open, setOpen] = useState(false);
+  const [dismissed, setDismissed] = useState(() => load('notifDismissed') || []);
+  const [prevCount, setPrevCount] = useState(0);
+  const [shaking, setShaking] = useState(false);
+  const panelRef = useRef(null);
+  const btnRef = useRef(null);
+  const computeNotifs = useNotifications();
+
+  const allNotifs = computeNotifs();
+  const unread = allNotifs.filter((n) => !dismissed.includes(n.id));
+  const unreadCount = unread.length;
+
+  // Bell shake when count changes (increases)
+  useEffect(() => {
+    if (unreadCount > prevCount && unreadCount > 0) {
+      setShaking(true);
+      const timer = setTimeout(() => setShaking(false), 600);
+      return () => clearTimeout(timer);
+    }
+    setPrevCount(unreadCount);
+  }, [unreadCount, prevCount]);
+
+  // Update prevCount after shake
+  useEffect(() => {
+    setPrevCount(unreadCount);
+  }, [unreadCount]);
+
+  // Close on click outside
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target) && btnRef.current && !btnRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [open]);
+
+  const markAllRead = useCallback(() => {
+    const allIds = allNotifs.map((n) => n.id);
+    setDismissed(allIds);
+    store('notifDismissed', allIds);
+  }, [allNotifs]);
+
+  const handleNotifClick = useCallback((notif) => {
+    onNavigate(notif.tab);
+    setOpen(false);
+  }, [onNavigate]);
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        ref={btnRef}
+        onClick={() => setOpen((o) => !o)}
+        aria-label="Notifications"
+        style={{
+          background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8,
+          padding: '5px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', position: 'relative', fontSize: 15,
+        }}
+      >
+        <span className={shaking ? 'bell-shake' : ''} style={{ display: 'inline-block', lineHeight: 1 }}>
+          {'\u{1F514}'}
+        </span>
+        <NotificationDot count={unreadCount} />
+      </button>
+
+      {open && (
+        <div ref={panelRef} className="notif-panel scale-in" style={{ marginTop: 4 }}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '12px 16px', borderBottom: `1px solid ${T.border}`,
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Notifications</span>
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllRead}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', fontSize: 10,
+                  fontWeight: 600, color: T.accent, fontFamily: FONT, padding: '2px 6px',
+                }}
+              >
+                Tout marquer comme lu
+              </button>
+            )}
+          </div>
+
+          {allNotifs.length === 0 ? (
+            <div style={{ padding: 24, textAlign: 'center', color: T.textMuted, fontSize: 12 }}>
+              Aucune notification
+            </div>
+          ) : (
+            <div style={{ padding: 6 }}>
+              {allNotifs.map((notif) => {
+                const typeInfo = NOTIFICATION_TYPES[notif.type] || NOTIFICATION_TYPES.alert;
+                const isRead = dismissed.includes(notif.id);
+                return (
+                  <div
+                    key={notif.id}
+                    onClick={() => handleNotifClick(notif)}
+                    className="hoverable"
+                    style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 10,
+                      padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
+                      opacity: isRead ? 0.5 : 1,
+                      transition: 'all .15s ease',
+                    }}
+                  >
+                    <span style={{
+                      fontSize: 16, width: 28, height: 28, borderRadius: 8,
+                      background: typeInfo.bg, display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', flexShrink: 0,
+                    }}>
+                      {typeInfo.icon}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 12, fontWeight: isRead ? 500 : 600, color: T.text,
+                        lineHeight: 1.4, marginBottom: 3,
+                      }}>
+                        {notif.message}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 10, color: T.textMuted }}>{ago(notif.time)}</span>
+                        <Badge label={typeInfo.label} color={typeInfo.color} bg={typeInfo.bg} />
+                      </div>
+                    </div>
+                    {!isRead && (
+                      <div style={{
+                        width: 6, height: 6, borderRadius: 3, background: T.accent,
+                        flexShrink: 0, marginTop: 6,
+                      }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -53,16 +314,16 @@ function GlobalSearch({ open, onClose, onNavigate }) {
     const items = [];
     const contacts = load('contacts') || [];
     contacts.filter((c) => (c.name || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q) || (c.company || '').toLowerCase().includes(q))
-      .slice(0, 5).forEach((c) => items.push({ type: 'contact', label: c.name, sub: c.email || c.company || '', tab: 'crm', icon: '👤' }));
+      .slice(0, 5).forEach((c) => items.push({ type: 'contact', label: c.name, sub: c.email || c.company || '', tab: 'crm', icon: '\u{1F464}' }));
     const events = load('events') || [];
     events.filter((e) => (e.title || '').toLowerCase().includes(q))
-      .slice(0, 5).forEach((e) => items.push({ type: 'event', label: e.title, sub: e.date || '', tab: 'agenda', icon: '📅' }));
+      .slice(0, 5).forEach((e) => items.push({ type: 'event', label: e.title, sub: e.date || '', tab: 'agenda', icon: '\u{1F4C5}' }));
     const finances = load('finHistory') || [];
     finances.filter((f) => (f.key || '').includes(q))
-      .slice(0, 3).forEach((f) => items.push({ type: 'finance', label: `Mois ${f.key}`, sub: `CA: ${f.ca}€`, tab: 'data', icon: '💰' }));
-    [{ label: 'Dashboard', tab: 'overview', icon: '📊' }, { label: 'CRM', tab: 'crm', icon: '👥' },
-     { label: 'Data', tab: 'data', icon: '💰' }, { label: 'Agenda', tab: 'agenda', icon: '📅' },
-     { label: 'Paramètres', tab: 'settings', icon: '⚙️' }]
+      .slice(0, 3).forEach((f) => items.push({ type: 'finance', label: `Mois ${f.key}`, sub: `CA: ${f.ca}\u20AC`, tab: 'data', icon: '\u{1F4B0}' }));
+    [{ label: 'Dashboard', tab: 'overview', icon: '\u{1F4CA}' }, { label: 'CRM', tab: 'crm', icon: '\u{1F465}' },
+     { label: 'Data', tab: 'data', icon: '\u{1F4B0}' }, { label: 'Agenda', tab: 'agenda', icon: '\u{1F4C5}' },
+     { label: 'Param\u00E8tres', tab: 'settings', icon: '\u2699\uFE0F' }]
       .filter((p) => p.label.toLowerCase().includes(q))
       .forEach((p) => items.push({ type: 'page', label: p.label, sub: 'Naviguer', tab: p.tab, icon: p.icon }));
     return items;
@@ -73,8 +334,8 @@ function GlobalSearch({ open, onClose, onNavigate }) {
     <div className="fade-in" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '80px 16px', backdropFilter: 'blur(8px)' }}>
       <div className="scale-in" onClick={(e) => e.stopPropagation()} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, width: 520, maxWidth: '100%', boxShadow: '0 24px 64px rgba(0,0,0,.5)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: `1px solid ${T.border}` }}>
-          <span style={{ fontSize: 16, color: T.textMuted }}>🔍</span>
-          <input ref={inputRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher contacts, événements, pages..."
+          <span style={{ fontSize: 16, color: T.textMuted }}>{'\u{1F50D}'}</span>
+          <input ref={inputRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher contacts, \u00E9v\u00E9nements, pages..."
             style={{ flex: 1, background: 'transparent', border: 'none', color: T.text, fontSize: 14, fontFamily: FONT, outline: 'none' }} />
           <kbd style={{ fontSize: 10, color: T.textMuted, background: T.surface2, padding: '2px 6px', borderRadius: 4, border: `1px solid ${T.border}` }}>ESC</kbd>
         </div>
@@ -94,10 +355,10 @@ function GlobalSearch({ open, onClose, onNavigate }) {
           </div>
         )}
         {query.length >= 2 && results.length === 0 && (
-          <div style={{ padding: 24, textAlign: 'center', color: T.textMuted, fontSize: 12 }}>Aucun résultat pour "{query}"</div>
+          <div style={{ padding: 24, textAlign: 'center', color: T.textMuted, fontSize: 12 }}>Aucun r\u00E9sultat pour "{query}"</div>
         )}
         {query.length < 2 && (
-          <div style={{ padding: 24, textAlign: 'center', color: T.textMuted, fontSize: 11 }}>Tapez au moins 2 caractères pour chercher</div>
+          <div style={{ padding: 24, textAlign: 'center', color: T.textMuted, fontSize: 11 }}>Tapez au moins 2 caract\u00E8res pour chercher</div>
         )}
       </div>
     </div>
@@ -106,20 +367,22 @@ function GlobalSearch({ open, onClose, onNavigate }) {
 
 // --- Keyboard Shortcuts Help (Cmd+?) ---
 const SHORTCUTS = [
-  { keys: ['⌘', 'K'], desc: 'Recherche globale' },
-  { keys: ['⌘', '?'], desc: 'Aide raccourcis clavier' },
-  { keys: ['Ctrl', 'Z'], desc: 'Annuler la dernière suppression' },
+  { keys: ['\u2318', 'K'], desc: 'Recherche globale' },
+  { keys: ['\u2318', '?'], desc: 'Aide raccourcis clavier' },
+  { keys: ['Ctrl', 'Z'], desc: 'Annuler la derni\u00E8re suppression' },
   { keys: ['Esc'], desc: 'Fermer modale / recherche' },
   { keys: ['Enter'], desc: 'Valider formulaire' },
+  { keys: ['1\u20135'], desc: 'Naviguer entre les onglets' },
+  { keys: ['N'], desc: 'Nouveau (contact dans CRM, \u00E9v\u00E9nement dans Agenda)' },
 ];
 
 // --- Guided Tour ---
 const TOUR_STEPS = [
-  { target: 'overview', title: '📊 Dashboard', desc: () => t('tour.step1') },
-  { target: 'crm', title: '👥 CRM', desc: () => t('tour.step2') },
-  { target: 'data', title: '💰 Data', desc: () => t('tour.step3') },
-  { target: 'agenda', title: '📅 Agenda', desc: () => t('tour.step4') },
-  { target: 'settings', title: '⚙️ Paramètres', desc: () => t('tour.step5') },
+  { target: 'overview', title: '\u{1F4CA} Dashboard', desc: () => t('tour.step1') },
+  { target: 'crm', title: '\u{1F465} CRM', desc: () => t('tour.step2') },
+  { target: 'data', title: '\u{1F4B0} Data', desc: () => t('tour.step3') },
+  { target: 'agenda', title: '\u{1F4C5} Agenda', desc: () => t('tour.step4') },
+  { target: 'settings', title: '\u2699\uFE0F Param\u00E8tres', desc: () => t('tour.step5') },
 ];
 
 function GuidedTour({ open, onClose, onNavigate }) {
@@ -186,7 +449,7 @@ function ShortcutsHelp({ open, onClose }) {
       <div className="scale-in" onClick={(e) => e.stopPropagation()} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 24, width: 400, maxWidth: '100%', boxShadow: '0 24px 64px rgba(0,0,0,.5)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: T.text }}>Raccourcis clavier</h3>
-          <Btn v="ghost" small onClick={onClose} aria-label="Fermer">✕</Btn>
+          <Btn v="ghost" small onClick={onClose} aria-label="Fermer">{'\u2715'}</Btn>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {SHORTCUTS.map((s) => (
@@ -201,7 +464,7 @@ function ShortcutsHelp({ open, onClose }) {
           ))}
         </div>
         <div style={{ marginTop: 16, textAlign: 'center' }}>
-          <span style={{ fontSize: 10, color: T.textMuted }}>Sur Mac, ⌘ = Cmd. Sur Windows/Linux, ⌘ = Ctrl.</span>
+          <span style={{ fontSize: 10, color: T.textMuted }}>Sur Mac, \u2318 = Cmd. Sur Windows/Linux, \u2318 = Ctrl.</span>
         </div>
       </div>
     </div>
@@ -216,6 +479,7 @@ export default function App() {
   const [tourOpen, setTourOpen] = useState(false);
   const [pageKey, setPageKey] = useState(0);
   const [lang, setLangState] = useState(getLang);
+  const [transitionPhase, setTransitionPhase] = useState('visible');
   const mainRef = useRef(null);
 
   useEffect(() => {
@@ -230,11 +494,31 @@ export default function App() {
   // Sync lang state with i18n module
   useEffect(() => onLangChange(setLangState), []);
 
-  // Global keyboard shortcuts: Cmd+K (search), Cmd+? (shortcuts help)
+  // Global keyboard shortcuts: Cmd+K (search), Cmd+? (shortcuts help), 1-5 (tabs), N (new)
   useEffect(() => {
     const handleKey = (e) => {
+      // Skip if user is typing in an input/textarea/select
+      const tag = document.activeElement?.tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setSearchOpen(true); }
       if ((e.metaKey || e.ctrlKey) && (e.key === '?' || (e.shiftKey && e.key === '/'))) { e.preventDefault(); setShortcutsOpen(true); }
+
+      // Number shortcuts 1-5 for tab navigation (only when not typing)
+      if (!isInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const tabKeys = { '1': 'overview', '2': 'crm', '3': 'data', '4': 'agenda', '5': 'settings' };
+        if (tabKeys[e.key]) {
+          e.preventDefault();
+          setTab(tabKeys[e.key]);
+          setPageKey((k) => k + 1);
+        }
+        // N for new (context-dependent)
+        if (e.key === 'n' || e.key === 'N') {
+          // Dispatch a custom event so child pages can pick it up
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('hs:shortcut-new'));
+        }
+      }
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
@@ -263,14 +547,29 @@ export default function App() {
   }
 
   const handleTabChange = useCallback((tabId) => {
-    setTab(tabId);
-    setPageKey((k) => k + 1);
+    // Trigger a brief opacity flash for smoother perceived transition
+    setTransitionPhase('exiting');
+    setTimeout(() => {
+      setTab(tabId);
+      setPageKey((k) => k + 1);
+      setTransitionPhase('entering');
+      setTimeout(() => setTransitionPhase('visible'), 30);
+    }, 80);
   }, []);
 
   const handleLangToggle = useCallback(() => {
     const next = getLang() === 'fr' ? 'en' : 'fr';
     setLang(next);
   }, []);
+
+  const greeting = getGreeting();
+
+  // Compute page transition style
+  const transitionStyle = transitionPhase === 'exiting'
+    ? { opacity: 0, transform: 'translateY(4px)', transition: 'opacity 80ms ease, transform 80ms ease' }
+    : transitionPhase === 'entering'
+    ? { opacity: 0, transform: 'translateY(6px)' }
+    : {};
 
   return (
     <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
@@ -303,11 +602,12 @@ export default function App() {
             </button>
             <button onClick={() => setSearchOpen(true)} aria-label="Recherche globale"
               style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8, padding: '5px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 11, color: T.textMuted }}>🔍</span>
+              <span style={{ fontSize: 11, color: T.textMuted }}>{'\u{1F50D}'}</span>
               <span className="hide-mobile" style={{ fontSize: 11, color: T.textMuted }}>{t('common.search').replace('...', '')}</span>
-              <kbd className="hide-mobile" style={{ fontSize: 9, color: T.textMuted, background: T.bg, padding: '1px 4px', borderRadius: 3, border: `1px solid ${T.border}`, marginLeft: 4 }}>⌘K</kbd>
+              <kbd className="hide-mobile" style={{ fontSize: 9, color: T.textMuted, background: T.bg, padding: '1px 4px', borderRadius: 3, border: `1px solid ${T.border}`, marginLeft: 4 }}>{'\u2318'}K</kbd>
             </button>
-            {!load('tourDone') && <button onClick={() => setTourOpen(true)} aria-label="Visite guidée" style={{ background: T.orangeBg, border: `1px solid ${T.orange}33`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: T.orange, fontFamily: FONT }}>Tour</button>}
+            <NotificationCenter onNavigate={navigate} />
+            {!load('tourDone') && <button onClick={() => setTourOpen(true)} aria-label="Visite guid\u00E9e" style={{ background: T.orangeBg, border: `1px solid ${T.orange}33`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: T.orange, fontFamily: FONT }}>Tour</button>}
             <span style={{
               fontSize: 9, fontWeight: 700, color: T.orange, border: `1px solid ${T.orange}44`,
               borderRadius: 4, padding: '2px 6px', letterSpacing: .5,
@@ -346,8 +646,8 @@ export default function App() {
       <main id="main-content" ref={mainRef} className="page-pad" style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px 40px' }}>
         <ErrorBoundary fallbackTitle={`Erreur dans ${TAB_LABELS[tab] || 'la page'}`}>
           <Suspense fallback={<LoadingFallback page={TAB_LABELS[tab]} />}>
-            <div key={pageKey} className="page-transition">
-              {tab === 'overview' && <Dashboard onNavigate={navigate} />}
+            <div key={pageKey} className="page-transition" style={transitionStyle}>
+              {tab === 'overview' && <Dashboard onNavigate={navigate} greeting={greeting} />}
               {tab === 'crm' && <CRM />}
               {tab === 'data' && <Data />}
               {tab === 'agenda' && <Agenda />}

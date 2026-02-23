@@ -1,22 +1,32 @@
-import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
-import { T } from '../lib/theme.js';
-import { fK, fmt, ago } from '../lib/utils.js';
+import React, { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
+import { T, FONT } from '../lib/theme.js';
+import { fK, fmt, ago, businessHealth, businessWeather, getStreak, forecastCA, daysSince, daysUntil, leadScore } from '../lib/utils.js';
 import { load, store } from '../lib/store.js';
-import { KPI, Card, Badge, ProgressBar, Spinner, Btn, Inp, HelpTip } from '../components/ui.jsx';
+import { KPI, Card, Badge, ProgressBar, Spinner, Btn, Inp, HelpTip, ScoreRing, StreakBadge, WeatherWidget, ChecklistItem, AnimatedNumber, Sparkline } from '../components/ui.jsx';
+import { ONBOARDING_CHECKLIST, CRM_STATUSES, NOTIFICATION_TYPES } from '../lib/constants.js';
 
+/* ------------------------------------------------------------------ */
+/*  Lazy-loaded Recharts                                               */
+/* ------------------------------------------------------------------ */
 const LazyChart = lazy(() =>
   import('recharts').then((mod) => ({
     default: function CAChart() {
       const { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } = mod;
       const history = load('finHistory') || [];
       const caGoal = load('caGoal') || 0;
+      const forecast = forecastCA(history, 3);
       const CA_DATA = history.slice(-6).map((r) => {
         const [, m] = (r.key || '').split('-');
-        const months = ['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-        return { month: months[parseInt(m)] || r.key, ca: r.ca || 0, charges: r.charges || 0 };
+        const months = ['', 'Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aou', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return { month: months[parseInt(m)] || r.key, ca: r.ca || 0, charges: r.charges || 0, type: 'actual' };
       });
-      if (CA_DATA.length === 0) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 11, color: T.textMuted }}>Aucune donnée financière</div>;
-      const avgCharges = Math.round(CA_DATA.reduce((s, d) => s + d.charges, 0) / CA_DATA.length);
+      forecast.forEach((f) => {
+        const [, m] = (f.key || '').split('-');
+        const months = ['', 'Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aou', 'Sep', 'Oct', 'Nov', 'Dec'];
+        CA_DATA.push({ month: months[parseInt(m)] || f.key, ca: f.ca, charges: 0, forecast: f.ca, type: 'forecast' });
+      });
+      if (CA_DATA.length === 0) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 11, color: T.textMuted }}>Aucune donnee financiere</div>;
+      const avgCharges = Math.round(CA_DATA.filter(d => d.charges > 0).reduce((s, d) => s + d.charges, 0) / (CA_DATA.filter(d => d.charges > 0).length || 1));
       return (
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={CA_DATA}>
@@ -25,17 +35,25 @@ const LazyChart = lazy(() =>
                 <stop offset="0%" stopColor={T.green} stopOpacity={0.3} />
                 <stop offset="100%" stopColor={T.green} stopOpacity={0} />
               </linearGradient>
+              <linearGradient id="forecastGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={T.blue} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={T.blue} stopOpacity={0} />
+              </linearGradient>
             </defs>
             <XAxis dataKey="month" tick={{ fill: T.textMuted, fontSize: 10 }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fill: T.textMuted, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fK} />
             <Tooltip
               contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 11 }}
-              formatter={(v, name) => [`${fmt(v)}€`, name === 'ca' ? 'CA' : 'Charges']}
+              formatter={(v, name) => {
+                if (name === 'forecast') return [`${fmt(v)}EUR`, 'Prevision'];
+                return [`${fmt(v)}EUR`, name === 'ca' ? 'CA' : 'Charges'];
+              }}
             />
             <Area type="monotone" dataKey="ca" stroke={T.green} strokeWidth={2} fill="url(#caGrad)" />
             <Area type="monotone" dataKey="charges" stroke={T.red} strokeWidth={1.5} fill="none" strokeDasharray="4 3" />
-            {avgCharges > 0 && <ReferenceLine y={avgCharges} stroke={T.red} strokeDasharray="3 3" strokeWidth={1} label={{ value: `Seuil: ${fK(avgCharges)}€`, fill: T.textMuted, fontSize: 8, position: 'left' }} />}
-            {caGoal > 0 && <ReferenceLine y={caGoal} stroke={T.orange} strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Objectif: ${fK(caGoal)}€`, fill: T.orange, fontSize: 9, position: 'right' }} />}
+            <Area type="monotone" dataKey="forecast" stroke={T.blue} strokeWidth={2} fill="url(#forecastGrad)" strokeDasharray="6 3" />
+            {avgCharges > 0 && <ReferenceLine y={avgCharges} stroke={T.red} strokeDasharray="3 3" strokeWidth={1} label={{ value: `Seuil: ${fK(avgCharges)}EUR`, fill: T.textMuted, fontSize: 8, position: 'left' }} />}
+            {caGoal > 0 && <ReferenceLine y={caGoal} stroke={T.orange} strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Objectif: ${fK(caGoal)}EUR`, fill: T.orange, fontSize: 9, position: 'right' }} />}
           </AreaChart>
         </ResponsiveContainer>
       );
@@ -43,6 +61,9 @@ const LazyChart = lazy(() =>
   }))
 );
 
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
 const HEALTH_ITEMS = [
   { label: 'Stripe API', key: 'Stripe' },
   { label: 'Revolut API', key: 'Revolut' },
@@ -51,52 +72,266 @@ const HEALTH_ITEMS = [
   { label: 'Meta Ads', key: 'Meta Ads' },
 ];
 
+const GREETING = () => {
+  const h = new Date().getHours();
+  if (h < 12) return 'Bonjour';
+  if (h < 18) return 'Bon apres-midi';
+  return 'Bonsoir';
+};
+
+/* ================================================================== */
+/*  DASHBOARD COMPONENT                                                */
+/* ================================================================== */
 export default function Dashboard({ onNavigate }) {
-  // --- Real data from localStorage ---
+  /* ---------------------------------------------------------------- */
+  /*  Data from localStorage                                           */
+  /* ---------------------------------------------------------------- */
   const contacts = useMemo(() => load('contacts') || [], []);
   const events = useMemo(() => load('events') || [], []);
   const finHistory = useMemo(() => load('finHistory') || [], []);
   const integrations = useMemo(() => load('integrations') || {}, []);
   const caGoal = useMemo(() => load('caGoal') || 0, []);
+  const companyInfo = useMemo(() => load('companyInfo') || {}, []);
 
-  // Pipeline from real CRM contacts
-  const pipeline = useMemo(() => [
-    { stage: 'Prospect', count: contacts.filter((c) => c.status === 'prospect').length, color: T.orange },
-    { stage: 'Lead', count: contacts.filter((c) => c.status === 'lead').length, color: T.blue },
-    { stage: 'Client', count: contacts.filter((c) => c.status === 'client').length, color: T.green },
-    { stage: 'Partenaire', count: contacts.filter((c) => c.status === 'partenaire').length, color: T.purple },
-    { stage: 'Perdu', count: contacts.filter((c) => c.status === 'perdu').length, color: T.red },
-  ], [contacts]);
+  /* ---------------------------------------------------------------- */
+  /*  Business Health & Weather                                        */
+  /* ---------------------------------------------------------------- */
+  const healthScore = useMemo(() => businessHealth(finHistory, contacts, integrations), [finHistory, contacts, integrations]);
+  const weather = useMemo(() => businessWeather(healthScore), [healthScore]);
+  const streak = useMemo(() => getStreak(finHistory), [finHistory]);
+
+  /* ---------------------------------------------------------------- */
+  /*  CA Forecast                                                      */
+  /* ---------------------------------------------------------------- */
+  const forecast = useMemo(() => forecastCA(finHistory, 3), [finHistory]);
+  const forecastLabel = useMemo(() => {
+    if (!forecast.length || !finHistory.length) return null;
+    const lastCA = finHistory[finHistory.length - 1]?.ca || 0;
+    const forecastEnd = forecast[forecast.length - 1]?.ca || 0;
+    if (!lastCA) return null;
+    const pctChange = Math.round(((forecastEnd - lastCA) / lastCA) * 100);
+    return { pct: pctChange, value: forecastEnd };
+  }, [forecast, finHistory]);
+
+  /* ---------------------------------------------------------------- */
+  /*  Pipeline from CRM contacts                                       */
+  /* ---------------------------------------------------------------- */
+  const pipeline = useMemo(() => {
+    const clientCount = contacts.filter((c) => c.status === 'client').length;
+    const avgCAPerClient = clientCount > 0 && finHistory.length > 0
+      ? Math.round((finHistory[finHistory.length - 1]?.ca || 0) / clientCount)
+      : 0;
+    return [
+      { stage: 'Prospect', count: contacts.filter((c) => c.status === 'prospect').length, color: T.orange, status: 'prospect' },
+      { stage: 'Lead', count: contacts.filter((c) => c.status === 'lead').length, color: T.blue, status: 'lead' },
+      { stage: 'Client', count: contacts.filter((c) => c.status === 'client').length, color: T.green, status: 'client' },
+      { stage: 'Partenaire', count: contacts.filter((c) => c.status === 'partenaire').length, color: T.purple, status: 'partenaire' },
+      { stage: 'Perdu', count: contacts.filter((c) => c.status === 'perdu').length, color: T.red, status: 'perdu' },
+    ].map((p) => ({
+      ...p,
+      value: p.count * avgCAPerClient,
+    }));
+  }, [contacts, finHistory]);
 
   const maxPipeline = useMemo(() => Math.max(...pipeline.map((p) => p.count), 1), [pipeline]);
 
-  // KPIs from real financial data
+  /* ---------------------------------------------------------------- */
+  /*  KPI data                                                         */
+  /* ---------------------------------------------------------------- */
   const lastRow = useMemo(() => finHistory[finHistory.length - 1] || {}, [finHistory]);
   const prevRow = useMemo(() => finHistory.length >= 2 ? finHistory[finHistory.length - 2] : null, [finHistory]);
   const caEvo = prevRow && prevRow.ca ? Math.round(((lastRow.ca - prevRow.ca) / prevRow.ca) * 100) : null;
-
-  // Sparkline data (last 6 months)
   const sparkCA = useMemo(() => finHistory.slice(-6).map((r) => r.ca || 0), [finHistory]);
   const sparkCharges = useMemo(() => finHistory.slice(-6).map((r) => r.charges || 0), [finHistory]);
   const sparkResult = useMemo(() => finHistory.slice(-6).map((r) => r.result || 0), [finHistory]);
 
-  // Activity feed from real data (most recent contacts + events)
+  /* ---------------------------------------------------------------- */
+  /*  Daily Actions ("Actions du jour")                                */
+  /* ---------------------------------------------------------------- */
+  const dailyActions = useMemo(() => {
+    const actions = [];
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    // 1. Contacts to follow up: prospects > 14 days, leads > 21 days
+    const staleProspects = contacts.filter((c) => c.status === 'prospect' && daysSince(c.createdAt) > 14);
+    const staleLeads = contacts.filter((c) => c.status === 'lead' && daysSince(c.createdAt) > 21);
+    const followUpCount = staleProspects.length + staleLeads.length;
+    if (followUpCount > 0) {
+      actions.push({
+        id: 'followup',
+        icon: NOTIFICATION_TYPES.relance.icon,
+        color: NOTIFICATION_TYPES.relance.color,
+        bg: NOTIFICATION_TYPES.relance.bg,
+        text: `${followUpCount} contact${followUpCount > 1 ? 's' : ''} a relancer`,
+        detail: staleProspects.length > 0 ? `${staleProspects.length} prospect${staleProspects.length > 1 ? 's' : ''} > 14j` : '' +
+          (staleLeads.length > 0 ? `${staleProspects.length > 0 ? ', ' : ''}${staleLeads.length} lead${staleLeads.length > 1 ? 's' : ''} > 21j` : ''),
+        tab: 'crm',
+        priority: 1,
+      });
+    }
+
+    // 2. Today's events
+    const todayEvents = events.filter((e) => e.date === todayStr);
+    if (todayEvents.length > 0) {
+      actions.push({
+        id: 'events',
+        icon: NOTIFICATION_TYPES.event.icon,
+        color: NOTIFICATION_TYPES.event.color,
+        bg: NOTIFICATION_TYPES.event.bg,
+        text: `${todayEvents.length} evenement${todayEvents.length > 1 ? 's' : ''} aujourd'hui`,
+        detail: todayEvents.map((e) => `${e.time || ''} ${e.title}`).join(', '),
+        tab: 'agenda',
+        priority: 2,
+      });
+    }
+
+    // 3. Upcoming events (next 3 days)
+    const upcomingEvents = events.filter((e) => {
+      const d = daysUntil(e.date);
+      return d > 0 && d <= 3;
+    });
+    if (upcomingEvents.length > 0 && todayEvents.length === 0) {
+      actions.push({
+        id: 'upcoming',
+        icon: '📋',
+        color: T.blue,
+        bg: T.blueBg,
+        text: `${upcomingEvents.length} evenement${upcomingEvents.length > 1 ? 's' : ''} dans les 3 prochains jours`,
+        detail: upcomingEvents.map((e) => e.title).join(', '),
+        tab: 'agenda',
+        priority: 3,
+      });
+    }
+
+    // 4. Missing financial data for current month
+    const curMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const hasCurrentMonthData = finHistory.some((r) => r.key === curMonthKey);
+    if (!hasCurrentMonthData) {
+      actions.push({
+        id: 'finance',
+        icon: NOTIFICATION_TYPES.finance.icon,
+        color: NOTIFICATION_TYPES.finance.color,
+        bg: NOTIFICATION_TYPES.finance.bg,
+        text: 'Donnees financieres manquantes ce mois',
+        detail: `Aucune saisie pour ${curMonthKey}`,
+        tab: 'data',
+        priority: 2,
+      });
+    }
+
+    // 5. Incomplete checklist items
+    const checklistState = getChecklistState();
+    const incomplete = ONBOARDING_CHECKLIST.filter((item) => !checklistState[item.id]);
+    if (incomplete.length > 0 && incomplete.length < ONBOARDING_CHECKLIST.length) {
+      actions.push({
+        id: 'checklist',
+        icon: NOTIFICATION_TYPES.tip.icon,
+        color: NOTIFICATION_TYPES.tip.color,
+        bg: NOTIFICATION_TYPES.tip.bg,
+        text: `${incomplete.length} etape${incomplete.length > 1 ? 's' : ''} de configuration restante${incomplete.length > 1 ? 's' : ''}`,
+        detail: incomplete.map((i) => i.label).slice(0, 2).join(', '),
+        tab: incomplete[0].tab,
+        priority: 4,
+      });
+    }
+
+    return actions.sort((a, b) => a.priority - b.priority);
+  }, [contacts, events, finHistory]);
+
+  /* ---------------------------------------------------------------- */
+  /*  Onboarding Checklist                                             */
+  /* ---------------------------------------------------------------- */
+  function getChecklistState() {
+    const hasContacts = contacts.length > 0;
+    const hasFinance = finHistory.length > 0;
+    const hasEvents = events.length > 0;
+    const hasIntegrations = Object.values(integrations).some(Boolean);
+    const hasCompany = !!(companyInfo.name || companyInfo.siret);
+    return {
+      company: hasCompany,
+      contact: hasContacts,
+      finance: hasFinance,
+      event: hasEvents,
+      integration: hasIntegrations,
+    };
+  }
+
+  const checklistState = useMemo(() => getChecklistState(), [contacts, finHistory, events, integrations, companyInfo]);
+  const checklistCompleted = useMemo(() => Object.values(checklistState).filter(Boolean).length, [checklistState]);
+  const checklistTotal = ONBOARDING_CHECKLIST.length;
+  const allChecklistDone = checklistCompleted === checklistTotal;
+  const [checklistDismissed, setChecklistDismissed] = useState(() => {
+    try { return localStorage.getItem('hs_checklist_dismissed') === '1'; } catch { return false; }
+  });
+  const dismissChecklist = useCallback(() => {
+    setChecklistDismissed(true);
+    try { localStorage.setItem('hs_checklist_dismissed', '1'); } catch {}
+  }, []);
+
+  /* ---------------------------------------------------------------- */
+  /*  Weekly/Monthly Objective                                         */
+  /* ---------------------------------------------------------------- */
+  const [objective, setObjective] = useState(() => load('dashboard_objective') || { text: '', target: 0, current: 0, type: 'monthly' });
+  const [editingObjective, setEditingObjective] = useState(false);
+  const [objDraft, setObjDraft] = useState({ text: '', target: '', current: '' });
+  const objectiveReached = objective.target > 0 && objective.current >= objective.target;
+  const [showCelebration, setShowCelebration] = useState(false);
+
+  const startEditObjective = useCallback(() => {
+    setObjDraft({ text: objective.text, target: String(objective.target || ''), current: String(objective.current || '') });
+    setEditingObjective(true);
+  }, [objective]);
+
+  const saveObjective = useCallback(() => {
+    const next = {
+      text: objDraft.text.trim(),
+      target: parseInt(objDraft.target) || 0,
+      current: parseInt(objDraft.current) || 0,
+      type: objective.type || 'monthly',
+    };
+    setObjective(next);
+    store('dashboard_objective', next);
+    setEditingObjective(false);
+    if (next.target > 0 && next.current >= next.target) {
+      setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 3000);
+    }
+  }, [objDraft, objective.type]);
+
+  const incrementObjective = useCallback(() => {
+    setObjective((prev) => {
+      const next = { ...prev, current: prev.current + 1 };
+      store('dashboard_objective', next);
+      if (next.target > 0 && next.current >= next.target && prev.current < prev.target) {
+        setShowCelebration(true);
+        setTimeout(() => setShowCelebration(false), 3000);
+      }
+      return next;
+    });
+  }, []);
+
+  /* ---------------------------------------------------------------- */
+  /*  Activity feed                                                    */
+  /* ---------------------------------------------------------------- */
   const activity = useMemo(() => {
     const items = [];
     contacts.filter((c) => c.createdAt).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3)
       .forEach((c) => items.push({ text: `Nouveau contact : ${c.name}${c.company ? ` (${c.company})` : ''}`, time: ago(c.createdAt), icon: '👤', ts: new Date(c.createdAt) }));
     events.sort((a, b) => (b.id || '').localeCompare(a.id || '')).slice(0, 3)
-      .forEach((e) => items.push({ text: `Événement : ${e.title}`, time: e.date ? `le ${new Date(e.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : '', icon: '📅', ts: new Date(e.date || 0) }));
+      .forEach((e) => items.push({ text: `Evenement : ${e.title}`, time: e.date ? `le ${new Date(e.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : '', icon: '📅', ts: new Date(e.date || 0) }));
     const lastFin = finHistory[finHistory.length - 1];
-    if (lastFin) items.push({ text: `Données financières saisies — ${fmt(lastFin.ca || 0)}€ CA`, time: '', icon: '💰', ts: new Date(0) });
+    if (lastFin) items.push({ text: `Donnees financieres saisies - ${fmt(lastFin.ca || 0)}EUR CA`, time: '', icon: '💰', ts: new Date(0) });
     return items.sort((a, b) => b.ts - a.ts).slice(0, 5);
   }, [contacts, events, finHistory]);
 
-  // Persisted tasks
+  /* ---------------------------------------------------------------- */
+  /*  Tasks                                                            */
+  /* ---------------------------------------------------------------- */
   const [tasks, setTasks] = useState(() => load('dashboard_tasks') || [
     { text: 'Relancer les prospects', done: false },
-    { text: 'Vérifier les intégrations', done: false },
-    { text: 'Saisir les données du mois', done: false },
+    { text: 'Verifier les integrations', done: false },
+    { text: 'Saisir les donnees du mois', done: false },
   ]);
   const [newTask, setNewTask] = useState('');
 
@@ -126,14 +361,16 @@ export default function Dashboard({ onNavigate }) {
     });
   }, []);
 
-  // Draggable widget order
+  /* ---------------------------------------------------------------- */
+  /*  Draggable widget order                                           */
+  /* ---------------------------------------------------------------- */
   const [widgetOrder, setWidgetOrder] = useState(() => load('dashWidgetOrder') || ['chart-pipeline', 'health-activity-tasks', 'crm-pub']);
   const [dragWidget, setDragWidget] = useState(null);
   const handleWidgetDragStart = useCallback((e, id) => { setDragWidget(id); e.dataTransfer.effectAllowed = 'move'; }, []);
   const handleWidgetDrop = useCallback((e, targetId) => {
     e.preventDefault();
     if (!dragWidget || dragWidget === targetId) return;
-    setWidgetOrder(prev => {
+    setWidgetOrder((prev) => {
       const from = prev.indexOf(dragWidget);
       const to = prev.indexOf(targetId);
       const next = [...prev];
@@ -146,7 +383,9 @@ export default function Dashboard({ onNavigate }) {
   }, [dragWidget]);
   const handleWidgetDragOver = useCallback((e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }, []);
 
-  // Health from real integrations
+  /* ---------------------------------------------------------------- */
+  /*  Health from integrations                                         */
+  /* ---------------------------------------------------------------- */
   const healthItems = useMemo(() =>
     HEALTH_ITEMS.map((h) => ({
       label: h.label,
@@ -157,57 +396,168 @@ export default function Dashboard({ onNavigate }) {
   const connectedCount = healthItems.filter((h) => h.status === 'ok').length;
   const healthPct = Math.round((connectedCount / healthItems.length) * 100);
 
-  // CRM stats from real data
+  /* ---------------------------------------------------------------- */
+  /*  CRM stats                                                        */
+  /* ---------------------------------------------------------------- */
   const crmStats = useMemo(() => [
     { l: 'Prospects', n: contacts.filter((c) => c.status === 'prospect').length, c: T.orange },
     { l: 'Leads', n: contacts.filter((c) => c.status === 'lead').length, c: T.blue },
     { l: 'Clients', n: contacts.filter((c) => c.status === 'client').length, c: T.green },
   ], [contacts]);
 
+  /* ---------------------------------------------------------------- */
+  /*  Quick Actions                                                    */
+  /* ---------------------------------------------------------------- */
   const QUICK_ACTIONS = [
     { label: 'Ajouter un contact', icon: '👤', target: 'crm' },
-    { label: 'Saisir des données', icon: '📊', target: 'data' },
-    { label: 'Créer un événement', icon: '📅', target: 'agenda' },
-    { label: 'Voir paramètres', icon: '⚙️', target: 'settings' },
+    { label: 'Saisir des donnees', icon: '📊', target: 'data' },
+    { label: 'Creer un evenement', icon: '📅', target: 'agenda' },
+    { label: 'Voir parametres', icon: '⚙️', target: 'settings' },
   ];
 
+  /* ================================================================ */
+  /*  RENDER                                                           */
+  /* ================================================================ */
   return (
     <div>
-      {/* Welcome Banner */}
-      <div className="fade-up glass-static" style={{ padding: '20px 24px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: T.text }}>
-            Bienvenue sur votre Dashboard
-          </h1>
-          <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>
-            Vue d'ensemble de votre activité et performances
-          </p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ position: 'relative', width: 48, height: 48 }}>
-            <svg width="48" height="48" viewBox="0 0 48 48" aria-label={`Score de santé: ${healthPct}%`}>
-              <circle cx="24" cy="24" r="20" fill="none" stroke={T.border} strokeWidth="4" />
-              <circle cx="24" cy="24" r="20" fill="none" stroke={healthPct > 50 ? T.green : healthPct > 0 ? T.orange : T.red} strokeWidth="4"
-                strokeDasharray={`${(healthPct / 100) * 125.6} ${125.6}`} strokeLinecap="round"
-                transform="rotate(-90 24 24)" style={{ transition: 'stroke-dasharray .8s ease' }} />
-            </svg>
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: healthPct > 50 ? T.green : healthPct > 0 ? T.orange : T.red }}>{healthPct}%</div>
+      {/* ============================================================ */}
+      {/*  WELCOME BANNER with Weather + Streak + Health ring           */}
+      {/* ============================================================ */}
+      <div className="fade-up glass-static" style={{ padding: '20px 24px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ flex: '1 1 auto' }}>
+            <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: T.text }}>
+              {GREETING()}{companyInfo.name ? `, ${companyInfo.name}` : ''} !
+            </h1>
+            <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>
+              Vue d'ensemble de votre activite et performances
+            </p>
           </div>
-          <div className="hide-mobile">
-            <div style={{ fontSize: 11, fontWeight: 700, color: healthPct > 50 ? T.green : T.orange }}>Santé globale</div>
-            <div style={{ fontSize: 9, color: T.textMuted }}>{connectedCount}/{healthItems.length} APIs connectées</div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            {/* Weather Widget */}
+            <WeatherWidget weather={weather} score={healthScore} />
+
+            {/* Streak Badge */}
+            <StreakBadge count={streak} />
+
+            {/* Health Ring */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <ScoreRing score={healthPct} size={48} strokeWidth={4}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: healthPct > 50 ? T.green : healthPct > 0 ? T.orange : T.red }}>{healthPct}%</span>
+              </ScoreRing>
+              <div className="hide-mobile">
+                <div style={{ fontSize: 11, fontWeight: 700, color: healthPct > 50 ? T.green : T.orange }}>Sante globale</div>
+                <div style={{ fontSize: 9, color: T.textMuted }}>{connectedCount}/{healthItems.length} APIs connectees</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* KPI Cards with sparklines + tooltips */}
+      {/* ============================================================ */}
+      {/*  DAILY ACTIONS ("Actions du jour")                            */}
+      {/* ============================================================ */}
+      {dailyActions.length > 0 && (
+        <div className="fade-up d1" style={{ marginBottom: 20 }}>
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <span style={{ fontSize: 16 }}>⚡</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Actions du jour</span>
+              <HelpTip text="Actions recommandees basees sur vos donnees en temps reel" />
+              <Badge label={`${dailyActions.length}`} color={T.orange} bg={T.orangeBg} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
+              {dailyActions.map((action) => (
+                <div
+                  key={action.id}
+                  className="hoverable pressable"
+                  onClick={() => onNavigate?.(action.tab)}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 10,
+                    padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
+                    background: action.bg, border: `1px solid ${action.color}22`,
+                    transition: 'all .2s',
+                  }}
+                >
+                  <span style={{ fontSize: 18, flexShrink: 0, marginTop: 1 }}>{action.icon}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: action.color, lineHeight: 1.3 }}>{action.text}</div>
+                    {action.detail && (
+                      <div style={{ fontSize: 10, color: T.textMuted, marginTop: 3, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{action.detail}</div>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 11, color: T.textMuted, flexShrink: 0, marginTop: 2 }}>→</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/*  ONBOARDING CHECKLIST                                         */}
+      {/* ============================================================ */}
+      {!allChecklistDone && !checklistDismissed && (
+        <div className="fade-up d1" style={{ marginBottom: 20 }}>
+          <Card accent={T.accent}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 16 }}>🚀</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Configuration de votre espace</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 120, maxWidth: 200 }}>
+                    <ProgressBar value={checklistCompleted} max={checklistTotal} color={T.accent} h={6} />
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: T.accent }}>{checklistCompleted}/{checklistTotal} completes</span>
+                </div>
+              </div>
+              <span
+                onClick={dismissChecklist}
+                style={{ fontSize: 10, color: T.textMuted, cursor: 'pointer', padding: '4px 8px', borderRadius: 6, background: T.surface2 }}
+              >Masquer</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
+              {ONBOARDING_CHECKLIST.map((item) => (
+                <ChecklistItem
+                  key={item.id}
+                  done={checklistState[item.id]}
+                  label={item.label}
+                  icon={item.icon}
+                  onClick={() => !checklistState[item.id] && onNavigate?.(item.tab)}
+                />
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/*  KPI Cards with sparklines                                    */}
+      {/* ============================================================ */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <KPI label="CA MENSUEL" value={`${fK(lastRow.ca || 0)}€`} sub={caEvo != null ? `${caEvo >= 0 ? '+' : ''}${caEvo}% vs mois dernier` : 'Aucune donnée précédente'} accent={T.green} icon="💰" delay={1} sparkData={sparkCA} helpTip="Chiffre d'affaires du dernier mois saisi" />
-        <KPI label="CHARGES" value={`${fK(lastRow.charges || 0)}€`} sub="Fixes + Variables" accent={T.red} icon="📉" delay={2} sparkData={sparkCharges} helpTip="Total des charges fixes et variables" />
-        <KPI label="RÉSULTAT NET" value={`${fK(lastRow.result || 0)}€`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '—'} accent={T.orange} icon="📊" delay={3} sparkData={sparkResult} helpTip="CA moins charges = bénéfice net" />
+        <KPI label="CA MENSUEL" value={`${fK(lastRow.ca || 0)}EUR`} sub={caEvo != null ? `${caEvo >= 0 ? '+' : ''}${caEvo}% vs mois dernier` : 'Aucune donnee precedente'} accent={T.green} icon="💰" delay={1} sparkData={sparkCA} helpTip="Chiffre d'affaires du dernier mois saisi" />
+        <KPI label="CHARGES" value={`${fK(lastRow.charges || 0)}EUR`} sub="Fixes + Variables" accent={T.red} icon="📉" delay={2} sparkData={sparkCharges} helpTip="Total des charges fixes et variables" />
+        <KPI label="RESULTAT NET" value={`${fK(lastRow.result || 0)}EUR`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '---'} accent={T.orange} icon="📊" delay={3} sparkData={sparkResult} helpTip="CA moins charges = benefice net" />
+        {forecastLabel && (
+          <KPI
+            label="PREVISION 3 MOIS"
+            value={`${forecastLabel.pct >= 0 ? '+' : ''}${forecastLabel.pct}%`}
+            sub={`Projection: ${fK(forecastLabel.value)}EUR`}
+            accent={forecastLabel.pct >= 0 ? T.blue : T.red}
+            icon="📈"
+            delay={3}
+            sparkData={forecast.map((f) => f.ca)}
+            helpTip="Prevision lineaire sur 3 mois basee sur la tendance recente"
+          />
+        )}
       </div>
 
-      {/* CA Goal Progress */}
+      {/* ============================================================ */}
+      {/*  CA Goal Progress                                             */}
+      {/* ============================================================ */}
       {caGoal > 0 && (
         <div className="fade-up d2" style={{ marginBottom: 16 }}>
           <Card>
@@ -220,14 +570,87 @@ export default function Dashboard({ onNavigate }) {
                 <ProgressBar value={lastRow.ca || 0} max={caGoal} color={(lastRow.ca || 0) >= caGoal ? T.green : T.orange} h={8} />
               </div>
               <div style={{ fontSize: 12, fontWeight: 700, color: (lastRow.ca || 0) >= caGoal ? T.green : T.orange, whiteSpace: 'nowrap' }}>
-                {fK(lastRow.ca || 0)}€ / {fK(caGoal)}€ ({Math.min(Math.round(((lastRow.ca || 0) / caGoal) * 100), 999)}%)
+                {fK(lastRow.ca || 0)}EUR / {fK(caGoal)}EUR ({Math.min(Math.round(((lastRow.ca || 0) / caGoal) * 100), 999)}%)
               </div>
             </div>
           </Card>
         </div>
       )}
 
-      {/* Quick Actions — connected to navigation */}
+      {/* ============================================================ */}
+      {/*  Weekly/Monthly Objective                                     */}
+      {/* ============================================================ */}
+      <div className="fade-up d2" style={{ marginBottom: 16 }}>
+        <Card>
+          {editingObjective ? (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 12 }}>
+                🎯 Definir un objectif
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
+                <Inp label="Description" value={objDraft.text} onChange={(v) => setObjDraft((d) => ({ ...d, text: v }))} placeholder="Ex: Signer 5 nouveaux clients" small />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <Inp label="Objectif (nombre)" value={objDraft.target} onChange={(v) => setObjDraft((d) => ({ ...d, target: v }))} type="number" placeholder="5" small />
+                  <Inp label="Progression actuelle" value={objDraft.current} onChange={(v) => setObjDraft((d) => ({ ...d, current: v }))} type="number" placeholder="0" small />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <Btn v="primary" small onClick={saveObjective}>Enregistrer</Btn>
+                <Btn v="ghost" small onClick={() => setEditingObjective(false)}>Annuler</Btn>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>{objectiveReached ? '🏆' : '🎯'}</span>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
+                      Mon objectif
+                      <HelpTip text="Definissez un objectif hebdomadaire ou mensuel pour suivre votre progression" />
+                    </div>
+                    {objective.text ? (
+                      <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginTop: 2 }}>{objective.text}</div>
+                    ) : (
+                      <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>Aucun objectif defini</div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {objective.target > 0 && (
+                    <>
+                      <Btn v="ghost" small onClick={incrementObjective} aria-label="Incrementer">+1</Btn>
+                      <AnimatedNumber value={objective.current} suffix={`/${objective.target}`} size={18} color={objectiveReached ? T.green : T.accent} />
+                    </>
+                  )}
+                  <Btn v="ghost" small onClick={startEditObjective}>
+                    {objective.text ? 'Modifier' : 'Definir'}
+                  </Btn>
+                </div>
+              </div>
+              {objective.target > 0 && (
+                <div style={{ marginTop: 10 }}>
+                  <ProgressBar value={objective.current} max={objective.target} color={objectiveReached ? T.green : T.accent} h={6} />
+                  {objectiveReached && showCelebration && (
+                    <div className="bounce-in" style={{ marginTop: 8, textAlign: 'center', fontSize: 12, fontWeight: 700, color: T.green }}>
+                      🎉 Objectif atteint ! Felicitations !
+                    </div>
+                  )}
+                  {objectiveReached && !showCelebration && (
+                    <div style={{ marginTop: 6, textAlign: 'center', fontSize: 10, fontWeight: 600, color: T.green }}>
+                      ✓ Objectif atteint
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* ============================================================ */}
+      {/*  Quick Actions                                                */}
+      {/* ============================================================ */}
       <div className="fade-up d2 kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 20 }}>
         {QUICK_ACTIONS.map((a) => (
           <button
@@ -246,19 +669,31 @@ export default function Dashboard({ onNavigate }) {
         ))}
       </div>
 
-      {/* Draggable widget sections */}
+      {/* ============================================================ */}
+      {/*  Draggable widget sections                                    */}
+      {/* ============================================================ */}
       {widgetOrder.map((id) => {
         const WIDGETS = {
+          /* ------ Chart + Pipeline ------ */
           'chart-pipeline': (
             <div className="grid-desktop-15-1" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 14, marginBottom: 20 }}>
               <Card delay={3}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 12 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
-                    Évolution CA — 6 derniers mois
-                  </span>
-                  <HelpTip text="Vert = CA, Rouge pointillé = Charges, Lignes = seuils" />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
+                      Evolution CA — 6 derniers mois
+                    </span>
+                    <HelpTip text="Vert = CA, Rouge pointille = Charges, Bleu = Prevision, Lignes = seuils" />
+                  </div>
+                  {forecastLabel && (
+                    <Badge
+                      label={`Prevision: ${forecastLabel.pct >= 0 ? '+' : ''}${forecastLabel.pct}% sur 3 mois`}
+                      color={forecastLabel.pct >= 0 ? T.blue : T.red}
+                      bg={forecastLabel.pct >= 0 ? T.blueBg : T.redBg}
+                    />
+                  )}
                 </div>
-                <div style={{ height: 180 }}>
+                <div style={{ height: 200 }}>
                   <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Spinner size={20} /></div>}>
                     <LazyChart />
                   </Suspense>
@@ -266,33 +701,51 @@ export default function Dashboard({ onNavigate }) {
               </Card>
 
               <Card delay={4}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-                  Pipeline commercial
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
+                    Pipeline commercial
+                  </span>
+                  <HelpTip text="Nombre de contacts par etape et valeur estimee du pipeline" />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {pipeline.map((p) => (
-                    <div key={p.stage} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 80, fontSize: 11, fontWeight: 600, color: T.textSecondary }}>{p.stage}</div>
-                      <div style={{ flex: 1 }}><ProgressBar value={p.count} max={maxPipeline} color={p.color} h={6} /></div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: p.color, width: 24, textAlign: 'right' }}>{p.count}</div>
+                    <div key={p.stage}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 80, fontSize: 11, fontWeight: 600, color: T.textSecondary }}>{p.stage}</div>
+                        <div style={{ flex: 1 }}><ProgressBar value={p.count} max={maxPipeline} color={p.color} h={6} /></div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: p.color, width: 24, textAlign: 'right' }}>{p.count}</div>
+                      </div>
+                      {p.value > 0 && (
+                        <div style={{ marginLeft: 90, fontSize: 9, color: T.textMuted, marginTop: 1 }}>
+                          ~{fK(p.value)}EUR
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
+                {pipeline.some((p) => p.value > 0) && (
+                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase' }}>Valeur totale pipeline</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: T.accent }}>{fK(pipeline.reduce((s, p) => s + p.value, 0))}EUR</span>
+                  </div>
+                )}
               </Card>
             </div>
           ),
+
+          /* ------ Health + Activity + Tasks ------ */
           'health-activity-tasks': (
             <div className="grid-desktop-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
               <Card delay={5}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-                  Santé système
+                  Sante systeme
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {healthItems.map((h) => (
                     <div key={h.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: 12, color: T.text }}>{h.label}</span>
                       <Badge
-                        label={h.status === 'ok' ? 'Connecté' : 'Non connecté'}
+                        label={h.status === 'ok' ? 'Connecte' : 'Non connecte'}
                         color={h.status === 'ok' ? T.green : T.textMuted}
                         bg={h.status === 'ok' ? T.greenBg : T.surface2}
                       />
@@ -303,11 +756,11 @@ export default function Dashboard({ onNavigate }) {
 
               <Card delay={5}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-                  Activité récente
+                  Activite recente
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {activity.length === 0 ? (
-                    <div style={{ fontSize: 11, color: T.textMuted, textAlign: 'center', padding: 12 }}>Aucune activité récente</div>
+                    <div style={{ fontSize: 11, color: T.textMuted, textAlign: 'center', padding: 12 }}>Aucune activite recente</div>
                   ) : activity.map((a, i) => (
                     <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                       <span style={{ fontSize: 14, flexShrink: 0 }}>{a.icon}</span>
@@ -322,7 +775,7 @@ export default function Dashboard({ onNavigate }) {
 
               <Card delay={6}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-                  Tâches
+                  Taches
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {tasks.map((t, i) => (
@@ -341,7 +794,7 @@ export default function Dashboard({ onNavigate }) {
                     </div>
                   ))}
                   <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                    <input value={newTask} onChange={(e) => setNewTask(e.target.value)} placeholder="Nouvelle tâche..."
+                    <input value={newTask} onChange={(e) => setNewTask(e.target.value)} placeholder="Nouvelle tache..."
                       onKeyDown={(e) => e.key === 'Enter' && addTask()}
                       style={{ flex: 1, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 6, color: T.text, padding: '5px 8px', fontSize: 10, fontFamily: 'inherit', outline: 'none' }} />
                     <Btn v="ghost" small onClick={addTask} disabled={!newTask.trim()}>+</Btn>
@@ -350,6 +803,8 @@ export default function Dashboard({ onNavigate }) {
               </Card>
             </div>
           ),
+
+          /* ------ CRM + Pub ------ */
           'crm-pub': (
             <div className="grid-desktop-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
               <Card delay={6}>
@@ -358,7 +813,7 @@ export default function Dashboard({ onNavigate }) {
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                   {crmStats.map((s) => (
-                    <div key={s.l} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, background: s.c + '15' }}>
+                    <div key={s.l} onClick={() => onNavigate?.('crm')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, background: s.c + '15', cursor: 'pointer' }}>
                       <div style={{ width: 8, height: 8, borderRadius: 4, background: s.c }} />
                       <span style={{ fontSize: 11, fontWeight: 600, color: s.c }}>{s.n}</span>
                       <span style={{ fontSize: 10, color: T.textSecondary }}>{s.l}</span>
@@ -370,14 +825,14 @@ export default function Dashboard({ onNavigate }) {
 
               <Card delay={6}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-                  Publicité
+                  Publicite
                 </div>
                 <div className="grid-2-mobile-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   {[
-                    { l: 'Dépenses', v: '1 240€', c: T.orange },
+                    { l: 'Depenses', v: '1 240EUR', c: T.orange },
                     { l: 'Impressions', v: '45.2K', c: T.blue },
                     { l: 'Clics', v: '1 832', c: T.purple },
-                    { l: 'CPA', v: '12.40€', c: T.green },
+                    { l: 'CPA', v: '12.40EUR', c: T.green },
                   ].map((m) => (
                     <div key={m.l} style={{ padding: 8, borderRadius: 8, background: m.c + '10' }}>
                       <div style={{ fontSize: 9, color: T.textMuted, textTransform: 'uppercase', fontWeight: 600 }}>{m.l}</div>
@@ -389,6 +844,7 @@ export default function Dashboard({ onNavigate }) {
             </div>
           ),
         };
+
         const content = WIDGETS[id];
         if (!content) return null;
         return (

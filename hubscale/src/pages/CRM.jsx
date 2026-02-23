@@ -1,18 +1,16 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { T } from '../lib/theme.js';
-import { uid, ago, fmt } from '../lib/utils.js';
+import { uid, ago, fmt, fK, daysSince, leadScore } from '../lib/utils.js';
 import { storeDebounced, load } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
-import { Card, Btn, Inp, Badge, Modal, EmptyState, Sel, TabBar, ConfirmDialog, Pagination } from '../components/ui.jsx';
+import { Card, Btn, Inp, Badge, Modal, EmptyState, Sel, TabBar, ConfirmDialog, Pagination, ScoreRing, triggerConfetti } from '../components/ui.jsx';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { useUndoStack } from '../hooks/useUndoStack.js';
-import { CRM_STATUSES as STATUSES, CRM_FILTER_TABS as FILTER_TABS } from '../lib/constants.js';
+import { CRM_STATUSES as STATUSES, CRM_FILTER_TABS as FILTER_TABS, LEAD_SCORE_LABELS } from '../lib/constants.js';
 
-/** Compute days since a given ISO date string */
-function daysSince(isoDate) {
-  if (!isoDate) return 0;
-  return Math.floor((Date.now() - new Date(isoDate).getTime()) / 86400000);
-}
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 /** Check if a contact needs a relance alert */
 function getRelanceInfo(contact) {
@@ -20,6 +18,11 @@ function getRelanceInfo(contact) {
   if (contact.status === 'prospect' && days > 14) return days;
   if (contact.status === 'lead' && days > 21) return days;
   return null;
+}
+
+/** Get the score label entry for a given score */
+function getScoreLabel(score) {
+  return LEAD_SCORE_LABELS.find((l) => score >= l.min) || LEAD_SCORE_LABELS[LEAD_SCORE_LABELS.length - 1];
 }
 
 /** Generate a printable invoice HTML in a new window */
@@ -134,7 +137,12 @@ function generateInvoice(contact) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Main Component
+// ---------------------------------------------------------------------------
+
 export default function CRM() {
+  // ---- Core state ----
   const [contacts, setContacts] = useState(() => load('contacts') || []);
   const [filter, setFilter] = useState('Tous');
   const [search, setSearch] = useState('');
@@ -143,22 +151,32 @@ export default function CRM() {
   const [viewMode, setViewMode] = useState('table');
   const [undoMsg, setUndoMsg] = useState('');
 
+  // ---- Score filter ----
+  const [scoreFilter, setScoreFilter] = useState(null); // null | 'Hot' | 'Warm' | 'Tiède' | 'Froid'
+
+  // ---- Selection for bulk actions ----
+  const [selected, setSelected] = useState(new Set());
+
+  // ---- Toast for conversion celebration ----
+  const [conversionToast, setConversionToast] = useState(null);
+
+  // Debounced search handler
   const handleSearch = useCallback((v) => {
     setSearch(v);
     clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => setDebouncedSearch(v), 200);
   }, []);
+
+  // ---- Modal state ----
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '' });
-
-  // New comment input state
   const [newComment, setNewComment] = useState('');
 
-  // Undo stack for deletions
+  // ---- Undo stack for deletions ----
   const undoRestore = useCallback((item) => {
     setContacts((prev) => [...prev, item]);
-    setUndoMsg(`"${item.name}" restauré`);
+    setUndoMsg(`"${item.name}" restaur\u00e9`);
     setTimeout(() => setUndoMsg(''), 3000);
   }, []);
   const undo = useUndoStack(undoRestore);
@@ -169,8 +187,10 @@ export default function CRM() {
       if (contact) undo.push(contact);
       return prev.filter((c) => c.id !== id);
     });
+    setSelected((prev) => { const next = new Set(prev); next.delete(id); return next; });
   }, [undo]);
   const del = useConfirmDialog(deleteContact);
+
   const [saved, setSaved] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [duplicateWarning, setDuplicateWarning] = useState('');
@@ -179,15 +199,15 @@ export default function CRM() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
 
-  // Persist + broadcast to other tabs
+  // ---- Persist + broadcast to other tabs ----
   useEffect(() => {
     storeDebounced('contacts', contacts);
     broadcast('contacts', contacts);
   }, [contacts]);
 
-  // Listen for changes from other tabs
   useEffect(() => subscribe('contacts', (data) => setContacts(data)), []);
 
+  // ---- KPI counts ----
   const counts = useMemo(() =>
     STATUSES.reduce((acc, s) => { acc[s.id] = contacts.filter((c) => c.status === s.id).length; return acc; }, {}),
     [contacts]
@@ -201,19 +221,46 @@ export default function CRM() {
     return c;
   }, [contacts]);
 
+  // ---- Pipeline value KPI ----
+  const pipelineValue = useMemo(() => {
+    const finHistory = load('finHistory') || [];
+    const clients = contacts.filter((c) => c.status === 'client');
+    let avgCA = 5000;
+    if (finHistory.length > 0 && clients.length > 0) {
+      const totalCA = finHistory.reduce((sum, r) => sum + (r.ca || 0), 0);
+      avgCA = Math.round(totalCA / finHistory.length / Math.max(clients.length, 1));
+    }
+    const pipelineContacts = contacts.filter((c) => c.status !== 'perdu' && c.status !== 'client');
+    return pipelineContacts.length * avgCA;
+  }, [contacts]);
+
+  // ---- Filtering (status + search + score) ----
   const filtered = useMemo(() => {
     return contacts.filter((c) => {
+      // Status filter
       if (filter !== 'Tous' && c.status !== filter.toLowerCase()) return false;
+      // Text search
       if (debouncedSearch) {
         const q = debouncedSearch.toLowerCase();
-        return (c.name || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q) || (c.company || '').toLowerCase().includes(q);
+        if (!(c.name || '').toLowerCase().includes(q) && !(c.email || '').toLowerCase().includes(q) && !(c.company || '').toLowerCase().includes(q)) return false;
+      }
+      // Score filter
+      if (scoreFilter) {
+        const score = leadScore(c);
+        const label = getScoreLabel(score);
+        if (label.label !== scoreFilter) return false;
       }
       return true;
     });
-  }, [contacts, filter, debouncedSearch]);
+  }, [contacts, filter, debouncedSearch, scoreFilter]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
+      if (sortBy === 'score') {
+        const sa = leadScore(a);
+        const sb = leadScore(b);
+        return sortDir === 'asc' ? sa - sb : sb - sa;
+      }
       const va = (a[sortBy] || '').toLowerCase();
       const vb = (b[sortBy] || '').toLowerCase();
       return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
@@ -223,12 +270,16 @@ export default function CRM() {
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
   const paginated = useMemo(() => sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [sorted, page]);
 
-  useEffect(() => { setPage(1); }, [filter, debouncedSearch]);
+  useEffect(() => { setPage(1); }, [filter, debouncedSearch, scoreFilter]);
+
+  // Clear selection when filter changes
+  useEffect(() => { setSelected(new Set()); }, [filter, debouncedSearch, scoreFilter]);
 
   const toggleSort = useCallback((col) => {
     setSortBy((prev) => { if (prev === col) { setSortDir((d) => d === 'asc' ? 'desc' : 'asc'); } else { setSortDir('asc'); } return col; });
   }, []);
 
+  // ---- Modal open/close ----
   const openNew = useCallback(() => {
     setEditId(null);
     setForm({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '' });
@@ -243,6 +294,7 @@ export default function CRM() {
     setShowModal(true);
   }, []);
 
+  // ---- Validation ----
   const validateEmail = useCallback((email) => {
     if (!email) return '';
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? '' : 'Format email invalide';
@@ -255,15 +307,15 @@ export default function CRM() {
         (name && c.name && c.name.toLowerCase() === name.trim().toLowerCase())
       )
     );
-    return match ? `Doublon possible : ${match.name} (${match.email || 'pas d\'email'})` : '';
+    return match ? `Doublon possible : ${match.name} (${match.email || "pas d'email"})` : '';
   }, [contacts, editId]);
 
+  // ---- Save contact (with history tracking + confetti) ----
   const saveContact = useCallback(() => {
     if (!form.name.trim()) return;
     const emailErr = validateEmail(form.email);
     if (emailErr) { setEmailError(emailErr); return; }
 
-    // Build new comment if provided
     const commentToAdd = newComment.trim() ? { text: newComment.trim(), date: new Date().toISOString() } : null;
 
     if (editId) {
@@ -271,7 +323,22 @@ export default function CRM() {
         if (c.id !== editId) return c;
         const updatedComments = [...(c.commentaires || [])];
         if (commentToAdd) updatedComments.push(commentToAdd);
-        return { ...c, ...form, commentaires: updatedComments };
+
+        // Track status change in history
+        const history = [...(c.history || [])];
+        if (c.status !== form.status) {
+          history.push({ type: 'status', from: c.status, to: form.status, date: new Date().toISOString() });
+          // Confetti on conversion to client
+          if (form.status === 'client' && c.status !== 'client') {
+            setTimeout(() => {
+              triggerConfetti();
+              setConversionToast(form.name);
+              setTimeout(() => setConversionToast(null), 4000);
+            }, 100);
+          }
+        }
+
+        return { ...c, ...form, commentaires: updatedComments, history };
       }));
     } else {
       const newContact = {
@@ -279,7 +346,16 @@ export default function CRM() {
         id: uid(),
         createdAt: new Date().toISOString(),
         commentaires: commentToAdd ? [commentToAdd] : [],
+        history: [],
       };
+      // Confetti if new contact created directly as client
+      if (form.status === 'client') {
+        setTimeout(() => {
+          triggerConfetti();
+          setConversionToast(form.name);
+          setTimeout(() => setConversionToast(null), 4000);
+        }, 100);
+      }
       setContacts((prev) => [...prev, newContact]);
     }
 
@@ -293,7 +369,7 @@ export default function CRM() {
     setTimeout(() => setSaved(false), 2000);
   }, [form, editId, validateEmail, newComment]);
 
-  // --- CSV Import ---
+  // ---- CSV Import ----
   const csvInputRef = useRef(null);
   const [importResult, setImportResult] = useState(null);
 
@@ -309,8 +385,8 @@ export default function CRM() {
       const header = lines[0].toLowerCase().split(',').map((h) => h.trim().replace(/^["']|["']$/g, ''));
       const nameIdx = header.findIndex((h) => h === 'nom' || h === 'name');
       const emailIdx = header.findIndex((h) => h === 'email' || h === 'mail');
-      const companyIdx = header.findIndex((h) => h === 'société' || h === 'societe' || h === 'company');
-      const phoneIdx = header.findIndex((h) => h === 'téléphone' || h === 'telephone' || h === 'phone' || h === 'tel');
+      const companyIdx = header.findIndex((h) => h === 'soci\u00e9t\u00e9' || h === 'societe' || h === 'company');
+      const phoneIdx = header.findIndex((h) => h === 't\u00e9l\u00e9phone' || h === 'telephone' || h === 'phone' || h === 'tel');
       const statusIdx = header.findIndex((h) => h === 'statut' || h === 'status');
 
       if (nameIdx === -1) { setImportResult({ error: 'Colonne "Nom" introuvable dans le CSV' }); return; }
@@ -340,7 +416,7 @@ export default function CRM() {
 
         if (isDup) { skipped++; continue; }
 
-        newContacts.push({ id: uid(), name, email, company, phone, status, notes: '', commentaires: [], createdAt: new Date().toISOString() });
+        newContacts.push({ id: uid(), name, email, company, phone, status, notes: '', commentaires: [], history: [], createdAt: new Date().toISOString() });
         imported++;
       }
 
@@ -354,7 +430,7 @@ export default function CRM() {
     e.target.value = '';
   }, [contacts]);
 
-  // --- Kanban drag and drop ---
+  // ---- Kanban drag and drop (with confetti on client conversion) ----
   const [dragId, setDragId] = useState(null);
 
   const handleDragStart = useCallback((e, id) => {
@@ -365,7 +441,21 @@ export default function CRM() {
   const handleDrop = useCallback((e, newStatus) => {
     e.preventDefault();
     if (dragId) {
-      setContacts((prev) => prev.map((c) => c.id === dragId ? { ...c, status: newStatus } : c));
+      setContacts((prev) => prev.map((c) => {
+        if (c.id !== dragId) return c;
+        if (c.status === newStatus) return c;
+        const history = [...(c.history || [])];
+        history.push({ type: 'status', from: c.status, to: newStatus, date: new Date().toISOString() });
+        // Confetti on conversion to client
+        if (newStatus === 'client' && c.status !== 'client') {
+          setTimeout(() => {
+            triggerConfetti();
+            setConversionToast(c.name);
+            setTimeout(() => setConversionToast(null), 4000);
+          }, 100);
+        }
+        return { ...c, status: newStatus, history };
+      }));
       setDragId(null);
     }
   }, [dragId]);
@@ -375,17 +465,131 @@ export default function CRM() {
     e.dataTransfer.dropEffect = 'move';
   }, []);
 
-  // Get the currently-edited contact's comments for the modal
+  // ---- Bulk actions ----
+  const toggleSelect = useCallback((id, e) => {
+    if (e) e.stopPropagation();
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelected((prev) => {
+      if (prev.size === paginated.length && paginated.every((c) => prev.has(c.id))) {
+        return new Set();
+      }
+      return new Set(paginated.map((c) => c.id));
+    });
+  }, [paginated]);
+
+  const bulkChangeStatus = useCallback((newStatus) => {
+    setContacts((prev) => prev.map((c) => {
+      if (!selected.has(c.id)) return c;
+      if (c.status === newStatus) return c;
+      const history = [...(c.history || [])];
+      history.push({ type: 'status', from: c.status, to: newStatus, date: new Date().toISOString() });
+      if (newStatus === 'client' && c.status !== 'client') {
+        setTimeout(() => {
+          triggerConfetti();
+          setConversionToast(`${selected.size} contact(s)`);
+          setTimeout(() => setConversionToast(null), 4000);
+        }, 100);
+      }
+      return { ...c, status: newStatus, history };
+    }));
+    setSelected(new Set());
+  }, [selected]);
+
+  const bulkDelete = useCallback(() => {
+    setContacts((prev) => {
+      const toDelete = prev.filter((c) => selected.has(c.id));
+      toDelete.forEach((c) => undo.push(c));
+      return prev.filter((c) => !selected.has(c.id));
+    });
+    setSelected(new Set());
+    setUndoMsg(`${selected.size} contact(s) supprim\u00e9(s)`);
+    setTimeout(() => setUndoMsg(''), 3000);
+  }, [selected, undo]);
+
+  // ---- Currently edited contact ----
   const editContact = editId ? contacts.find((c) => c.id === editId) : null;
   const editComments = editContact?.commentaires || [];
 
+  // ---- Activity timeline for modal ----
+  const activityTimeline = useMemo(() => {
+    if (!editContact) return [];
+    const events = [];
+
+    // Created event
+    if (editContact.createdAt) {
+      events.push({
+        type: 'created',
+        date: editContact.createdAt,
+        label: 'Contact cr\u00e9\u00e9',
+        icon: '\u2795',
+      });
+    }
+
+    // Comments
+    (editContact.commentaires || []).forEach((c) => {
+      events.push({
+        type: 'comment',
+        date: c.date,
+        label: c.text,
+        icon: '\ud83d\udcac',
+      });
+    });
+
+    // Status changes from history
+    (editContact.history || []).forEach((h) => {
+      if (h.type === 'status') {
+        const fromLabel = STATUSES.find((s) => s.id === h.from)?.label || h.from;
+        const toLabel = STATUSES.find((s) => s.id === h.to)?.label || h.to;
+        events.push({
+          type: 'status',
+          date: h.date,
+          label: `${fromLabel} \u2192 ${toLabel}`,
+          icon: '\ud83d\udd04',
+          from: h.from,
+          to: h.to,
+        });
+      }
+    });
+
+    // Sort by date descending (most recent first)
+    events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return events;
+  }, [editContact]);
+
+  // ---- Score distribution for filter chips ----
+  const scoreDistribution = useMemo(() => {
+    const dist = { Hot: 0, Warm: 0, 'Ti\u00e8de': 0, Froid: 0 };
+    contacts.forEach((c) => {
+      const score = leadScore(c);
+      const label = getScoreLabel(score);
+      dist[label.label]++;
+    });
+    return dist;
+  }, [contacts]);
+
+  // ---- All-pages selection check ----
+  const allPageSelected = paginated.length > 0 && paginated.every((c) => selected.has(c.id));
+
+  // ---------------------------------------------------------------------------
+  // RENDER
+  // ---------------------------------------------------------------------------
+
   return (
     <div>
+      {/* Page header */}
       <div className="fade-up" style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>CRM</h1>
         <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Gestion des contacts et pipeline commercial</p>
       </div>
 
+      {/* KPI Grid */}
       <div className="fade-up d1 kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 10, marginBottom: 20 }}>
         {STATUSES.map((s) => (
           <div key={s.id} className="glass-static" style={{ padding: '12px 14px', textAlign: 'center' }}>
@@ -393,38 +597,87 @@ export default function CRM() {
             <div style={{ fontSize: 9, fontWeight: 700, color: s.color, letterSpacing: .8, marginTop: 2 }}>{s.label}</div>
           </div>
         ))}
+        {/* Pipeline Value KPI */}
+        <div className="glass-static" style={{ padding: '12px 14px', textAlign: 'center', borderLeft: `3px solid ${T.accent}` }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: T.accent }}>{fK(pipelineValue)}\u20ac</div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: T.accent, letterSpacing: .8, marginTop: 2 }}>PIPELINE</div>
+        </div>
       </div>
 
-      <div className="fade-up d2" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <TabBar items={FILTER_TABS} active={filter} onChange={setFilter} counts={filterCounts} compact />
+      {/* Filter bar */}
+      <div className="fade-up d2" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+        <TabBar items={FILTER_TABS} active={filter} onChange={(f) => { setFilter(f); setScoreFilter(null); }} counts={filterCounts} compact />
         <div style={{ flex: 1, minWidth: 140 }}>
           <div className="glass-input" style={{ display: 'flex', alignItems: 'center' }}>
-            <span style={{ padding: '0 8px 0 12px', color: T.textMuted, fontSize: 13 }}>🔍</span>
+            <span style={{ padding: '0 8px 0 12px', color: T.textMuted, fontSize: 13 }}>{'\ud83d\udd0d'}</span>
             <input value={search} onChange={(e) => handleSearch(e.target.value)} placeholder="Rechercher..."
               aria-label="Rechercher un contact"
               style={{ flex: 1, background: 'transparent', border: 'none', color: T.text, padding: '8px 12px 8px 0', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
           </div>
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
-          <Btn v={viewMode === 'table' ? 'primary' : 'ghost'} small onClick={() => setViewMode('table')} aria-label="Vue tableau">☰</Btn>
-          <Btn v={viewMode === 'kanban' ? 'primary' : 'ghost'} small onClick={() => setViewMode('kanban')} aria-label="Vue Kanban">▦</Btn>
+          <Btn v={viewMode === 'table' ? 'primary' : 'ghost'} small onClick={() => setViewMode('table')} aria-label="Vue tableau">{'\u2630'}</Btn>
+          <Btn v={viewMode === 'kanban' ? 'primary' : 'ghost'} small onClick={() => setViewMode('kanban')} aria-label="Vue Kanban">{'\u25a6'}</Btn>
         </div>
-        <Btn v="secondary" small onClick={() => csvInputRef.current?.click()} aria-label="Importer CSV">↑ Import CSV</Btn>
+        <Btn v="secondary" small onClick={() => csvInputRef.current?.click()} aria-label="Importer CSV">{'\u2191'} Import CSV</Btn>
         <input ref={csvInputRef} type="file" accept=".csv" onChange={handleCSVImport} style={{ display: 'none' }} />
         <Btn onClick={openNew} aria-label="Ajouter un contact" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: '0 2px 12px rgba(249,115,22,.3)' }}>+ Contact</Btn>
       </div>
 
-      {/* Undo + Import feedback */}
-      {(undoMsg || importResult) && (
+      {/* Score filter chips */}
+      <div className="fade-up d2" style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, marginRight: 4 }}>Score :</span>
+        {LEAD_SCORE_LABELS.map((sl) => {
+          const isActive = scoreFilter === sl.label;
+          return (
+            <button
+              key={sl.label}
+              onClick={() => setScoreFilter(isActive ? null : sl.label)}
+              style={{
+                background: isActive ? sl.bg : 'transparent',
+                border: `1px solid ${isActive ? sl.color + '66' : T.border}`,
+                borderRadius: 20, padding: '4px 10px', cursor: 'pointer',
+                fontSize: 10, fontWeight: 600, color: isActive ? sl.color : T.textMuted,
+                fontFamily: 'inherit', transition: 'all .15s',
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              <span>{sl.icon}</span>
+              <span>{sl.label}</span>
+              <span style={{ opacity: .7 }}>({scoreDistribution[sl.label] || 0})</span>
+            </button>
+          );
+        })}
+        {scoreFilter && (
+          <button onClick={() => setScoreFilter(null)} style={{
+            background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 20,
+            padding: '4px 8px', cursor: 'pointer', fontSize: 10, color: T.textMuted,
+            fontFamily: 'inherit',
+          }}>{'\u2715'} Reset</button>
+        )}
+      </div>
+
+      {/* Undo + Import + Conversion feedback */}
+      {(undoMsg || importResult || conversionToast) && (
         <div style={{ marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {undoMsg && (
             <div style={{ fontSize: 11, color: T.green, fontWeight: 600, padding: '6px 12px', borderRadius: 8, background: T.greenBg, border: `1px solid ${T.green}22` }}>
-              ↩ {undoMsg}
+              {'\u21a9'} {undoMsg}
             </div>
           )}
           {importResult && (
             <div style={{ fontSize: 11, fontWeight: 600, padding: '6px 12px', borderRadius: 8, background: importResult.error ? T.redBg : T.greenBg, color: importResult.error ? T.red : T.green, border: `1px solid ${importResult.error ? T.red : T.green}22` }}>
-              {importResult.error || `✓ ${importResult.imported} contact${importResult.imported > 1 ? 's' : ''} importé${importResult.imported > 1 ? 's' : ''}${importResult.skipped ? ` (${importResult.skipped} doublon${importResult.skipped > 1 ? 's' : ''} ignoré${importResult.skipped > 1 ? 's' : ''})` : ''}`}
+              {importResult.error || `\u2713 ${importResult.imported} contact${importResult.imported > 1 ? 's' : ''} import\u00e9${importResult.imported > 1 ? 's' : ''}${importResult.skipped ? ` (${importResult.skipped} doublon${importResult.skipped > 1 ? 's' : ''} ignor\u00e9${importResult.skipped > 1 ? 's' : ''})` : ''}`}
+            </div>
+          )}
+          {conversionToast && (
+            <div className="scale-in" style={{
+              fontSize: 12, fontWeight: 700, padding: '8px 16px', borderRadius: 10,
+              background: T.greenBg, color: T.green,
+              border: `1px solid ${T.green}44`,
+              boxShadow: `0 4px 16px ${T.green}22`,
+            }}>
+              {'\ud83c\udf89'} Nouveau client : {conversionToast} !
             </div>
           )}
         </div>
@@ -432,16 +685,17 @@ export default function CRM() {
 
       {undo.canUndo && !undoMsg && (
         <div style={{ marginBottom: 12, fontSize: 11, color: T.textMuted, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Btn v="ghost" small onClick={undo.undo}>↩ Annuler ({undo.stackSize})</Btn>
-          <span>Ctrl+Z pour annuler la dernière suppression</span>
+          <Btn v="ghost" small onClick={undo.undo}>{'\u21a9'} Annuler ({undo.stackSize})</Btn>
+          <span>Ctrl+Z pour annuler la derni\u00e8re suppression</span>
         </div>
       )}
 
+      {/* ---- TABLE VIEW ---- */}
       {viewMode === 'table' && (
         <>
           {filtered.length === 0 ? (
             <Card>
-              <EmptyState icon="👥" title="Aucun contact" sub="Ajoutez votre premier contact pour commencer"
+              <EmptyState icon={'\ud83d\udc65'} title="Aucun contact" sub="Ajoutez votre premier contact pour commencer"
                 action={<Btn onClick={openNew} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Ajouter un contact</Btn>} />
             </Card>
           ) : (
@@ -450,10 +704,28 @@ export default function CRM() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
                     <tr style={{ borderBottom: `1px solid ${T.border}` }}>
-                      {[{ label: 'Nom', key: 'name' }, { label: 'Email', key: 'email' }, { label: 'Société', key: 'company' }, { label: 'Téléphone', key: null }, { label: 'Statut', key: 'status' }, { label: '', key: null }].map((h) => (
-                        <th key={h.label} scope="col" onClick={h.key ? () => toggleSort(h.key) : undefined}
+                      {/* Checkbox column */}
+                      <th style={{ padding: '10px 8px 10px 14px', width: 36 }}>
+                        <input
+                          type="checkbox"
+                          checked={allPageSelected}
+                          onChange={toggleSelectAll}
+                          aria-label="S\u00e9lectionner tout"
+                          style={{ cursor: 'pointer', accentColor: T.accent }}
+                        />
+                      </th>
+                      {[
+                        { label: 'Nom', key: 'name' },
+                        { label: 'Score', key: 'score' },
+                        { label: 'Email', key: 'email' },
+                        { label: 'Soci\u00e9t\u00e9', key: 'company' },
+                        { label: 'T\u00e9l\u00e9phone', key: null },
+                        { label: 'Statut', key: 'status' },
+                        { label: '', key: null },
+                      ].map((h, i) => (
+                        <th key={h.label + i} scope="col" onClick={h.key ? () => toggleSort(h.key) : undefined}
                           style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: T.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: .5, cursor: h.key ? 'pointer' : 'default', userSelect: 'none' }}>
-                          {h.label}{h.key && sortBy === h.key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                          {h.label}{h.key && sortBy === h.key ? (sortDir === 'asc' ? ' \u2191' : ' \u2193') : ''}
                         </th>
                       ))}
                     </tr>
@@ -462,22 +734,44 @@ export default function CRM() {
                     {paginated.map((c) => {
                       const st = STATUSES.find((s) => s.id === c.status);
                       const relanceDays = getRelanceInfo(c);
+                      const score = leadScore(c);
+                      const isSelected = selected.has(c.id);
                       return (
-                        <tr key={c.id} onClick={() => openEdit(c)} style={{ borderBottom: `1px solid ${T.border}22`, cursor: 'pointer' }}>
-                          <td style={{ padding: '10px 14px', fontWeight: 600, color: T.text }}>
-                            {c.name}
-                            {relanceDays && (
-                              <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 600, color: T.orange, background: T.orangeBg, padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>
-                                ⚠️ Relance {relanceDays}j
-                              </span>
-                            )}
+                        <tr key={c.id} onClick={() => openEdit(c)} style={{
+                          borderBottom: `1px solid ${T.border}22`, cursor: 'pointer',
+                          background: isSelected ? T.accentBg : 'transparent',
+                          transition: 'background .1s',
+                        }}>
+                          {/* Selection checkbox */}
+                          <td style={{ padding: '10px 8px 10px 14px', width: 36 }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => toggleSelect(c.id, e)}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ cursor: 'pointer', accentColor: T.accent }}
+                            />
                           </td>
-                          <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.email || '—'}</td>
-                          <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.company || '—'}</td>
-                          <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.phone || '—'}</td>
+                          <td style={{ padding: '10px 14px', fontWeight: 600, color: T.text }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span>{c.name}</span>
+                              {relanceDays && (
+                                <span style={{ fontSize: 10, fontWeight: 600, color: T.orange, background: T.orangeBg, padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>
+                                  {'\u26a0\ufe0f'} Relance {relanceDays}j
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          {/* Score column with ScoreRing */}
+                          <td style={{ padding: '10px 8px' }}>
+                            <ScoreRing score={score} size={28} strokeWidth={3} />
+                          </td>
+                          <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.email || '\u2014'}</td>
+                          <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.company || '\u2014'}</td>
+                          <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.phone || '\u2014'}</td>
                           <td style={{ padding: '10px 14px' }}><Badge label={st?.label} color={st?.color} bg={st?.bg} /></td>
                           <td style={{ padding: '10px 14px' }}>
-                            <Btn v="danger" small aria-label={`Supprimer ${c.name}`} onClick={(e) => del.request(c.id, e)}>✕</Btn>
+                            <Btn v="danger" small aria-label={`Supprimer ${c.name}`} onClick={(e) => del.request(c.id, e)}>{'\u2715'}</Btn>
                           </td>
                         </tr>
                       );
@@ -491,6 +785,7 @@ export default function CRM() {
         </>
       )}
 
+      {/* ---- KANBAN VIEW ---- */}
       {viewMode === 'kanban' && (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12 }}>
           {STATUSES.map((status) => {
@@ -514,6 +809,8 @@ export default function CRM() {
                   )}
                   {colContacts.map((c) => {
                     const relanceDays = getRelanceInfo(c);
+                    const score = leadScore(c);
+                    const sl = getScoreLabel(score);
                     return (
                       <div key={c.id} draggable onDragStart={(e) => handleDragStart(e, c.id)}
                         onClick={() => openEdit(c)}
@@ -523,16 +820,26 @@ export default function CRM() {
                           cursor: 'grab', transition: 'all .15s',
                           opacity: dragId === c.id ? 0.5 : 1,
                         }}>
-                        <div style={{ fontWeight: 600, fontSize: 12, color: T.text, marginBottom: 2 }}>{c.name}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                          <div style={{ fontWeight: 600, fontSize: 12, color: T.text }}>{c.name}</div>
+                          {/* Score badge on Kanban card */}
+                          <span style={{
+                            fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 10,
+                            background: sl.bg, color: sl.color, whiteSpace: 'nowrap',
+                            display: 'inline-flex', alignItems: 'center', gap: 2,
+                          }}>
+                            {sl.icon} {score}
+                          </span>
+                        </div>
                         {c.company && <div style={{ fontSize: 10, color: T.textSecondary }}>{c.company}</div>}
                         {c.email && <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{c.email}</div>}
                         {relanceDays && (
                           <div style={{ marginTop: 4, fontSize: 10, fontWeight: 600, color: T.orange, background: T.orangeBg, padding: '2px 6px', borderRadius: 6, display: 'inline-block' }}>
-                            ⚠️ Relance {relanceDays}j
+                            {'\u26a0\ufe0f'} Relance {relanceDays}j
                           </div>
                         )}
                         <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end' }}>
-                          <Btn v="danger" small aria-label={`Supprimer ${c.name}`} onClick={(e) => del.request(c.id, e)}>✕</Btn>
+                          <Btn v="danger" small aria-label={`Supprimer ${c.name}`} onClick={(e) => del.request(c.id, e)}>{'\u2715'}</Btn>
                         </div>
                       </div>
                     );
@@ -544,17 +851,76 @@ export default function CRM() {
         </div>
       )}
 
+      {/* ---- BULK ACTIONS FLOATING BAR ---- */}
+      {selected.size > 0 && viewMode === 'table' && (
+        <div className="scale-in" style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          background: T.surface, border: `1px solid ${T.border}`,
+          borderRadius: 14, padding: '10px 20px', zIndex: 900,
+          display: 'flex', alignItems: 'center', gap: 12,
+          boxShadow: '0 8px 32px rgba(0,0,0,.4)',
+          backdropFilter: 'blur(12px)',
+        }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: T.accent }}>
+            {selected.size} s\u00e9lectionn\u00e9{selected.size > 1 ? 's' : ''}
+          </span>
+          <div style={{ width: 1, height: 20, background: T.border }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 10, color: T.textMuted, fontWeight: 600 }}>Changer statut :</span>
+            <select
+              onChange={(e) => { if (e.target.value) bulkChangeStatus(e.target.value); e.target.value = ''; }}
+              defaultValue=""
+              style={{
+                background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8,
+                color: T.text, padding: '5px 8px', fontSize: 11, fontFamily: 'inherit', outline: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="" disabled>Choisir...</option>
+              {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+          </div>
+          <div style={{ width: 1, height: 20, background: T.border }} />
+          <Btn v="danger" small onClick={bulkDelete}>Supprimer ({selected.size})</Btn>
+          <Btn v="ghost" small onClick={() => setSelected(new Set())}>{'\u2715'}</Btn>
+        </div>
+      )}
+
+      {/* ---- CONTACT MODAL ---- */}
       <Modal open={showModal} onClose={() => { setShowModal(false); setEmailError(''); setDuplicateWarning(''); }} title={editId ? 'Modifier le contact' : 'Nouveau contact'} wide={!!editId}>
+        {/* Lead score display in modal (edit mode) */}
+        {editId && editContact && (() => {
+          const score = leadScore(editContact);
+          const sl = getScoreLabel(score);
+          return (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16,
+              padding: '12px 16px', borderRadius: 12, background: T.surface2,
+              border: `1px solid ${sl.color}33`,
+            }}>
+              <ScoreRing score={score} size={56} strokeWidth={4} color={sl.color} />
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: sl.color, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>{sl.icon}</span>
+                  <span>{sl.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: T.textMuted }}>({score}/100)</span>
+                </div>
+                <div style={{ fontSize: 10, color: T.textSecondary, marginTop: 2 }}>Lead Score</div>
+              </div>
+            </div>
+          );
+        })()}
+
         <Inp label="Nom *" value={form.name} onChange={(v) => { setForm({ ...form, name: v }); setDuplicateWarning(checkDuplicate(v, form.email)); }} placeholder="Nom complet" />
         <Inp label="Email" value={form.email} onChange={(v) => { setForm({ ...form, email: v }); setEmailError(''); setDuplicateWarning(checkDuplicate(form.name, v)); }} type="email" placeholder="email@exemple.com" />
         {emailError && <div style={{ fontSize: 11, color: T.red, marginTop: -8, marginBottom: 8 }}>{emailError}</div>}
         {duplicateWarning && <div style={{ fontSize: 11, color: T.orange, padding: '6px 10px', borderRadius: 6, background: T.orangeBg, marginTop: -4, marginBottom: 8 }}>{duplicateWarning}</div>}
-        <Inp label="Société" value={form.company} onChange={(v) => setForm({ ...form, company: v })} placeholder="Nom de la société" />
-        <Inp label="Téléphone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="+33 6 00 00 00 00" />
+        <Inp label="Soci\u00e9t\u00e9" value={form.company} onChange={(v) => setForm({ ...form, company: v })} placeholder="Nom de la soci\u00e9t\u00e9" />
+        <Inp label="T\u00e9l\u00e9phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="+33 6 00 00 00 00" />
         <Sel label="Statut" value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={STATUSES.map((s) => ({ value: s.id, label: s.label }))} />
         <Inp label="Notes" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} placeholder="Notes..." />
 
-        {/* Comments/Notes History Section */}
+        {/* Comment input */}
         <div style={{ marginBottom: 12 }}>
           <label style={{ display: 'block', color: T.textSecondary, fontSize: 11, fontWeight: 600, marginBottom: 4, letterSpacing: .3 }}>Ajouter un commentaire</label>
           <div className="glass-input" style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
@@ -572,7 +938,7 @@ export default function CRM() {
                   setNewComment('');
                 }
               }}
-              placeholder="Écrire un commentaire..."
+              placeholder="\u00c9crire un commentaire..."
               style={{ flex: 1, background: 'transparent', border: 'none', color: T.text, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none', width: '100%' }}
             />
             {editId && (
@@ -587,34 +953,70 @@ export default function CRM() {
             )}
           </div>
           <div style={{ color: T.textMuted, fontSize: 10, marginTop: 2 }}>
-            {editId ? 'Appuyez sur Entrée ou cliquez Ajouter. Le commentaire sera aussi ajouté à l\'enregistrement.' : 'Le commentaire sera ajouté à la création du contact.'}
+            {editId ? "Appuyez sur Entr\u00e9e ou cliquez Ajouter. Le commentaire sera aussi ajout\u00e9 \u00e0 l'enregistrement." : "Le commentaire sera ajout\u00e9 \u00e0 la cr\u00e9ation du contact."}
           </div>
         </div>
 
-        {/* Comments Timeline (only when editing and there are comments) */}
-        {editId && editComments.length > 0 && (
+        {/* Activity Timeline (edit mode only) */}
+        {editId && activityTimeline.length > 0 && (
           <div style={{ marginBottom: 12 }}>
-            <label style={{ display: 'block', color: T.textSecondary, fontSize: 11, fontWeight: 600, marginBottom: 8, letterSpacing: .3 }}>Historique des commentaires ({editComments.length})</label>
-            <div style={{ maxHeight: 200, overflowY: 'auto', borderRadius: 10, border: `1px solid ${T.border}`, background: T.surface2 }}>
-              {[...editComments].reverse().map((comment, idx) => (
-                <div key={idx} style={{
-                  padding: '10px 14px',
-                  borderBottom: idx < editComments.length - 1 ? `1px solid ${T.border}` : 'none',
-                  display: 'flex', flexDirection: 'column', gap: 4,
-                }}>
-                  <div style={{ fontSize: 12, color: T.text, lineHeight: 1.4 }}>{comment.text}</div>
-                  <div style={{ fontSize: 10, color: T.textMuted }}>
-                    {new Date(comment.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    {' — '}{ago(comment.date)}
+            <label style={{ display: 'block', color: T.textSecondary, fontSize: 11, fontWeight: 600, marginBottom: 8, letterSpacing: .3 }}>
+              Historique d'activit\u00e9 ({activityTimeline.length})
+            </label>
+            <div style={{ maxHeight: 260, overflowY: 'auto', borderRadius: 10, border: `1px solid ${T.border}`, background: T.surface2, padding: '8px 0' }}>
+              {activityTimeline.map((event, idx) => {
+                const isLast = idx === activityTimeline.length - 1;
+                // Timeline colors
+                let dotColor = T.textMuted;
+                if (event.type === 'created') dotColor = T.green;
+                else if (event.type === 'status') dotColor = T.accent;
+                else if (event.type === 'comment') dotColor = T.orange;
+
+                return (
+                  <div key={idx} style={{ display: 'flex', gap: 12, paddingLeft: 16, paddingRight: 14, position: 'relative' }}>
+                    {/* Timeline line + dot */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 14, position: 'relative' }}>
+                      <div style={{
+                        width: 10, height: 10, borderRadius: '50%', background: dotColor,
+                        border: `2px solid ${T.surface2}`, flexShrink: 0, zIndex: 1, marginTop: 10,
+                      }} />
+                      {!isLast && (
+                        <div style={{
+                          width: 2, flex: 1, background: T.border, marginTop: 2,
+                        }} />
+                      )}
+                    </div>
+                    {/* Event content */}
+                    <div style={{ flex: 1, paddingBottom: isLast ? 8 : 12, paddingTop: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 11 }}>{event.icon}</span>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600,
+                          color: event.type === 'status' ? T.accent : event.type === 'created' ? T.green : T.text,
+                        }}>
+                          {event.type === 'comment' ? 'Commentaire' : event.label}
+                        </span>
+                      </div>
+                      {event.type === 'comment' && (
+                        <div style={{ fontSize: 12, color: T.text, marginTop: 3, lineHeight: 1.4, paddingLeft: 2 }}>
+                          {event.label}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>
+                        {new Date(event.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {' \u2014 '}{ago(event.date)}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
 
+        {/* Modal footer actions */}
         <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
-          {saved && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>✓ Enregistré</span>}
+          {saved && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>{'\u2713'} Enregistr\u00e9</span>}
           {editId && (
             <Btn v="secondary" small onClick={() => generateInvoice(editContact)} style={{ marginRight: 'auto' }}>
               Facturer
@@ -625,16 +1027,36 @@ export default function CRM() {
         </div>
       </Modal>
 
+      {/* ---- CONFIRM DIALOG ---- */}
       <ConfirmDialog
         open={del.isOpen}
         title="Supprimer ce contact ?"
-        message="Le contact sera définitivement supprimé. Cette action est irréversible."
+        message="Le contact sera d\u00e9finitivement supprim\u00e9. Cette action est irr\u00e9versible."
         onConfirm={del.execute}
         onCancel={del.cancel}
       />
+
+      {/* ---- CONVERSION TOAST (fixed position) ---- */}
+      {conversionToast && (
+        <div style={{
+          position: 'fixed', top: 24, right: 24, zIndex: 2000,
+          background: T.surface, border: `1px solid ${T.green}44`,
+          borderLeft: `4px solid ${T.green}`,
+          borderRadius: 12, padding: '12px 20px',
+          boxShadow: `0 8px 32px ${T.green}22`,
+          animation: 'slideDown .3s ease',
+          fontSize: 13, fontWeight: 700, color: T.green,
+        }}>
+          {'\ud83c\udf89'} Nouveau client : {conversionToast} !
+        </div>
+      )}
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// CSV Parser
+// ---------------------------------------------------------------------------
 
 /** Parse a single CSV line handling quoted fields */
 function parseCSVLine(line) {

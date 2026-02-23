@@ -1,29 +1,72 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { T } from '../lib/theme.js';
-import { fmt, fK, pf, curMonth, monthLabel, prevMonth, sameMonthLastYear } from '../lib/utils.js';
+import { fmt, fK, pf, curMonth, monthLabel, prevMonth, sameMonthLastYear, forecastCA, businessHealth } from '../lib/utils.js';
 import { storeDebounced, load, store } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
-import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState, Pagination, ProgressBar, HelpTip, Spinner } from '../components/ui.jsx';
+import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState, Pagination, ProgressBar, HelpTip, Spinner, Badge, ScoreRing } from '../components/ui.jsx';
 
+/* ------------------------------------------------------------------ */
+/*  Lazy-loaded Enhanced Chart with forecast overlay                   */
+/* ------------------------------------------------------------------ */
 const LazyFinChart = lazy(() =>
   import('recharts').then((mod) => ({
-    default: function FinChart() {
-      const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } = mod;
+    default: function FinChart({ forecastData }) {
+      const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell, ReferenceLine } = mod;
       const history = load('finHistory') || [];
-      const data = history.slice(-6).map((r) => ({
+      const actual = history.slice(-6).map((r) => ({
         name: monthLabel(r.key),
         CA: r.ca || 0,
         Charges: r.charges || 0,
+        type: 'actual',
       }));
+      const forecast = (forecastData || []).map((r) => ({
+        name: monthLabel(r.key),
+        CA: r.ca || 0,
+        Charges: 0,
+        type: 'forecast',
+      }));
+      const data = [...actual, ...forecast];
       return (
-        <ResponsiveContainer width="100%" height={200}>
+        <ResponsiveContainer width="100%" height={220}>
           <BarChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
             <XAxis dataKey="name" tick={{ fontSize: 10 }} />
             <YAxis tickFormatter={fK} tick={{ fontSize: 10 }} />
-            <Tooltip formatter={(v) => fmt(v) + '€'} />
-            <Legend wrapperStyle={{ fontSize: 10 }} />
-            <Bar dataKey="CA" fill="#16a34a" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="Charges" fill="#dc2626" radius={[4, 4, 0, 0]} />
+            <Tooltip
+              formatter={(v, name, entry) => [
+                fmt(v) + '\u20AC' + (entry.payload.type === 'forecast' ? ' (prev.)' : ''),
+                name,
+              ]}
+              contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 11 }}
+              labelStyle={{ fontWeight: 700, fontSize: 11, color: T.text }}
+            />
+            <Legend
+              wrapperStyle={{ fontSize: 10 }}
+              payload={[
+                { value: 'CA (r\u00E9el)', type: 'square', color: '#16a34a' },
+                { value: 'Charges', type: 'square', color: '#dc2626' },
+                { value: 'CA (pr\u00E9vision)', type: 'square', color: '#16a34a80' },
+              ]}
+            />
+            {actual.length > 0 && forecast.length > 0 && (
+              <ReferenceLine x={actual[actual.length - 1].name} stroke={T.border} strokeDasharray="4 4" />
+            )}
+            <Bar dataKey="CA" radius={[4, 4, 0, 0]}>
+              {data.map((entry, idx) => (
+                <Cell
+                  key={idx}
+                  fill={entry.type === 'forecast' ? '#16a34a' : '#16a34a'}
+                  fillOpacity={entry.type === 'forecast' ? 0.35 : 1}
+                  stroke={entry.type === 'forecast' ? '#16a34a' : 'none'}
+                  strokeWidth={entry.type === 'forecast' ? 1 : 0}
+                  strokeDasharray={entry.type === 'forecast' ? '4 2' : 'none'}
+                />
+              ))}
+            </Bar>
+            <Bar dataKey="Charges" radius={[4, 4, 0, 0]}>
+              {data.map((entry, idx) => (
+                <Cell key={idx} fill="#dc2626" fillOpacity={entry.type === 'forecast' ? 0.2 : 1} />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       );
@@ -31,8 +74,15 @@ const LazyFinChart = lazy(() =>
   }))
 );
 
-const SUB_TABS = ['Finances', 'Sales', 'Publicité'];
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
+const SUB_TABS = ['Finances', 'Sales', 'Publicit\u00E9'];
+const HIST_PAGE_SIZE = 12;
 
+/* ------------------------------------------------------------------ */
+/*  Default history generator                                          */
+/* ------------------------------------------------------------------ */
 function generateDefaultHistory() {
   const rows = [];
   const now = new Date();
@@ -46,10 +96,13 @@ function generateDefaultHistory() {
   return rows;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Helper components                                                  */
+/* ------------------------------------------------------------------ */
 function EvoBadge({ value, invert }) {
   const isPositive = invert ? value < 0 : value > 0;
   const color = isPositive ? T.green : T.red;
-  const arrow = value > 0 ? '↑' : '↓';
+  const arrow = value > 0 ? '\u2191' : '\u2193';
   return (
     <span style={{
       fontSize: 9, fontWeight: 700, color, marginLeft: 6,
@@ -71,6 +124,580 @@ function MarginBar({ ratio }) {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Threshold Alerts Component                                         */
+/* ------------------------------------------------------------------ */
+function ThresholdAlerts({ history, histByKey }) {
+  const alerts = useMemo(() => {
+    if (!history || history.length === 0) return [];
+    const last = history[history.length - 1];
+    const prevKey = prevMonth(last.key);
+    const prev = histByKey[prevKey];
+    const list = [];
+
+    // Margin checks
+    const margin = last.ca ? Math.round((last.result / last.ca) * 100) : 0;
+    if (margin < 10) {
+      list.push({
+        level: 'red',
+        icon: '\u26A0\uFE0F',
+        message: 'Marge critique',
+        detail: `Marge actuelle : ${margin}% (seuil : 10%)`,
+        action: 'R\u00E9duisez vos charges ou augmentez vos prix',
+      });
+    } else if (margin < 20) {
+      list.push({
+        level: 'orange',
+        icon: '\u26A0\uFE0F',
+        message: 'Marge faible',
+        detail: `Marge actuelle : ${margin}% (seuil : 20%)`,
+        action: 'Surveillez l\u2019\u00E9volution de vos charges',
+      });
+    }
+
+    // CA decrease check
+    if (prev && prev.ca > 0) {
+      const caDelta = Math.round(((last.ca - prev.ca) / Math.abs(prev.ca)) * 100);
+      if (caDelta < -15) {
+        list.push({
+          level: 'red',
+          icon: '\uD83D\uDCC9',
+          message: 'CA en baisse',
+          detail: `${Math.abs(caDelta)}% de baisse vs mois pr\u00E9c\u00E9dent`,
+          action: 'Analysez vos sources de revenus et relancez vos prospects',
+        });
+      }
+    }
+
+    // Charges increase check
+    if (prev && prev.charges > 0) {
+      const chargesDelta = Math.round(((last.charges - prev.charges) / Math.abs(prev.charges)) * 100);
+      if (chargesDelta > 20) {
+        list.push({
+          level: 'orange',
+          icon: '\uD83D\uDCB8',
+          message: 'Charges en hausse',
+          detail: `+${chargesDelta}% vs mois pr\u00E9c\u00E9dent`,
+          action: 'V\u00E9rifiez vos postes de d\u00E9penses et identifiez les \u00E9carts',
+        });
+      }
+    }
+
+    return list;
+  }, [history, histByKey]);
+
+  if (alerts.length === 0) return null;
+
+  return (
+    <div className="fade-up d2" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+      {alerts.map((a, i) => {
+        const bg = a.level === 'red' ? T.redBg : T.orangeBg;
+        const color = a.level === 'red' ? T.red : T.orange;
+        const borderColor = a.level === 'red' ? T.red + '44' : T.orange + '44';
+        return (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px',
+            borderRadius: 10, background: bg, border: `1px solid ${borderColor}`,
+          }}>
+            <span style={{ fontSize: 16, lineHeight: 1.3, flexShrink: 0 }}>{a.icon}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 12, color }}>{a.message}</div>
+              <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 1 }}>{a.detail}</div>
+              <div style={{ fontSize: 10, color: T.textMuted, marginTop: 3, fontStyle: 'italic' }}>
+                Conseil : {a.action}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  CA Forecast Card                                                   */
+/* ------------------------------------------------------------------ */
+function ForecastCard({ forecastData, history }) {
+  if (!forecastData || forecastData.length === 0) return null;
+
+  const lastCA = history.length > 0 ? history[history.length - 1].ca : 0;
+  const avgGrowth = useMemo(() => {
+    if (forecastData.length < 2) return 0;
+    const first = forecastData[0].ca;
+    const last = forecastData[forecastData.length - 1].ca;
+    if (first === 0) return 0;
+    const monthlyGrowth = ((last - first) / first / (forecastData.length - 1)) * 100;
+    return Math.round(monthlyGrowth);
+  }, [forecastData]);
+
+  // Compute overall trend from last actual to last forecast
+  const trend = useMemo(() => {
+    if (!lastCA || lastCA === 0 || forecastData.length === 0) return 0;
+    const totalChange = ((forecastData[forecastData.length - 1].ca - lastCA) / lastCA) * 100;
+    return Math.round(totalChange / forecastData.length);
+  }, [lastCA, forecastData]);
+
+  const isGrowth = trend >= 0;
+
+  return (
+    <div className="fade-up d3" style={{ marginBottom: 16 }}>
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <span style={{ fontSize: 14 }}>{isGrowth ? '\uD83D\uDCC8' : '\uD83D\uDCC9'}</span>
+          <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
+            Pr\u00E9vision CA sur 3 mois
+            <HelpTip text="Projection lin\u00E9aire bas\u00E9e sur les 6 derniers mois" />
+          </div>
+          <div style={{
+            marginLeft: 'auto', fontSize: 11, fontWeight: 700,
+            color: isGrowth ? T.green : T.red,
+            display: 'flex', alignItems: 'center', gap: 4,
+          }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 18, height: 18, borderRadius: 9,
+              background: isGrowth ? T.green + '20' : T.red + '20',
+              fontSize: 10,
+            }}>
+              {isGrowth ? '\u2191' : '\u2193'}
+            </span>
+            Tendance : {isGrowth ? '+' : ''}{trend}%/mois
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
+          {forecastData.map((f, idx) => {
+            const prevVal = idx === 0 ? lastCA : forecastData[idx - 1].ca;
+            const diff = prevVal > 0 ? Math.round(((f.ca - prevVal) / prevVal) * 100) : 0;
+            return (
+              <div key={f.key} style={{
+                padding: '10px 12px', borderRadius: 8,
+                background: isGrowth ? T.green + '08' : T.red + '08',
+                border: `1px solid ${isGrowth ? T.green + '22' : T.red + '22'}`,
+                textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, marginBottom: 4 }}>
+                  {monthLabel(f.key)}
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: isGrowth ? T.green : T.red }}>
+                  {fK(f.ca)}\u20AC
+                </div>
+                {diff !== 0 && (
+                  <div style={{ fontSize: 9, fontWeight: 600, color: diff > 0 ? T.green : T.red, marginTop: 2 }}>
+                    {diff > 0 ? '+' : ''}{diff}%
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Budget vs Actual Component                                         */
+/* ------------------------------------------------------------------ */
+function BudgetVsActual({ lastRow }) {
+  const [budgetCA, setBudgetCA] = useState(() => load('budgetCA') || 0);
+  const [budgetCharges, setBudgetCharges] = useState(() => load('budgetCharges') || 0);
+  const [inputCA, setInputCA] = useState('');
+  const [inputCharges, setInputCharges] = useState('');
+  const [editing, setEditing] = useState(false);
+
+  const saveBudgetCA = useCallback(() => {
+    const val = Math.round(pf(inputCA));
+    if (!val) return;
+    setBudgetCA(val);
+    store('budgetCA', val);
+    setInputCA('');
+  }, [inputCA]);
+
+  const saveBudgetCharges = useCallback(() => {
+    const val = Math.round(pf(inputCharges));
+    if (!val) return;
+    setBudgetCharges(val);
+    store('budgetCharges', val);
+    setInputCharges('');
+  }, [inputCharges]);
+
+  const clearBudgets = useCallback(() => {
+    setBudgetCA(0);
+    setBudgetCharges(0);
+    store('budgetCA', 0);
+    store('budgetCharges', 0);
+    setEditing(false);
+  }, []);
+
+  if (!budgetCA && !budgetCharges && !editing) {
+    return (
+      <div className="fade-up d2" style={{ marginBottom: 16 }}>
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
+              Budget mensuel
+              <HelpTip text="D\u00E9finissez un budget pour comparer avec vos r\u00E9sultats r\u00E9els" />
+            </div>
+            <Btn v="ghost" small onClick={() => setEditing(true)}>+ D\u00E9finir un budget</Btn>
+          </div>
+          {editing && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <Inp label="Budget CA" value={inputCA} onChange={setInputCA} type="number" placeholder="0" suffix="\u20AC" small />
+              <Btn v="ghost" small onClick={saveBudgetCA} disabled={!inputCA}>OK</Btn>
+              <Inp label="Budget Charges" value={inputCharges} onChange={setInputCharges} type="number" placeholder="0" suffix="\u20AC" small />
+              <Btn v="ghost" small onClick={saveBudgetCharges} disabled={!inputCharges}>OK</Btn>
+            </div>
+          )}
+        </Card>
+      </div>
+    );
+  }
+
+  const actualCA = lastRow.ca || 0;
+  const actualCharges = lastRow.charges || 0;
+  const caProgress = budgetCA > 0 ? Math.min(Math.round((actualCA / budgetCA) * 100), 999) : 0;
+  const chargesProgress = budgetCharges > 0 ? Math.min(Math.round((actualCharges / budgetCharges) * 100), 999) : 0;
+  const caColor = caProgress >= 100 ? T.green : caProgress >= 75 ? T.orange : T.red;
+  const chargesColor = chargesProgress > 100 ? T.red : chargesProgress > 80 ? T.orange : T.green;
+
+  return (
+    <div className="fade-up d2" style={{ marginBottom: 16 }}>
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 13 }}>{'\uD83C\uDFAF'}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
+              Budget vs R\u00E9el
+              <HelpTip text="Comparaison de vos objectifs budg\u00E9taires avec les r\u00E9sultats r\u00E9els" />
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <Btn v="ghost" small onClick={() => setEditing(!editing)}>Modifier</Btn>
+            <Btn v="ghost" small onClick={clearBudgets}>{'\u2715'}</Btn>
+          </div>
+        </div>
+
+        {editing && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <Inp label="Budget CA" value={inputCA} onChange={setInputCA} type="number" placeholder={String(budgetCA || '')} suffix="\u20AC" small />
+            <Btn v="ghost" small onClick={saveBudgetCA} disabled={!inputCA}>OK</Btn>
+            <Inp label="Budget Charges" value={inputCharges} onChange={setInputCharges} type="number" placeholder={String(budgetCharges || '')} suffix="\u20AC" small />
+            <Btn v="ghost" small onClick={saveBudgetCharges} disabled={!inputCharges}>OK</Btn>
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {budgetCA > 0 && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase' }}>CA</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: caColor }}>
+                  Budget : {fK(budgetCA)}\u20AC / R\u00E9el : {fK(actualCA)}\u20AC
+                </span>
+              </div>
+              <ProgressBar value={actualCA} max={budgetCA} color={caColor} h={8} />
+              <div style={{ fontSize: 10, fontWeight: 600, color: caColor, marginTop: 4, textAlign: 'right' }}>{caProgress}%</div>
+            </div>
+          )}
+          {budgetCharges > 0 && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase' }}>Charges</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: chargesColor }}>
+                  Budget : {fK(budgetCharges)}\u20AC / R\u00E9el : {fK(actualCharges)}\u20AC
+                </span>
+              </div>
+              <ProgressBar value={actualCharges} max={budgetCharges} color={chargesColor} h={8} />
+              <div style={{ fontSize: 10, fontWeight: 600, color: chargesColor, marginTop: 4, textAlign: 'right' }}>{chargesProgress}%</div>
+            </div>
+          )}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Functional Sales Tab                                               */
+/* ------------------------------------------------------------------ */
+function SalesTab() {
+  const contacts = useMemo(() => load('contacts') || [], []);
+
+  const stats = useMemo(() => {
+    const total = contacts.length;
+    const prospects = contacts.filter((c) => c.status === 'prospect').length;
+    const leads = contacts.filter((c) => c.status === 'lead').length;
+    const clients = contacts.filter((c) => c.status === 'client').length;
+    const partenaires = contacts.filter((c) => c.status === 'partenaire').length;
+    const lost = contacts.filter((c) => c.status === 'perdu').length;
+
+    // Conversion rate: clients / (clients + lost)
+    const conversionDenom = clients + lost;
+    const conversionRate = conversionDenom > 0 ? Math.round((clients / conversionDenom) * 100) : 0;
+
+    // Pipeline value: leads * average CA per client (or 5000 default)
+    const finHistory = load('finHistory') || [];
+    const totalCA = finHistory.reduce((s, r) => s + (r.ca || 0), 0);
+    const avgCAPerClient = clients > 0 && totalCA > 0 ? Math.round(totalCA / clients) : 5000;
+    const pipelineValue = leads * avgCAPerClient;
+
+    return { total, prospects, leads, clients, partenaires, lost, conversionRate, pipelineValue, avgCAPerClient };
+  }, [contacts]);
+
+  // Funnel stages
+  const funnel = useMemo(() => {
+    const steps = [
+      { label: 'Prospects', count: stats.prospects, color: T.orange },
+      { label: 'Leads', count: stats.leads, color: T.blue },
+      { label: 'Clients', count: stats.clients, color: T.green },
+    ];
+    const maxCount = Math.max(...steps.map((s) => s.count), 1);
+    return steps.map((s) => ({ ...s, pct: Math.round((s.count / maxCount) * 100) }));
+  }, [stats]);
+
+  if (contacts.length === 0) {
+    return (
+      <Card>
+        <EmptyState
+          icon="\uD83D\uDCBC"
+          title="Aucun contact dans le CRM"
+          sub="Ajoutez des contacts dans l'onglet CRM pour voir vos statistiques de vente"
+        />
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      {/* KPIs */}
+      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12, marginBottom: 20 }}>
+        {[
+          { l: 'Total contacts', v: stats.total, c: T.accent, icon: '\uD83D\uDCCB' },
+          { l: 'Prospects', v: stats.prospects, c: T.orange, icon: '\uD83D\uDD0D' },
+          { l: 'Leads', v: stats.leads, c: T.blue, icon: '\uD83D\uDCE7' },
+          { l: 'Clients', v: stats.clients, c: T.green, icon: '\u2705' },
+          { l: 'Perdus', v: stats.lost, c: T.red, icon: '\u274C' },
+        ].map((s) => (
+          <div key={s.l} style={{ textAlign: 'center', padding: 14, borderRadius: 10, background: s.c + '10', border: `1px solid ${s.c}22` }}>
+            <div style={{ fontSize: 14, marginBottom: 4 }}>{s.icon}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: s.c }}>{s.v}</div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: s.c, marginTop: 2 }}>{s.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Conversion & Pipeline */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+        <Card>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8 }}>
+              Taux de conversion
+              <HelpTip text="Clients / (Clients + Perdus) x 100" />
+            </div>
+            <ScoreRing score={stats.conversionRate} size={80} strokeWidth={6} color={stats.conversionRate >= 50 ? T.green : stats.conversionRate >= 25 ? T.orange : T.red}>
+              <span style={{ fontSize: 18, fontWeight: 800, color: stats.conversionRate >= 50 ? T.green : stats.conversionRate >= 25 ? T.orange : T.red }}>
+                {stats.conversionRate}%
+              </span>
+            </ScoreRing>
+            <div style={{ fontSize: 10, color: T.textMuted, marginTop: 6 }}>
+              {stats.clients} gagn\u00E9s / {stats.clients + stats.lost} clos
+            </div>
+          </div>
+        </Card>
+        <Card>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8 }}>
+              Valeur pipeline
+              <HelpTip text={`Leads x CA moyen par client (${fmt(stats.avgCAPerClient)}\u20AC)`} />
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: T.blue }}>{fK(stats.pipelineValue)}\u20AC</div>
+            <div style={{ fontSize: 10, color: T.textMuted, marginTop: 4 }}>
+              {stats.leads} leads x {fK(stats.avgCAPerClient)}\u20AC moy.
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Conversion Funnel */}
+      <Section title="ENTONNOIR DE CONVERSION" sub="Progression des contacts dans le pipeline">
+        <Card>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {funnel.map((step, idx) => (
+              <div key={step.label}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: step.color }}>{step.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: T.text }}>{step.count}</span>
+                </div>
+                <div style={{ height: 24, background: T.border + '44', borderRadius: 6, overflow: 'hidden', position: 'relative' }}>
+                  <div style={{
+                    height: '100%', width: `${step.pct}%`, background: step.color,
+                    borderRadius: 6, transition: 'width .6s ease', opacity: 0.8,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    minWidth: step.count > 0 ? 32 : 0,
+                  }}>
+                    {step.count > 0 && (
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>{step.pct}%</span>
+                    )}
+                  </div>
+                </div>
+                {idx < funnel.length - 1 && (
+                  <div style={{ textAlign: 'center', fontSize: 12, color: T.textMuted, margin: '2px 0' }}>{'\u2193'}</div>
+                )}
+              </div>
+            ))}
+          </div>
+          {stats.partenaires > 0 && (
+            <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 8, background: T.purple + '10', border: `1px solid ${T.purple}22` }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: T.purple }}>
+                + {stats.partenaires} partenaire{stats.partenaires > 1 ? 's' : ''} actif{stats.partenaires > 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
+        </Card>
+      </Section>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Enhanced Publicite Tab                                             */
+/* ------------------------------------------------------------------ */
+function PubliciteTab() {
+  const integrations = useMemo(() => load('integrations') || {}, []);
+  const metaConnected = !!integrations.meta;
+  const [simMode, setSimMode] = useState(false);
+  const [adSpend, setAdSpend] = useState('');
+  const [cpc, setCpc] = useState('');
+  const [convRate, setConvRate] = useState('');
+
+  const simResults = useMemo(() => {
+    const spend = pf(adSpend);
+    const costPerClick = pf(cpc);
+    const cr = pf(convRate);
+    if (!spend || !costPerClick) return null;
+    const clicks = Math.round(spend / costPerClick);
+    const impressions = Math.round(clicks / 0.035); // assume 3.5% CTR
+    const ctr = clicks > 0 && impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : '0.00';
+    const conversions = cr > 0 ? Math.round(clicks * (cr / 100)) : 0;
+    const cpa = conversions > 0 ? (spend / conversions).toFixed(2) : '\u2014';
+    return { clicks, impressions, ctr, conversions, cpa };
+  }, [adSpend, cpc, convRate]);
+
+  const demoStats = [
+    { l: 'Budget d\u00E9pens\u00E9', v: '3 240\u20AC', c: T.orange, icon: '\uD83D\uDCB8' },
+    { l: 'Impressions', v: '125.4K', c: T.blue, icon: '\uD83D\uDC41\uFE0F' },
+    { l: 'Clics', v: '4 832', c: T.purple, icon: '\uD83D\uDC46' },
+    { l: 'CTR', v: '3.85%', c: T.green, icon: '\uD83D\uDCC8' },
+    { l: 'CPC moyen', v: '0.67\u20AC', c: T.accent, icon: '\uD83C\uDFAF' },
+    { l: 'Conversions', v: '142', c: T.green, icon: '\u2705' },
+  ];
+
+  return (
+    <>
+      {!metaConnected && (
+        <Card style={{ marginBottom: 16 }}>
+          <div style={{ textAlign: 'center', padding: '24px 16px' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>{'\uD83D\uDCE2'}</div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: T.text, marginBottom: 4 }}>
+              Connectez Meta Ads
+            </div>
+            <div style={{ color: T.textSecondary, fontSize: 12, marginBottom: 16 }}>
+              Connecter Meta Ads pour voir vos stats publicitaires en temps r\u00E9el
+            </div>
+            <Btn v="primary" onClick={() => {
+              const current = load('integrations') || {};
+              store('integrations', { ...current, meta: true });
+              window.location.reload();
+            }}>
+              Connecter Meta Ads
+            </Btn>
+          </div>
+        </Card>
+      )}
+
+      {metaConnected && (
+        <Card style={{ marginBottom: 16 }}>
+          <Section title="META ADS" sub="Performance des campagnes publicitaires">
+            <Badge label="Donn\u00E9es de d\u00E9monstration" color={T.orange} bg={T.orangeBg} />
+            <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginTop: 12 }}>
+              {demoStats.map((m) => (
+                <div key={m.l} className="glass-static" style={{ padding: 14, textAlign: 'center' }}>
+                  <div style={{ fontSize: 18, marginBottom: 4 }}>{m.icon}</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: m.c }}>{m.v}</div>
+                  <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, marginTop: 2 }}>{m.l}</div>
+                </div>
+              ))}
+            </div>
+          </Section>
+        </Card>
+      )}
+
+      {/* Simulation mode */}
+      <Section title="SIMULATEUR PUBLICITAIRE" sub="Estimez vos performances en fonction de votre budget">
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 13 }}>{'\uD83E\uDDEA'}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
+                Mode simulation
+              </span>
+            </div>
+            <Btn v={simMode ? 'primary' : 'ghost'} small onClick={() => setSimMode(!simMode)}>
+              {simMode ? 'Masquer' : 'Simuler'}
+            </Btn>
+          </div>
+
+          {simMode && (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
+                <Inp label="Budget publicitaire (\u20AC)" value={adSpend} onChange={setAdSpend} type="number" placeholder="1000" suffix="\u20AC" />
+                <Inp label="CPC moyen (\u20AC)" value={cpc} onChange={setCpc} type="number" placeholder="0.50" suffix="\u20AC" />
+                <Inp label="Taux de conversion (%)" value={convRate} onChange={setConvRate} type="number" placeholder="3" suffix="%" />
+              </div>
+
+              {simResults && (
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+                  gap: 10, padding: 14, borderRadius: 10,
+                  background: T.accent + '08', border: `1px solid ${T.accent}22`,
+                }}>
+                  {[
+                    { l: 'Impressions est.', v: fK(simResults.impressions), c: T.blue },
+                    { l: 'Clics est.', v: fmt(simResults.clicks), c: T.purple },
+                    { l: 'CTR est.', v: simResults.ctr + '%', c: T.green },
+                    { l: 'Conversions est.', v: String(simResults.conversions), c: T.green },
+                    { l: 'CPA est.', v: simResults.cpa === '\u2014' ? '\u2014' : simResults.cpa + '\u20AC', c: T.orange },
+                  ].map((r) => (
+                    <div key={r.l} style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: r.c }}>{r.v}</div>
+                      <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, marginTop: 2 }}>{r.l}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!simResults && (
+                <div style={{ textAlign: 'center', padding: 16, color: T.textMuted, fontSize: 11 }}>
+                  Renseignez au minimum le budget et le CPC pour voir les projections
+                </div>
+              )}
+            </>
+          )}
+
+          {!simMode && (
+            <div style={{ textAlign: 'center', padding: '12px 0', color: T.textMuted, fontSize: 11 }}>
+              Cliquez sur "Simuler" pour estimer vos performances publicitaires
+            </div>
+          )}
+        </Card>
+      </Section>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main Data Component                                                */
+/* ------------------------------------------------------------------ */
 export default function Data() {
   const [subTab, setSubTab] = useState('Finances');
   const [history, setHistory] = useState(() => load('finHistory') || generateDefaultHistory());
@@ -83,7 +710,6 @@ export default function Data() {
   const [sortCol, setSortCol] = useState('key');
   const [sortDir, setSortDir] = useState('asc');
   const [histPage, setHistPage] = useState(1);
-  const HIST_PAGE_SIZE = 12;
 
   // CA Goal (persisted)
   const [caGoal, setCaGoal] = useState(() => load('caGoal') || 0);
@@ -156,6 +782,9 @@ export default function Data() {
   const sparkCharges = useMemo(() => history.slice(-6).map((r) => r.charges || 0), [history]);
   const sparkResult = useMemo(() => history.slice(-6).map((r) => r.result || 0), [history]);
 
+  // Forecast data (3-month projection)
+  const forecast = useMemo(() => forecastCA(history, 3), [history]);
+
   const saveEntry = useCallback(() => {
     const ca = Math.round(pf(formCA) * 100) / 100;
     const fixed = Math.round(pf(formFixed) * 100) / 100;
@@ -193,35 +822,37 @@ export default function Data() {
       th{font-size:10px;text-transform:uppercase;color:#888;font-weight:600}
       .g{color:#16a34a}.r{color:#dc2626}.o{color:#ea580c}
       .ytd-row{font-weight:800;border-top:2px solid #333}
+      .forecast-row{font-style:italic;color:#888}
       .footer{margin-top:32px;font-size:10px;color:#aaa;text-align:center}
       @media print{body{padding:20px}}
     </style></head><body>
     <h1>Rapport Financier</h1>
-    <div class="sub">Généré le ${new Date().toLocaleDateString('fr-FR')} — HubScale</div>
+    <div class="sub">G\u00E9n\u00E9r\u00E9 le ${new Date().toLocaleDateString('fr-FR')} \u2014 HubScale</div>
     <div class="kpis">
       <div class="kpi"><div class="kpi-label">CA Dernier mois</div><div class="kpi-value g">${fmt(lastRow.ca || 0)}\u20AC</div></div>
       <div class="kpi"><div class="kpi-label">Charges</div><div class="kpi-value r">${fmt(lastRow.charges || 0)}\u20AC</div></div>
-      <div class="kpi"><div class="kpi-label">Résultat</div><div class="kpi-value o">${fmt(lastRow.result || 0)}\u20AC</div></div>
+      <div class="kpi"><div class="kpi-label">R\u00E9sultat</div><div class="kpi-value o">${fmt(lastRow.result || 0)}\u20AC</div></div>
       ${caGoal > 0 ? `<div class="kpi"><div class="kpi-label">Objectif CA</div><div class="kpi-value">${fmt(caGoal)}\u20AC</div></div>` : ''}
     </div>
     <h2>Historique</h2>
     <table>
-      <thead><tr><th>Mois</th><th>CA</th><th>Charges</th><th>Marge</th><th>Résultat</th></tr></thead>
+      <thead><tr><th>Mois</th><th>CA</th><th>Charges</th><th>Marge</th><th>R\u00E9sultat</th></tr></thead>
       <tbody>
         ${rows.map(r => {
           const margin = r.ca ? Math.round((r.result / r.ca) * 100) : 0;
           return `<tr><td>${monthLabel(r.key)}</td><td class="g">${fmt(r.ca)}\u20AC</td><td class="r">${fmt(r.charges)}\u20AC</td><td>${margin}%</td><td class="${r.result >= 0 ? 'o' : 'r'}">${fmt(r.result)}\u20AC</td></tr>`;
         }).join('')}
         <tr class="ytd-row"><td>TOTAL YTD ${new Date().getFullYear()}</td><td class="g">${fmt(ytd.ca)}\u20AC</td><td class="r">${fmt(ytd.charges)}\u20AC</td><td>${ytd.ca ? Math.round((ytd.result / ytd.ca) * 100) : 0}%</td><td class="${ytd.result >= 0 ? 'o' : 'r'}">${fmt(ytd.result)}\u20AC</td></tr>
+        ${forecast.length > 0 ? forecast.map(f => `<tr class="forecast-row"><td>${monthLabel(f.key)} (prev.)</td><td>${fmt(f.ca)}\u20AC</td><td>\u2014</td><td>\u2014</td><td>\u2014</td></tr>`).join('') : ''}
       </tbody>
     </table>
-    <div class="footer">Rapport confidentiel — HubScale ${new Date().getFullYear()}</div>
+    <div class="footer">Rapport confidentiel \u2014 HubScale ${new Date().getFullYear()}</div>
     </body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 300);
-  }, [history, lastRow, ytd, caGoal]);
+  }, [history, lastRow, ytd, caGoal, forecast]);
 
-  // FEC Export (Fichier des Écritures Comptables)
+  // FEC Export (Fichier des Ecritures Comptables)
   const exportFEC = useCallback(() => {
     const header = 'JournalCode|JournalLib|EcritureNum|EcritureDate|CompteNum|CompteLib|CompAuxNum|CompAuxLib|PieceRef|PieceDate|EcritureLib|Debit|Credit|EcrtureLet|DateLet|ValidDate|Montantdevise|Idevise';
     const rows = [...history].sort((a, b) => a.key.localeCompare(b.key));
@@ -262,12 +893,12 @@ export default function Data() {
       <div className="fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Data</h1>
-          <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Vos données financières, commerciales et publicitaires</p>
+          <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Vos donn\u00E9es financi\u00E8res, commerciales et publicitaires</p>
         </div>
         {subTab === 'Finances' && (
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn v="secondary" small onClick={exportPDF} aria-label="Exporter en PDF">📄 Export PDF</Btn>
-            <Btn v="secondary" small onClick={exportFEC} aria-label="Exporter FEC">📋 Export FEC</Btn>
+            <Btn v="secondary" small onClick={exportPDF} aria-label="Exporter en PDF">Export PDF</Btn>
+            <Btn v="secondary" small onClick={exportFEC} aria-label="Exporter FEC">Export FEC</Btn>
           </div>
         )}
       </div>
@@ -276,14 +907,19 @@ export default function Data() {
         <TabBar items={SUB_TABS} active={subTab} onChange={setSubTab} />
       </div>
 
+      {/* ===================== FINANCES TAB ===================== */}
       {subTab === 'Finances' && (
         <>
+          {/* KPIs */}
           <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 20 }}>
-            <KPI label="CA MENSUEL" value={`${fK(lastRow.ca || 0)}€`} sub="Ce mois-ci" accent={T.green} icon="💰" delay={1} sparkData={sparkCA} helpTip="Chiffre d'affaires total du mois" />
-            <KPI label="CHARGES" value={`${fK(lastRow.charges || 0)}€`} sub="Fixes + Variables" accent={T.red} icon="📉" delay={2} sparkData={sparkCharges} helpTip="Total charges fixes + variables" />
-            <KPI label="RÉSULTAT" value={`${fK(lastRow.result || 0)}€`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '—'} accent={T.orange} icon="📊" delay={3} sparkData={sparkResult} helpTip="CA moins charges = résultat net" />
-            <KPI label="TRÉSORERIE" value={`${fK(lastRow.treso || pf(formTreso) || 0)}€`} sub="Solde disponible" accent={T.blue} icon="🏦" delay={4} helpTip="Solde bancaire disponible" />
+            <KPI label="CA MENSUEL" value={`${fK(lastRow.ca || 0)}\u20AC`} sub="Ce mois-ci" accent={T.green} icon={'\uD83D\uDCB0'} delay={1} sparkData={sparkCA} helpTip="Chiffre d'affaires total du mois" />
+            <KPI label="CHARGES" value={`${fK(lastRow.charges || 0)}\u20AC`} sub="Fixes + Variables" accent={T.red} icon={'\uD83D\uDCC9'} delay={2} sparkData={sparkCharges} helpTip="Total charges fixes + variables" />
+            <KPI label="R\u00C9SULTAT" value={`${fK(lastRow.result || 0)}\u20AC`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '\u2014'} accent={T.orange} icon={'\uD83D\uDCCA'} delay={3} sparkData={sparkResult} helpTip="CA moins charges = r\u00E9sultat net" />
+            <KPI label="TR\u00C9SORERIE" value={`${fK(lastRow.treso || pf(formTreso) || 0)}\u20AC`} sub="Solde disponible" accent={T.blue} icon={'\uD83C\uDFE6'} delay={4} helpTip="Solde bancaire disponible" />
           </div>
+
+          {/* Threshold Alerts */}
+          <ThresholdAlerts history={history} histByKey={histByKey} />
 
           {/* CA Goal */}
           {caGoal > 0 && (
@@ -291,62 +927,85 @@ export default function Data() {
               <Card>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5, whiteSpace: 'nowrap' }}>
-                    🎯 Objectif CA
+                    Objectif CA
                     <HelpTip text="Progression vers votre objectif mensuel" />
                   </div>
                   <div style={{ flex: 1, minWidth: 120 }}>
                     <ProgressBar value={lastRow.ca || 0} max={caGoal} color={(lastRow.ca || 0) >= caGoal ? T.green : T.orange} h={8} />
                   </div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: (lastRow.ca || 0) >= caGoal ? T.green : T.orange, whiteSpace: 'nowrap' }}>
-                    {fK(lastRow.ca || 0)}€ / {fK(caGoal)}€ ({Math.min(Math.round(((lastRow.ca || 0) / caGoal) * 100), 999)}%)
+                    {fK(lastRow.ca || 0)}\u20AC / {fK(caGoal)}\u20AC ({Math.min(Math.round(((lastRow.ca || 0) / caGoal) * 100), 999)}%)
                   </div>
-                  <Btn v="ghost" small onClick={() => { setCaGoal(0); store('caGoal', 0); }}>✕</Btn>
+                  <Btn v="ghost" small onClick={() => { setCaGoal(0); store('caGoal', 0); }}>{'\u2715'}</Btn>
                 </div>
               </Card>
             </div>
           )}
 
+          {/* Budget vs Actual */}
+          <BudgetVsActual lastRow={lastRow} />
+
+          {/* Chart with forecast */}
           <div className="fade-up d3" style={{ marginBottom: 16 }}>
             <Card>
-              <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-                ÉVOLUTION CA / CHARGES
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
+                  \u00C9VOLUTION CA / CHARGES
+                </div>
+                {forecast.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 9, color: T.textMuted }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: '#16a34a', display: 'inline-block' }} />
+                      R\u00E9el
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: '#16a34a', opacity: 0.35, display: 'inline-block', border: '1px dashed #16a34a' }} />
+                      Pr\u00E9vision
+                    </span>
+                  </div>
+                )}
               </div>
-              <div style={{ height: 200 }}>
+              <div style={{ height: 220 }}>
                 <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Spinner size={20} /></div>}>
-                  <LazyFinChart />
+                  <LazyFinChart forecastData={forecast} />
                 </Suspense>
               </div>
             </Card>
           </div>
 
-          <Section title="SAISIE" sub="Renseignez vos données du mois">
+          {/* CA Forecast Card */}
+          <ForecastCard forecastData={forecast} history={history} />
+
+          {/* Data Entry Form */}
+          <Section title="SAISIE" sub="Renseignez vos donn\u00E9es du mois">
             <Card>
               <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
                 <Inp label="Mois" type="month" value={formMonth} onChange={setFormMonth} />
-                <Inp label="Chiffre d'affaires (€)" value={formCA} onChange={setFormCA} type="number" placeholder="0" suffix="€" />
-                <Inp label="Charges fixes (€)" value={formFixed} onChange={setFormFixed} type="number" placeholder="0" suffix="€" />
-                <Inp label="Charges variables (€)" value={formVar} onChange={setFormVar} type="number" placeholder="0" suffix="€" />
-                <Inp label="Trésorerie (€)" value={formTreso} onChange={setFormTreso} type="number" placeholder="0" suffix="€" />
+                <Inp label="Chiffre d'affaires (\u20AC)" value={formCA} onChange={setFormCA} type="number" placeholder="0" suffix="\u20AC" />
+                <Inp label="Charges fixes (\u20AC)" value={formFixed} onChange={setFormFixed} type="number" placeholder="0" suffix="\u20AC" />
+                <Inp label="Charges variables (\u20AC)" value={formVar} onChange={setFormVar} type="number" placeholder="0" suffix="\u20AC" />
+                <Inp label="Tr\u00E9sorerie (\u20AC)" value={formTreso} onChange={setFormTreso} type="number" placeholder="0" suffix="\u20AC" />
               </div>
               <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                 {!caGoal && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Inp label="" value={goalInput} onChange={setGoalInput} type="number" placeholder="Objectif CA mensuel" small suffix="€" />
-                    <Btn v="ghost" small onClick={saveCaGoal} disabled={!goalInput}>🎯 Définir</Btn>
+                    <Inp label="" value={goalInput} onChange={setGoalInput} type="number" placeholder="Objectif CA mensuel" small suffix="\u20AC" />
+                    <Btn v="ghost" small onClick={saveCaGoal} disabled={!goalInput}>D\u00E9finir</Btn>
                   </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
-                  {saved && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>✓ Enregistré</span>}
+                  {saved && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>{'\u2713'} Enregistr\u00E9</span>}
                   <Btn onClick={saveEntry} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Enregistrer</Btn>
                 </div>
               </div>
             </Card>
           </Section>
 
+          {/* History Table */}
           <Section title="HISTORIQUE" sub={`${history.length} derniers mois`}>
             {history.length === 0 ? (
               <Card>
-                <EmptyState icon="📊" title="Aucun historique" sub="Saisissez vos premières données ci-dessus" />
+                <EmptyState icon={'\uD83D\uDCCA'} title="Aucun historique" sub="Saisissez vos premi\u00E8res donn\u00E9es ci-dessus" />
               </Card>
             ) : (
               <Card style={{ padding: 0, overflow: 'hidden' }}>
@@ -358,15 +1017,15 @@ export default function Data() {
                           { label: 'Mois', key: 'key' },
                           { label: 'CA', key: 'ca' },
                           { label: 'Charges', key: 'charges' },
-                          { label: 'Marge', key: null, tip: 'Ratio résultat / CA' },
-                          { label: 'Résultat', key: 'result' },
-                          { label: 'N-1', key: null, tip: 'Comparaison avec le même mois l\'année précédente' },
+                          { label: 'Marge', key: null, tip: 'Ratio r\u00E9sultat / CA' },
+                          { label: 'R\u00E9sultat', key: 'result' },
+                          { label: 'N-1', key: null, tip: 'Comparaison avec le m\u00EAme mois l\'ann\u00E9e pr\u00E9c\u00E9dente' },
                         ].map((h) => (
                           <th key={h.label} scope="col" onClick={h.key ? () => toggleSort(h.key) : undefined}
                             style={{ ...thStyle, cursor: h.key ? 'pointer' : 'default' }}>
                             {h.label}
                             {h.tip && <HelpTip text={h.tip} />}
-                            {h.key && sortCol === h.key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                            {h.key && sortCol === h.key ? (sortDir === 'asc' ? ' \u2191' : ' \u2193') : ''}
                           </th>
                         ))}
                       </tr>
@@ -382,25 +1041,25 @@ export default function Data() {
                           <tr key={r.key} style={{ borderBottom: `1px solid ${T.border}22` }}>
                             <td style={{ ...tdStyle, fontWeight: 600, color: T.text }}>{monthLabel(r.key)}</td>
                             <td style={{ ...tdStyle, color: T.green, fontWeight: 600 }}>
-                              <span className="full-num">{fmt(r.ca)}€</span>
-                              <span className="compact-num">{fK(r.ca)}€</span>
+                              <span className="full-num">{fmt(r.ca)}\u20AC</span>
+                              <span className="compact-num">{fK(r.ca)}\u20AC</span>
                               {evoCa != null && <EvoBadge value={evoCa} invert={false} />}
                             </td>
                             <td style={{ ...tdStyle, color: T.red, fontWeight: 600 }}>
-                              <span className="full-num">{fmt(r.charges)}€</span>
-                              <span className="compact-num">{fK(r.charges)}€</span>
+                              <span className="full-num">{fmt(r.charges)}\u20AC</span>
+                              <span className="compact-num">{fK(r.charges)}\u20AC</span>
                               {evoCharges != null && <EvoBadge value={evoCharges} invert />}
                             </td>
                             <td style={tdStyle}>
                               <MarginBar ratio={margin} />
                             </td>
                             <td style={{ ...tdStyle, color: r.result >= 0 ? T.orange : T.red, fontWeight: 700 }}>
-                              <span className="full-num">{fmt(r.result)}€</span>
-                              <span className="compact-num">{fK(r.result)}€</span>
+                              <span className="full-num">{fmt(r.result)}\u20AC</span>
+                              <span className="compact-num">{fK(r.result)}\u20AC</span>
                               {evoResult != null && <EvoBadge value={evoResult} invert={false} />}
                             </td>
                             <td style={tdStyle}>
-                              {n1 != null ? <EvoBadge value={n1} invert={false} /> : <span style={{ fontSize: 10, color: T.textMuted }}>—</span>}
+                              {n1 != null ? <EvoBadge value={n1} invert={false} /> : <span style={{ fontSize: 10, color: T.textMuted }}>{'\u2014'}</span>}
                             </td>
                           </tr>
                         );
@@ -409,21 +1068,21 @@ export default function Data() {
                       <tr style={{ borderTop: `2px solid ${T.border}`, background: T.surface2 }}>
                         <td style={{ ...tdStyle, fontWeight: 800, color: T.text, fontSize: 11 }}>YTD {new Date().getFullYear()}</td>
                         <td style={{ ...tdStyle, color: T.green, fontWeight: 800, fontSize: 11 }}>
-                          <span className="full-num">{fmt(ytd.ca)}€</span>
-                          <span className="compact-num">{fK(ytd.ca)}€</span>
+                          <span className="full-num">{fmt(ytd.ca)}\u20AC</span>
+                          <span className="compact-num">{fK(ytd.ca)}\u20AC</span>
                         </td>
                         <td style={{ ...tdStyle, color: T.red, fontWeight: 800, fontSize: 11 }}>
-                          <span className="full-num">{fmt(ytd.charges)}€</span>
-                          <span className="compact-num">{fK(ytd.charges)}€</span>
+                          <span className="full-num">{fmt(ytd.charges)}\u20AC</span>
+                          <span className="compact-num">{fK(ytd.charges)}\u20AC</span>
                         </td>
                         <td style={tdStyle}>
                           <MarginBar ratio={ytd.ca ? Math.round((ytd.result / ytd.ca) * 100) : 0} />
                         </td>
                         <td style={{ ...tdStyle, color: ytd.result >= 0 ? T.orange : T.red, fontWeight: 800, fontSize: 11 }}>
-                          <span className="full-num">{fmt(ytd.result)}€</span>
-                          <span className="compact-num">{fK(ytd.result)}€</span>
+                          <span className="full-num">{fmt(ytd.result)}\u20AC</span>
+                          <span className="compact-num">{fK(ytd.result)}\u20AC</span>
                         </td>
-                        <td style={{ ...tdStyle, fontSize: 10, color: T.textMuted }}>—</td>
+                        <td style={{ ...tdStyle, fontSize: 10, color: T.textMuted }}>{'\u2014'}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -435,49 +1094,11 @@ export default function Data() {
         </>
       )}
 
-      {subTab === 'Sales' && (
-        <Card>
-          <Section title="PIPELINE SALES" sub="Suivi des ventes et conversions">
-            <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12, marginTop: 12 }}>
-              {[
-                { l: 'Prospects', v: 24, c: T.orange },
-                { l: 'En cours', v: 12, c: T.blue },
-                { l: 'Propositions', v: 8, c: T.purple },
-                { l: 'Gagnés', v: 18, c: T.green },
-                { l: 'Perdus', v: 5, c: T.red },
-              ].map((s) => (
-                <div key={s.l} style={{ textAlign: 'center', padding: 12, borderRadius: 10, background: s.c + '10', border: `1px solid ${s.c}22` }}>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: s.c }}>{s.v}</div>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: s.c, marginTop: 2 }}>{s.l}</div>
-                </div>
-              ))}
-            </div>
-          </Section>
-        </Card>
-      )}
+      {/* ===================== SALES TAB ===================== */}
+      {subTab === 'Sales' && <SalesTab />}
 
-      {subTab === 'Publicité' && (
-        <Card>
-          <Section title="META ADS" sub="Performance des campagnes publicitaires">
-            <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginTop: 12 }}>
-              {[
-                { l: 'Budget dépensé', v: '3 240€', c: T.orange, icon: '💸' },
-                { l: 'Impressions', v: '125.4K', c: T.blue, icon: '👁️' },
-                { l: 'Clics', v: '4 832', c: T.purple, icon: '👆' },
-                { l: 'CTR', v: '3.85%', c: T.green, icon: '📈' },
-                { l: 'CPC moyen', v: '0.67€', c: T.accent, icon: '🎯' },
-                { l: 'Conversions', v: '142', c: T.green, icon: '✅' },
-              ].map((m) => (
-                <div key={m.l} className="glass-static" style={{ padding: 14, textAlign: 'center' }}>
-                  <div style={{ fontSize: 18, marginBottom: 4 }}>{m.icon}</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: m.c }}>{m.v}</div>
-                  <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, marginTop: 2 }}>{m.l}</div>
-                </div>
-              ))}
-            </div>
-          </Section>
-        </Card>
-      )}
+      {/* ===================== PUBLICITE TAB ===================== */}
+      {subTab === 'Publicit\u00E9' && <PubliciteTab />}
     </div>
   );
 }
