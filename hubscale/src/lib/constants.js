@@ -55,3 +55,29 @@ export const INTEGRATIONS = [
   { name: 'GoHighLevel', desc: 'CRM et marketing', icon: '📈' },
   { name: 'Meta Ads', desc: 'Publicité Facebook/Instagram', icon: '📣' },
 ];
+
+export const LEAD_SCORE_LABELS = [
+  { min: 80, label: 'Hot', color: T.red, bg: T.redBg, icon: '🔥' },
+  { min: 60, label: 'Warm', color: T.orange, bg: T.orangeBg, icon: '🌡️' },
+  { min: 40, label: 'Tiède', color: T.blue, bg: T.blueBg, icon: '💧' },
+  { min: 0, label: 'Froid', color: T.textMuted, bg: T.surface2, icon: '❄️' },
+];
+
+export const CALENDAR_VIEWS = ['mois', 'semaine'];
+
+export const NOTIFICATION_TYPES = {
+  relance: { icon: '⚠️', color: T.orange, bg: T.orangeBg, label: 'Relance' },
+  conversion: { icon: '🎉', color: T.green, bg: T.greenBg, label: 'Conversion' },
+  event: { icon: '📅', color: T.blue, bg: T.blueBg, label: 'Événement' },
+  finance: { icon: '💰', color: T.green, bg: T.greenBg, label: 'Finance' },
+  alert: { icon: '🚨', color: T.red, bg: T.redBg, label: 'Alerte' },
+  tip: { icon: '💡', color: T.accent, bg: T.accentBg, label: 'Conseil' },
+};
+
+export const ONBOARDING_CHECKLIST = [
+  { id: 'company', label: 'Renseigner les infos société', icon: '🏢', tab: 'settings' },
+  { id: 'contact', label: 'Ajouter un premier contact', icon: '👤', tab: 'crm' },
+  { id: 'finance', label: 'Saisir des données financières', icon: '💰', tab: 'data' },
+  { id: 'event', label: 'Créer un événement', icon: '📅', tab: 'agenda' },
+  { id: 'integration', label: 'Connecter une intégration', icon: '🔗', tab: 'settings' },
+];

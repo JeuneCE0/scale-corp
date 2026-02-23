@@ -338,3 +338,128 @@ export function ConfirmDialog({ open, onConfirm, onCancel, title, message }) {
     </div>
   );
 }
+
+// --- Skeleton ---
+export function Skeleton({ w, h = 12, r = 4, circle, style: sx }) {
+  return <div className="skeleton" style={{ width: circle ? h : (w || '100%'), height: h, borderRadius: circle ? '50%' : r, ...sx }} />;
+}
+
+// --- Confetti ---
+export function triggerConfetti() {
+  const colors = ['#f97316', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ef4444'];
+  for (let i = 0; i < 30; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    el.style.width = (Math.random() * 8 + 4) + 'px';
+    el.style.height = (Math.random() * 8 + 4) + 'px';
+    el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+    el.style.animationDelay = (Math.random() * 0.5) + 's';
+    el.style.animationDuration = (1.5 + Math.random()) + 's';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  }
+}
+
+// --- ScoreRing ---
+export function ScoreRing({ score, size = 48, strokeWidth = 4, color, children }) {
+  const r = (size - strokeWidth) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (score / 100) * circ;
+  const c = color || (score >= 70 ? T.green : score >= 40 ? T.orange : T.red);
+  return (
+    <div className="score-ring" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={T.border} strokeWidth={strokeWidth} />
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={c} strokeWidth={strokeWidth}
+          strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
+          transform={`rotate(-90 ${size/2} ${size/2})`} style={{ transition: 'stroke-dashoffset .8s ease' }} />
+      </svg>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {children || <span style={{ fontSize: size * 0.22, fontWeight: 800, color: c }}>{score}</span>}
+      </div>
+    </div>
+  );
+}
+
+// --- StreakBadge ---
+export function StreakBadge({ count }) {
+  if (!count) return null;
+  return (
+    <div className="streak-badge" style={{ background: T.orangeBg, color: T.orange, border: `1px solid ${T.orange}33` }}>
+      <span style={{ fontSize: 13 }}>🔥</span>
+      <span>{count} mois</span>
+    </div>
+  );
+}
+
+// --- WeatherWidget ---
+export function WeatherWidget({ weather, score }) {
+  if (!weather) return null;
+  return (
+    <div className="bounce-in" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 12, background: weather.color + '15', border: `1px solid ${weather.color}33` }}>
+      <span style={{ fontSize: 24 }}>{weather.icon}</span>
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: weather.color }}>{weather.label}</div>
+        <div style={{ fontSize: 9, color: T.textMuted }}>Score santé: {score}/100</div>
+      </div>
+    </div>
+  );
+}
+
+// --- ChecklistItem ---
+export function ChecklistItem({ done, label, icon, onClick }) {
+  return (
+    <div onClick={onClick} className="hoverable" style={{
+      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10,
+      background: done ? T.greenBg : T.surface2, border: `1px solid ${done ? T.green + '33' : T.border}`,
+      cursor: onClick ? 'pointer' : 'default', transition: 'all .2s',
+    }}>
+      <div style={{
+        width: 20, height: 20, borderRadius: 10, flexShrink: 0,
+        border: `2px solid ${done ? T.green : T.border}`,
+        background: done ? T.green : 'transparent',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all .2s',
+      }}>
+        {done && <span className="check-bounce" style={{ color: '#fff', fontSize: 10, fontWeight: 700 }}>✓</span>}
+      </div>
+      {icon && <span style={{ fontSize: 14 }}>{icon}</span>}
+      <span style={{ fontSize: 12, fontWeight: 600, color: done ? T.green : T.text, textDecoration: done ? 'line-through' : 'none', transition: 'all .2s' }}>{label}</span>
+    </div>
+  );
+}
+
+// --- AnimatedNumber ---
+export function AnimatedNumber({ value, prefix = '', suffix = '', color, size = 26 }) {
+  const [display, setDisplay] = React.useState(value);
+  const [animating, setAnimating] = React.useState(false);
+  React.useEffect(() => {
+    if (display !== value) {
+      setAnimating(true);
+      const timer = setTimeout(() => { setDisplay(value); setAnimating(false); }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [value, display]);
+  return (
+    <span className={animating ? 'number-tick' : ''} style={{ fontSize: size, fontWeight: 800, color: color || T.text, lineHeight: 1.1, display: 'inline-block' }}>
+      {prefix}{display}{suffix}
+    </span>
+  );
+}
+
+// --- NotificationDot ---
+export function NotificationDot({ count }) {
+  if (!count) return null;
+  return (
+    <span style={{
+      position: 'absolute', top: -2, right: -2,
+      minWidth: 14, height: 14, borderRadius: 7,
+      background: T.red, color: '#fff',
+      fontSize: 8, fontWeight: 700,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '0 3px', lineHeight: 1,
+    }}>{count > 9 ? '9+' : count}</span>
+  );
+}
