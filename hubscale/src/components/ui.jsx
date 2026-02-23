@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback, Component } from 'react';
 import { T, FONT } from '../lib/theme.js';
 import { clamp, pct } from '../lib/utils.js';
+import { isPaid, canAccessPro, getTrialInfo } from '../lib/plan.js';
 
 // --- Error Boundary ---
 export class ErrorBoundary extends Component {
@@ -461,5 +462,119 @@ export function NotificationDot({ count }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '0 3px', lineHeight: 1,
     }}>{count > 9 ? '9+' : count}</span>
+  );
+}
+
+// --- Premium Gate (blur overlay with upgrade CTA) ---
+export function PremiumGate({ children, requiredPlan = 'professional', label, blur = true }) {
+  const paid = isPaid();
+  const unlocked = requiredPlan === 'starter' ? paid : canAccessPro();
+  if (unlocked) return children;
+
+  const trial = getTrialInfo();
+  const daysLeft = trial ? trial.daysLeft : null;
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {blur && (
+        <div style={{ filter: 'blur(6px)', pointerEvents: 'none', userSelect: 'none', opacity: 0.5 }}>
+          {children}
+        </div>
+      )}
+      <div style={{
+        position: blur ? 'absolute' : 'relative', inset: 0,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        zIndex: 10, padding: 24, textAlign: 'center',
+        background: blur ? 'rgba(9,9,11,.7)' : 'transparent',
+        borderRadius: 16, backdropFilter: blur ? 'blur(2px)' : 'none',
+      }}>
+        <div style={{
+          width: 48, height: 48, borderRadius: 14,
+          background: 'linear-gradient(135deg, #f97316, #f59e0b)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          marginBottom: 14, boxShadow: '0 4px 20px rgba(249,115,22,.3)',
+        }}>
+          <span style={{ fontSize: 22 }}>{'🔒'}</span>
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 800, color: T.text, marginBottom: 6 }}>
+          {label || 'Fonctionnalité Premium'}
+        </div>
+        <div style={{ fontSize: 12, color: T.textSecondary, marginBottom: 16, maxWidth: 280, lineHeight: 1.5 }}>
+          {daysLeft != null
+            ? `Débloquez cette fonctionnalité en souscrivant maintenant. Il vous reste ${daysLeft}j d'essai.`
+            : 'Souscrivez un abonnement pour débloquer cette fonctionnalité.'}
+        </div>
+        <button
+          onClick={() => {
+            const el = document.querySelector('[data-tab="settings"]') || document.querySelector('[aria-label="Paramètres"]');
+            if (el) el.click();
+            else window.dispatchEvent(new CustomEvent('hs:navigate', { detail: 'settings' }));
+          }}
+          style={{
+            background: 'linear-gradient(135deg, #f97316, #f59e0b)',
+            color: '#fff', border: 'none', borderRadius: 10,
+            padding: '10px 24px', fontSize: 13, fontWeight: 700,
+            cursor: 'pointer', fontFamily: FONT,
+            boxShadow: '0 4px 16px rgba(249,115,22,.3)',
+            transition: 'transform .15s ease, box-shadow .15s ease',
+          }}
+          onMouseEnter={(e) => { e.target.style.transform = 'translateY(-1px)'; e.target.style.boxShadow = '0 6px 24px rgba(249,115,22,.4)'; }}
+          onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 16px rgba(249,115,22,.3)'; }}
+        >
+          Souscrire maintenant
+        </button>
+        {requiredPlan === 'professional' && (
+          <div style={{ fontSize: 10, color: T.textMuted, marginTop: 8 }}>
+            Disponible avec le forfait Professional et supérieur
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- Upgrade Banner (subtle inline CTA for trial users) ---
+export function UpgradeBanner() {
+  const paid = isPaid();
+  if (paid) return null;
+
+  const trial = getTrialInfo();
+  const daysLeft = trial ? trial.daysLeft : null;
+
+  return (
+    <div className="fade-up" style={{
+      background: 'linear-gradient(135deg, rgba(249,115,22,.1), rgba(245,158,11,.1))',
+      border: '1px solid rgba(249,115,22,.2)',
+      borderRadius: 12, padding: '12px 18px', marginBottom: 16,
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      flexWrap: 'wrap', gap: 10,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontSize: 18 }}>{'⚡'}</span>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: T.orange }}>
+            {daysLeft != null ? `Plus que ${daysLeft} jours d'essai gratuit` : 'Essai gratuit'}
+          </div>
+          <div style={{ fontSize: 10, color: T.textSecondary }}>
+            Souscrivez maintenant pour débloquer toutes les fonctionnalités
+          </div>
+        </div>
+      </div>
+      <button
+        onClick={() => {
+          const el = document.querySelector('[aria-label="Paramètres"]');
+          if (el) el.click();
+          else window.dispatchEvent(new CustomEvent('hs:navigate', { detail: 'settings' }));
+        }}
+        style={{
+          background: 'linear-gradient(135deg, #f97316, #f59e0b)',
+          color: '#fff', border: 'none', borderRadius: 8,
+          padding: '7px 16px', fontSize: 11, fontWeight: 700,
+          cursor: 'pointer', fontFamily: FONT, whiteSpace: 'nowrap',
+        }}
+      >
+        Souscrire
+      </button>
+    </div>
   );
 }

@@ -3,7 +3,8 @@ import { T } from '../lib/theme.js';
 import { uid, ago, fmt, fK, daysSince, leadScore } from '../lib/utils.js';
 import { storeDebounced, load } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
-import { Card, Btn, Inp, Badge, Modal, EmptyState, Sel, TabBar, ConfirmDialog, Pagination, ScoreRing, triggerConfetti } from '../components/ui.jsx';
+import { Card, Btn, Inp, Badge, Modal, EmptyState, Sel, TabBar, ConfirmDialog, Pagination, ScoreRing, triggerConfetti, PremiumGate } from '../components/ui.jsx';
+import { isPaid } from '../lib/plan.js';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { useUndoStack } from '../hooks/useUndoStack.js';
 import { CRM_STATUSES as STATUSES, CRM_FILTER_TABS as FILTER_TABS, LEAD_SCORE_LABELS } from '../lib/constants.js';
@@ -168,8 +169,12 @@ export default function CRM() {
     searchTimer.current = setTimeout(() => setDebouncedSearch(v), 200);
   }, []);
 
+  const FREE_CONTACT_LIMIT = 20;
+  const atContactLimit = !isPaid() && contacts.length >= FREE_CONTACT_LIMIT;
+
   // ---- Modal state ----
   const [showModal, setShowModal] = useState(false);
+  const [showLimitGate, setShowLimitGate] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '' });
   const [newComment, setNewComment] = useState('');
@@ -282,11 +287,12 @@ export default function CRM() {
 
   // ---- Modal open/close ----
   const openNew = useCallback(() => {
+    if (atContactLimit) { setShowLimitGate(true); return; }
     setEditId(null);
     setForm({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '' });
     setNewComment('');
     setShowModal(true);
-  }, []);
+  }, [atContactLimit]);
 
   const openEdit = useCallback((c) => {
     setEditId(c.id);
@@ -646,7 +652,9 @@ export default function CRM() {
         </div>
         <Btn v="secondary" small onClick={() => csvInputRef.current?.click()} aria-label="Importer CSV">{'↑'} Import CSV</Btn>
         <input ref={csvInputRef} type="file" accept=".csv" onChange={handleCSVImport} style={{ display: 'none' }} />
-        <Btn onClick={openNew} aria-label="Ajouter un contact" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: '0 2px 12px rgba(249,115,22,.3)' }}>+ Contact</Btn>
+        <Btn onClick={openNew} aria-label="Ajouter un contact" style={{ background: atContactLimit ? T.surface2 : 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: atContactLimit ? 'none' : '0 2px 12px rgba(249,115,22,.3)', opacity: atContactLimit ? .7 : 1 }}>
+          {atContactLimit ? '🔒 Limite atteinte' : '+ Contact'}
+        </Btn>
       </div>
 
       {/* Score filter chips */}
@@ -1231,6 +1239,13 @@ export default function CRM() {
         onConfirm={del.execute}
         onCancel={del.cancel}
       />
+
+      {/* ---- CONTACT LIMIT GATE ---- */}
+      <Modal open={showLimitGate} onClose={() => setShowLimitGate(false)} title="Limite atteinte">
+        <PremiumGate label={`Limite de ${FREE_CONTACT_LIMIT} contacts atteinte`} blur={false}>
+          <div />
+        </PremiumGate>
+      </Modal>
 
       {/* ---- CONVERSION TOAST (fixed position) ---- */}
       {conversionToast && (

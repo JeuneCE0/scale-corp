@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { T, getTheme, applyTheme } from '../lib/theme.js';
 import { store, load } from '../lib/store.js';
-import { Card, Section, Btn, Inp, Sel, TabBar, Toggle, ConfirmDialog, Badge, ProgressBar } from '../components/ui.jsx';
+import { Card, Section, Btn, Inp, Sel, TabBar, Toggle, ConfirmDialog, Badge, ProgressBar, PremiumGate } from '../components/ui.jsx';
+import { canAccessPro } from '../lib/plan.js';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { SECTORS, PLANS, INTEGRATIONS } from '../lib/constants.js';
 import { onIntegrationConnect, getIntegrationMeta } from '../lib/integrationData.js';
@@ -866,31 +867,33 @@ export default function Settings() {
       {/* -------- UTILISATEURS -------- */}
       {subTab === 'Utilisateurs' && (
         <Section title="GESTION DES UTILISATEURS" sub="Ajoutez et gérez les membres de votre équipe">
-          <Card>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
-              <div style={{ fontSize: 12, color: T.textSecondary }}>{users.length} utilisateur{users.length > 1 ? 's' : ''} sur votre forfait</div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Inp small value={inviteEmail} onChange={(v) => { setInviteEmail(v); setInviteError(''); }} placeholder="email@exemple.com" onKeyDown={(e) => e.key === 'Enter' && inviteUser()} />
-                <Btn onClick={inviteUser} aria-label="Inviter un utilisateur" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>+ Inviter</Btn>
-                {inviteError && <span style={{ fontSize: 11, color: T.red, fontWeight: 600, width: '100%' }}>{inviteError}</span>}
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {users.map((u) => (
-                <div key={u.email} style={{ padding: '12px 14px', borderRadius: 10, background: T.surface2, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 18, background: T.accentBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: T.accent, fontSize: 14, flexShrink: 0 }}>
-                    {u.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 100 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: T.text }}>{u.name}</div>
-                    <div style={{ fontSize: 11, color: T.textSecondary }}>{u.email}</div>
-                  </div>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: T.accent, background: T.accentBg, padding: '3px 8px', borderRadius: 6 }}>{u.role}</span>
-                  {u.role !== 'Owner' && <Btn v="ghost" small aria-label={`Retirer ${u.name}`} onClick={() => del.request(u.email)}>✕</Btn>}
+          <PremiumGate label="Gestion d'équipe" blur>
+            <Card>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ fontSize: 12, color: T.textSecondary }}>{users.length} utilisateur{users.length > 1 ? 's' : ''} sur votre forfait</div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Inp small value={inviteEmail} onChange={(v) => { setInviteEmail(v); setInviteError(''); }} placeholder="email@exemple.com" onKeyDown={(e) => e.key === 'Enter' && inviteUser()} />
+                  <Btn onClick={inviteUser} aria-label="Inviter un utilisateur" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>+ Inviter</Btn>
+                  {inviteError && <span style={{ fontSize: 11, color: T.red, fontWeight: 600, width: '100%' }}>{inviteError}</span>}
                 </div>
-              ))}
-            </div>
-          </Card>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {users.map((u) => (
+                  <div key={u.email} style={{ padding: '12px 14px', borderRadius: 10, background: T.surface2, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 18, background: T.accentBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: T.accent, fontSize: 14, flexShrink: 0 }}>
+                      {u.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 100 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: T.text }}>{u.name}</div>
+                      <div style={{ fontSize: 11, color: T.textSecondary }}>{u.email}</div>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: T.accent, background: T.accentBg, padding: '3px 8px', borderRadius: 6 }}>{u.role}</span>
+                    {u.role !== 'Owner' && <Btn v="ghost" small aria-label={`Retirer ${u.name}`} onClick={() => del.request(u.email)}>✕</Btn>}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </PremiumGate>
 
           <ConfirmDialog
             open={del.isOpen}
@@ -972,6 +975,7 @@ export default function Settings() {
       {/* -------- INTÉGRATIONS -------- */}
       {subTab === 'Intégrations' && (
         <Section title="INTÉGRATIONS API" sub="Connectez vos outils et services externes">
+          <PremiumGate label="Intégrations API" blur>
           {/* Search bar + Category filter */}
           <Card style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1335,6 +1339,7 @@ export default function Settings() {
               </div>
             )}
           </Card>
+          </PremiumGate>
         </Section>
       )}
 
@@ -1358,7 +1363,7 @@ export default function Settings() {
                         <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1 }}>{e.sub}</div>
                       </div>
                     </div>
-                    <Btn v="secondary" small onClick={() => exportData(e.type)}>Télécharger</Btn>
+                    <Btn v="secondary" small onClick={canAccessPro() ? () => exportData(e.type) : undefined} disabled={!canAccessPro()}>{canAccessPro() ? 'Télécharger' : '🔒 Pro'}</Btn>
                   </div>
                 ))}
               </div>
@@ -1377,7 +1382,7 @@ export default function Settings() {
                     </div>
                   </div>
                 </div>
-                <Btn onClick={generateFinancialReport} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Générer le rapport</Btn>
+                <Btn onClick={canAccessPro() ? generateFinancialReport : undefined} disabled={!canAccessPro()} style={{ background: canAccessPro() ? 'linear-gradient(135deg, #f97316, #f59e0b)' : T.surface2 }}>{canAccessPro() ? 'Générer le rapport' : '🔒 Réservé Pro'}</Btn>
               </div>
             </Card>
           </Section>

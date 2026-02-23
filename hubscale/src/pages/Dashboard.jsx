@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect, lazy, Suspense } from
 import { T, FONT } from '../lib/theme.js';
 import { fK, fmt, ago, businessHealth, businessWeather, getStreak, forecastCA, daysSince, daysUntil, leadScore } from '../lib/utils.js';
 import { load, store } from '../lib/store.js';
-import { KPI, Card, Badge, ProgressBar, Spinner, Btn, Inp, HelpTip, ScoreRing, StreakBadge, WeatherWidget, ChecklistItem, AnimatedNumber, Sparkline } from '../components/ui.jsx';
+import { KPI, Card, Badge, ProgressBar, Spinner, Btn, Inp, HelpTip, ScoreRing, StreakBadge, WeatherWidget, ChecklistItem, AnimatedNumber, Sparkline, PremiumGate, UpgradeBanner } from '../components/ui.jsx';
 import { ONBOARDING_CHECKLIST, CRM_STATUSES, NOTIFICATION_TYPES, INTEGRATIONS } from '../lib/constants.js';
 import { getIntegrationMeta } from '../lib/integrationData.js';
 
@@ -472,6 +472,8 @@ export default function Dashboard({ onNavigate }) {
   /* ================================================================ */
   return (
     <div>
+      <UpgradeBanner />
+
       {/* ============================================================ */}
       {/*  WELCOME BANNER with Weather + Streak + Health ring           */}
       {/* ============================================================ */}
@@ -594,16 +596,18 @@ export default function Dashboard({ onNavigate }) {
         <KPI label="CHARGES" value={`${fmt(lastRow.charges || 0)} €`} sub="Fixes + Variables" accent={T.red} icon="📉" delay={2} sparkData={sparkCharges} helpTip="Total des charges fixes et variables" />
         <KPI label="RESULTAT NET" value={`${fmt(lastRow.result || 0)} €`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '---'} accent={T.orange} icon="📊" delay={3} sparkData={sparkResult} helpTip="CA moins charges = benefice net" />
         {forecastLabel && (
-          <KPI
-            label="PREVISION 3 MOIS"
-            value={`${forecastLabel.pct >= 0 ? '+' : ''}${forecastLabel.pct}%`}
-            sub={`Projection: ${fmt(forecastLabel.value)} €`}
-            accent={forecastLabel.pct >= 0 ? T.blue : T.red}
-            icon="📈"
-            delay={3}
-            sparkData={forecast.map((f) => f.ca)}
-            helpTip="Prevision lineaire sur 3 mois basee sur la tendance recente"
-          />
+          <PremiumGate label="Prévisions IA" blur={false}>
+            <KPI
+              label="PREVISION 3 MOIS"
+              value={`${forecastLabel.pct >= 0 ? '+' : ''}${forecastLabel.pct}%`}
+              sub={`Projection: ${fmt(forecastLabel.value)} €`}
+              accent={forecastLabel.pct >= 0 ? T.blue : T.red}
+              icon="📈"
+              delay={3}
+              sparkData={forecast.map((f) => f.ca)}
+              helpTip="Prevision lineaire sur 3 mois basee sur la tendance recente"
+            />
+          </PremiumGate>
         )}
       </div>
 

@@ -3,7 +3,8 @@ import { T } from '../lib/theme.js';
 import { fmt, fK, pf, curMonth, monthLabel, prevMonth, sameMonthLastYear, forecastCA, businessHealth } from '../lib/utils.js';
 import { storeDebounced, load, store } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
-import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState, Pagination, ProgressBar, HelpTip, Spinner, Badge, ScoreRing } from '../components/ui.jsx';
+import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState, Pagination, ProgressBar, HelpTip, Spinner, Badge, ScoreRing, PremiumGate } from '../components/ui.jsx';
+import { isPaid, canAccessPro } from '../lib/plan.js';
 
 /* ------------------------------------------------------------------ */
 /*  Lazy-loaded Enhanced Chart with forecast overlay                   */
@@ -636,62 +637,64 @@ function PubliciteTab() {
 
       {/* Simulation mode */}
       <Section title="SIMULATEUR PUBLICITAIRE" sub="Estimez vos performances en fonction de votre budget">
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 13 }}>{'🧪'}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
-                Mode simulation
-              </span>
-            </div>
-            <Btn v={simMode ? 'primary' : 'ghost'} small onClick={() => setSimMode(!simMode)}>
-              {simMode ? 'Masquer' : 'Simuler'}
-            </Btn>
-          </div>
-
-          {simMode && (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
-                <Inp label="Budget publicitaire (€)" value={adSpend} onChange={setAdSpend} type="number" placeholder="1000" suffix="€" />
-                <Inp label="CPC moyen (€)" value={cpc} onChange={setCpc} type="number" placeholder="0.50" suffix="€" />
-                <Inp label="Taux de conversion (%)" value={convRate} onChange={setConvRate} type="number" placeholder="3" suffix="%" />
+        <PremiumGate label="Simulateur publicitaire" blur>
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 13 }}>{'🧪'}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
+                  Mode simulation
+                </span>
               </div>
-
-              {simResults && (
-                <div style={{
-                  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
-                  gap: 10, padding: 14, borderRadius: 10,
-                  background: T.accent + '08', border: `1px solid ${T.accent}22`,
-                }}>
-                  {[
-                    { l: 'Impressions est.', v: fK(simResults.impressions), c: T.blue },
-                    { l: 'Clics est.', v: fmt(simResults.clicks), c: T.purple },
-                    { l: 'CTR est.', v: simResults.ctr + '%', c: T.green },
-                    { l: 'Conversions est.', v: String(simResults.conversions), c: T.green },
-                    { l: 'CPA est.', v: simResults.cpa === '—' ? '—' : simResults.cpa + '€', c: T.orange },
-                  ].map((r) => (
-                    <div key={r.l} style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: r.c }}>{r.v}</div>
-                      <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, marginTop: 2 }}>{r.l}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {!simResults && (
-                <div style={{ textAlign: 'center', padding: 16, color: T.textMuted, fontSize: 11 }}>
-                  Renseignez au minimum le budget et le CPC pour voir les projections
-                </div>
-              )}
-            </>
-          )}
-
-          {!simMode && (
-            <div style={{ textAlign: 'center', padding: '12px 0', color: T.textMuted, fontSize: 11 }}>
-              Cliquez sur "Simuler" pour estimer vos performances publicitaires
+              <Btn v={simMode ? 'primary' : 'ghost'} small onClick={() => setSimMode(!simMode)}>
+                {simMode ? 'Masquer' : 'Simuler'}
+              </Btn>
             </div>
-          )}
-        </Card>
+
+            {simMode && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
+                  <Inp label="Budget publicitaire (€)" value={adSpend} onChange={setAdSpend} type="number" placeholder="1000" suffix="€" />
+                  <Inp label="CPC moyen (€)" value={cpc} onChange={setCpc} type="number" placeholder="0.50" suffix="€" />
+                  <Inp label="Taux de conversion (%)" value={convRate} onChange={setConvRate} type="number" placeholder="3" suffix="%" />
+                </div>
+
+                {simResults && (
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+                    gap: 10, padding: 14, borderRadius: 10,
+                    background: T.accent + '08', border: `1px solid ${T.accent}22`,
+                  }}>
+                    {[
+                      { l: 'Impressions est.', v: fK(simResults.impressions), c: T.blue },
+                      { l: 'Clics est.', v: fmt(simResults.clicks), c: T.purple },
+                      { l: 'CTR est.', v: simResults.ctr + '%', c: T.green },
+                      { l: 'Conversions est.', v: String(simResults.conversions), c: T.green },
+                      { l: 'CPA est.', v: simResults.cpa === '—' ? '—' : simResults.cpa + '€', c: T.orange },
+                    ].map((r) => (
+                      <div key={r.l} style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: r.c }}>{r.v}</div>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, marginTop: 2 }}>{r.l}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!simResults && (
+                  <div style={{ textAlign: 'center', padding: 16, color: T.textMuted, fontSize: 11 }}>
+                    Renseignez au minimum le budget et le CPC pour voir les projections
+                  </div>
+                )}
+              </>
+            )}
+
+            {!simMode && (
+              <div style={{ textAlign: 'center', padding: '12px 0', color: T.textMuted, fontSize: 11 }}>
+                Cliquez sur "Simuler" pour estimer vos performances publicitaires
+              </div>
+            )}
+          </Card>
+        </PremiumGate>
       </Section>
     </>
   );
@@ -899,8 +902,8 @@ export default function Data() {
         </div>
         {subTab === 'Finances' && (
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn v="secondary" small onClick={exportPDF} aria-label="Exporter en PDF">Export PDF</Btn>
-            <Btn v="secondary" small onClick={exportFEC} aria-label="Exporter FEC">Export FEC</Btn>
+            <Btn v="secondary" small onClick={isPaid() ? exportPDF : undefined} disabled={!isPaid()} aria-label="Exporter en PDF">{isPaid() ? 'Export PDF' : '🔒 Export PDF'}</Btn>
+            <Btn v="secondary" small onClick={isPaid() ? exportFEC : undefined} disabled={!isPaid()} aria-label="Exporter FEC">{isPaid() ? 'Export FEC' : '🔒 Export FEC'}</Btn>
           </div>
         )}
       </div>

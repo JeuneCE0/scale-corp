@@ -2,7 +2,7 @@ import React, { useMemo, lazy, Suspense } from 'react';
 import { T, FONT } from '../lib/theme.js';
 import { load } from '../lib/store.js';
 import { fmt, fK, pct, monthLabel, forecastCA, leadScore, daysSince, MONTHS_FR, curMonth, nextMonth, sameMonthLastYear } from '../lib/utils.js';
-import { Card, Section, Badge, Btn, ProgressBar, ScoreRing, Sparkline, KPI, Spinner, HelpTip } from '../components/ui.jsx';
+import { Card, Section, Badge, Btn, ProgressBar, ScoreRing, Sparkline, KPI, Spinner, HelpTip, PremiumGate } from '../components/ui.jsx';
 import { INTEGRATIONS, CRM_STATUSES, LEAD_SCORE_LABELS } from '../lib/constants.js';
 
 /* ------------------------------------------------------------------ */
@@ -341,7 +341,7 @@ export default function Analytics({ onNavigate }) {
   /*  RENDER                                                           */
   /* ================================================================ */
   return (
-    <div>
+    <PremiumGate label="Rapports & Analytics" blur>
       {/* ============================================================ */}
       {/*  HEADER                                                       */}
       {/* ============================================================ */}
@@ -777,6 +777,6 @@ export default function Analytics({ onNavigate }) {
           )}
         </Card>
       </Section>
-    </div>
+    </PremiumGate>
   );
 }
