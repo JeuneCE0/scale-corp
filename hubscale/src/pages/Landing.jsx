@@ -614,7 +614,7 @@ export default function Landing({ onLogin, onSignup }) {
                         <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{item.tool}</span>
                         <span style={{ fontSize: 10, color: C.textMuted, marginLeft: 6 }}>{item.cat}</span>
                       </div>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: C.red }}>{item.price}\u20ac</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: C.red }}>{item.price}€</span>
                     </div>
                   ))}
                 </div>
@@ -623,7 +623,7 @@ export default function Landing({ onLogin, onSignup }) {
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
                   <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600 }}>Total mensuel</span>
-                  <span style={{ fontSize: 24, fontWeight: 900, color: C.red }}>181\u20ac</span>
+                  <span style={{ fontSize: 24, fontWeight: 900, color: C.red }}>181€</span>
                 </div>
                 <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6, textAlign: 'right' }}>
                   + aucune vision d'ensemble de votre activite
@@ -683,8 +683,8 @@ export default function Landing({ onLogin, onSignup }) {
                 }}>
                   <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600 }}>Total mensuel</span>
                   <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: 14, color: C.textMuted, textDecoration: 'line-through', marginRight: 8 }}>181\u20ac</span>
-                    <span style={{ fontSize: 24, fontWeight: 900, color: C.green }}>199\u20ac</span>
+                    <span style={{ fontSize: 14, color: C.textMuted, textDecoration: 'line-through', marginRight: 8 }}>181€</span>
+                    <span style={{ fontSize: 24, fontWeight: 900, color: C.green }}>199€</span>
                   </div>
                 </div>
                 <div style={{
@@ -956,11 +956,11 @@ export default function Landing({ onLogin, onSignup }) {
                     <h3 style={{ fontSize: 18, fontWeight: 700, color: C.text, margin: '0 0 4px' }}>{plan.name}</h3>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
                       <span style={{ fontSize: 46, fontWeight: 900, color: C.text }}>{price}</span>
-                      <span style={{ fontSize: 14, color: C.textMuted, fontWeight: 500 }}>\u20ac/mois</span>
+                      <span style={{ fontSize: 14, color: C.textMuted, fontWeight: 500 }}>€/mois</span>
                     </div>
                     {annual && (
                       <div style={{ fontSize: 12, color: C.green, fontWeight: 600, marginTop: 2 }}>
-                        {plan.monthly * 12}\u20ac \u2192 {price * 12}\u20ac/an
+                        {plan.monthly * 12}€ {'→'} {price * 12}€/an
                       </div>
                     )}
                   </div>
@@ -1306,7 +1306,7 @@ export default function Landing({ onLogin, onSignup }) {
             borderTop: `1px solid ${C.border}`, paddingTop: 24, flexWrap: 'wrap', gap: 12,
           }}>
             <span style={{ fontSize: 12, color: C.textMuted }}>
-              \u00a9 {new Date().getFullYear()} HubScale. Tous droits reserves. Fait avec {'\u2764'} en France.
+              © {new Date().getFullYear()} HubScale. Tous droits reserves. Fait avec {'\u2764'} en France.
             </span>
             <div style={{ display: 'flex', gap: 16 }}>
               {['Twitter', 'LinkedIn', 'GitHub'].map((s) => (
