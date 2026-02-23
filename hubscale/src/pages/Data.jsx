@@ -5,6 +5,7 @@ import { storeDebounced, load, store } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
 import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState, Pagination, ProgressBar, HelpTip, Spinner, Badge, ScoreRing, PremiumGate } from '../components/ui.jsx';
 import { isPaid, canAccessPro } from '../lib/plan.js';
+import { EXPENSE_CATEGORIES } from '../lib/constants.js';
 
 /* ------------------------------------------------------------------ */
 /*  Lazy-loaded Enhanced Chart with forecast overlay                   */
@@ -78,6 +79,44 @@ const LazyFinChart = lazy(() =>
 );
 
 /* ------------------------------------------------------------------ */
+/*  Lazy-loaded Donut Chart for expense categories                     */
+/* ------------------------------------------------------------------ */
+const LazyExpenseDonut = lazy(() =>
+  import('recharts').then((mod) => ({
+    default: function ExpenseDonut({ data }) {
+      const { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } = mod;
+      if (!data || data.length === 0) return null;
+      return (
+        <ResponsiveContainer width="100%" height={200}>
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={50}
+              outerRadius={80}
+              paddingAngle={2}
+              dataKey="value"
+              nameKey="label"
+            >
+              {data.map((entry, idx) => (
+                <Cell key={idx} fill={entry.color} />
+              ))}
+            </Pie>
+            <Tooltip
+              formatter={(v) => [fmt(v) + ' €', '']}
+              contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 11, color: T.text }}
+              labelStyle={{ fontWeight: 700, fontSize: 11, color: T.text }}
+              itemStyle={{ color: T.text }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      );
+    },
+  }))
+);
+
+/* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 const SUB_TABS = ['Finances', 'Sales', 'Publicité'];
@@ -94,7 +133,13 @@ function generateDefaultHistory() {
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     const ca = 18000 + Math.round(Math.random() * 15000);
     const charges = 10000 + Math.round(Math.random() * 8000);
-    rows.push({ key, ca, charges, result: ca - charges });
+    const catLoyer = 1500 + Math.round(Math.random() * 300);
+    const catSalaires = 3000 + Math.round(Math.random() * 2000);
+    const catMarketing = 800 + Math.round(Math.random() * 1200);
+    const catOutils = 200 + Math.round(Math.random() * 300);
+    const catAutre = Math.max(0, charges - catLoyer - catSalaires - catMarketing - catOutils);
+    const categories = { loyer: catLoyer, salaires: catSalaires, marketing: catMarketing, outils: catOutils, autre: catAutre };
+    rows.push({ key, ca, charges, result: ca - charges, categories });
   }
   return rows;
 }
@@ -711,6 +756,8 @@ export default function Data() {
   const [formFixed, setFormFixed] = useState('');
   const [formVar, setFormVar] = useState('');
   const [formTreso, setFormTreso] = useState('');
+  const [formCategories, setFormCategories] = useState({});
+  const [showCategories, setShowCategories] = useState(false);
   const [saved, setSaved] = useState(false);
   const [sortCol, setSortCol] = useState('key');
   const [sortDir, setSortDir] = useState('asc');
@@ -790,6 +837,33 @@ export default function Data() {
   // Forecast data (3-month projection)
   const forecast = useMemo(() => forecastCA(history, 3), [history]);
 
+  // Expense category breakdown (aggregate last 3 months or all available)
+  const expenseBreakdown = useMemo(() => {
+    const recent = history.slice(-3);
+    const totals = {};
+    let hasAny = false;
+    recent.forEach((r) => {
+      if (r.categories) {
+        hasAny = true;
+        Object.entries(r.categories).forEach(([cat, val]) => {
+          totals[cat] = (totals[cat] || 0) + val;
+        });
+      }
+    });
+    if (!hasAny) return [];
+    const catMap = {};
+    EXPENSE_CATEGORIES.forEach((c) => { catMap[c.id] = c; });
+    return Object.entries(totals)
+      .map(([id, value]) => ({
+        id,
+        label: catMap[id]?.label || id,
+        icon: catMap[id]?.icon || '📋',
+        color: catMap[id]?.color || '#71717a',
+        value: Math.round(value / Math.min(recent.length, 3)),
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [history]);
+
   const saveEntry = useCallback(() => {
     const ca = Math.round(pf(formCA) * 100) / 100;
     const fixed = Math.round(pf(formFixed) * 100) / 100;
@@ -798,15 +872,22 @@ export default function Data() {
     const existing = history.findIndex((r) => r.key === formMonth);
     const charges = Math.round((fixed + variable) * 100) / 100;
     const result = Math.round((ca - fixed - variable) * 100) / 100;
+    // Build categories object (only store non-zero values)
+    const cats = {};
+    Object.entries(formCategories).forEach(([k, v]) => {
+      const val = Math.round(pf(v) * 100) / 100;
+      if (val > 0) cats[k] = val;
+    });
     const row = { key: formMonth, ca, charges, result, treso: Math.round(pf(formTreso) * 100) / 100 };
+    if (Object.keys(cats).length > 0) row.categories = cats;
     if (existing >= 0) {
       const updated = [...history]; updated[existing] = row; setHistory(updated);
     } else {
       setHistory([...history, row].sort((a, b) => a.key.localeCompare(b.key)).slice(-12));
     }
-    setFormCA(''); setFormFixed(''); setFormVar(''); setFormTreso('');
+    setFormCA(''); setFormFixed(''); setFormVar(''); setFormTreso(''); setFormCategories({}); setShowCategories(false);
     setSaved(true); setTimeout(() => setSaved(false), 2000);
-  }, [formCA, formFixed, formVar, formTreso, formMonth, history]);
+  }, [formCA, formFixed, formVar, formTreso, formMonth, history, formCategories]);
 
   // PDF Export
   const exportPDF = useCallback(() => {
@@ -991,6 +1072,39 @@ export default function Data() {
                 <Inp label="Charges variables (€)" value={formVar} onChange={setFormVar} type="number" placeholder="0" suffix="€" />
                 <Inp label="Trésorerie (€)" value={formTreso} onChange={setFormTreso} type="number" placeholder="0" suffix="€" />
               </div>
+
+              {/* Category breakdown toggle */}
+              <div style={{ marginTop: 14, borderTop: `1px solid ${T.border}`, paddingTop: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showCategories ? 12 : 0 }}>
+                  <Btn v="ghost" small onClick={() => setShowCategories(!showCategories)}>
+                    {showCategories ? '▾' : '▸'} Détailler les charges par catégorie
+                  </Btn>
+                  {showCategories && Object.values(formCategories).some((v) => pf(v) > 0) && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: T.textMuted }}>
+                      Total catégories : {fmt(Object.values(formCategories).reduce((s, v) => s + pf(v), 0))} €
+                    </span>
+                  )}
+                </div>
+                {showCategories && (
+                  <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
+                    {EXPENSE_CATEGORIES.map((cat) => (
+                      <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 14 }}>{cat.icon}</span>
+                        <Inp
+                          label={cat.label}
+                          value={formCategories[cat.id] || ''}
+                          onChange={(v) => setFormCategories((prev) => ({ ...prev, [cat.id]: v }))}
+                          type="number"
+                          placeholder="0"
+                          suffix="€"
+                          small
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                 {!caGoal && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1005,6 +1119,46 @@ export default function Data() {
               </div>
             </Card>
           </Section>
+
+          {/* Expense Breakdown */}
+          {expenseBreakdown.length > 0 && (
+            <Section title="RÉPARTITION DES CHARGES" sub="Moyenne mensuelle par catégorie (3 derniers mois)">
+              <Card>
+                <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 20, alignItems: 'center' }}>
+                  <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}><Spinner size={20} /></div>}>
+                    <LazyExpenseDonut data={expenseBreakdown} />
+                  </Suspense>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {expenseBreakdown.map((cat) => {
+                      const total = expenseBreakdown.reduce((s, c) => s + c.value, 0);
+                      const pctVal = total > 0 ? Math.round((cat.value / total) * 100) : 0;
+                      return (
+                        <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontSize: 14, width: 20, textAlign: 'center' }}>{cat.icon}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: T.text }}>{cat.label}</span>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: cat.color }}>{fmt(cat.value)} €</span>
+                            </div>
+                            <div style={{ height: 4, borderRadius: 2, background: T.border, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${pctVal}%`, background: cat.color, borderRadius: 2, transition: 'width .5s ease' }} />
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, minWidth: 30, textAlign: 'right' }}>{pctVal}%</span>
+                        </div>
+                      );
+                    })}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid ${T.border}`, paddingTop: 8, marginTop: 4 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: T.text }}>Total</span>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: T.red }}>
+                        {fmt(expenseBreakdown.reduce((s, c) => s + c.value, 0))} € /mois
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </Section>
+          )}
 
           {/* History Table */}
           <Section title="HISTORIQUE" sub={`${history.length} derniers mois`}>

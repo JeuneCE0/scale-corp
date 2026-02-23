@@ -98,6 +98,19 @@ export const INTEGRATIONS = [
   { name: 'Intercom', desc: 'Messagerie client & support', icon: '💬', category: 'support' },
 ];
 
+export const EXPENSE_CATEGORIES = [
+  { id: 'loyer', label: 'Loyer / Locaux', icon: '🏢', color: '#6366f1' },
+  { id: 'salaires', label: 'Salaires / RH', icon: '👥', color: '#3b82f6' },
+  { id: 'marketing', label: 'Marketing / Pub', icon: '📢', color: '#f97316' },
+  { id: 'outils', label: 'Outils / SaaS', icon: '💻', color: '#a855f7' },
+  { id: 'fournisseurs', label: 'Fournisseurs', icon: '📦', color: '#22c55e' },
+  { id: 'transport', label: 'Transport / Déplacements', icon: '🚗', color: '#eab308' },
+  { id: 'telecom', label: 'Télécom / Internet', icon: '📡', color: '#06b6d4' },
+  { id: 'assurances', label: 'Assurances', icon: '🛡️', color: '#64748b' },
+  { id: 'impots', label: 'Impôts / Taxes', icon: '🏛️', color: '#ef4444' },
+  { id: 'autre', label: 'Autres', icon: '📋', color: '#71717a' },
+];
+
 export const LEAD_SCORE_LABELS = [
   { min: 80, label: 'Hot', color: T.red, bg: T.redBg, icon: '🔥' },
   { min: 60, label: 'Warm', color: T.orange, bg: T.orangeBg, icon: '🌡️' },

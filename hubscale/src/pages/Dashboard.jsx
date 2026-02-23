@@ -3,7 +3,7 @@ import { T, FONT } from '../lib/theme.js';
 import { fK, fmt, ago, businessHealth, businessWeather, getStreak, forecastCA, daysSince, daysUntil, leadScore } from '../lib/utils.js';
 import { load, store } from '../lib/store.js';
 import { KPI, Card, Badge, ProgressBar, Spinner, Btn, Inp, HelpTip, ScoreRing, StreakBadge, WeatherWidget, ChecklistItem, AnimatedNumber, Sparkline, PremiumGate, UpgradeBanner } from '../components/ui.jsx';
-import { ONBOARDING_CHECKLIST, CRM_STATUSES, NOTIFICATION_TYPES, INTEGRATIONS } from '../lib/constants.js';
+import { ONBOARDING_CHECKLIST, CRM_STATUSES, NOTIFICATION_TYPES, INTEGRATIONS, EXPENSE_CATEGORIES } from '../lib/constants.js';
 import { getIntegrationMeta } from '../lib/integrationData.js';
 
 /* ------------------------------------------------------------------ */
@@ -365,8 +365,8 @@ export default function Dashboard({ onNavigate }) {
   /* ---------------------------------------------------------------- */
   const [widgetOrder, setWidgetOrder] = useState(() => {
     const saved = load('dashWidgetOrder');
-    if (saved && saved.includes('cashflow-projection') && saved.includes('cross-insights')) return saved;
-    return ['chart-pipeline', 'integration-kpis', 'cashflow-projection', 'cross-insights', 'crm-banner', 'pub-banner', 'integrations-hub', 'activity-tasks'];
+    if (saved && saved.includes('expense-breakdown')) return saved;
+    return ['chart-pipeline', 'integration-kpis', 'expense-breakdown', 'cashflow-projection', 'cross-insights', 'crm-banner', 'pub-banner', 'integrations-hub', 'activity-tasks'];
   });
   const [dragWidget, setDragWidget] = useState(null);
   const handleWidgetDragStart = useCallback((e, id) => { setDragWidget(id); e.dataTransfer.effectAllowed = 'move'; }, []);
@@ -631,6 +631,35 @@ export default function Dashboard({ onNavigate }) {
 
     return insights;
   }, [contacts, finHistory, adPlatforms]);
+
+  /* ---------------------------------------------------------------- */
+  /*  Expense Category Breakdown                                        */
+  /* ---------------------------------------------------------------- */
+  const expenseBreakdown = useMemo(() => {
+    const recent = finHistory.slice(-3);
+    const totals = {};
+    let hasAny = false;
+    recent.forEach((r) => {
+      if (r.categories) {
+        hasAny = true;
+        Object.entries(r.categories).forEach(([cat, val]) => {
+          totals[cat] = (totals[cat] || 0) + val;
+        });
+      }
+    });
+    if (!hasAny) return [];
+    const catMap = {};
+    EXPENSE_CATEGORIES.forEach((c) => { catMap[c.id] = c; });
+    return Object.entries(totals)
+      .map(([id, value]) => ({
+        id,
+        label: catMap[id]?.label || id,
+        icon: catMap[id]?.icon || '📋',
+        color: catMap[id]?.color || '#71717a',
+        value: Math.round(value / Math.min(recent.length, 3)),
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [finHistory]);
 
   /* ---------------------------------------------------------------- */
   /*  CRM stats                                                        */
@@ -1033,6 +1062,48 @@ export default function Dashboard({ onNavigate }) {
                     )}
                   </div>
                 ))}
+              </div>
+            </Card>
+          ) : null,
+
+          /* ------ Expense Breakdown ------ */
+          'expense-breakdown': expenseBreakdown.length > 0 ? (
+            <Card delay={4} style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>{'📊'}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Répartition des charges</span>
+                  <HelpTip text="Moyenne mensuelle par catégorie sur les 3 derniers mois" />
+                </div>
+                <Btn v="ghost" small onClick={() => onNavigate?.('data')}>Détails {'→'}</Btn>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {expenseBreakdown.slice(0, 5).map((cat) => {
+                  const total = expenseBreakdown.reduce((s, c) => s + c.value, 0);
+                  const pctVal = total > 0 ? Math.round((cat.value / total) * 100) : 0;
+                  return (
+                    <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13, width: 18 }}>{cat.icon}</span>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: T.textSecondary, minWidth: 80 }}>{cat.label}</span>
+                      <div style={{ flex: 1, height: 6, borderRadius: 3, background: T.border, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pctVal}%`, background: cat.color, borderRadius: 3, transition: 'width .5s ease' }} />
+                      </div>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: cat.color, minWidth: 60, textAlign: 'right' }}>{fmt(cat.value)} {'€'}</span>
+                      <span style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, minWidth: 28 }}>{pctVal}%</span>
+                    </div>
+                  );
+                })}
+                {expenseBreakdown.length > 5 && (
+                  <div style={{ fontSize: 10, color: T.textMuted, textAlign: 'center', marginTop: 4 }}>
+                    + {expenseBreakdown.length - 5} autres catégories
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid ${T.border}`, paddingTop: 8, marginTop: 4 }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: T.text }}>Total charges</span>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: T.red }}>
+                    {fmt(expenseBreakdown.reduce((s, c) => s + c.value, 0))} {'€'} /mois
+                  </span>
+                </div>
               </div>
             </Card>
           ) : null,

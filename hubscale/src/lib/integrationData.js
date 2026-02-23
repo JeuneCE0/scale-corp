@@ -24,7 +24,25 @@ function seedStripeData() {
     const charges = fixedCharges + varCharges;
     const treso = 25000 + Math.round((ca - charges) * (12 - i) * 0.3);
 
-    rows.push({ key, ca, charges, result: ca - charges, treso: Math.max(treso, 5000) });
+    // Generate realistic expense categories
+    const catLoyer = 1800 + Math.round(Math.random() * 400);
+    const catSalaires = 2500 + Math.round(Math.random() * 1500);
+    const catMarketing = Math.round(ca * (0.08 + Math.random() * 0.07));
+    const catOutils = 300 + Math.round(Math.random() * 400);
+    const catFournisseurs = Math.round(varCharges * 0.4);
+    const catImpots = Math.round(ca * 0.03);
+    const catAutre = charges - catLoyer - catSalaires - catMarketing - catOutils - catFournisseurs - catImpots;
+    const categories = {
+      loyer: catLoyer,
+      salaires: catSalaires,
+      marketing: catMarketing,
+      outils: catOutils,
+      fournisseurs: Math.max(0, catFournisseurs),
+      impots: catImpots,
+      autre: Math.max(0, catAutre),
+    };
+
+    rows.push({ key, ca, charges, result: ca - charges, treso: Math.max(treso, 5000), categories });
   }
   store('finHistory', [...existing, ...rows].sort((a, b) => a.key.localeCompare(b.key)));
 

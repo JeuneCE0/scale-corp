@@ -233,7 +233,13 @@ export function generateDemoFinHistory() {
     const fixed = 8000 + Math.round(Math.random() * 2000);
     const variable = 2000 + Math.round(Math.random() * 3000);
     const charges = fixed + variable;
-    rows.push({ key, ca, charges, result: ca - charges, treso: 15000 + Math.round(Math.random() * 10000) });
+    const catLoyer = 1500 + Math.round(Math.random() * 300);
+    const catSalaires = 3000 + Math.round(Math.random() * 2000);
+    const catMarketing = 800 + Math.round(Math.random() * 1200);
+    const catOutils = 200 + Math.round(Math.random() * 300);
+    const catAutre = Math.max(0, charges - catLoyer - catSalaires - catMarketing - catOutils);
+    const categories = { loyer: catLoyer, salaires: catSalaires, marketing: catMarketing, outils: catOutils, autre: catAutre };
+    rows.push({ key, ca, charges, result: ca - charges, treso: 15000 + Math.round(Math.random() * 10000), categories });
   }
   return rows;
 }
