@@ -223,6 +223,8 @@ export default function Landing({ onLogin, onSignup }) {
   const [annual, setAnnual] = useState(true);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [calcTools, setCalcTools] = useState(4);
+  const [calcHours, setCalcHours] = useState(8);
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 20);
@@ -289,10 +291,38 @@ export default function Landing({ onLogin, onSignup }) {
   .ld-mockup-wrap{transform:scale(.85);transform-origin:top center}
   .ld-stats-grid{grid-template-columns:1fr 1fr!important}
   .ld-footer-grid{grid-template-columns:1fr 1fr!important}
+  .ld-testi-grid{grid-template-columns:1fr 1fr!important}
+  .ld-avant-grid{grid-template-columns:1fr!important}
+  .ld-avant-grid>div:nth-child(2){display:none}
+  .ld-calc-grid{grid-template-columns:1fr!important}
 }
 @media(max-width:480px){
   .ld-hero-h1{font-size:28px!important}
   .ld-stats-grid{grid-template-columns:1fr!important}
+  .ld-avant-grid{grid-template-columns:1fr!important}
+  .ld-testi-grid{grid-template-columns:1fr!important}
+  .ld-calc-grid{grid-template-columns:1fr!important}
+}
+.ld-trust-badge{display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:12px;background:${C.surface};border:1px solid ${C.border};transition:all .3s ease}
+.ld-trust-badge:hover{border-color:${C.accent}44;transform:translateY(-2px)}
+.ld-avant-card{background:${C.surface};border:2px solid ${C.border};border-radius:20px;padding:32px 28px;transition:all .3s ease;position:relative}
+.ld-avant-card:hover{transform:translateY(-4px);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.ld-avatar-stack{display:flex}
+.ld-avatar-stack>div{margin-left:-8px;border:2px solid ${C.bg}}
+.ld-avatar-stack>div:first-child{margin-left:0}
+@keyframes ldCountUp{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+.ld-metric-highlight{animation:ldCountUp .5s ease forwards}
+@keyframes ldPulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.3)}50%{box-shadow:0 0 0 8px rgba(34,197,94,0)}}
+.ld-live-dot{animation:ldPulse 2s ease-in-out infinite}
+.ld-strike{text-decoration:line-through;opacity:.5}
+.ld-calc-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:${GRAD};cursor:pointer;border:2px solid #fff;box-shadow:0 2px 8px rgba(249,115,22,.4)}
+.ld-calc-slider::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:${C.border}}
+.ld-calc-slider{-webkit-appearance:none;width:100%;background:transparent;outline:none}
+@media(max-width:768px){
+  .ld-avant-grid{grid-template-columns:1fr!important}
+  .ld-testi-grid{grid-template-columns:1fr!important}
+  .ld-trust-row{flex-wrap:wrap!important}
+  .ld-calc-grid{grid-template-columns:1fr!important}
 }
 `;
     document.head.appendChild(style);
@@ -364,20 +394,35 @@ export default function Landing({ onLogin, onSignup }) {
         <div style={{ position: 'absolute', top: '30%', right: '10%', width: 250, height: 250, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,.08), transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none' }} />
 
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 800, margin: '0 auto', padding: '0 24px' }}>
-          {/* Badge */}
+          {/* Social proof badge with avatar stack */}
           <RevealDiv>
             <div className="ld-shine" style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              padding: '6px 16px', borderRadius: 40, background: C.surface,
+              display: 'inline-flex', alignItems: 'center', gap: 10,
+              padding: '6px 16px 6px 8px', borderRadius: 40, background: C.surface,
               border: `1px solid ${C.border}`, marginBottom: 24,
             }}>
-              <span style={{
-                width: 6, height: 6, borderRadius: 3, background: C.green,
-                boxShadow: `0 0 8px ${C.green}`,
-              }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: C.textSec }}>
-                +850 entreprises ont deja remplace leurs 5 outils par HubScale
-              </span>
+              <div className="ld-avatar-stack" style={{ display: 'flex' }}>
+                {['#f97316', '#6366f1', '#22c55e', '#a855f7', '#3b82f6'].map((bg, i) => (
+                  <div key={i} style={{
+                    width: 24, height: 24, borderRadius: 12, background: bg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 10, fontWeight: 700, color: '#fff',
+                    marginLeft: i === 0 ? 0 : -8, border: `2px solid ${C.bg}`,
+                    position: 'relative', zIndex: 5 - i,
+                  }}>
+                    {['M', 'T', 'S', 'A', 'L'][i]}
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="ld-live-dot" style={{
+                  width: 6, height: 6, borderRadius: 3, background: C.green,
+                  boxShadow: `0 0 8px ${C.green}`,
+                }} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: C.textSec }}>
+                  <strong style={{ color: C.text }}>847 entreprises</strong> actives cette semaine
+                </span>
+              </div>
             </div>
           </RevealDiv>
 
@@ -395,10 +440,10 @@ export default function Landing({ onLogin, onSignup }) {
           <RevealDiv delay={0.2}>
             <p className="ld-hero-sub" style={{
               fontSize: 18, color: C.textSec, lineHeight: 1.7,
-              maxWidth: 580, margin: '0 auto 36px',
+              maxWidth: 560, margin: '0 auto 36px',
             }}>
-              CRM sur un onglet, finances sur un autre, agenda ailleurs. Vous n'avez aucune vision d'ensemble.
-              HubScale reunit tout dans un seul dashboard — et vos decisions deviennent evidentes.
+              CRM, finances, agenda : 5 outils, 5 onglets, zero vision d'ensemble.
+              <br /><strong style={{ color: C.text }}>HubScale reunit tout en un seul dashboard.</strong>
             </p>
           </RevealDiv>
 
@@ -407,17 +452,25 @@ export default function Landing({ onLogin, onSignup }) {
             <div className="ld-hero-btns" style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button className="ld-btn ld-btn-primary" onClick={() => onSignup()}
                 style={{ padding: '14px 32px', fontSize: 15 }}>
-                Reprendre le controle
+                Tester gratuitement 14 jours
                 <span style={{ fontSize: 18 }}>{'\u2192'}</span>
               </button>
               <button className="ld-btn ld-btn-secondary" onClick={() => scrollTo('demo')}
                 style={{ padding: '14px 28px', fontSize: 15 }}>
-                Voir le dashboard
+                Voir la demo
               </button>
             </div>
-            <p style={{ fontSize: 12, color: C.textMuted, marginTop: 14 }}>
-              Essai 14 jours &middot; Setup en 2 min &middot; Annulez en 1 clic
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginTop: 16, flexWrap: 'wrap' }}>
+              {[
+                { icon: '\u2713', text: 'Sans carte bancaire' },
+                { icon: '\u2713', text: 'Setup en 2 min' },
+                { icon: '\u2713', text: 'Annulez en 1 clic' },
+              ].map((item) => (
+                <span key={item.text} style={{ fontSize: 12, color: C.textMuted, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ color: C.green, fontWeight: 700 }}>{item.icon}</span> {item.text}
+                </span>
+              ))}
+            </div>
           </RevealDiv>
         </div>
 
@@ -476,6 +529,28 @@ export default function Landing({ onLogin, onSignup }) {
       </section>
 
 
+      {/* ══════════════ TRUST BADGES ══════════════ */}
+      <section style={{ padding: '32px 24px', background: C.bg }}>
+        <div className="ld-trust-row" style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+          {[
+            { icon: '\uD83C\uDDEA\uD83C\uDDFA', label: 'Heberge en Europe', sub: 'AWS eu-west', color: C.blue },
+            { icon: '\uD83D\uDD12', label: 'Chiffrement AES-256', sub: 'repos + transit', color: C.green },
+            { icon: '\uD83D\uDEE1\uFE0F', label: 'Conforme RGPD', sub: 'DPA inclus', color: C.purple },
+            { icon: '\u2705', label: 'SOC 2 Type II', sub: 'audit certifie', color: C.orange },
+            { icon: '\u23F0', label: 'SLA 99.9%', sub: 'uptime garanti', color: C.accent },
+          ].map((badge) => (
+            <div key={badge.label} className="ld-trust-badge">
+              <span style={{ fontSize: 18 }}>{badge.icon}</span>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: badge.color }}>{badge.label}</div>
+                <div style={{ fontSize: 9, color: C.textMuted, textTransform: 'uppercase', letterSpacing: .3 }}>{badge.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+
       {/* ══════════════ STATS ══════════════ */}
       <Sect>
         <div className="ld-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24, textAlign: 'center' }}>
@@ -496,6 +571,136 @@ export default function Landing({ onLogin, onSignup }) {
           ))}
         </div>
       </Sect>
+
+
+      {/* ══════════════ AVANT / APRES ══════════════ */}
+      <section style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+        <Sect>
+          <RevealDiv>
+            <div style={{ textAlign: 'center', marginBottom: 48 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: C.red, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+                Avant / Apres
+              </p>
+              <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5 }}>
+                Votre stack actuelle vous coute<br /><span className="ld-grad-text">450\u20ac/mois et 10h/semaine.</span>
+              </h2>
+            </div>
+          </RevealDiv>
+
+          <div className="ld-avant-grid" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 24, alignItems: 'stretch', maxWidth: 900, margin: '0 auto' }}>
+            {/* AVANT */}
+            <RevealDiv>
+              <div className="ld-avant-card" style={{ borderColor: `${C.red}44`, height: '100%' }}>
+                <div style={{
+                  display: 'inline-flex', padding: '4px 12px', borderRadius: 8,
+                  background: `${C.red}15`, color: C.red, fontSize: 10, fontWeight: 800,
+                  textTransform: 'uppercase', letterSpacing: .5, marginBottom: 20,
+                }}>Avant</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {[
+                    { tool: 'Pipedrive', price: '49', cat: 'CRM' },
+                    { tool: 'Pennylane', price: '69', cat: 'Compta' },
+                    { tool: 'Calendly', price: '12', cat: 'Agenda' },
+                    { tool: 'Zapier', price: '29', cat: 'Automation' },
+                    { tool: 'Google Sheets', price: '12', cat: 'Reporting' },
+                    { tool: 'Notion', price: '10', cat: 'Notes' },
+                  ].map((item) => (
+                    <div key={item.tool} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '8px 12px', borderRadius: 10, background: `${C.red}08`,
+                      border: `1px solid ${C.red}15`,
+                    }}>
+                      <div>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{item.tool}</span>
+                        <span style={{ fontSize: 10, color: C.textMuted, marginLeft: 6 }}>{item.cat}</span>
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: C.red }}>{item.price}\u20ac</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{
+                  marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}`,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}>
+                  <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600 }}>Total mensuel</span>
+                  <span style={{ fontSize: 24, fontWeight: 900, color: C.red }}>181\u20ac</span>
+                </div>
+                <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6, textAlign: 'right' }}>
+                  + 10h perdues/semaine a jongler
+                </div>
+              </div>
+            </RevealDiv>
+
+            {/* ARROW */}
+            <RevealDiv delay={0.2} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: 28, background: GRAD,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 24, color: '#fff', boxShadow: '0 8px 32px rgba(249,115,22,.3)',
+                flexShrink: 0,
+              }}>{'\u2192'}</div>
+            </RevealDiv>
+
+            {/* APRES */}
+            <RevealDiv delay={0.15}>
+              <div className="ld-avant-card" style={{ borderColor: `${C.green}44`, height: '100%' }}>
+                <div style={{
+                  display: 'inline-flex', padding: '4px 12px', borderRadius: 8,
+                  background: `${C.green}15`, color: C.green, fontSize: 10, fontWeight: 800,
+                  textTransform: 'uppercase', letterSpacing: .5, marginBottom: 20,
+                }}>Apres</div>
+                <div style={{
+                  textAlign: 'center', padding: '24px 0',
+                }}>
+                  <div style={{
+                    width: 72, height: 72, borderRadius: 20, background: GRAD,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 900, fontSize: 28, color: '#fff', margin: '0 auto 16px',
+                    boxShadow: '0 12px 40px rgba(249,115,22,.25)',
+                  }}>H</div>
+                  <h3 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 4px', color: C.text }}>HubScale Professional</h3>
+                  <p style={{ fontSize: 13, color: C.textSec, margin: '0 0 16px' }}>
+                    CRM + Finances + Agenda + Integrations + Reporting
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'left', padding: '0 8px' }}>
+                    {[
+                      'Dashboard temps reel unifie',
+                      'Pipeline CRM illimite + lead scoring',
+                      'Data financiere + previsions',
+                      'Agenda synchro Google Cal',
+                      '40+ integrations en 1 clic',
+                    ].map((f) => (
+                      <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ color: C.green, fontSize: 12, fontWeight: 700 }}>{'\u2713'}</span>
+                        <span style={{ fontSize: 12, color: C.textSec }}>{f}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{
+                  marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}`,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}>
+                  <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600 }}>Total mensuel</span>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: 14, color: C.textMuted, textDecoration: 'line-through', marginRight: 8 }}>181\u20ac</span>
+                    <span style={{ fontSize: 24, fontWeight: 900, color: C.green }}>199\u20ac</span>
+                  </div>
+                </div>
+                <div style={{
+                  marginTop: 10, padding: '8px 12px', borderRadius: 10,
+                  background: `${C.green}12`, border: `1px solid ${C.green}25`,
+                  textAlign: 'center',
+                }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.green }}>
+                    Vous economisez 10h/semaine + une vision 360\u00b0
+                  </span>
+                </div>
+              </div>
+            </RevealDiv>
+          </div>
+        </Sect>
+      </section>
 
 
       {/* ══════════════ FEATURES ══════════════ */}
@@ -782,6 +987,90 @@ export default function Landing({ onLogin, onSignup }) {
       </Sect>
 
 
+      {/* ══════════════ ROI CALCULATOR ══════════════ */}
+      <section style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+        <Sect>
+          <RevealDiv>
+            <div style={{ textAlign: 'center', marginBottom: 48 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: C.green, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+                Calculateur ROI
+              </p>
+              <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5 }}>
+                Combien vous <span className="ld-grad-text">economisez</span> avec HubScale ?
+              </h2>
+            </div>
+          </RevealDiv>
+
+          <RevealDiv delay={0.1}>
+            <div style={{
+              maxWidth: 700, margin: '0 auto', background: C.surface2,
+              border: `1px solid ${C.border}`, borderRadius: 20, padding: 32,
+            }}>
+              {/* Sliders */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Nombre d'outils SaaS actuels</label>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: C.orange }}>{calcTools}</span>
+                </div>
+                <input type="range" className="ld-calc-slider" min="2" max="10" value={calcTools}
+                  onChange={(e) => setCalcTools(Number(e.target.value))} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.textMuted, marginTop: 4 }}>
+                  <span>2 outils</span><span>10 outils</span>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Heures perdues / semaine a jongler</label>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: C.orange }}>{calcHours}h</span>
+                </div>
+                <input type="range" className="ld-calc-slider" min="2" max="20" value={calcHours}
+                  onChange={(e) => setCalcHours(Number(e.target.value))} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.textMuted, marginTop: 4 }}>
+                  <span>2h</span><span>20h</span>
+                </div>
+              </div>
+
+              {/* Results */}
+              <div className="ld-calc-grid" style={{
+                display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14,
+                paddingTop: 20, borderTop: `1px solid ${C.border}`,
+              }}>
+                {(() => {
+                  const avgToolCost = 35;
+                  const currentCost = calcTools * avgToolCost;
+                  const hubscaleCost = 199;
+                  const saved = Math.max(0, currentCost - hubscaleCost);
+                  const hourlyRate = 50;
+                  const timeSaved = Math.round(calcHours * 0.8);
+                  const timeMoney = timeSaved * hourlyRate * 4;
+                  return [
+                    { label: 'Economie outils /mois', value: `${saved}\u20ac`, sub: `${calcTools} outils x ~${avgToolCost}\u20ac = ${currentCost}\u20ac vs 199\u20ac`, color: C.green },
+                    { label: 'Temps recupere /semaine', value: `${timeSaved}h`, sub: `${calcHours}h perdues \u2192 ${calcHours - timeSaved}h avec HubScale`, color: C.blue },
+                    { label: 'Valeur temps /mois', value: `${timeMoney.toLocaleString('fr-FR')}\u20ac`, sub: `${timeSaved}h x ${hourlyRate}\u20ac/h x 4 sem.`, color: C.orange },
+                  ].map((r) => (
+                    <div key={r.label} style={{ textAlign: 'center', padding: '16px 8px', borderRadius: 14, background: `${r.color}08`, border: `1px solid ${r.color}18` }}>
+                      <div style={{ fontSize: 28, fontWeight: 900, color: r.color, lineHeight: 1.1 }}>{r.value}</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: C.text, marginTop: 4 }}>{r.label}</div>
+                      <div style={{ fontSize: 9, color: C.textMuted, marginTop: 2 }}>{r.sub}</div>
+                    </div>
+                  ));
+                })()}
+              </div>
+
+              <div style={{ textAlign: 'center', marginTop: 24 }}>
+                <button className="ld-btn ld-btn-primary" onClick={() => onSignup()}
+                  style={{ padding: '12px 28px', fontSize: 14 }}>
+                  Commencer a economiser
+                  <span style={{ fontSize: 16 }}>{'\u2192'}</span>
+                </button>
+              </div>
+            </div>
+          </RevealDiv>
+        </Sect>
+      </section>
+
+
       {/* ══════════════ TESTIMONIALS ══════════════ */}
       <section id="testimonials" style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
         <Sect>
@@ -796,42 +1085,75 @@ export default function Landing({ onLogin, onSignup }) {
             </div>
           </RevealDiv>
 
-          <div className="ld-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+          <div className="ld-testi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
             {[
               {
-                quote: 'On perdait des leads parce qu\'on oubliait de les relancer. Depuis HubScale, le pipeline est visible, les rappels sont auto. On a signe 30% de plus en 3 mois.',
-                name: 'Marie Laurent', role: 'CEO @ TechVision', color: C.orange,
+                quote: 'On perdait des leads parce qu\'on oubliait de les relancer. Depuis HubScale, le pipeline est visible, les rappels sont auto.',
+                metric: '+30% de signatures', metricSub: 'en 3 mois',
+                name: 'Marie Laurent', role: 'CEO @ TechVision', size: '25 employes', tag: 'CRM', color: C.orange,
               },
               {
-                quote: 'Je decouvrais les problemes de tresorerie avec 2 semaines de retard. Maintenant, j\'ai une alerte avant que ca devienne critique. Le ROI est immediat.',
-                name: 'Thomas Dubois', role: 'CFO @ DataFlow SAS', color: C.green,
+                quote: 'Je decouvrais les problemes de tresorerie avec 2 semaines de retard. Maintenant, j\'ai une alerte avant que ca devienne critique.',
+                metric: '-2 semaines', metricSub: 'de delai sur les alertes',
+                name: 'Thomas Dubois', role: 'CFO @ DataFlow SAS', size: '80 employes', tag: 'Finance', color: C.green,
               },
               {
-                quote: 'On payait 450\u20ac/mois pour Pipedrive + Pennylane + Calendly + Zapier. HubScale fait tout ca pour 249\u20ac. Et ca marche mieux.',
-                name: 'Sophie Martin', role: 'COO @ CloudNine', color: C.purple,
+                quote: 'On payait 450\u20ac/mois pour 5 outils. HubScale fait tout pour 249\u20ac. En plus, on a gagne 2h par jour en resaisie eliminee.',
+                metric: '-201\u20ac/mois', metricSub: 'd\'economies outils',
+                name: 'Sophie Martin', role: 'COO @ CloudNine', size: '12 employes', tag: 'Economies', color: C.purple,
+              },
+              {
+                quote: 'L\'onboarding a pris 10 minutes. On a branche Stripe et Revolut, et toutes les donnees etaient la. Pas de consultant, pas de migration penible.',
+                metric: '10 min', metricSub: 'de setup complet',
+                name: 'Julien Moreau', role: 'Fondateur @ FinServ Pro', size: '8 employes', tag: 'Setup', color: C.blue,
+              },
+              {
+                quote: 'Mon equipe commerciale avait zero visibilite sur le pipeline. En 1 semaine sur HubScale, on a identifie 15 leads oublies et converti 4.',
+                metric: '4 deals recuperes', metricSub: 'des la 1ere semaine',
+                name: 'Amelie Renard', role: 'VP Sales @ AlphaDigital', size: '45 employes', tag: 'Pipeline', color: C.accent,
+              },
+              {
+                quote: 'En tant que DAF, j\'avais besoin d\'un FEC propre et de previsions fiables. HubScale me donne ca sans Excel et sans erreurs de copier-coller.',
+                metric: '0 erreur', metricSub: 'de saisie depuis 6 mois',
+                name: 'Pierre Lefevre', role: 'DAF @ GreenTech', size: '110 employes', tag: 'Data', color: C.red,
               },
             ].map((t, i) => (
-              <RevealDiv key={t.name} delay={i * 0.1}>
+              <RevealDiv key={t.name} delay={i * 0.08}>
                 <div className="ld-testi" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  {/* Stars */}
-                  <div style={{ marginBottom: 14 }}>
-                    {[...Array(5)].map((_, j) => (
-                      <span key={j} style={{ fontSize: 14, color: '#f59e0b' }}>{'\u2605'}</span>
-                    ))}
+                  {/* Tag + Stars */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <span style={{
+                      fontSize: 9, fontWeight: 800, color: t.color, textTransform: 'uppercase',
+                      letterSpacing: .5, padding: '3px 8px', borderRadius: 6,
+                      background: `${t.color}15`, border: `1px solid ${t.color}22`,
+                    }}>{t.tag}</span>
+                    <div>
+                      {[...Array(5)].map((_, j) => (
+                        <span key={j} style={{ fontSize: 12, color: '#f59e0b' }}>{'\u2605'}</span>
+                      ))}
+                    </div>
                   </div>
-                  <p style={{ fontSize: 14, color: C.textSec, lineHeight: 1.7, margin: '0 0 20px', flex: 1, fontStyle: 'italic' }}>
+                  {/* Metric highlight */}
+                  <div style={{
+                    padding: '10px 14px', borderRadius: 10, marginBottom: 14,
+                    background: `${t.color}08`, border: `1px solid ${t.color}18`,
+                  }}>
+                    <span style={{ fontSize: 20, fontWeight: 900, color: t.color }}>{t.metric}</span>
+                    <span style={{ fontSize: 11, color: C.textMuted, marginLeft: 6 }}>{t.metricSub}</span>
+                  </div>
+                  <p style={{ fontSize: 13, color: C.textSec, lineHeight: 1.7, margin: '0 0 16px', flex: 1, fontStyle: 'italic' }}>
                     "{t.quote}"
                   </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
                     <div style={{
-                      width: 40, height: 40, borderRadius: 20, flexShrink: 0,
+                      width: 36, height: 36, borderRadius: 18, flexShrink: 0,
                       background: `${t.color}20`, border: `1px solid ${t.color}33`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontWeight: 800, fontSize: 14, color: t.color,
+                      fontWeight: 800, fontSize: 13, color: t.color,
                     }}>{t.name.charAt(0)}</div>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{t.name}</div>
-                      <div style={{ fontSize: 11, color: C.textMuted }}>{t.role}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{t.name}</div>
+                      <div style={{ fontSize: 10, color: C.textMuted }}>{t.role} &middot; {t.size}</div>
                     </div>
                   </div>
                 </div>
@@ -883,38 +1205,49 @@ export default function Landing({ onLogin, onSignup }) {
 
         <RevealDiv>
           <div style={{
-            maxWidth: 680, margin: '0 auto', textAlign: 'center',
+            maxWidth: 720, margin: '0 auto', textAlign: 'center',
             background: C.surface, border: `1px solid ${C.border}`, borderRadius: 24,
-            padding: '52px 40px', position: 'relative',
+            padding: '56px 40px', position: 'relative',
             boxShadow: '0 32px 80px rgba(0,0,0,.3)',
           }}>
             {/* Glow */}
             <div style={{
               position: 'absolute', inset: -1, borderRadius: 25, zIndex: -1,
               background: 'conic-gradient(from 0deg at 50% 50%, #f97316 0deg, #6366f1 180deg, #f97316 360deg)',
-              opacity: .08, filter: 'blur(30px)',
+              opacity: .1, filter: 'blur(30px)',
             }} />
 
-            <h2 style={{ fontSize: 32, fontWeight: 900, letterSpacing: -.5, margin: '0 0 12px', lineHeight: 1.2 }}>
-              Chaque jour sans HubScale,<br />
-              <span className="ld-grad-text">c'est du temps et de l'argent perdus.</span>
+            <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5, margin: '0 0 14px', lineHeight: 1.2 }}>
+              Dans 2 minutes, vous aurez<br />
+              <span className="ld-grad-text">une vision 360\u00b0 de votre business.</span>
             </h2>
-            <p style={{ fontSize: 15, color: C.textSec, lineHeight: 1.7, margin: '0 0 28px' }}>
-              850+ entreprises ont deja repris le controle. Dans 2 minutes, vous pouvez etre la prochaine.
+            <p style={{ fontSize: 15, color: C.textSec, lineHeight: 1.7, margin: '0 0 24px' }}>
+              847 dirigeants ont deja fait le switch. La question n'est pas "si" mais "quand".
             </p>
+
+            {/* Guarantee badges */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 28, flexWrap: 'wrap' }}>
+              {[
+                { icon: '\uD83D\uDD12', text: 'Sans carte bancaire' },
+                { icon: '\u2B50', text: '14 jours gratuits' },
+                { icon: '\uD83D\uDCB8', text: 'Satisfait ou rembourse' },
+              ].map((g) => (
+                <div key={g.text} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 16 }}>{g.icon}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: C.textSec }}>{g.text}</span>
+                </div>
+              ))}
+            </div>
+
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button className="ld-btn ld-btn-primary" onClick={() => onSignup()}
-                style={{ padding: '14px 36px', fontSize: 15 }}>
-                Reprendre le controle
+                style={{ padding: '16px 40px', fontSize: 16 }}>
+                Demarrer mon essai gratuit
                 <span style={{ fontSize: 18 }}>{'\u2192'}</span>
               </button>
-              <button className="ld-btn ld-btn-secondary" onClick={onLogin}
-                style={{ padding: '14px 28px', fontSize: 15 }}>
-                Se connecter
-              </button>
             </div>
-            <p style={{ fontSize: 12, color: C.textMuted, marginTop: 16 }}>
-              14 jours gratuits &middot; Setup en 2 min &middot; Annulez en 1 clic
+            <p style={{ fontSize: 11, color: C.textMuted, marginTop: 14 }}>
+              Pas d'engagement &middot; Migration gratuite &middot; Support prioritaire des le 1er jour
             </p>
           </div>
         </RevealDiv>
