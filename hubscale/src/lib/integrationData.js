@@ -339,15 +339,107 @@ function seedProjectToolData(toolName, storeKey) {
   });
 }
 
+// --- N26: bank data ---
+function seedN26Data() {
+  const history = load('finHistory') || [];
+  if (history.length > 0) {
+    let balance = 14000 + Math.round(Math.random() * 10000);
+    const updated = history.map((row) => {
+      balance += (row.result || 0);
+      if (balance < 2000) balance = 2000 + Math.round(Math.random() * 3000);
+      return { ...row, treso: Math.round(balance) };
+    });
+    store('finHistory', updated);
+  }
+  store('n26_connected', { connectedAt: new Date().toISOString(), accountId: 'n26_' + uid().slice(0, 10), bankName: 'N26 Business' });
+}
+
+// --- QuickBooks / Xero: accounting — enrich financial history ---
+function seedAccountingData(toolName, storeKey) {
+  const existing = load('finHistory') || [];
+  if (existing.length > 0) {
+    const updated = existing.map((row) => ({
+      ...row,
+      charges: row.charges + Math.round(200 + Math.random() * 600),
+      result: row.ca - (row.charges + Math.round(200 + Math.random() * 600)),
+    }));
+    store('finHistory', updated);
+  }
+  store(storeKey, { connectedAt: new Date().toISOString(), companyId: toolName.toLowerCase().slice(0, 3) + '_' + uid().slice(0, 10), toolName });
+}
+
+// --- E-commerce (Shopify, WooCommerce): payment + orders data ---
+function seedEcommerceData(toolName, storeKey) {
+  const existing = load('finHistory') || [];
+  if (existing.length > 0) {
+    const updated = existing.map((row) => ({
+      ...row,
+      ca: row.ca + Math.round(1500 + Math.random() * 4000),
+    }));
+    updated.forEach((r) => { r.result = r.ca - r.charges; });
+    store('finHistory', updated);
+  }
+  store(storeKey, { connectedAt: new Date().toISOString(), shopId: toolName.toLowerCase().slice(0, 4) + '_' + uid().slice(0, 10), toolName, ordersImported: Math.round(50 + Math.random() * 200) });
+}
+
+// --- Ad platform seeder (TikTok Ads, LinkedIn Ads, Google Ads) ---
+function seedAdPlatformData(platformName, storeKey) {
+  store(storeKey, {
+    connectedAt: new Date().toISOString(),
+    adAccountId: platformName.toLowerCase().replace(/\s/g, '_').slice(0, 6) + '_' + uid().slice(0, 12),
+    platformName,
+    adStatus: 'active',
+  });
+}
+
+// --- Email marketing tool seeder (generic for Mailchimp, ActiveCampaign, Klaviyo, etc.) ---
+function seedEmailMarketingData(toolName, storeKey) {
+  store(storeKey, {
+    connectedAt: new Date().toISOString(),
+    listId: 'list_' + uid().slice(0, 10),
+    toolName,
+    subscribers: Math.round(500 + Math.random() * 5000),
+  });
+}
+
+// --- Support tool seeder (Zendesk, Freshdesk, Intercom) ---
+function seedSupportData(toolName, storeKey) {
+  store(storeKey, {
+    connectedAt: new Date().toISOString(),
+    workspaceId: toolName.toLowerCase().slice(0, 4) + '_' + uid().slice(0, 10),
+    toolName,
+    openTickets: Math.round(5 + Math.random() * 30),
+  });
+}
+
+// --- Slack: communication ---
+function seedSlackData() {
+  store('slack_connected', {
+    connectedAt: new Date().toISOString(),
+    teamId: 'T' + uid().slice(0, 10).toUpperCase(),
+    teamName: (load('settings_company') || {}).name || 'Mon Workspace',
+    channels: ['#general', '#sales', '#support'],
+  });
+}
+
 // --- Main dispatcher ---
 const INTEGRATION_SEEDERS = {
+  // Paiements
   'Stripe': seedStripeData,
   'PayPal': seedPayPalData,
+  'Shopify': () => seedEcommerceData('Shopify', 'shopify_connected'),
+  'WooCommerce': () => seedEcommerceData('WooCommerce', 'woocommerce_connected'),
+  // Banque & Comptabilité
   'Revolut': seedRevolutData,
   'Qonto': seedQontoData,
   'Shine': seedShineData,
   'Bunq': seedBunqData,
+  'N26': seedN26Data,
+  'QuickBooks': () => seedAccountingData('QuickBooks', 'quickbooks_connected'),
+  'Xero': () => seedAccountingData('Xero', 'xero_connected'),
+  // Agenda
   'Google Calendar': seedGoogleCalendarData,
+  // CRM
   'GoHighLevel': seedGHLData,
   'HubSpot': () => seedCRMData('HubSpot', 'hubspot_connected'),
   'Salesforce': () => seedCRMData('Salesforce', 'salesforce_connected'),
@@ -355,10 +447,30 @@ const INTEGRATION_SEEDERS = {
   'Pipedrive': () => seedCRMData('Pipedrive', 'pipedrive_connected'),
   'Brevo': () => seedCRMData('Brevo', 'brevo_connected'),
   'Axonaut': () => seedCRMData('Axonaut', 'axonaut_connected'),
+  // Email Marketing
+  'ActiveCampaign': () => seedEmailMarketingData('ActiveCampaign', 'activecampaign_connected'),
+  'Mailchimp': () => seedEmailMarketingData('Mailchimp', 'mailchimp_connected'),
+  'Klaviyo': () => seedEmailMarketingData('Klaviyo', 'klaviyo_connected'),
+  'Sendinblue': () => seedEmailMarketingData('Sendinblue', 'sendinblue_connected'),
+  'Lemlist': () => seedEmailMarketingData('Lemlist', 'lemlist_connected'),
+  'SystemeIO': () => seedEmailMarketingData('SystemeIO', 'systemeio_connected'),
+  'ClickFunnels': () => seedEmailMarketingData('ClickFunnels', 'clickfunnels_connected'),
+  // Projet
   'Monday': () => seedProjectToolData('Monday', 'monday_connected'),
   'Asana': () => seedProjectToolData('Asana', 'asana_connected'),
   'Notion': () => seedProjectToolData('Notion', 'notion_connected'),
+  'Trello': () => seedProjectToolData('Trello', 'trello_connected'),
+  'Jira': () => seedProjectToolData('Jira', 'jira_connected'),
+  'Slack': seedSlackData,
+  // Publicité
   'Meta Ads': seedMetaAdsData,
+  'Google Ads': () => seedAdPlatformData('Google Ads', 'googleads_connected'),
+  'TikTok Ads': () => seedAdPlatformData('TikTok Ads', 'tiktokads_connected'),
+  'LinkedIn Ads': () => seedAdPlatformData('LinkedIn Ads', 'linkedinads_connected'),
+  // Support
+  'Zendesk': () => seedSupportData('Zendesk', 'zendesk_connected'),
+  'Freshdesk': () => seedSupportData('Freshdesk', 'freshdesk_connected'),
+  'Intercom': () => seedSupportData('Intercom', 'intercom_connected'),
 };
 
 /**
@@ -375,33 +487,27 @@ export function onIntegrationConnect(integrationName) {
   return false;
 }
 
-// --- Metadata store keys ---
-const META_KEYS = {
-  'Stripe': 'stripe_connected',
-  'PayPal': 'paypal_connected',
-  'Revolut': 'revolut_connected',
-  'Qonto': 'qonto_connected',
-  'Shine': 'shine_connected',
-  'Bunq': 'bunq_connected',
-  'Google Calendar': 'gcal_connected',
-  'GoHighLevel': 'ghl_connected',
-  'HubSpot': 'hubspot_connected',
-  'Salesforce': 'salesforce_connected',
-  'Zoho': 'zoho_connected',
-  'Pipedrive': 'pipedrive_connected',
-  'Brevo': 'brevo_connected',
-  'Axonaut': 'axonaut_connected',
-  'Monday': 'monday_connected',
-  'Asana': 'asana_connected',
-  'Notion': 'notion_connected',
-  'Meta Ads': 'meta_connected',
-};
-
 /**
- * Get connection metadata for an integration
+ * Get connection metadata for an integration.
+ * Automatically derives the store key from the integration name.
  * @param {string} integrationName
  * @returns {object|null}
  */
 export function getIntegrationMeta(integrationName) {
-  return load(META_KEYS[integrationName]) || null;
+  // Try known aliases first, then derive key from name
+  const ALIASES = {
+    'Google Calendar': 'gcal_connected',
+    'GoHighLevel': 'ghl_connected',
+    'Meta Ads': 'meta_connected',
+    'Google Ads': 'googleads_connected',
+    'TikTok Ads': 'tiktokads_connected',
+    'LinkedIn Ads': 'linkedinads_connected',
+    'SystemeIO': 'systemeio_connected',
+    'ClickFunnels': 'clickfunnels_connected',
+    'ActiveCampaign': 'activecampaign_connected',
+    'WooCommerce': 'woocommerce_connected',
+    'QuickBooks': 'quickbooks_connected',
+  };
+  const key = ALIASES[integrationName] || integrationName.toLowerCase().replace(/\s/g, '_') + '_connected';
+  return load(key) || null;
 }

@@ -52,11 +52,16 @@ export const INTEGRATIONS = [
   // Paiements
   { name: 'Stripe', desc: 'Paiements et facturation', icon: '💳', category: 'paiements' },
   { name: 'PayPal', desc: 'Paiements en ligne', icon: '🅿️', category: 'paiements' },
-  // Banque
+  { name: 'Shopify', desc: 'E-commerce & paiements', icon: '🛍️', category: 'paiements' },
+  { name: 'WooCommerce', desc: 'E-commerce WordPress', icon: '🛒', category: 'paiements' },
+  // Banque & Comptabilité
   { name: 'Revolut', desc: 'Données bancaires', icon: '🏦', category: 'banque' },
   { name: 'Qonto', desc: 'Banque pro & comptabilité', icon: '🏛️', category: 'banque' },
   { name: 'Shine', desc: 'Banque des indépendants', icon: '✨', category: 'banque' },
   { name: 'Bunq', desc: 'Banque digitale', icon: '🐰', category: 'banque' },
+  { name: 'N26', desc: 'Banque mobile', icon: '🔢', category: 'banque' },
+  { name: 'QuickBooks', desc: 'Comptabilité & facturation', icon: '📗', category: 'banque' },
+  { name: 'Xero', desc: 'Comptabilité cloud', icon: '📘', category: 'banque' },
   // Agenda
   { name: 'Google Calendar', desc: 'Synchronisation agenda et événements', icon: '📅', category: 'agenda' },
   // CRM & Gestion
@@ -67,12 +72,30 @@ export const INTEGRATIONS = [
   { name: 'Pipedrive', desc: 'CRM pipeline de ventes', icon: '🟢', category: 'crm' },
   { name: 'Brevo', desc: 'Email marketing & CRM', icon: '💌', category: 'crm' },
   { name: 'Axonaut', desc: 'CRM & facturation PME', icon: '🔧', category: 'crm' },
+  // Email Marketing & Automation
+  { name: 'ActiveCampaign', desc: 'Email marketing & automation', icon: '⚡', category: 'marketing' },
+  { name: 'Mailchimp', desc: 'Email marketing', icon: '🐵', category: 'marketing' },
+  { name: 'Klaviyo', desc: 'Email & SMS marketing e-commerce', icon: '📧', category: 'marketing' },
+  { name: 'Sendinblue', desc: 'Email transactionnel & marketing', icon: '💙', category: 'marketing' },
+  { name: 'Lemlist', desc: 'Cold email & prospection', icon: '🍋', category: 'marketing' },
+  { name: 'SystemeIO', desc: 'Tunnel de vente & formation', icon: '🚀', category: 'marketing' },
+  { name: 'ClickFunnels', desc: 'Funnels de vente', icon: '🔻', category: 'marketing' },
   // Gestion de projet
   { name: 'Monday', desc: 'Gestion de projet & workflow', icon: '📋', category: 'projet' },
   { name: 'Asana', desc: 'Gestion de projet & tâches', icon: '🎯', category: 'projet' },
   { name: 'Notion', desc: 'Wiki, docs & gestion de projet', icon: '📝', category: 'projet' },
+  { name: 'Trello', desc: 'Tableaux kanban', icon: '📌', category: 'projet' },
+  { name: 'Jira', desc: 'Gestion de projet technique', icon: '🔷', category: 'projet' },
+  { name: 'Slack', desc: 'Communication d\'équipe', icon: '💬', category: 'projet' },
   // Publicité
   { name: 'Meta Ads', desc: 'Publicité Facebook/Instagram', icon: '📣', category: 'publicite' },
+  { name: 'Google Ads', desc: 'Publicité Google & YouTube', icon: '🔍', category: 'publicite' },
+  { name: 'TikTok Ads', desc: 'Publicité TikTok', icon: '🎵', category: 'publicite' },
+  { name: 'LinkedIn Ads', desc: 'Publicité LinkedIn B2B', icon: '💼', category: 'publicite' },
+  // Support Client
+  { name: 'Zendesk', desc: 'Support client & ticketing', icon: '🎧', category: 'support' },
+  { name: 'Freshdesk', desc: 'Helpdesk & support', icon: '🟩', category: 'support' },
+  { name: 'Intercom', desc: 'Messagerie client & support', icon: '💬', category: 'support' },
 ];
 
 export const LEAD_SCORE_LABELS = [

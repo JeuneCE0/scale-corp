@@ -604,17 +604,22 @@ export default function Landing({ onLogin, onSignup }) {
 
           {/* Integration categories */}
           {[
-            { label: 'Paiements', items: [
+            { label: 'Paiements & E-commerce', items: [
               { name: 'Stripe', icon: '\uD83D\uDCB3', color: '#635bff' },
               { name: 'PayPal', icon: '\uD83C\uDD7F\uFE0F', color: '#003087' },
+              { name: 'Shopify', icon: '\uD83D\uDECD\uFE0F', color: '#96bf48' },
+              { name: 'WooCommerce', icon: '\uD83D\uDED2', color: '#7f54b3' },
             ]},
-            { label: 'Banque', items: [
+            { label: 'Banque & Comptabilite', items: [
               { name: 'Revolut', icon: '\uD83C\uDFE6', color: '#0075eb' },
               { name: 'Qonto', icon: '\uD83C\uDFDB\uFE0F', color: '#5C2D91' },
               { name: 'Shine', icon: '\u2728', color: '#FF6B00' },
               { name: 'Bunq', icon: '\uD83D\uDC30', color: '#3ab553' },
+              { name: 'N26', icon: '\uD83D\uDD22', color: '#36a18b' },
+              { name: 'QuickBooks', icon: '\uD83D\uDCD7', color: '#2ca01c' },
+              { name: 'Xero', icon: '\uD83D\uDCD8', color: '#13b5ea' },
             ]},
-            { label: 'CRM & Gestion', items: [
+            { label: 'CRM', items: [
               { name: 'GoHighLevel', icon: '\uD83D\uDCC8', color: '#f97316' },
               { name: 'HubSpot', icon: '\uD83D\uDFE0', color: '#ff7a59' },
               { name: 'Salesforce', icon: '\u2601\uFE0F', color: '#00a1e0' },
@@ -623,14 +628,33 @@ export default function Landing({ onLogin, onSignup }) {
               { name: 'Brevo', icon: '\uD83D\uDC8C', color: '#0b996e' },
               { name: 'Axonaut', icon: '\uD83D\uDD27', color: '#2563eb' },
             ]},
-            { label: 'Projet', items: [
+            { label: 'Marketing & Automation', items: [
+              { name: 'ActiveCampaign', icon: '\u26A1', color: '#356ae6' },
+              { name: 'Mailchimp', icon: '\uD83D\uDC35', color: '#ffe01b' },
+              { name: 'Klaviyo', icon: '\uD83D\uDCE7', color: '#1a1a2e' },
+              { name: 'Sendinblue', icon: '\uD83D\uDC99', color: '#0092ff' },
+              { name: 'Lemlist', icon: '\uD83C\uDF4B', color: '#6c5ce7' },
+              { name: 'SystemeIO', icon: '\uD83D\uDE80', color: '#3b82f6' },
+              { name: 'ClickFunnels', icon: '\uD83D\uDD3B', color: '#e44d26' },
+            ]},
+            { label: 'Projet & Communication', items: [
               { name: 'Monday', icon: '\uD83D\uDCCB', color: '#6161ff' },
               { name: 'Asana', icon: '\uD83C\uDFAF', color: '#f06a6a' },
               { name: 'Notion', icon: '\uD83D\uDCDD', color: '#999' },
+              { name: 'Trello', icon: '\uD83D\uDCCC', color: '#0079bf' },
+              { name: 'Jira', icon: '\uD83D\uDD37', color: '#0052cc' },
+              { name: 'Slack', icon: '\uD83D\uDCAC', color: '#4a154b' },
             ]},
-            { label: 'Agenda & Pub', items: [
-              { name: 'Google Calendar', icon: '\uD83D\uDCC5', color: '#4285f4' },
+            { label: 'Publicite', items: [
               { name: 'Meta Ads', icon: '\uD83D\uDCE3', color: '#0668e1' },
+              { name: 'Google Ads', icon: '\uD83D\uDD0D', color: '#4285f4' },
+              { name: 'TikTok Ads', icon: '\uD83C\uDFB5', color: '#010101' },
+              { name: 'LinkedIn Ads', icon: '\uD83D\uDCBC', color: '#0077b5' },
+            ]},
+            { label: 'Support Client', items: [
+              { name: 'Zendesk', icon: '\uD83C\uDFA7', color: '#03363d' },
+              { name: 'Freshdesk', icon: '\uD83D\uDFE9', color: '#2ca04e' },
+              { name: 'Intercom', icon: '\uD83D\uDCAC', color: '#286efa' },
             ]},
           ].map((cat, ci) => (
             <RevealDiv key={cat.label} delay={ci * 0.1}>

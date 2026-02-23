@@ -516,12 +516,14 @@ export default function Settings() {
         <Section title="INTÉGRATIONS API" sub="Connectez vos outils et services externes">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {[
-              { label: '💳 Paiements', cat: 'paiements' },
-              { label: '🏦 Banque', cat: 'banque' },
+              { label: '💳 Paiements & E-commerce', cat: 'paiements' },
+              { label: '🏦 Banque & Comptabilité', cat: 'banque' },
               { label: '📅 Agenda', cat: 'agenda' },
               { label: '📈 CRM & Gestion', cat: 'crm' },
-              { label: '📋 Gestion de projet', cat: 'projet' },
+              { label: '📧 Email Marketing & Automation', cat: 'marketing' },
+              { label: '📋 Gestion de projet & Communication', cat: 'projet' },
               { label: '📣 Publicité', cat: 'publicite' },
+              { label: '🎧 Support Client', cat: 'support' },
             ].map(({ label, cat }) => {
               const items = INTEGRATIONS.filter((ig) => ig.category === cat);
               if (items.length === 0) return null;
