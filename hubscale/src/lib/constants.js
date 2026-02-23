@@ -49,11 +49,30 @@ export const PLANS = [
 ];
 
 export const INTEGRATIONS = [
-  { name: 'Stripe', desc: 'Paiements et facturation', icon: '💳' },
-  { name: 'Revolut', desc: 'Données bancaires', icon: '🏦' },
-  { name: 'Google Calendar', desc: 'Synchronisation agenda et événements', icon: '📅' },
-  { name: 'GoHighLevel', desc: 'CRM et marketing', icon: '📈' },
-  { name: 'Meta Ads', desc: 'Publicité Facebook/Instagram', icon: '📣' },
+  // Paiements
+  { name: 'Stripe', desc: 'Paiements et facturation', icon: '💳', category: 'paiements' },
+  { name: 'PayPal', desc: 'Paiements en ligne', icon: '🅿️', category: 'paiements' },
+  // Banque
+  { name: 'Revolut', desc: 'Données bancaires', icon: '🏦', category: 'banque' },
+  { name: 'Qonto', desc: 'Banque pro & comptabilité', icon: '🏛️', category: 'banque' },
+  { name: 'Shine', desc: 'Banque des indépendants', icon: '✨', category: 'banque' },
+  { name: 'Bunq', desc: 'Banque digitale', icon: '🐰', category: 'banque' },
+  // Agenda
+  { name: 'Google Calendar', desc: 'Synchronisation agenda et événements', icon: '📅', category: 'agenda' },
+  // CRM & Gestion
+  { name: 'GoHighLevel', desc: 'CRM et marketing automation', icon: '📈', category: 'crm' },
+  { name: 'HubSpot', desc: 'CRM, marketing et ventes', icon: '🟠', category: 'crm' },
+  { name: 'Salesforce', desc: 'CRM entreprise', icon: '☁️', category: 'crm' },
+  { name: 'Zoho', desc: 'Suite CRM complète', icon: '🔴', category: 'crm' },
+  { name: 'Pipedrive', desc: 'CRM pipeline de ventes', icon: '🟢', category: 'crm' },
+  { name: 'Brevo', desc: 'Email marketing & CRM', icon: '💌', category: 'crm' },
+  { name: 'Axonaut', desc: 'CRM & facturation PME', icon: '🔧', category: 'crm' },
+  // Gestion de projet
+  { name: 'Monday', desc: 'Gestion de projet & workflow', icon: '📋', category: 'projet' },
+  { name: 'Asana', desc: 'Gestion de projet & tâches', icon: '🎯', category: 'projet' },
+  { name: 'Notion', desc: 'Wiki, docs & gestion de projet', icon: '📝', category: 'projet' },
+  // Publicité
+  { name: 'Meta Ads', desc: 'Publicité Facebook/Instagram', icon: '📣', category: 'publicite' },
 ];
 
 export const LEAD_SCORE_LABELS = [

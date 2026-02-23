@@ -518,7 +518,7 @@ export default function Landing({ onLogin, onSignup }) {
             { icon: '\uD83D\uDC65', title: 'CRM Pipeline', desc: 'Vos leads tombent entre les mailles ? Pipeline visuel, lead scoring automatique, relances programmees. Plus aucun prospect ne passe a la trappe.', color: C.blue },
             { icon: '\uD83D\uDCB0', title: 'Data Financiere', desc: 'Marre de decouvrir un trou de tresorerie trop tard ? Suivi mois par mois, previsions IA et alertes avant que ca brule.', color: C.green },
             { icon: '\uD83D\uDCC5', title: 'Agenda Intelligent', desc: 'RDV oublies, double-bookings, rappels rates ? Agenda synchronise avec Google Cal, rappels auto et vue equipe integree.', color: C.purple },
-            { icon: '\uD83D\uDD17', title: 'Integrations API', desc: 'Vous ressaisissez les memes donnees dans 5 outils differents ? Stripe, Revolut, GHL, Meta Ads — un clic, tout se synchronise.', color: C.accent },
+            { icon: '\uD83D\uDD17', title: 'Integrations API', desc: 'Vous ressaisissez les memes donnees dans 5 outils differents ? Stripe, PayPal, Qonto, HubSpot, Pipedrive, Notion — un clic, tout se synchronise.', color: C.accent },
             { icon: '\uD83D\uDD12', title: 'Securite & RGPD', desc: 'Vos donnees clients dans un Google Sheet partage ? Non. Hebergement EU, chiffrement AES-256, conformite RGPD native.', color: C.red },
           ].map((feat, i) => (
             <RevealDiv key={feat.title} delay={i * 0.08}>
@@ -602,34 +602,64 @@ export default function Landing({ onLogin, onSignup }) {
             </div>
           </RevealDiv>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 20, flexWrap: 'wrap' }}>
-            {[
-              { name: 'Stripe', icon: '\uD83D\uDCB3', desc: 'Paiements', color: '#635bff' },
-              { name: 'Revolut', icon: '\uD83C\uDFE6', desc: 'Banque', color: '#0075eb' },
-              { name: 'Google Calendar', icon: '\uD83D\uDCC5', desc: 'Agenda', color: '#4285f4' },
-              { name: 'GoHighLevel', icon: '\uD83D\uDCC8', desc: 'CRM', color: '#f97316' },
-              { name: 'Meta Ads', icon: '\uD83D\uDCE3', desc: 'Publicite', color: '#0668e1' },
-            ].map((ig, i) => (
-              <RevealDiv key={ig.name} delay={i * 0.08}>
-                <div style={{
-                  background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 16,
-                  padding: '20px 24px', textAlign: 'center', minWidth: 130,
-                  transition: 'all .3s ease', cursor: 'default',
-                }}>
-                  <div style={{
-                    width: 50, height: 50, borderRadius: 14, margin: '0 auto 12px',
-                    background: `${ig.color}18`, border: `1px solid ${ig.color}25`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
-                  }}>{ig.icon}</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{ig.name}</div>
-                  <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>{ig.desc}</div>
+          {/* Integration categories */}
+          {[
+            { label: 'Paiements', items: [
+              { name: 'Stripe', icon: '\uD83D\uDCB3', color: '#635bff' },
+              { name: 'PayPal', icon: '\uD83C\uDD7F\uFE0F', color: '#003087' },
+            ]},
+            { label: 'Banque', items: [
+              { name: 'Revolut', icon: '\uD83C\uDFE6', color: '#0075eb' },
+              { name: 'Qonto', icon: '\uD83C\uDFDB\uFE0F', color: '#5C2D91' },
+              { name: 'Shine', icon: '\u2728', color: '#FF6B00' },
+              { name: 'Bunq', icon: '\uD83D\uDC30', color: '#3ab553' },
+            ]},
+            { label: 'CRM & Gestion', items: [
+              { name: 'GoHighLevel', icon: '\uD83D\uDCC8', color: '#f97316' },
+              { name: 'HubSpot', icon: '\uD83D\uDFE0', color: '#ff7a59' },
+              { name: 'Salesforce', icon: '\u2601\uFE0F', color: '#00a1e0' },
+              { name: 'Pipedrive', icon: '\uD83D\uDFE2', color: '#25292c' },
+              { name: 'Zoho', icon: '\uD83D\uDD34', color: '#e42527' },
+              { name: 'Brevo', icon: '\uD83D\uDC8C', color: '#0b996e' },
+              { name: 'Axonaut', icon: '\uD83D\uDD27', color: '#2563eb' },
+            ]},
+            { label: 'Projet', items: [
+              { name: 'Monday', icon: '\uD83D\uDCCB', color: '#6161ff' },
+              { name: 'Asana', icon: '\uD83C\uDFAF', color: '#f06a6a' },
+              { name: 'Notion', icon: '\uD83D\uDCDD', color: '#999' },
+            ]},
+            { label: 'Agenda & Pub', items: [
+              { name: 'Google Calendar', icon: '\uD83D\uDCC5', color: '#4285f4' },
+              { name: 'Meta Ads', icon: '\uD83D\uDCE3', color: '#0668e1' },
+            ]},
+          ].map((cat, ci) => (
+            <RevealDiv key={cat.label} delay={ci * 0.1}>
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10, textAlign: 'center' }}>
+                  {cat.label}
                 </div>
-              </RevealDiv>
-            ))}
-          </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  {cat.items.map((ig) => (
+                    <div key={ig.name} style={{
+                      background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 12,
+                      padding: '12px 16px', textAlign: 'center', minWidth: 90,
+                      transition: 'all .3s ease', cursor: 'default',
+                    }}>
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 12, margin: '0 auto 8px',
+                        background: `${ig.color}18`, border: `1px solid ${ig.color}25`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+                      }}>{ig.icon}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: C.text }}>{ig.name}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </RevealDiv>
+          ))}
 
-          <RevealDiv delay={0.3}>
-            <p style={{ textAlign: 'center', fontSize: 12, color: C.textMuted, marginTop: 28 }}>
+          <RevealDiv delay={0.5}>
+            <p style={{ textAlign: 'center', fontSize: 12, color: C.textMuted, marginTop: 12 }}>
               + Webhooks &amp; API REST — pour ceux qui veulent aller encore plus loin
             </p>
           </RevealDiv>
