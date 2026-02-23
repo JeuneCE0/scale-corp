@@ -36,7 +36,7 @@ export const SECTORS = [
 export const PLANS = [
   {
     id: 'starter', name: 'Essentiel', monthly: 49,
-    features: ['Dashboard complet', 'CRM (100 contacts)', 'Données financières', 'Agenda', 'Export PDF & FEC', '1 utilisateur', 'Support email'],
+    features: ['Dashboard complet', 'CRM (import illimité, 100 manuels)', 'Données financières', 'Agenda', 'Export PDF & FEC', '1 utilisateur', 'Support email'],
   },
   {
     id: 'professional', name: 'Business', monthly: 149, recommended: true,
