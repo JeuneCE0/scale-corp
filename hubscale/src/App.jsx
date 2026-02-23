@@ -15,20 +15,20 @@ const Settings = lazy(() => import('./pages/Settings.jsx'));
 const Onboarding = lazy(() => import('./pages/Onboarding.jsx'));
 
 const TABS = [
-  { id: 'overview', label: 'Overview', icon: '\u{1F4CA}' },
-  { id: 'crm', label: 'CRM', icon: '\u{1F465}' },
-  { id: 'data', label: 'Data', icon: '\u{1F4B0}' },
-  { id: 'agenda', label: 'Agenda', icon: '\u{1F4C5}' },
-  { id: 'settings', label: 'Param\u00E8tres', icon: '\u2699\uFE0F' },
+  { id: 'overview', label: 'Overview', icon: '📊' },
+  { id: 'crm', label: 'CRM', icon: '👥' },
+  { id: 'data', label: 'Data', icon: '💰' },
+  { id: 'agenda', label: 'Agenda', icon: '📅' },
+  { id: 'settings', label: 'Paramètres', icon: '⚙️' },
 ];
 
-const TAB_LABELS = { overview: 'Dashboard', crm: 'CRM', data: 'Data', agenda: 'Agenda', settings: 'Param\u00E8tres' };
+const TAB_LABELS = { overview: 'Dashboard', crm: 'CRM', data: 'Data', agenda: 'Agenda', settings: 'Paramètres' };
 
 // --- Session Greeting ---
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 12) return 'Bonjour';
-  if (h < 18) return 'Bon apr\u00E8s-midi';
+  if (h < 18) return 'Bon après-midi';
   return 'Bonsoir';
 }
 
@@ -62,7 +62,7 @@ function useNotifications() {
         notifs.push({
           id: `relance-${c.id}`,
           type: 'relance',
-          message: `${c.name} (prospect) sans activit\u00E9 depuis ${daysSinceActivity}j`,
+          message: `${c.name} (prospect) sans activité depuis ${daysSinceActivity}j`,
           time: lastActivity,
           tab: 'crm',
         });
@@ -71,7 +71,7 @@ function useNotifications() {
         notifs.push({
           id: `relance-${c.id}`,
           type: 'relance',
-          message: `${c.name} (lead) sans activit\u00E9 depuis ${daysSinceActivity}j`,
+          message: `${c.name} (lead) sans activité depuis ${daysSinceActivity}j`,
           time: lastActivity,
           tab: 'crm',
         });
@@ -90,7 +90,7 @@ function useNotifications() {
         notifs.push({
           id: `event-today-${ev.id}`,
           type: 'event',
-          message: `Aujourd'hui : ${ev.title}${ev.time ? ` \u00E0 ${ev.time}` : ''}`,
+          message: `Aujourd'hui : ${ev.title}${ev.time ? ` à ${ev.time}` : ''}`,
           time: ev.date,
           tab: 'agenda',
         });
@@ -98,7 +98,7 @@ function useNotifications() {
         notifs.push({
           id: `event-tomorrow-${ev.id}`,
           type: 'event',
-          message: `Demain : ${ev.title}${ev.time ? ` \u00E0 ${ev.time}` : ''}`,
+          message: `Demain : ${ev.title}${ev.time ? ` à ${ev.time}` : ''}`,
           time: ev.date,
           tab: 'agenda',
         });
@@ -113,7 +113,7 @@ function useNotifications() {
       notifs.push({
         id: 'finance-missing',
         type: 'finance',
-        message: `Donn\u00E9es financi\u00E8res manquantes pour ${curMonth}`,
+        message: `Données financières manquantes pour ${curMonth}`,
         time: now.toISOString(),
         tab: 'data',
       });
@@ -126,7 +126,7 @@ function useNotifications() {
       notifs.push({
         id: 'tip-integrations',
         type: 'tip',
-        message: 'Connectez vos int\u00E9grations pour plus de donn\u00E9es',
+        message: 'Connectez vos intégrations pour plus de données',
         time: now.toISOString(),
         tab: 'settings',
       });
@@ -210,7 +210,7 @@ function NotificationCenter({ onNavigate }) {
         }}
       >
         <span className={shaking ? 'bell-shake' : ''} style={{ display: 'inline-block', lineHeight: 1 }}>
-          {'\u{1F514}'}
+          {'🔔'}
         </span>
         <NotificationDot count={unreadCount} />
       </button>
@@ -314,16 +314,16 @@ function GlobalSearch({ open, onClose, onNavigate }) {
     const items = [];
     const contacts = load('contacts') || [];
     contacts.filter((c) => (c.name || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q) || (c.company || '').toLowerCase().includes(q))
-      .slice(0, 5).forEach((c) => items.push({ type: 'contact', label: c.name, sub: c.email || c.company || '', tab: 'crm', icon: '\u{1F464}' }));
+      .slice(0, 5).forEach((c) => items.push({ type: 'contact', label: c.name, sub: c.email || c.company || '', tab: 'crm', icon: '👤' }));
     const events = load('events') || [];
     events.filter((e) => (e.title || '').toLowerCase().includes(q))
-      .slice(0, 5).forEach((e) => items.push({ type: 'event', label: e.title, sub: e.date || '', tab: 'agenda', icon: '\u{1F4C5}' }));
+      .slice(0, 5).forEach((e) => items.push({ type: 'event', label: e.title, sub: e.date || '', tab: 'agenda', icon: '📅' }));
     const finances = load('finHistory') || [];
     finances.filter((f) => (f.key || '').includes(q))
-      .slice(0, 3).forEach((f) => items.push({ type: 'finance', label: `Mois ${f.key}`, sub: `CA: ${f.ca}\u20AC`, tab: 'data', icon: '\u{1F4B0}' }));
-    [{ label: 'Dashboard', tab: 'overview', icon: '\u{1F4CA}' }, { label: 'CRM', tab: 'crm', icon: '\u{1F465}' },
-     { label: 'Data', tab: 'data', icon: '\u{1F4B0}' }, { label: 'Agenda', tab: 'agenda', icon: '\u{1F4C5}' },
-     { label: 'Param\u00E8tres', tab: 'settings', icon: '\u2699\uFE0F' }]
+      .slice(0, 3).forEach((f) => items.push({ type: 'finance', label: `Mois ${f.key}`, sub: `CA: ${f.ca}€`, tab: 'data', icon: '💰' }));
+    [{ label: 'Dashboard', tab: 'overview', icon: '📊' }, { label: 'CRM', tab: 'crm', icon: '👥' },
+     { label: 'Data', tab: 'data', icon: '💰' }, { label: 'Agenda', tab: 'agenda', icon: '📅' },
+     { label: 'Paramètres', tab: 'settings', icon: '⚙️' }]
       .filter((p) => p.label.toLowerCase().includes(q))
       .forEach((p) => items.push({ type: 'page', label: p.label, sub: 'Naviguer', tab: p.tab, icon: p.icon }));
     return items;
@@ -334,8 +334,8 @@ function GlobalSearch({ open, onClose, onNavigate }) {
     <div className="fade-in" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '80px 16px', backdropFilter: 'blur(8px)' }}>
       <div className="scale-in" onClick={(e) => e.stopPropagation()} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, width: 520, maxWidth: '100%', boxShadow: '0 24px 64px rgba(0,0,0,.5)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: `1px solid ${T.border}` }}>
-          <span style={{ fontSize: 16, color: T.textMuted }}>{'\u{1F50D}'}</span>
-          <input ref={inputRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher contacts, \u00E9v\u00E9nements, pages..."
+          <span style={{ fontSize: 16, color: T.textMuted }}>{'🔍'}</span>
+          <input ref={inputRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher contacts, événements, pages..."
             style={{ flex: 1, background: 'transparent', border: 'none', color: T.text, fontSize: 14, fontFamily: FONT, outline: 'none' }} />
           <kbd style={{ fontSize: 10, color: T.textMuted, background: T.surface2, padding: '2px 6px', borderRadius: 4, border: `1px solid ${T.border}` }}>ESC</kbd>
         </div>
@@ -355,10 +355,10 @@ function GlobalSearch({ open, onClose, onNavigate }) {
           </div>
         )}
         {query.length >= 2 && results.length === 0 && (
-          <div style={{ padding: 24, textAlign: 'center', color: T.textMuted, fontSize: 12 }}>Aucun r\u00E9sultat pour "{query}"</div>
+          <div style={{ padding: 24, textAlign: 'center', color: T.textMuted, fontSize: 12 }}>Aucun résultat pour "{query}"</div>
         )}
         {query.length < 2 && (
-          <div style={{ padding: 24, textAlign: 'center', color: T.textMuted, fontSize: 11 }}>Tapez au moins 2 caract\u00E8res pour chercher</div>
+          <div style={{ padding: 24, textAlign: 'center', color: T.textMuted, fontSize: 11 }}>Tapez au moins 2 caractères pour chercher</div>
         )}
       </div>
     </div>
@@ -367,22 +367,22 @@ function GlobalSearch({ open, onClose, onNavigate }) {
 
 // --- Keyboard Shortcuts Help (Cmd+?) ---
 const SHORTCUTS = [
-  { keys: ['\u2318', 'K'], desc: 'Recherche globale' },
-  { keys: ['\u2318', '?'], desc: 'Aide raccourcis clavier' },
-  { keys: ['Ctrl', 'Z'], desc: 'Annuler la derni\u00E8re suppression' },
+  { keys: ['⌘', 'K'], desc: 'Recherche globale' },
+  { keys: ['⌘', '?'], desc: 'Aide raccourcis clavier' },
+  { keys: ['Ctrl', 'Z'], desc: 'Annuler la dernière suppression' },
   { keys: ['Esc'], desc: 'Fermer modale / recherche' },
   { keys: ['Enter'], desc: 'Valider formulaire' },
-  { keys: ['1\u20135'], desc: 'Naviguer entre les onglets' },
-  { keys: ['N'], desc: 'Nouveau (contact dans CRM, \u00E9v\u00E9nement dans Agenda)' },
+  { keys: ['1–5'], desc: 'Naviguer entre les onglets' },
+  { keys: ['N'], desc: 'Nouveau (contact dans CRM, événement dans Agenda)' },
 ];
 
 // --- Guided Tour ---
 const TOUR_STEPS = [
-  { target: 'overview', title: '\u{1F4CA} Dashboard', desc: () => t('tour.step1') },
-  { target: 'crm', title: '\u{1F465} CRM', desc: () => t('tour.step2') },
-  { target: 'data', title: '\u{1F4B0} Data', desc: () => t('tour.step3') },
-  { target: 'agenda', title: '\u{1F4C5} Agenda', desc: () => t('tour.step4') },
-  { target: 'settings', title: '\u2699\uFE0F Param\u00E8tres', desc: () => t('tour.step5') },
+  { target: 'overview', title: '📊 Dashboard', desc: () => t('tour.step1') },
+  { target: 'crm', title: '👥 CRM', desc: () => t('tour.step2') },
+  { target: 'data', title: '💰 Data', desc: () => t('tour.step3') },
+  { target: 'agenda', title: '📅 Agenda', desc: () => t('tour.step4') },
+  { target: 'settings', title: '⚙️ Paramètres', desc: () => t('tour.step5') },
 ];
 
 function GuidedTour({ open, onClose, onNavigate }) {
@@ -449,7 +449,7 @@ function ShortcutsHelp({ open, onClose }) {
       <div className="scale-in" onClick={(e) => e.stopPropagation()} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 24, width: 400, maxWidth: '100%', boxShadow: '0 24px 64px rgba(0,0,0,.5)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: T.text }}>Raccourcis clavier</h3>
-          <Btn v="ghost" small onClick={onClose} aria-label="Fermer">{'\u2715'}</Btn>
+          <Btn v="ghost" small onClick={onClose} aria-label="Fermer">{'✕'}</Btn>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {SHORTCUTS.map((s) => (
@@ -464,7 +464,7 @@ function ShortcutsHelp({ open, onClose }) {
           ))}
         </div>
         <div style={{ marginTop: 16, textAlign: 'center' }}>
-          <span style={{ fontSize: 10, color: T.textMuted }}>Sur Mac, \u2318 = Cmd. Sur Windows/Linux, \u2318 = Ctrl.</span>
+          <span style={{ fontSize: 10, color: T.textMuted }}>Sur Mac, ⌘ = Cmd. Sur Windows/Linux, ⌘ = Ctrl.</span>
         </div>
       </div>
     </div>
@@ -602,12 +602,12 @@ export default function App() {
             </button>
             <button onClick={() => setSearchOpen(true)} aria-label="Recherche globale"
               style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8, padding: '5px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 11, color: T.textMuted }}>{'\u{1F50D}'}</span>
+              <span style={{ fontSize: 11, color: T.textMuted }}>{'🔍'}</span>
               <span className="hide-mobile" style={{ fontSize: 11, color: T.textMuted }}>{t('common.search').replace('...', '')}</span>
-              <kbd className="hide-mobile" style={{ fontSize: 9, color: T.textMuted, background: T.bg, padding: '1px 4px', borderRadius: 3, border: `1px solid ${T.border}`, marginLeft: 4 }}>{'\u2318'}K</kbd>
+              <kbd className="hide-mobile" style={{ fontSize: 9, color: T.textMuted, background: T.bg, padding: '1px 4px', borderRadius: 3, border: `1px solid ${T.border}`, marginLeft: 4 }}>{'⌘'}K</kbd>
             </button>
             <NotificationCenter onNavigate={navigate} />
-            {!load('tourDone') && <button onClick={() => setTourOpen(true)} aria-label="Visite guid\u00E9e" style={{ background: T.orangeBg, border: `1px solid ${T.orange}33`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: T.orange, fontFamily: FONT }}>Tour</button>}
+            {!load('tourDone') && <button onClick={() => setTourOpen(true)} aria-label="Visite guidée" style={{ background: T.orangeBg, border: `1px solid ${T.orange}33`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: T.orange, fontFamily: FONT }}>Tour</button>}
             <span style={{
               fontSize: 9, fontWeight: 700, color: T.orange, border: `1px solid ${T.orange}44`,
               borderRadius: 4, padding: '2px 6px', letterSpacing: .5,

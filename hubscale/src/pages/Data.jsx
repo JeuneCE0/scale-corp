@@ -33,7 +33,7 @@ const LazyFinChart = lazy(() =>
             <YAxis tickFormatter={fK} tick={{ fontSize: 10 }} />
             <Tooltip
               formatter={(v, name, entry) => [
-                fmt(v) + '\u20AC' + (entry.payload.type === 'forecast' ? ' (prev.)' : ''),
+                fmt(v) + '€' + (entry.payload.type === 'forecast' ? ' (prev.)' : ''),
                 name,
               ]}
               contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 11 }}
@@ -42,9 +42,9 @@ const LazyFinChart = lazy(() =>
             <Legend
               wrapperStyle={{ fontSize: 10 }}
               payload={[
-                { value: 'CA (r\u00E9el)', type: 'square', color: '#16a34a' },
+                { value: 'CA (réel)', type: 'square', color: '#16a34a' },
                 { value: 'Charges', type: 'square', color: '#dc2626' },
-                { value: 'CA (pr\u00E9vision)', type: 'square', color: '#16a34a80' },
+                { value: 'CA (prévision)', type: 'square', color: '#16a34a80' },
               ]}
             />
             {actual.length > 0 && forecast.length > 0 && (
@@ -77,7 +77,7 @@ const LazyFinChart = lazy(() =>
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
-const SUB_TABS = ['Finances', 'Sales', 'Publicit\u00E9'];
+const SUB_TABS = ['Finances', 'Sales', 'Publicité'];
 const HIST_PAGE_SIZE = 12;
 
 /* ------------------------------------------------------------------ */
@@ -102,7 +102,7 @@ function generateDefaultHistory() {
 function EvoBadge({ value, invert }) {
   const isPositive = invert ? value < 0 : value > 0;
   const color = isPositive ? T.green : T.red;
-  const arrow = value > 0 ? '\u2191' : '\u2193';
+  const arrow = value > 0 ? '↑' : '↓';
   return (
     <span style={{
       fontSize: 9, fontWeight: 700, color, marginLeft: 6,
@@ -140,18 +140,18 @@ function ThresholdAlerts({ history, histByKey }) {
     if (margin < 10) {
       list.push({
         level: 'red',
-        icon: '\u26A0\uFE0F',
+        icon: '⚠️',
         message: 'Marge critique',
         detail: `Marge actuelle : ${margin}% (seuil : 10%)`,
-        action: 'R\u00E9duisez vos charges ou augmentez vos prix',
+        action: 'Réduisez vos charges ou augmentez vos prix',
       });
     } else if (margin < 20) {
       list.push({
         level: 'orange',
-        icon: '\u26A0\uFE0F',
+        icon: '⚠️',
         message: 'Marge faible',
         detail: `Marge actuelle : ${margin}% (seuil : 20%)`,
-        action: 'Surveillez l\u2019\u00E9volution de vos charges',
+        action: 'Surveillez l’évolution de vos charges',
       });
     }
 
@@ -161,9 +161,9 @@ function ThresholdAlerts({ history, histByKey }) {
       if (caDelta < -15) {
         list.push({
           level: 'red',
-          icon: '\uD83D\uDCC9',
+          icon: '📉',
           message: 'CA en baisse',
-          detail: `${Math.abs(caDelta)}% de baisse vs mois pr\u00E9c\u00E9dent`,
+          detail: `${Math.abs(caDelta)}% de baisse vs mois précédent`,
           action: 'Analysez vos sources de revenus et relancez vos prospects',
         });
       }
@@ -175,10 +175,10 @@ function ThresholdAlerts({ history, histByKey }) {
       if (chargesDelta > 20) {
         list.push({
           level: 'orange',
-          icon: '\uD83D\uDCB8',
+          icon: '💸',
           message: 'Charges en hausse',
-          detail: `+${chargesDelta}% vs mois pr\u00E9c\u00E9dent`,
-          action: 'V\u00E9rifiez vos postes de d\u00E9penses et identifiez les \u00E9carts',
+          detail: `+${chargesDelta}% vs mois précédent`,
+          action: 'Vérifiez vos postes de dépenses et identifiez les écarts',
         });
       }
     }
@@ -243,10 +243,10 @@ function ForecastCard({ forecastData, history }) {
     <div className="fade-up d3" style={{ marginBottom: 16 }}>
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <span style={{ fontSize: 14 }}>{isGrowth ? '\uD83D\uDCC8' : '\uD83D\uDCC9'}</span>
+          <span style={{ fontSize: 14 }}>{isGrowth ? '📈' : '📉'}</span>
           <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
-            Pr\u00E9vision CA sur 3 mois
-            <HelpTip text="Projection lin\u00E9aire bas\u00E9e sur les 6 derniers mois" />
+            Prévision CA sur 3 mois
+            <HelpTip text="Projection linéaire basée sur les 6 derniers mois" />
           </div>
           <div style={{
             marginLeft: 'auto', fontSize: 11, fontWeight: 700,
@@ -259,7 +259,7 @@ function ForecastCard({ forecastData, history }) {
               background: isGrowth ? T.green + '20' : T.red + '20',
               fontSize: 10,
             }}>
-              {isGrowth ? '\u2191' : '\u2193'}
+              {isGrowth ? '↑' : '↓'}
             </span>
             Tendance : {isGrowth ? '+' : ''}{trend}%/mois
           </div>
@@ -279,7 +279,7 @@ function ForecastCard({ forecastData, history }) {
                   {monthLabel(f.key)}
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: isGrowth ? T.green : T.red }}>
-                  {fK(f.ca)}\u20AC
+                  {fK(f.ca)}€
                 </div>
                 {diff !== 0 && (
                   <div style={{ fontSize: 9, fontWeight: 600, color: diff > 0 ? T.green : T.red, marginTop: 2 }}>
@@ -336,15 +336,15 @@ function BudgetVsActual({ lastRow }) {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
               Budget mensuel
-              <HelpTip text="D\u00E9finissez un budget pour comparer avec vos r\u00E9sultats r\u00E9els" />
+              <HelpTip text="Définissez un budget pour comparer avec vos résultats réels" />
             </div>
-            <Btn v="ghost" small onClick={() => setEditing(true)}>+ D\u00E9finir un budget</Btn>
+            <Btn v="ghost" small onClick={() => setEditing(true)}>+ Définir un budget</Btn>
           </div>
           {editing && (
             <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <Inp label="Budget CA" value={inputCA} onChange={setInputCA} type="number" placeholder="0" suffix="\u20AC" small />
+              <Inp label="Budget CA" value={inputCA} onChange={setInputCA} type="number" placeholder="0" suffix="€" small />
               <Btn v="ghost" small onClick={saveBudgetCA} disabled={!inputCA}>OK</Btn>
-              <Inp label="Budget Charges" value={inputCharges} onChange={setInputCharges} type="number" placeholder="0" suffix="\u20AC" small />
+              <Inp label="Budget Charges" value={inputCharges} onChange={setInputCharges} type="number" placeholder="0" suffix="€" small />
               <Btn v="ghost" small onClick={saveBudgetCharges} disabled={!inputCharges}>OK</Btn>
             </div>
           )}
@@ -365,23 +365,23 @@ function BudgetVsActual({ lastRow }) {
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 13 }}>{'\uD83C\uDFAF'}</span>
+            <span style={{ fontSize: 13 }}>{'🎯'}</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
-              Budget vs R\u00E9el
-              <HelpTip text="Comparaison de vos objectifs budg\u00E9taires avec les r\u00E9sultats r\u00E9els" />
+              Budget vs Réel
+              <HelpTip text="Comparaison de vos objectifs budgétaires avec les résultats réels" />
             </span>
           </div>
           <div style={{ display: 'flex', gap: 4 }}>
             <Btn v="ghost" small onClick={() => setEditing(!editing)}>Modifier</Btn>
-            <Btn v="ghost" small onClick={clearBudgets}>{'\u2715'}</Btn>
+            <Btn v="ghost" small onClick={clearBudgets}>{'✕'}</Btn>
           </div>
         </div>
 
         {editing && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <Inp label="Budget CA" value={inputCA} onChange={setInputCA} type="number" placeholder={String(budgetCA || '')} suffix="\u20AC" small />
+            <Inp label="Budget CA" value={inputCA} onChange={setInputCA} type="number" placeholder={String(budgetCA || '')} suffix="€" small />
             <Btn v="ghost" small onClick={saveBudgetCA} disabled={!inputCA}>OK</Btn>
-            <Inp label="Budget Charges" value={inputCharges} onChange={setInputCharges} type="number" placeholder={String(budgetCharges || '')} suffix="\u20AC" small />
+            <Inp label="Budget Charges" value={inputCharges} onChange={setInputCharges} type="number" placeholder={String(budgetCharges || '')} suffix="€" small />
             <Btn v="ghost" small onClick={saveBudgetCharges} disabled={!inputCharges}>OK</Btn>
           </div>
         )}
@@ -392,7 +392,7 @@ function BudgetVsActual({ lastRow }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
                 <span style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase' }}>CA</span>
                 <span style={{ fontSize: 11, fontWeight: 700, color: caColor }}>
-                  Budget : {fK(budgetCA)}\u20AC / R\u00E9el : {fK(actualCA)}\u20AC
+                  Budget : {fK(budgetCA)}€ / Réel : {fK(actualCA)}€
                 </span>
               </div>
               <ProgressBar value={actualCA} max={budgetCA} color={caColor} h={8} />
@@ -404,7 +404,7 @@ function BudgetVsActual({ lastRow }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
                 <span style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase' }}>Charges</span>
                 <span style={{ fontSize: 11, fontWeight: 700, color: chargesColor }}>
-                  Budget : {fK(budgetCharges)}\u20AC / R\u00E9el : {fK(actualCharges)}\u20AC
+                  Budget : {fK(budgetCharges)}€ / Réel : {fK(actualCharges)}€
                 </span>
               </div>
               <ProgressBar value={actualCharges} max={budgetCharges} color={chargesColor} h={8} />
@@ -459,7 +459,7 @@ function SalesTab() {
     return (
       <Card>
         <EmptyState
-          icon="\uD83D\uDCBC"
+          icon="💼"
           title="Aucun contact dans le CRM"
           sub="Ajoutez des contacts dans l'onglet CRM pour voir vos statistiques de vente"
         />
@@ -472,11 +472,11 @@ function SalesTab() {
       {/* KPIs */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12, marginBottom: 20 }}>
         {[
-          { l: 'Total contacts', v: stats.total, c: T.accent, icon: '\uD83D\uDCCB' },
-          { l: 'Prospects', v: stats.prospects, c: T.orange, icon: '\uD83D\uDD0D' },
-          { l: 'Leads', v: stats.leads, c: T.blue, icon: '\uD83D\uDCE7' },
-          { l: 'Clients', v: stats.clients, c: T.green, icon: '\u2705' },
-          { l: 'Perdus', v: stats.lost, c: T.red, icon: '\u274C' },
+          { l: 'Total contacts', v: stats.total, c: T.accent, icon: '📋' },
+          { l: 'Prospects', v: stats.prospects, c: T.orange, icon: '🔍' },
+          { l: 'Leads', v: stats.leads, c: T.blue, icon: '📧' },
+          { l: 'Clients', v: stats.clients, c: T.green, icon: '✅' },
+          { l: 'Perdus', v: stats.lost, c: T.red, icon: '❌' },
         ].map((s) => (
           <div key={s.l} style={{ textAlign: 'center', padding: 14, borderRadius: 10, background: s.c + '10', border: `1px solid ${s.c}22` }}>
             <div style={{ fontSize: 14, marginBottom: 4 }}>{s.icon}</div>
@@ -500,7 +500,7 @@ function SalesTab() {
               </span>
             </ScoreRing>
             <div style={{ fontSize: 10, color: T.textMuted, marginTop: 6 }}>
-              {stats.clients} gagn\u00E9s / {stats.clients + stats.lost} clos
+              {stats.clients} gagnés / {stats.clients + stats.lost} clos
             </div>
           </div>
         </Card>
@@ -508,11 +508,11 @@ function SalesTab() {
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8 }}>
               Valeur pipeline
-              <HelpTip text={`Leads x CA moyen par client (${fmt(stats.avgCAPerClient)}\u20AC)`} />
+              <HelpTip text={`Leads x CA moyen par client (${fmt(stats.avgCAPerClient)}€)`} />
             </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: T.blue }}>{fK(stats.pipelineValue)}\u20AC</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: T.blue }}>{fK(stats.pipelineValue)}€</div>
             <div style={{ fontSize: 10, color: T.textMuted, marginTop: 4 }}>
-              {stats.leads} leads x {fK(stats.avgCAPerClient)}\u20AC moy.
+              {stats.leads} leads x {fK(stats.avgCAPerClient)}€ moy.
             </div>
           </div>
         </Card>
@@ -541,7 +541,7 @@ function SalesTab() {
                   </div>
                 </div>
                 {idx < funnel.length - 1 && (
-                  <div style={{ textAlign: 'center', fontSize: 12, color: T.textMuted, margin: '2px 0' }}>{'\u2193'}</div>
+                  <div style={{ textAlign: 'center', fontSize: 12, color: T.textMuted, margin: '2px 0' }}>{'↓'}</div>
                 )}
               </div>
             ))}
@@ -579,17 +579,17 @@ function PubliciteTab() {
     const impressions = Math.round(clicks / 0.035); // assume 3.5% CTR
     const ctr = clicks > 0 && impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : '0.00';
     const conversions = cr > 0 ? Math.round(clicks * (cr / 100)) : 0;
-    const cpa = conversions > 0 ? (spend / conversions).toFixed(2) : '\u2014';
+    const cpa = conversions > 0 ? (spend / conversions).toFixed(2) : '—';
     return { clicks, impressions, ctr, conversions, cpa };
   }, [adSpend, cpc, convRate]);
 
   const demoStats = [
-    { l: 'Budget d\u00E9pens\u00E9', v: '3 240\u20AC', c: T.orange, icon: '\uD83D\uDCB8' },
-    { l: 'Impressions', v: '125.4K', c: T.blue, icon: '\uD83D\uDC41\uFE0F' },
-    { l: 'Clics', v: '4 832', c: T.purple, icon: '\uD83D\uDC46' },
-    { l: 'CTR', v: '3.85%', c: T.green, icon: '\uD83D\uDCC8' },
-    { l: 'CPC moyen', v: '0.67\u20AC', c: T.accent, icon: '\uD83C\uDFAF' },
-    { l: 'Conversions', v: '142', c: T.green, icon: '\u2705' },
+    { l: 'Budget dépensé', v: '3 240€', c: T.orange, icon: '💸' },
+    { l: 'Impressions', v: '125.4K', c: T.blue, icon: '👁️' },
+    { l: 'Clics', v: '4 832', c: T.purple, icon: '👆' },
+    { l: 'CTR', v: '3.85%', c: T.green, icon: '📈' },
+    { l: 'CPC moyen', v: '0.67€', c: T.accent, icon: '🎯' },
+    { l: 'Conversions', v: '142', c: T.green, icon: '✅' },
   ];
 
   return (
@@ -597,12 +597,12 @@ function PubliciteTab() {
       {!metaConnected && (
         <Card style={{ marginBottom: 16 }}>
           <div style={{ textAlign: 'center', padding: '24px 16px' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>{'\uD83D\uDCE2'}</div>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>{'📢'}</div>
             <div style={{ fontWeight: 700, fontSize: 15, color: T.text, marginBottom: 4 }}>
               Connectez Meta Ads
             </div>
             <div style={{ color: T.textSecondary, fontSize: 12, marginBottom: 16 }}>
-              Connecter Meta Ads pour voir vos stats publicitaires en temps r\u00E9el
+              Connecter Meta Ads pour voir vos stats publicitaires en temps réel
             </div>
             <Btn v="primary" onClick={() => {
               const current = load('integrations') || {};
@@ -618,7 +618,7 @@ function PubliciteTab() {
       {metaConnected && (
         <Card style={{ marginBottom: 16 }}>
           <Section title="META ADS" sub="Performance des campagnes publicitaires">
-            <Badge label="Donn\u00E9es de d\u00E9monstration" color={T.orange} bg={T.orangeBg} />
+            <Badge label="Données de démonstration" color={T.orange} bg={T.orangeBg} />
             <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginTop: 12 }}>
               {demoStats.map((m) => (
                 <div key={m.l} className="glass-static" style={{ padding: 14, textAlign: 'center' }}>
@@ -637,7 +637,7 @@ function PubliciteTab() {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 13 }}>{'\uD83E\uDDEA'}</span>
+              <span style={{ fontSize: 13 }}>{'🧪'}</span>
               <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
                 Mode simulation
               </span>
@@ -650,8 +650,8 @@ function PubliciteTab() {
           {simMode && (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
-                <Inp label="Budget publicitaire (\u20AC)" value={adSpend} onChange={setAdSpend} type="number" placeholder="1000" suffix="\u20AC" />
-                <Inp label="CPC moyen (\u20AC)" value={cpc} onChange={setCpc} type="number" placeholder="0.50" suffix="\u20AC" />
+                <Inp label="Budget publicitaire (€)" value={adSpend} onChange={setAdSpend} type="number" placeholder="1000" suffix="€" />
+                <Inp label="CPC moyen (€)" value={cpc} onChange={setCpc} type="number" placeholder="0.50" suffix="€" />
                 <Inp label="Taux de conversion (%)" value={convRate} onChange={setConvRate} type="number" placeholder="3" suffix="%" />
               </div>
 
@@ -666,7 +666,7 @@ function PubliciteTab() {
                     { l: 'Clics est.', v: fmt(simResults.clicks), c: T.purple },
                     { l: 'CTR est.', v: simResults.ctr + '%', c: T.green },
                     { l: 'Conversions est.', v: String(simResults.conversions), c: T.green },
-                    { l: 'CPA est.', v: simResults.cpa === '\u2014' ? '\u2014' : simResults.cpa + '\u20AC', c: T.orange },
+                    { l: 'CPA est.', v: simResults.cpa === '—' ? '—' : simResults.cpa + '€', c: T.orange },
                   ].map((r) => (
                     <div key={r.l} style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: 20, fontWeight: 800, color: r.c }}>{r.v}</div>
@@ -827,26 +827,26 @@ export default function Data() {
       @media print{body{padding:20px}}
     </style></head><body>
     <h1>Rapport Financier</h1>
-    <div class="sub">G\u00E9n\u00E9r\u00E9 le ${new Date().toLocaleDateString('fr-FR')} \u2014 HubScale</div>
+    <div class="sub">Généré le ${new Date().toLocaleDateString('fr-FR')} — HubScale</div>
     <div class="kpis">
-      <div class="kpi"><div class="kpi-label">CA Dernier mois</div><div class="kpi-value g">${fmt(lastRow.ca || 0)}\u20AC</div></div>
-      <div class="kpi"><div class="kpi-label">Charges</div><div class="kpi-value r">${fmt(lastRow.charges || 0)}\u20AC</div></div>
-      <div class="kpi"><div class="kpi-label">R\u00E9sultat</div><div class="kpi-value o">${fmt(lastRow.result || 0)}\u20AC</div></div>
-      ${caGoal > 0 ? `<div class="kpi"><div class="kpi-label">Objectif CA</div><div class="kpi-value">${fmt(caGoal)}\u20AC</div></div>` : ''}
+      <div class="kpi"><div class="kpi-label">CA Dernier mois</div><div class="kpi-value g">${fmt(lastRow.ca || 0)}€</div></div>
+      <div class="kpi"><div class="kpi-label">Charges</div><div class="kpi-value r">${fmt(lastRow.charges || 0)}€</div></div>
+      <div class="kpi"><div class="kpi-label">Résultat</div><div class="kpi-value o">${fmt(lastRow.result || 0)}€</div></div>
+      ${caGoal > 0 ? `<div class="kpi"><div class="kpi-label">Objectif CA</div><div class="kpi-value">${fmt(caGoal)}€</div></div>` : ''}
     </div>
     <h2>Historique</h2>
     <table>
-      <thead><tr><th>Mois</th><th>CA</th><th>Charges</th><th>Marge</th><th>R\u00E9sultat</th></tr></thead>
+      <thead><tr><th>Mois</th><th>CA</th><th>Charges</th><th>Marge</th><th>Résultat</th></tr></thead>
       <tbody>
         ${rows.map(r => {
           const margin = r.ca ? Math.round((r.result / r.ca) * 100) : 0;
-          return `<tr><td>${monthLabel(r.key)}</td><td class="g">${fmt(r.ca)}\u20AC</td><td class="r">${fmt(r.charges)}\u20AC</td><td>${margin}%</td><td class="${r.result >= 0 ? 'o' : 'r'}">${fmt(r.result)}\u20AC</td></tr>`;
+          return `<tr><td>${monthLabel(r.key)}</td><td class="g">${fmt(r.ca)}€</td><td class="r">${fmt(r.charges)}€</td><td>${margin}%</td><td class="${r.result >= 0 ? 'o' : 'r'}">${fmt(r.result)}€</td></tr>`;
         }).join('')}
-        <tr class="ytd-row"><td>TOTAL YTD ${new Date().getFullYear()}</td><td class="g">${fmt(ytd.ca)}\u20AC</td><td class="r">${fmt(ytd.charges)}\u20AC</td><td>${ytd.ca ? Math.round((ytd.result / ytd.ca) * 100) : 0}%</td><td class="${ytd.result >= 0 ? 'o' : 'r'}">${fmt(ytd.result)}\u20AC</td></tr>
-        ${forecast.length > 0 ? forecast.map(f => `<tr class="forecast-row"><td>${monthLabel(f.key)} (prev.)</td><td>${fmt(f.ca)}\u20AC</td><td>\u2014</td><td>\u2014</td><td>\u2014</td></tr>`).join('') : ''}
+        <tr class="ytd-row"><td>TOTAL YTD ${new Date().getFullYear()}</td><td class="g">${fmt(ytd.ca)}€</td><td class="r">${fmt(ytd.charges)}€</td><td>${ytd.ca ? Math.round((ytd.result / ytd.ca) * 100) : 0}%</td><td class="${ytd.result >= 0 ? 'o' : 'r'}">${fmt(ytd.result)}€</td></tr>
+        ${forecast.length > 0 ? forecast.map(f => `<tr class="forecast-row"><td>${monthLabel(f.key)} (prev.)</td><td>${fmt(f.ca)}€</td><td>—</td><td>—</td><td>—</td></tr>`).join('') : ''}
       </tbody>
     </table>
-    <div class="footer">Rapport confidentiel \u2014 HubScale ${new Date().getFullYear()}</div>
+    <div class="footer">Rapport confidentiel — HubScale ${new Date().getFullYear()}</div>
     </body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 300);
@@ -893,7 +893,7 @@ export default function Data() {
       <div className="fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Data</h1>
-          <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Vos donn\u00E9es financi\u00E8res, commerciales et publicitaires</p>
+          <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Vos données financières, commerciales et publicitaires</p>
         </div>
         {subTab === 'Finances' && (
           <div style={{ display: 'flex', gap: 8 }}>
@@ -912,10 +912,10 @@ export default function Data() {
         <>
           {/* KPIs */}
           <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 20 }}>
-            <KPI label="CA MENSUEL" value={`${fK(lastRow.ca || 0)}\u20AC`} sub="Ce mois-ci" accent={T.green} icon={'\uD83D\uDCB0'} delay={1} sparkData={sparkCA} helpTip="Chiffre d'affaires total du mois" />
-            <KPI label="CHARGES" value={`${fK(lastRow.charges || 0)}\u20AC`} sub="Fixes + Variables" accent={T.red} icon={'\uD83D\uDCC9'} delay={2} sparkData={sparkCharges} helpTip="Total charges fixes + variables" />
-            <KPI label="R\u00C9SULTAT" value={`${fK(lastRow.result || 0)}\u20AC`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '\u2014'} accent={T.orange} icon={'\uD83D\uDCCA'} delay={3} sparkData={sparkResult} helpTip="CA moins charges = r\u00E9sultat net" />
-            <KPI label="TR\u00C9SORERIE" value={`${fK(lastRow.treso || pf(formTreso) || 0)}\u20AC`} sub="Solde disponible" accent={T.blue} icon={'\uD83C\uDFE6'} delay={4} helpTip="Solde bancaire disponible" />
+            <KPI label="CA MENSUEL" value={`${fK(lastRow.ca || 0)}€`} sub="Ce mois-ci" accent={T.green} icon={'💰'} delay={1} sparkData={sparkCA} helpTip="Chiffre d'affaires total du mois" />
+            <KPI label="CHARGES" value={`${fK(lastRow.charges || 0)}€`} sub="Fixes + Variables" accent={T.red} icon={'📉'} delay={2} sparkData={sparkCharges} helpTip="Total charges fixes + variables" />
+            <KPI label="RÉSULTAT" value={`${fK(lastRow.result || 0)}€`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '—'} accent={T.orange} icon={'📊'} delay={3} sparkData={sparkResult} helpTip="CA moins charges = résultat net" />
+            <KPI label="TRÉSORERIE" value={`${fK(lastRow.treso || pf(formTreso) || 0)}€`} sub="Solde disponible" accent={T.blue} icon={'🏦'} delay={4} helpTip="Solde bancaire disponible" />
           </div>
 
           {/* Threshold Alerts */}
@@ -934,9 +934,9 @@ export default function Data() {
                     <ProgressBar value={lastRow.ca || 0} max={caGoal} color={(lastRow.ca || 0) >= caGoal ? T.green : T.orange} h={8} />
                   </div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: (lastRow.ca || 0) >= caGoal ? T.green : T.orange, whiteSpace: 'nowrap' }}>
-                    {fK(lastRow.ca || 0)}\u20AC / {fK(caGoal)}\u20AC ({Math.min(Math.round(((lastRow.ca || 0) / caGoal) * 100), 999)}%)
+                    {fK(lastRow.ca || 0)}€ / {fK(caGoal)}€ ({Math.min(Math.round(((lastRow.ca || 0) / caGoal) * 100), 999)}%)
                   </div>
-                  <Btn v="ghost" small onClick={() => { setCaGoal(0); store('caGoal', 0); }}>{'\u2715'}</Btn>
+                  <Btn v="ghost" small onClick={() => { setCaGoal(0); store('caGoal', 0); }}>{'✕'}</Btn>
                 </div>
               </Card>
             </div>
@@ -950,17 +950,17 @@ export default function Data() {
             <Card>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
-                  \u00C9VOLUTION CA / CHARGES
+                  ÉVOLUTION CA / CHARGES
                 </div>
                 {forecast.length > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 9, color: T.textMuted }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                       <span style={{ width: 10, height: 10, borderRadius: 2, background: '#16a34a', display: 'inline-block' }} />
-                      R\u00E9el
+                      Réel
                     </span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                       <span style={{ width: 10, height: 10, borderRadius: 2, background: '#16a34a', opacity: 0.35, display: 'inline-block', border: '1px dashed #16a34a' }} />
-                      Pr\u00E9vision
+                      Prévision
                     </span>
                   </div>
                 )}
@@ -977,24 +977,24 @@ export default function Data() {
           <ForecastCard forecastData={forecast} history={history} />
 
           {/* Data Entry Form */}
-          <Section title="SAISIE" sub="Renseignez vos donn\u00E9es du mois">
+          <Section title="SAISIE" sub="Renseignez vos données du mois">
             <Card>
               <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
                 <Inp label="Mois" type="month" value={formMonth} onChange={setFormMonth} />
-                <Inp label="Chiffre d'affaires (\u20AC)" value={formCA} onChange={setFormCA} type="number" placeholder="0" suffix="\u20AC" />
-                <Inp label="Charges fixes (\u20AC)" value={formFixed} onChange={setFormFixed} type="number" placeholder="0" suffix="\u20AC" />
-                <Inp label="Charges variables (\u20AC)" value={formVar} onChange={setFormVar} type="number" placeholder="0" suffix="\u20AC" />
-                <Inp label="Tr\u00E9sorerie (\u20AC)" value={formTreso} onChange={setFormTreso} type="number" placeholder="0" suffix="\u20AC" />
+                <Inp label="Chiffre d'affaires (€)" value={formCA} onChange={setFormCA} type="number" placeholder="0" suffix="€" />
+                <Inp label="Charges fixes (€)" value={formFixed} onChange={setFormFixed} type="number" placeholder="0" suffix="€" />
+                <Inp label="Charges variables (€)" value={formVar} onChange={setFormVar} type="number" placeholder="0" suffix="€" />
+                <Inp label="Trésorerie (€)" value={formTreso} onChange={setFormTreso} type="number" placeholder="0" suffix="€" />
               </div>
               <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                 {!caGoal && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Inp label="" value={goalInput} onChange={setGoalInput} type="number" placeholder="Objectif CA mensuel" small suffix="\u20AC" />
-                    <Btn v="ghost" small onClick={saveCaGoal} disabled={!goalInput}>D\u00E9finir</Btn>
+                    <Inp label="" value={goalInput} onChange={setGoalInput} type="number" placeholder="Objectif CA mensuel" small suffix="€" />
+                    <Btn v="ghost" small onClick={saveCaGoal} disabled={!goalInput}>Définir</Btn>
                   </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
-                  {saved && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>{'\u2713'} Enregistr\u00E9</span>}
+                  {saved && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>{'✓'} Enregistré</span>}
                   <Btn onClick={saveEntry} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Enregistrer</Btn>
                 </div>
               </div>
@@ -1005,7 +1005,7 @@ export default function Data() {
           <Section title="HISTORIQUE" sub={`${history.length} derniers mois`}>
             {history.length === 0 ? (
               <Card>
-                <EmptyState icon={'\uD83D\uDCCA'} title="Aucun historique" sub="Saisissez vos premi\u00E8res donn\u00E9es ci-dessus" />
+                <EmptyState icon={'📊'} title="Aucun historique" sub="Saisissez vos premières données ci-dessus" />
               </Card>
             ) : (
               <Card style={{ padding: 0, overflow: 'hidden' }}>
@@ -1017,15 +1017,15 @@ export default function Data() {
                           { label: 'Mois', key: 'key' },
                           { label: 'CA', key: 'ca' },
                           { label: 'Charges', key: 'charges' },
-                          { label: 'Marge', key: null, tip: 'Ratio r\u00E9sultat / CA' },
-                          { label: 'R\u00E9sultat', key: 'result' },
-                          { label: 'N-1', key: null, tip: 'Comparaison avec le m\u00EAme mois l\'ann\u00E9e pr\u00E9c\u00E9dente' },
+                          { label: 'Marge', key: null, tip: 'Ratio résultat / CA' },
+                          { label: 'Résultat', key: 'result' },
+                          { label: 'N-1', key: null, tip: 'Comparaison avec le même mois l\'année précédente' },
                         ].map((h) => (
                           <th key={h.label} scope="col" onClick={h.key ? () => toggleSort(h.key) : undefined}
                             style={{ ...thStyle, cursor: h.key ? 'pointer' : 'default' }}>
                             {h.label}
                             {h.tip && <HelpTip text={h.tip} />}
-                            {h.key && sortCol === h.key ? (sortDir === 'asc' ? ' \u2191' : ' \u2193') : ''}
+                            {h.key && sortCol === h.key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </th>
                         ))}
                       </tr>
@@ -1041,25 +1041,25 @@ export default function Data() {
                           <tr key={r.key} style={{ borderBottom: `1px solid ${T.border}22` }}>
                             <td style={{ ...tdStyle, fontWeight: 600, color: T.text }}>{monthLabel(r.key)}</td>
                             <td style={{ ...tdStyle, color: T.green, fontWeight: 600 }}>
-                              <span className="full-num">{fmt(r.ca)}\u20AC</span>
-                              <span className="compact-num">{fK(r.ca)}\u20AC</span>
+                              <span className="full-num">{fmt(r.ca)}€</span>
+                              <span className="compact-num">{fK(r.ca)}€</span>
                               {evoCa != null && <EvoBadge value={evoCa} invert={false} />}
                             </td>
                             <td style={{ ...tdStyle, color: T.red, fontWeight: 600 }}>
-                              <span className="full-num">{fmt(r.charges)}\u20AC</span>
-                              <span className="compact-num">{fK(r.charges)}\u20AC</span>
+                              <span className="full-num">{fmt(r.charges)}€</span>
+                              <span className="compact-num">{fK(r.charges)}€</span>
                               {evoCharges != null && <EvoBadge value={evoCharges} invert />}
                             </td>
                             <td style={tdStyle}>
                               <MarginBar ratio={margin} />
                             </td>
                             <td style={{ ...tdStyle, color: r.result >= 0 ? T.orange : T.red, fontWeight: 700 }}>
-                              <span className="full-num">{fmt(r.result)}\u20AC</span>
-                              <span className="compact-num">{fK(r.result)}\u20AC</span>
+                              <span className="full-num">{fmt(r.result)}€</span>
+                              <span className="compact-num">{fK(r.result)}€</span>
                               {evoResult != null && <EvoBadge value={evoResult} invert={false} />}
                             </td>
                             <td style={tdStyle}>
-                              {n1 != null ? <EvoBadge value={n1} invert={false} /> : <span style={{ fontSize: 10, color: T.textMuted }}>{'\u2014'}</span>}
+                              {n1 != null ? <EvoBadge value={n1} invert={false} /> : <span style={{ fontSize: 10, color: T.textMuted }}>{'—'}</span>}
                             </td>
                           </tr>
                         );
@@ -1068,21 +1068,21 @@ export default function Data() {
                       <tr style={{ borderTop: `2px solid ${T.border}`, background: T.surface2 }}>
                         <td style={{ ...tdStyle, fontWeight: 800, color: T.text, fontSize: 11 }}>YTD {new Date().getFullYear()}</td>
                         <td style={{ ...tdStyle, color: T.green, fontWeight: 800, fontSize: 11 }}>
-                          <span className="full-num">{fmt(ytd.ca)}\u20AC</span>
-                          <span className="compact-num">{fK(ytd.ca)}\u20AC</span>
+                          <span className="full-num">{fmt(ytd.ca)}€</span>
+                          <span className="compact-num">{fK(ytd.ca)}€</span>
                         </td>
                         <td style={{ ...tdStyle, color: T.red, fontWeight: 800, fontSize: 11 }}>
-                          <span className="full-num">{fmt(ytd.charges)}\u20AC</span>
-                          <span className="compact-num">{fK(ytd.charges)}\u20AC</span>
+                          <span className="full-num">{fmt(ytd.charges)}€</span>
+                          <span className="compact-num">{fK(ytd.charges)}€</span>
                         </td>
                         <td style={tdStyle}>
                           <MarginBar ratio={ytd.ca ? Math.round((ytd.result / ytd.ca) * 100) : 0} />
                         </td>
                         <td style={{ ...tdStyle, color: ytd.result >= 0 ? T.orange : T.red, fontWeight: 800, fontSize: 11 }}>
-                          <span className="full-num">{fmt(ytd.result)}\u20AC</span>
-                          <span className="compact-num">{fK(ytd.result)}\u20AC</span>
+                          <span className="full-num">{fmt(ytd.result)}€</span>
+                          <span className="compact-num">{fK(ytd.result)}€</span>
                         </td>
-                        <td style={{ ...tdStyle, fontSize: 10, color: T.textMuted }}>{'\u2014'}</td>
+                        <td style={{ ...tdStyle, fontSize: 10, color: T.textMuted }}>{'—'}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -1098,7 +1098,7 @@ export default function Data() {
       {subTab === 'Sales' && <SalesTab />}
 
       {/* ===================== PUBLICITE TAB ===================== */}
-      {subTab === 'Publicit\u00E9' && <PubliciteTab />}
+      {subTab === 'Publicité' && <PubliciteTab />}
     </div>
   );
 }

@@ -79,14 +79,14 @@ function generateInvoice(contact) {
     <div class="invoice-meta">
       <h2>FACTURE</h2>
       <p>
-        <strong>N\u00b0 :</strong> ${invoiceNum}<br>
+        <strong>N° :</strong> ${invoiceNum}<br>
         <strong>Date :</strong> ${dateStr}
       </p>
     </div>
   </div>
 
   <div class="client-section">
-    <h3>Facturer \u00e0</h3>
+    <h3>Facturer à</h3>
     <p>
       <strong>${contact.name || ''}</strong><br>
       ${contact.company ? contact.company + '<br>' : ''}
@@ -99,7 +99,7 @@ function generateInvoice(contact) {
     <thead>
       <tr>
         <th style="width:50%">Description</th>
-        <th style="width:10%">Qt\u00e9</th>
+        <th style="width:10%">Qté</th>
         <th style="width:20%">Prix unitaire HT</th>
         <th style="width:20%">Total HT</th>
       </tr>
@@ -113,16 +113,16 @@ function generateInvoice(contact) {
 
   <div class="totals">
     <div class="totals-table">
-      <div class="row"><span>Sous-total HT</span><span contenteditable="true">0,00 \u20ac</span></div>
-      <div class="row"><span>TVA (20%)</span><span contenteditable="true">0,00 \u20ac</span></div>
-      <div class="row total"><span>Total TTC</span><span contenteditable="true">0,00 \u20ac</span></div>
+      <div class="row"><span>Sous-total HT</span><span contenteditable="true">0,00 €</span></div>
+      <div class="row"><span>TVA (20%)</span><span contenteditable="true">0,00 €</span></div>
+      <div class="row total"><span>Total TTC</span><span contenteditable="true">0,00 €</span></div>
     </div>
   </div>
 
   <div class="footer">
     <p>
-      <strong>Conditions de paiement :</strong> Paiement \u00e0 30 jours \u00e0 compter de la date de facturation.<br>
-      <strong>Coordonn\u00e9es bancaires :</strong> IBAN FR76 XXXX XXXX XXXX XXXX XXXX XXX &bull; BIC XXXXXXXX<br>
+      <strong>Conditions de paiement :</strong> Paiement à 30 jours à compter de la date de facturation.<br>
+      <strong>Coordonnées bancaires :</strong> IBAN FR76 XXXX XXXX XXXX XXXX XXXX XXX &bull; BIC XXXXXXXX<br>
       <strong>HubScale SAS</strong> &mdash; SIRET 000 000 000 00000 &mdash; TVA FR00 000000000<br>
       Merci pour votre confiance.
     </p>
@@ -176,7 +176,7 @@ export default function CRM() {
   // ---- Undo stack for deletions ----
   const undoRestore = useCallback((item) => {
     setContacts((prev) => [...prev, item]);
-    setUndoMsg(`"${item.name}" restaur\u00e9`);
+    setUndoMsg(`"${item.name}" restauré`);
     setTimeout(() => setUndoMsg(''), 3000);
   }, []);
   const undo = useUndoStack(undoRestore);
@@ -385,8 +385,8 @@ export default function CRM() {
       const header = lines[0].toLowerCase().split(',').map((h) => h.trim().replace(/^["']|["']$/g, ''));
       const nameIdx = header.findIndex((h) => h === 'nom' || h === 'name');
       const emailIdx = header.findIndex((h) => h === 'email' || h === 'mail');
-      const companyIdx = header.findIndex((h) => h === 'soci\u00e9t\u00e9' || h === 'societe' || h === 'company');
-      const phoneIdx = header.findIndex((h) => h === 't\u00e9l\u00e9phone' || h === 'telephone' || h === 'phone' || h === 'tel');
+      const companyIdx = header.findIndex((h) => h === 'société' || h === 'societe' || h === 'company');
+      const phoneIdx = header.findIndex((h) => h === 'téléphone' || h === 'telephone' || h === 'phone' || h === 'tel');
       const statusIdx = header.findIndex((h) => h === 'statut' || h === 'status');
 
       if (nameIdx === -1) { setImportResult({ error: 'Colonne "Nom" introuvable dans le CSV' }); return; }
@@ -509,7 +509,7 @@ export default function CRM() {
       return prev.filter((c) => !selected.has(c.id));
     });
     setSelected(new Set());
-    setUndoMsg(`${selected.size} contact(s) supprim\u00e9(s)`);
+    setUndoMsg(`${selected.size} contact(s) supprimé(s)`);
     setTimeout(() => setUndoMsg(''), 3000);
   }, [selected, undo]);
 
@@ -527,8 +527,8 @@ export default function CRM() {
       events.push({
         type: 'created',
         date: editContact.createdAt,
-        label: 'Contact cr\u00e9\u00e9',
-        icon: '\u2795',
+        label: 'Contact créé',
+        icon: '➕',
       });
     }
 
@@ -538,7 +538,7 @@ export default function CRM() {
         type: 'comment',
         date: c.date,
         label: c.text,
-        icon: '\ud83d\udcac',
+        icon: '💬',
       });
     });
 
@@ -550,8 +550,8 @@ export default function CRM() {
         events.push({
           type: 'status',
           date: h.date,
-          label: `${fromLabel} \u2192 ${toLabel}`,
-          icon: '\ud83d\udd04',
+          label: `${fromLabel} → ${toLabel}`,
+          icon: '🔄',
           from: h.from,
           to: h.to,
         });
@@ -565,7 +565,7 @@ export default function CRM() {
 
   // ---- Score distribution for filter chips ----
   const scoreDistribution = useMemo(() => {
-    const dist = { Hot: 0, Warm: 0, 'Ti\u00e8de': 0, Froid: 0 };
+    const dist = { Hot: 0, Warm: 0, 'Tiède': 0, Froid: 0 };
     contacts.forEach((c) => {
       const score = leadScore(c);
       const label = getScoreLabel(score);
@@ -599,7 +599,7 @@ export default function CRM() {
         ))}
         {/* Pipeline Value KPI */}
         <div className="glass-static" style={{ padding: '12px 14px', textAlign: 'center', borderLeft: `3px solid ${T.accent}` }}>
-          <div style={{ fontSize: 24, fontWeight: 800, color: T.accent }}>{fK(pipelineValue)}\u20ac</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: T.accent }}>{fK(pipelineValue)}€</div>
           <div style={{ fontSize: 9, fontWeight: 700, color: T.accent, letterSpacing: .8, marginTop: 2 }}>PIPELINE</div>
         </div>
       </div>
@@ -609,17 +609,17 @@ export default function CRM() {
         <TabBar items={FILTER_TABS} active={filter} onChange={(f) => { setFilter(f); setScoreFilter(null); }} counts={filterCounts} compact />
         <div style={{ flex: 1, minWidth: 140 }}>
           <div className="glass-input" style={{ display: 'flex', alignItems: 'center' }}>
-            <span style={{ padding: '0 8px 0 12px', color: T.textMuted, fontSize: 13 }}>{'\ud83d\udd0d'}</span>
+            <span style={{ padding: '0 8px 0 12px', color: T.textMuted, fontSize: 13 }}>{'🔍'}</span>
             <input value={search} onChange={(e) => handleSearch(e.target.value)} placeholder="Rechercher..."
               aria-label="Rechercher un contact"
               style={{ flex: 1, background: 'transparent', border: 'none', color: T.text, padding: '8px 12px 8px 0', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
           </div>
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
-          <Btn v={viewMode === 'table' ? 'primary' : 'ghost'} small onClick={() => setViewMode('table')} aria-label="Vue tableau">{'\u2630'}</Btn>
-          <Btn v={viewMode === 'kanban' ? 'primary' : 'ghost'} small onClick={() => setViewMode('kanban')} aria-label="Vue Kanban">{'\u25a6'}</Btn>
+          <Btn v={viewMode === 'table' ? 'primary' : 'ghost'} small onClick={() => setViewMode('table')} aria-label="Vue tableau">{'☰'}</Btn>
+          <Btn v={viewMode === 'kanban' ? 'primary' : 'ghost'} small onClick={() => setViewMode('kanban')} aria-label="Vue Kanban">{'▦'}</Btn>
         </div>
-        <Btn v="secondary" small onClick={() => csvInputRef.current?.click()} aria-label="Importer CSV">{'\u2191'} Import CSV</Btn>
+        <Btn v="secondary" small onClick={() => csvInputRef.current?.click()} aria-label="Importer CSV">{'↑'} Import CSV</Btn>
         <input ref={csvInputRef} type="file" accept=".csv" onChange={handleCSVImport} style={{ display: 'none' }} />
         <Btn onClick={openNew} aria-label="Ajouter un contact" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: '0 2px 12px rgba(249,115,22,.3)' }}>+ Contact</Btn>
       </div>
@@ -653,7 +653,7 @@ export default function CRM() {
             background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 20,
             padding: '4px 8px', cursor: 'pointer', fontSize: 10, color: T.textMuted,
             fontFamily: 'inherit',
-          }}>{'\u2715'} Reset</button>
+          }}>{'✕'} Reset</button>
         )}
       </div>
 
@@ -662,12 +662,12 @@ export default function CRM() {
         <div style={{ marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {undoMsg && (
             <div style={{ fontSize: 11, color: T.green, fontWeight: 600, padding: '6px 12px', borderRadius: 8, background: T.greenBg, border: `1px solid ${T.green}22` }}>
-              {'\u21a9'} {undoMsg}
+              {'↩'} {undoMsg}
             </div>
           )}
           {importResult && (
             <div style={{ fontSize: 11, fontWeight: 600, padding: '6px 12px', borderRadius: 8, background: importResult.error ? T.redBg : T.greenBg, color: importResult.error ? T.red : T.green, border: `1px solid ${importResult.error ? T.red : T.green}22` }}>
-              {importResult.error || `\u2713 ${importResult.imported} contact${importResult.imported > 1 ? 's' : ''} import\u00e9${importResult.imported > 1 ? 's' : ''}${importResult.skipped ? ` (${importResult.skipped} doublon${importResult.skipped > 1 ? 's' : ''} ignor\u00e9${importResult.skipped > 1 ? 's' : ''})` : ''}`}
+              {importResult.error || `✓ ${importResult.imported} contact${importResult.imported > 1 ? 's' : ''} importé${importResult.imported > 1 ? 's' : ''}${importResult.skipped ? ` (${importResult.skipped} doublon${importResult.skipped > 1 ? 's' : ''} ignoré${importResult.skipped > 1 ? 's' : ''})` : ''}`}
             </div>
           )}
           {conversionToast && (
@@ -677,7 +677,7 @@ export default function CRM() {
               border: `1px solid ${T.green}44`,
               boxShadow: `0 4px 16px ${T.green}22`,
             }}>
-              {'\ud83c\udf89'} Nouveau client : {conversionToast} !
+              {'🎉'} Nouveau client : {conversionToast} !
             </div>
           )}
         </div>
@@ -685,8 +685,8 @@ export default function CRM() {
 
       {undo.canUndo && !undoMsg && (
         <div style={{ marginBottom: 12, fontSize: 11, color: T.textMuted, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Btn v="ghost" small onClick={undo.undo}>{'\u21a9'} Annuler ({undo.stackSize})</Btn>
-          <span>Ctrl+Z pour annuler la derni\u00e8re suppression</span>
+          <Btn v="ghost" small onClick={undo.undo}>{'↩'} Annuler ({undo.stackSize})</Btn>
+          <span>Ctrl+Z pour annuler la dernière suppression</span>
         </div>
       )}
 
@@ -695,7 +695,7 @@ export default function CRM() {
         <>
           {filtered.length === 0 ? (
             <Card>
-              <EmptyState icon={'\ud83d\udc65'} title="Aucun contact" sub="Ajoutez votre premier contact pour commencer"
+              <EmptyState icon={'👥'} title="Aucun contact" sub="Ajoutez votre premier contact pour commencer"
                 action={<Btn onClick={openNew} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Ajouter un contact</Btn>} />
             </Card>
           ) : (
@@ -710,7 +710,7 @@ export default function CRM() {
                           type="checkbox"
                           checked={allPageSelected}
                           onChange={toggleSelectAll}
-                          aria-label="S\u00e9lectionner tout"
+                          aria-label="Sélectionner tout"
                           style={{ cursor: 'pointer', accentColor: T.accent }}
                         />
                       </th>
@@ -718,14 +718,14 @@ export default function CRM() {
                         { label: 'Nom', key: 'name' },
                         { label: 'Score', key: 'score' },
                         { label: 'Email', key: 'email' },
-                        { label: 'Soci\u00e9t\u00e9', key: 'company' },
-                        { label: 'T\u00e9l\u00e9phone', key: null },
+                        { label: 'Société', key: 'company' },
+                        { label: 'Téléphone', key: null },
                         { label: 'Statut', key: 'status' },
                         { label: '', key: null },
                       ].map((h, i) => (
                         <th key={h.label + i} scope="col" onClick={h.key ? () => toggleSort(h.key) : undefined}
                           style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: T.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: .5, cursor: h.key ? 'pointer' : 'default', userSelect: 'none' }}>
-                          {h.label}{h.key && sortBy === h.key ? (sortDir === 'asc' ? ' \u2191' : ' \u2193') : ''}
+                          {h.label}{h.key && sortBy === h.key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                         </th>
                       ))}
                     </tr>
@@ -757,7 +757,7 @@ export default function CRM() {
                               <span>{c.name}</span>
                               {relanceDays && (
                                 <span style={{ fontSize: 10, fontWeight: 600, color: T.orange, background: T.orangeBg, padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>
-                                  {'\u26a0\ufe0f'} Relance {relanceDays}j
+                                  {'⚠️'} Relance {relanceDays}j
                                 </span>
                               )}
                             </div>
@@ -766,12 +766,12 @@ export default function CRM() {
                           <td style={{ padding: '10px 8px' }}>
                             <ScoreRing score={score} size={28} strokeWidth={3} />
                           </td>
-                          <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.email || '\u2014'}</td>
-                          <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.company || '\u2014'}</td>
-                          <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.phone || '\u2014'}</td>
+                          <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.email || '—'}</td>
+                          <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.company || '—'}</td>
+                          <td style={{ padding: '10px 14px', color: T.textSecondary }}>{c.phone || '—'}</td>
                           <td style={{ padding: '10px 14px' }}><Badge label={st?.label} color={st?.color} bg={st?.bg} /></td>
                           <td style={{ padding: '10px 14px' }}>
-                            <Btn v="danger" small aria-label={`Supprimer ${c.name}`} onClick={(e) => del.request(c.id, e)}>{'\u2715'}</Btn>
+                            <Btn v="danger" small aria-label={`Supprimer ${c.name}`} onClick={(e) => del.request(c.id, e)}>{'✕'}</Btn>
                           </td>
                         </tr>
                       );
@@ -835,11 +835,11 @@ export default function CRM() {
                         {c.email && <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{c.email}</div>}
                         {relanceDays && (
                           <div style={{ marginTop: 4, fontSize: 10, fontWeight: 600, color: T.orange, background: T.orangeBg, padding: '2px 6px', borderRadius: 6, display: 'inline-block' }}>
-                            {'\u26a0\ufe0f'} Relance {relanceDays}j
+                            {'⚠️'} Relance {relanceDays}j
                           </div>
                         )}
                         <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end' }}>
-                          <Btn v="danger" small aria-label={`Supprimer ${c.name}`} onClick={(e) => del.request(c.id, e)}>{'\u2715'}</Btn>
+                          <Btn v="danger" small aria-label={`Supprimer ${c.name}`} onClick={(e) => del.request(c.id, e)}>{'✕'}</Btn>
                         </div>
                       </div>
                     );
@@ -862,7 +862,7 @@ export default function CRM() {
           backdropFilter: 'blur(12px)',
         }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: T.accent }}>
-            {selected.size} s\u00e9lectionn\u00e9{selected.size > 1 ? 's' : ''}
+            {selected.size} sélectionné{selected.size > 1 ? 's' : ''}
           </span>
           <div style={{ width: 1, height: 20, background: T.border }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -882,7 +882,7 @@ export default function CRM() {
           </div>
           <div style={{ width: 1, height: 20, background: T.border }} />
           <Btn v="danger" small onClick={bulkDelete}>Supprimer ({selected.size})</Btn>
-          <Btn v="ghost" small onClick={() => setSelected(new Set())}>{'\u2715'}</Btn>
+          <Btn v="ghost" small onClick={() => setSelected(new Set())}>{'✕'}</Btn>
         </div>
       )}
 
@@ -915,8 +915,8 @@ export default function CRM() {
         <Inp label="Email" value={form.email} onChange={(v) => { setForm({ ...form, email: v }); setEmailError(''); setDuplicateWarning(checkDuplicate(form.name, v)); }} type="email" placeholder="email@exemple.com" />
         {emailError && <div style={{ fontSize: 11, color: T.red, marginTop: -8, marginBottom: 8 }}>{emailError}</div>}
         {duplicateWarning && <div style={{ fontSize: 11, color: T.orange, padding: '6px 10px', borderRadius: 6, background: T.orangeBg, marginTop: -4, marginBottom: 8 }}>{duplicateWarning}</div>}
-        <Inp label="Soci\u00e9t\u00e9" value={form.company} onChange={(v) => setForm({ ...form, company: v })} placeholder="Nom de la soci\u00e9t\u00e9" />
-        <Inp label="T\u00e9l\u00e9phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="+33 6 00 00 00 00" />
+        <Inp label="Société" value={form.company} onChange={(v) => setForm({ ...form, company: v })} placeholder="Nom de la société" />
+        <Inp label="Téléphone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="+33 6 00 00 00 00" />
         <Sel label="Statut" value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={STATUSES.map((s) => ({ value: s.id, label: s.label }))} />
         <Inp label="Notes" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} placeholder="Notes..." />
 
@@ -938,7 +938,7 @@ export default function CRM() {
                   setNewComment('');
                 }
               }}
-              placeholder="\u00c9crire un commentaire..."
+              placeholder="Écrire un commentaire..."
               style={{ flex: 1, background: 'transparent', border: 'none', color: T.text, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none', width: '100%' }}
             />
             {editId && (
@@ -953,7 +953,7 @@ export default function CRM() {
             )}
           </div>
           <div style={{ color: T.textMuted, fontSize: 10, marginTop: 2 }}>
-            {editId ? "Appuyez sur Entr\u00e9e ou cliquez Ajouter. Le commentaire sera aussi ajout\u00e9 \u00e0 l'enregistrement." : "Le commentaire sera ajout\u00e9 \u00e0 la cr\u00e9ation du contact."}
+            {editId ? "Appuyez sur Entrée ou cliquez Ajouter. Le commentaire sera aussi ajouté à l'enregistrement." : "Le commentaire sera ajouté à la création du contact."}
           </div>
         </div>
 
@@ -961,7 +961,7 @@ export default function CRM() {
         {editId && activityTimeline.length > 0 && (
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: 'block', color: T.textSecondary, fontSize: 11, fontWeight: 600, marginBottom: 8, letterSpacing: .3 }}>
-              Historique d'activit\u00e9 ({activityTimeline.length})
+              Historique d'activité ({activityTimeline.length})
             </label>
             <div style={{ maxHeight: 260, overflowY: 'auto', borderRadius: 10, border: `1px solid ${T.border}`, background: T.surface2, padding: '8px 0' }}>
               {activityTimeline.map((event, idx) => {
@@ -1004,7 +1004,7 @@ export default function CRM() {
                       )}
                       <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>
                         {new Date(event.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        {' \u2014 '}{ago(event.date)}
+                        {' — '}{ago(event.date)}
                       </div>
                     </div>
                   </div>
@@ -1016,7 +1016,7 @@ export default function CRM() {
 
         {/* Modal footer actions */}
         <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
-          {saved && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>{'\u2713'} Enregistr\u00e9</span>}
+          {saved && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>{'✓'} Enregistré</span>}
           {editId && (
             <Btn v="secondary" small onClick={() => generateInvoice(editContact)} style={{ marginRight: 'auto' }}>
               Facturer
@@ -1031,7 +1031,7 @@ export default function CRM() {
       <ConfirmDialog
         open={del.isOpen}
         title="Supprimer ce contact ?"
-        message="Le contact sera d\u00e9finitivement supprim\u00e9. Cette action est irr\u00e9versible."
+        message="Le contact sera définitivement supprimé. Cette action est irréversible."
         onConfirm={del.execute}
         onCancel={del.cancel}
       />
@@ -1047,7 +1047,7 @@ export default function CRM() {
           animation: 'slideDown .3s ease',
           fontSize: 13, fontWeight: 700, color: T.green,
         }}>
-          {'\ud83c\udf89'} Nouveau client : {conversionToast} !
+          {'🎉'} Nouveau client : {conversionToast} !
         </div>
       )}
     </div>
