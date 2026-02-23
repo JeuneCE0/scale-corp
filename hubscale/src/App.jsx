@@ -584,6 +584,76 @@ export default function App() {
     setView('landing');
   }, []);
 
+  // Global keyboard shortcuts: Cmd+K (search), Cmd+? (shortcuts help), 1-5 (tabs), N (new)
+  useEffect(() => {
+    if (!authed) return;
+    const handleKey = (e) => {
+      // Skip if user is typing in an input/textarea/select
+      const tag = document.activeElement?.tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setSearchOpen(true); }
+      if ((e.metaKey || e.ctrlKey) && (e.key === '?' || (e.shiftKey && e.key === '/'))) { e.preventDefault(); setShortcutsOpen(true); }
+
+      // Number shortcuts 1-5 for tab navigation (only when not typing)
+      if (!isInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const tabKeys = { '1': 'overview', '2': 'crm', '3': 'data', '4': 'agenda', '5': 'settings' };
+        if (tabKeys[e.key]) {
+          e.preventDefault();
+          setTab(tabKeys[e.key]);
+          setPageKey((k) => k + 1);
+        }
+        // N for new (context-dependent)
+        if (e.key === 'n' || e.key === 'N') {
+          // Dispatch a custom event so child pages can pick it up
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('hs:shortcut-new'));
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [authed]);
+
+  const handleOnboardingComplete = useCallback(() => {
+    store('onboarded', true);
+    setOnboarded(true);
+    if (!load('tourDone')) setTourOpen(true);
+  }, []);
+
+  const navigate = useCallback((tabId) => {
+    setTab(tabId);
+    setPageKey((k) => k + 1);
+    mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const handleTabChange = useCallback((tabId) => {
+    // Trigger a brief opacity flash for smoother perceived transition
+    setTransitionPhase('exiting');
+    setTimeout(() => {
+      setTab(tabId);
+      setPageKey((k) => k + 1);
+      setTransitionPhase('entering');
+      setTimeout(() => setTransitionPhase('visible'), 30);
+    }, 80);
+  }, []);
+
+  const handleLangToggle = useCallback(() => {
+    const next = getLang() === 'fr' ? 'en' : 'fr';
+    setLang(next);
+  }, []);
+
+  const greeting = getGreeting();
+
+  // Compute page transition style
+  const transitionStyle = transitionPhase === 'exiting'
+    ? { opacity: 0, transform: 'translateY(4px)', transition: 'opacity 80ms ease, transform 80ms ease' }
+    : transitionPhase === 'entering'
+    ? { opacity: 0, transform: 'translateY(6px)' }
+    : {};
+
+  // ─── View routing (all hooks are declared above, safe from Rules of Hooks) ───
+
   // Landing page
   if (view === 'landing' && !authed) {
     return (
@@ -618,48 +688,7 @@ export default function App() {
     );
   }
 
-  // Global keyboard shortcuts: Cmd+K (search), Cmd+? (shortcuts help), 1-5 (tabs), N (new)
-  useEffect(() => {
-    const handleKey = (e) => {
-      // Skip if user is typing in an input/textarea/select
-      const tag = document.activeElement?.tagName;
-      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setSearchOpen(true); }
-      if ((e.metaKey || e.ctrlKey) && (e.key === '?' || (e.shiftKey && e.key === '/'))) { e.preventDefault(); setShortcutsOpen(true); }
-
-      // Number shortcuts 1-5 for tab navigation (only when not typing)
-      if (!isInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        const tabKeys = { '1': 'overview', '2': 'crm', '3': 'data', '4': 'agenda', '5': 'settings' };
-        if (tabKeys[e.key]) {
-          e.preventDefault();
-          setTab(tabKeys[e.key]);
-          setPageKey((k) => k + 1);
-        }
-        // N for new (context-dependent)
-        if (e.key === 'n' || e.key === 'N') {
-          // Dispatch a custom event so child pages can pick it up
-          e.preventDefault();
-          window.dispatchEvent(new CustomEvent('hs:shortcut-new'));
-        }
-      }
-    };
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
-  }, []);
-
-  const handleOnboardingComplete = useCallback(() => {
-    store('onboarded', true);
-    setOnboarded(true);
-    if (!load('tourDone')) setTourOpen(true);
-  }, []);
-
-  const navigate = useCallback((tabId) => {
-    setTab(tabId);
-    setPageKey((k) => k + 1);
-    mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
+  // Onboarding
   if (!onboarded) {
     return (
       <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
@@ -669,31 +698,6 @@ export default function App() {
       </div>
     );
   }
-
-  const handleTabChange = useCallback((tabId) => {
-    // Trigger a brief opacity flash for smoother perceived transition
-    setTransitionPhase('exiting');
-    setTimeout(() => {
-      setTab(tabId);
-      setPageKey((k) => k + 1);
-      setTransitionPhase('entering');
-      setTimeout(() => setTransitionPhase('visible'), 30);
-    }, 80);
-  }, []);
-
-  const handleLangToggle = useCallback(() => {
-    const next = getLang() === 'fr' ? 'en' : 'fr';
-    setLang(next);
-  }, []);
-
-  const greeting = getGreeting();
-
-  // Compute page transition style
-  const transitionStyle = transitionPhase === 'exiting'
-    ? { opacity: 0, transform: 'translateY(4px)', transition: 'opacity 80ms ease, transform 80ms ease' }
-    : transitionPhase === 'entering'
-    ? { opacity: 0, transform: 'translateY(6px)' }
-    : {};
 
   return (
     <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
