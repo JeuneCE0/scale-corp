@@ -15,6 +15,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
 const CRM = lazy(() => import('./pages/CRM.jsx'));
 const Data = lazy(() => import('./pages/Data.jsx'));
 const Agenda = lazy(() => import('./pages/Agenda.jsx'));
+const Analytics = lazy(() => import('./pages/Analytics.jsx'));
 const Settings = lazy(() => import('./pages/Settings.jsx'));
 const Onboarding = lazy(() => import('./pages/Onboarding.jsx'));
 
@@ -23,10 +24,11 @@ const TABS = [
   { id: 'crm', label: 'CRM', icon: '👥' },
   { id: 'data', label: 'Data', icon: '💰' },
   { id: 'agenda', label: 'Agenda', icon: '📅' },
+  { id: 'analytics', label: 'Analytics', icon: '📈' },
   { id: 'settings', label: 'Paramètres', icon: '⚙️' },
 ];
 
-const TAB_LABELS = { overview: 'Dashboard', crm: 'CRM', data: 'Data', agenda: 'Agenda', settings: 'Paramètres' };
+const TAB_LABELS = { overview: 'Dashboard', crm: 'CRM', data: 'Data', agenda: 'Agenda', analytics: 'Analytics', settings: 'Paramètres' };
 
 // --- Session Greeting ---
 function getGreeting() {
@@ -327,7 +329,7 @@ function GlobalSearch({ open, onClose, onNavigate }) {
       .slice(0, 3).forEach((f) => items.push({ type: 'finance', label: `Mois ${f.key}`, sub: `CA: ${f.ca}€`, tab: 'data', icon: '💰' }));
     [{ label: 'Dashboard', tab: 'overview', icon: '📊' }, { label: 'CRM', tab: 'crm', icon: '👥' },
      { label: 'Data', tab: 'data', icon: '💰' }, { label: 'Agenda', tab: 'agenda', icon: '📅' },
-     { label: 'Paramètres', tab: 'settings', icon: '⚙️' }]
+     { label: 'Analytics', tab: 'analytics', icon: '📈' }, { label: 'Paramètres', tab: 'settings', icon: '⚙️' }]
       .filter((p) => p.label.toLowerCase().includes(q))
       .forEach((p) => items.push({ type: 'page', label: p.label, sub: 'Naviguer', tab: p.tab, icon: p.icon }));
     return items;
@@ -376,12 +378,13 @@ const SHORTCUTS = [
   { keys: ['Ctrl', 'Z'], desc: 'Annuler la dernière suppression' },
   { keys: ['Esc'], desc: 'Fermer modale / recherche' },
   { keys: ['Enter'], desc: 'Valider formulaire' },
-  { keys: ['1–5'], desc: 'Naviguer entre les onglets' },
+  { keys: ['1–6'], desc: 'Naviguer entre les onglets' },
   { keys: ['N'], desc: 'Nouveau (contact dans CRM, événement dans Agenda)' },
   { keys: ['G', 'D'], desc: 'Aller au Dashboard' },
   { keys: ['G', 'C'], desc: 'Aller au CRM' },
   { keys: ['G', 'F'], desc: 'Aller aux Finances (Data)' },
   { keys: ['G', 'A'], desc: 'Aller à l\'Agenda' },
+  { keys: ['G', 'R'], desc: 'Aller aux Analytics' },
   { keys: ['G', 'S'], desc: 'Aller aux Paramètres' },
 ];
 
@@ -562,6 +565,8 @@ export default function App() {
   const [pageKey, setPageKey] = useState(0);
   const [lang, setLangState] = useState(getLang);
   const [transitionPhase, setTransitionPhase] = useState('visible');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [offlineDismissed, setOfflineDismissed] = useState(false);
   const mainRef = useRef(null);
   const chordKeyTimestamp = useRef(0);
   const [chordPending, setChordPending] = useState(false);
@@ -593,6 +598,18 @@ export default function App() {
   // Sync lang state with i18n module
   useEffect(() => onLangChange(setLangState), []);
 
+  // Online/offline tracking
+  useEffect(() => {
+    const goOnline = () => { setIsOnline(true); setOfflineDismissed(false); };
+    const goOffline = () => { setIsOnline(false); setOfflineDismissed(false); };
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
   const handleAuth = useCallback((u) => {
     setUser(u);
     setAuthed(true);
@@ -619,7 +636,7 @@ export default function App() {
 
       // Number shortcuts 1-5 for tab navigation (only when not typing)
       if (!isInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        const tabKeys = { '1': 'overview', '2': 'crm', '3': 'data', '4': 'agenda', '5': 'settings' };
+        const tabKeys = { '1': 'overview', '2': 'crm', '3': 'data', '4': 'agenda', '5': 'analytics', '6': 'settings' };
         if (tabKeys[e.key]) {
           e.preventDefault();
           setTab(tabKeys[e.key]);
@@ -633,7 +650,7 @@ export default function App() {
         }
 
         // Chord shortcuts: G then D/C/F/A/S (GitHub-style)
-        const chordTargets = { d: 'overview', c: 'crm', f: 'data', a: 'agenda', s: 'settings' };
+        const chordTargets = { d: 'overview', c: 'crm', f: 'data', a: 'agenda', r: 'analytics', s: 'settings' };
         const lowerKey = e.key.toLowerCase();
 
         if (lowerKey === 'g') {
@@ -773,7 +790,21 @@ export default function App() {
               <span className="hide-mobile" style={{ fontSize: 11, color: T.textMuted }}>{t('common.search').replace('...', '')}</span>
               <kbd className="hide-mobile" style={{ fontSize: 9, color: T.textMuted, background: T.bg, padding: '1px 4px', borderRadius: 3, border: `1px solid ${T.border}`, marginLeft: 4 }}>{'⌘'}K</kbd>
             </button>
-            <NotificationCenter onNavigate={navigate} />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <NotificationCenter onNavigate={navigate} />
+              <div
+                title={isOnline ? 'Connecté' : 'Hors-ligne'}
+                style={{
+                  position: 'absolute', top: -2, right: -2,
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: isOnline ? T.green : T.red,
+                  border: '2px solid rgba(9,9,11,.85)',
+                  boxShadow: isOnline ? `0 0 6px ${T.green}66` : `0 0 6px ${T.red}66`,
+                  transition: 'background .3s ease, box-shadow .3s ease',
+                  pointerEvents: 'none',
+                }}
+              />
+            </div>
             {!load('tourDone') && <button onClick={() => setTourOpen(true)} aria-label="Visite guidée" style={{ background: T.orangeBg, border: `1px solid ${T.orange}33`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: T.orange, fontFamily: FONT }}>Tour</button>}
             <UserMenu user={user} onLogout={handleLogout} />
           </div>
@@ -807,6 +838,33 @@ export default function App() {
         </div>
       </nav>
 
+      {/* Offline banner */}
+      {!isOnline && !offlineDismissed && (
+        <div className="fade-up" style={{
+          position: 'sticky', top: 48, zIndex: 99,
+          background: T.orangeBg, borderBottom: `1px solid ${T.orange}44`,
+          padding: '8px 16px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          animation: 'slideDown .3s ease',
+        }}>
+          <span style={{ fontSize: 14 }}>{'⚠️'}</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: T.orange }}>
+            Mode hors-ligne — Les modifications seront synchronisées à la reconnexion
+          </span>
+          <button
+            onClick={() => setOfflineDismissed(true)}
+            aria-label="Fermer la bannière hors-ligne"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 14, color: T.orange, padding: '2px 6px', borderRadius: 4,
+              fontFamily: FONT, fontWeight: 700, marginLeft: 8, lineHeight: 1,
+            }}
+          >
+            {'✕'}
+          </button>
+        </div>
+      )}
+
       <main id="main-content" ref={mainRef} className="page-pad" style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px 40px' }}>
         <ErrorBoundary fallbackTitle={`Erreur dans ${TAB_LABELS[tab] || 'la page'}`}>
           <Suspense fallback={<LoadingFallback page={TAB_LABELS[tab]} />}>
@@ -815,6 +873,7 @@ export default function App() {
               {tab === 'crm' && <CRM />}
               {tab === 'data' && <Data />}
               {tab === 'agenda' && <Agenda />}
+              {tab === 'analytics' && <Analytics onNavigate={navigate} />}
               {tab === 'settings' && <Settings />}
             </div>
           </Suspense>

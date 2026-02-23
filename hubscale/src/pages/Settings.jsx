@@ -96,6 +96,9 @@ export default function Settings() {
   // Sync history log
   const [syncHistory, setSyncHistory] = useState(() => load('syncHistory') || []);
 
+  // API Logs state
+  const [apiLogs, setApiLogs] = useState(() => load('apiLogs') || []);
+
   const removeUser = useCallback((email) => {
     setUsers((prev) => {
       const updated = prev.filter((u) => u.email !== email);
@@ -483,6 +486,93 @@ export default function Settings() {
     const a = document.createElement('a'); a.href = url; a.download = 'hubscale_integrations.csv'; a.click();
     URL.revokeObjectURL(url);
   }, []);
+
+  // --- API Log Helpers ---
+  const API_LOG_ENDPOINTS = {
+    paiements: (name) => [`/api/v1/${name.toLowerCase()}/transactions`, `/api/v1/${name.toLowerCase()}/invoices`, `/api/v1/${name.toLowerCase()}/payments`],
+    banque: (name) => [`/api/v1/${name.toLowerCase()}/balance`, `/api/v1/${name.toLowerCase()}/statements`, `/api/v1/${name.toLowerCase()}/accounts`],
+    crm: (name) => [`/api/v1/${name.toLowerCase()}/contacts`, `/api/v1/${name.toLowerCase()}/deals`, `/api/v1/${name.toLowerCase()}/companies`],
+    marketing: (name) => [`/api/v1/${name.toLowerCase()}/campaigns`, `/api/v1/${name.toLowerCase()}/subscribers`, `/api/v1/${name.toLowerCase()}/analytics`],
+    agenda: (name) => [`/api/v1/${name.toLowerCase().replace(/\s+/g, '-')}/events`, `/api/v1/${name.toLowerCase().replace(/\s+/g, '-')}/calendars`],
+    projet: (name) => [`/api/v1/${name.toLowerCase()}/tasks`, `/api/v1/${name.toLowerCase()}/projects`, `/api/v1/${name.toLowerCase()}/boards`],
+    publicite: (name) => [`/api/v1/${name.toLowerCase().replace(/\s+/g, '-')}/campaigns`, `/api/v1/${name.toLowerCase().replace(/\s+/g, '-')}/adsets`, `/api/v1/${name.toLowerCase().replace(/\s+/g, '-')}/metrics`],
+    support: (name) => [`/api/v1/${name.toLowerCase()}/tickets`, `/api/v1/${name.toLowerCase()}/conversations`, `/api/v1/${name.toLowerCase()}/agents`],
+  };
+
+  const generateApiLogEntry = useCallback((integrationName) => {
+    const ig = INTEGRATIONS.find((i) => i.name === integrationName);
+    if (!ig) return null;
+    const endpoints = (API_LOG_ENDPOINTS[ig.category] || API_LOG_ENDPOINTS.crm)(ig.name);
+    const endpoint = endpoints[Math.floor(Math.random() * endpoints.length)];
+    const methods = ['GET', 'POST', 'PUT'];
+    const methodWeights = [0.6, 0.3, 0.1];
+    const r = Math.random();
+    const method = r < methodWeights[0] ? methods[0] : r < methodWeights[0] + methodWeights[1] ? methods[1] : methods[2];
+    const statusRoll = Math.random();
+    const status = statusRoll < 0.7 ? 200 : statusRoll < 0.9 ? 201 : statusRoll < 0.95 ? 400 : 500;
+    const responseTime = Math.floor(Math.random() * 271) + 80; // 80-350ms
+    const now = new Date();
+    const offset = Math.floor(Math.random() * 3600000); // random offset up to 1h
+    const timestamp = new Date(now.getTime() - offset).toISOString();
+    return {
+      id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      timestamp,
+      integration: ig.name,
+      icon: ig.icon,
+      method,
+      endpoint,
+      status,
+      responseTime,
+    };
+  }, []);
+
+  // Generate initial logs from syncHistory on first render
+  const initialApiLogs = useMemo(() => {
+    if (apiLogs.length > 0) return apiLogs;
+    const connectedNames = Object.entries(integrations).filter(([, v]) => v).map(([k]) => k);
+    if (connectedNames.length === 0) return [];
+    const logs = [];
+    connectedNames.forEach((name) => {
+      const count = Math.floor(Math.random() * 4) + 2; // 2-5 logs per integration
+      for (let i = 0; i < count; i++) {
+        const entry = generateApiLogEntry(name);
+        if (entry) {
+          // Spread timestamps over the last 24h
+          const ago = Math.floor(Math.random() * 86400000);
+          entry.timestamp = new Date(Date.now() - ago).toISOString();
+          logs.push(entry);
+        }
+      }
+    });
+    logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const trimmed = logs.slice(0, 20);
+    if (trimmed.length > 0) {
+      store('apiLogs', trimmed);
+      // We cannot call setApiLogs here (inside useMemo), so return and let effect handle it
+    }
+    return trimmed;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Seed apiLogs state from initial computation if empty
+  useState(() => {
+    if (apiLogs.length === 0 && initialApiLogs.length > 0) {
+      setApiLogs(initialApiLogs);
+    }
+  });
+
+  const simulateApiCall = useCallback(() => {
+    const connectedNames = Object.entries(integrations).filter(([, v]) => v).map(([k]) => k);
+    if (connectedNames.length === 0) return;
+    const name = connectedNames[Math.floor(Math.random() * connectedNames.length)];
+    const entry = generateApiLogEntry(name);
+    if (!entry) return;
+    entry.timestamp = new Date().toISOString();
+    setApiLogs((prev) => {
+      const updated = [entry, ...prev].slice(0, 20);
+      store('apiLogs', updated);
+      return updated;
+    });
+  }, [integrations, generateApiLogEntry]);
 
   // --- JSON Import ---
   const [importPreview, setImportPreview] = useState(null);
@@ -1132,6 +1222,73 @@ export default function Settings() {
               </div>
             );
           })()}
+
+          {/* API Logs / Webhook Simulator */}
+          <Card style={{ marginTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 16 }}>{'📡'}</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>Journal d'activité API</div>
+                  <div style={{ fontSize: 10, color: T.textSecondary, marginTop: 1 }}>Historique des appels API récents vers vos intégrations</div>
+                </div>
+              </div>
+              <Btn v="secondary" small onClick={simulateApiCall} disabled={Object.values(integrations).filter(Boolean).length === 0}>
+                Simuler un appel API
+              </Btn>
+            </div>
+
+            {(apiLogs.length > 0 || initialApiLogs.length > 0) ? (
+              <div style={{ maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, borderRadius: 10, border: `1px solid ${T.border}`, padding: 6, background: T.surface2 }}>
+                {(apiLogs.length > 0 ? apiLogs : initialApiLogs).slice(0, 20).map((log, idx) => {
+                  const statusColor = log.status === 200 || log.status === 201 ? T.green : log.status === 400 ? T.orange : T.red;
+                  const statusBg = log.status === 200 || log.status === 201 ? T.greenBg : log.status === 400 ? T.orangeBg : T.redBg;
+                  const methodColor = log.method === 'GET' ? T.blue : log.method === 'POST' ? T.green : T.orange;
+                  const methodBg = log.method === 'GET' ? T.blueBg : log.method === 'POST' ? T.greenBg : T.orangeBg;
+                  const isNew = idx === 0 && apiLogs.length > 0 && (Date.now() - new Date(log.timestamp).getTime()) < 2000;
+                  return (
+                    <div
+                      key={log.id}
+                      className={isNew ? 'fade-up' : ''}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                        padding: '7px 10px', borderRadius: 8, background: T.surface,
+                        borderLeft: `3px solid ${statusColor}`,
+                        transition: 'all .2s ease',
+                      }}
+                    >
+                      {/* Timestamp */}
+                      <span style={{ fontSize: 9, color: T.textMuted, minWidth: 70, flexShrink: 0 }}>
+                        {new Date(log.timestamp).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </span>
+                      {/* Integration icon + name */}
+                      <span style={{ fontSize: 12, flexShrink: 0 }}>{log.icon}</span>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: T.text, minWidth: 60, flexShrink: 0 }}>{log.integration}</span>
+                      {/* Method badge */}
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 4,
+                        color: methodColor, background: methodBg, flexShrink: 0, fontFamily: 'monospace',
+                      }}>{log.method}</span>
+                      {/* Endpoint */}
+                      <span style={{
+                        fontSize: 10, color: T.textSecondary, flex: 1, minWidth: 100,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        fontFamily: 'monospace',
+                      }}>{log.endpoint}</span>
+                      {/* Status code badge */}
+                      <Badge label={String(log.status)} color={statusColor} bg={statusBg} />
+                      {/* Response time */}
+                      <span style={{ fontSize: 9, color: T.textMuted, flexShrink: 0 }}>{log.responseTime}ms</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: T.textMuted, fontSize: 11 }}>
+                Connectez une intégration pour voir les appels API
+              </div>
+            )}
+          </Card>
         </Section>
       )}
 

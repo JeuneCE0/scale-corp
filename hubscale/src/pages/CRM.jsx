@@ -149,6 +149,7 @@ export default function CRM() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const searchTimer = useRef(null);
   const [viewMode, setViewMode] = useState('table');
+  const [view, setView] = useState('list'); // 'list' or 'pipeline'
   const [undoMsg, setUndoMsg] = useState('');
 
   // ---- Score filter ----
@@ -432,6 +433,7 @@ export default function CRM() {
 
   // ---- Kanban drag and drop (with confetti on client conversion) ----
   const [dragId, setDragId] = useState(null);
+  const [dragOverCol, setDragOverCol] = useState(null);
 
   const handleDragStart = useCallback((e, id) => {
     setDragId(id);
@@ -440,6 +442,7 @@ export default function CRM() {
 
   const handleDrop = useCallback((e, newStatus) => {
     e.preventDefault();
+    setDragOverCol(null);
     if (dragId) {
       setContacts((prev) => prev.map((c) => {
         if (c.id !== dragId) return c;
@@ -619,6 +622,28 @@ export default function CRM() {
           <Btn v={viewMode === 'table' ? 'primary' : 'ghost'} small onClick={() => setViewMode('table')} aria-label="Vue tableau">{'☰'}</Btn>
           <Btn v={viewMode === 'kanban' ? 'primary' : 'ghost'} small onClick={() => setViewMode('kanban')} aria-label="Vue Kanban">{'▦'}</Btn>
         </div>
+        <div style={{ display: 'flex', gap: 2, background: T.surface2, borderRadius: 8, padding: 2 }}>
+          <button
+            onClick={() => setView('list')}
+            style={{
+              background: view === 'list' ? T.accent : 'transparent',
+              color: view === 'list' ? '#fff' : T.textMuted,
+              border: 'none', borderRadius: 6, padding: '5px 12px',
+              fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              fontFamily: 'inherit', transition: 'all .15s',
+            }}
+          >Liste</button>
+          <button
+            onClick={() => setView('pipeline')}
+            style={{
+              background: view === 'pipeline' ? T.accent : 'transparent',
+              color: view === 'pipeline' ? '#fff' : T.textMuted,
+              border: 'none', borderRadius: 6, padding: '5px 12px',
+              fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              fontFamily: 'inherit', transition: 'all .15s',
+            }}
+          >Pipeline</button>
+        </div>
         <Btn v="secondary" small onClick={() => csvInputRef.current?.click()} aria-label="Importer CSV">{'↑'} Import CSV</Btn>
         <input ref={csvInputRef} type="file" accept=".csv" onChange={handleCSVImport} style={{ display: 'none' }} />
         <Btn onClick={openNew} aria-label="Ajouter un contact" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: '0 2px 12px rgba(249,115,22,.3)' }}>+ Contact</Btn>
@@ -691,7 +716,7 @@ export default function CRM() {
       )}
 
       {/* ---- TABLE VIEW ---- */}
-      {viewMode === 'table' && (
+      {viewMode === 'table' && view === 'list' && (
         <>
           {filtered.length === 0 ? (
             <Card>
@@ -786,7 +811,7 @@ export default function CRM() {
       )}
 
       {/* ---- KANBAN VIEW ---- */}
-      {viewMode === 'kanban' && (
+      {viewMode === 'kanban' && view === 'list' && (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12 }}>
           {STATUSES.map((status) => {
             const colContacts = contacts.filter((c) => c.status === status.id);
@@ -850,6 +875,177 @@ export default function CRM() {
           })}
         </div>
       )}
+
+      {/* ---- PIPELINE VIEW (Kanban) ---- */}
+      {view === 'pipeline' && (() => {
+        // Contacts filtered by search (reuse the existing filtered array which respects search + status + score filters)
+        // For pipeline, we show all statuses as columns, but only show contacts matching the text search
+        const pipelineContacts = contacts.filter((c) => {
+          if (debouncedSearch) {
+            const q = debouncedSearch.toLowerCase();
+            if (!(c.name || '').toLowerCase().includes(q) && !(c.email || '').toLowerCase().includes(q) && !(c.company || '').toLowerCase().includes(q)) return false;
+          }
+          if (scoreFilter) {
+            const score = leadScore(c);
+            const label = getScoreLabel(score);
+            if (label.label !== scoreFilter) return false;
+          }
+          return true;
+        });
+
+        return (
+          <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 16, minHeight: 400 }}>
+            {STATUSES.map((status) => {
+              const colContacts = pipelineContacts.filter((c) => c.status === status.id);
+              const isOver = dragOverCol === status.id && dragId;
+              const totalCA = colContacts.reduce((sum, c) => sum + (c.ca || 0), 0);
+              const avgScore = colContacts.length > 0
+                ? Math.round(colContacts.reduce((sum, c) => sum + leadScore(c), 0) / colContacts.length)
+                : 0;
+
+              return (
+                <div
+                  key={status.id}
+                  onDragOver={(e) => { handleDragOver(e); setDragOverCol(status.id); }}
+                  onDragLeave={() => setDragOverCol(null)}
+                  onDrop={(e) => handleDrop(e, status.id)}
+                  style={{
+                    minWidth: 240, maxWidth: 300, flex: '1 0 240px',
+                    background: T.surface,
+                    borderRadius: 14,
+                    border: `1px solid ${isOver ? status.color : T.border}`,
+                    borderTop: `3px solid ${status.color}`,
+                    display: 'flex', flexDirection: 'column',
+                    maxHeight: '75vh',
+                    transition: 'border-color .2s, box-shadow .2s',
+                    boxShadow: isOver ? `0 0 0 2px ${status.color}33, 0 4px 16px ${status.color}22` : 'none',
+                  }}
+                >
+                  {/* Column header */}
+                  <div style={{
+                    padding: '12px 14px',
+                    borderBottom: `1px solid ${T.border}`,
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, color: status.color,
+                        letterSpacing: .5, textTransform: 'uppercase',
+                      }}>{status.label}</span>
+                    </div>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, color: T.textMuted,
+                      background: T.surface2, borderRadius: 10, padding: '2px 8px',
+                      minWidth: 24, textAlign: 'center',
+                    }}>{colContacts.length}</span>
+                  </div>
+
+                  {/* Drop indicator */}
+                  {isOver && (
+                    <div style={{
+                      margin: '8px 8px 0', padding: '8px',
+                      borderRadius: 8, border: `2px dashed ${status.color}`,
+                      background: status.bg, textAlign: 'center',
+                      fontSize: 10, color: status.color, fontWeight: 600,
+                    }}>
+                      Déposer ici
+                    </div>
+                  )}
+
+                  {/* Scrollable card list */}
+                  <div style={{
+                    flex: 1, overflowY: 'auto', padding: 8,
+                    display: 'flex', flexDirection: 'column', gap: 8,
+                  }}>
+                    {colContacts.length === 0 && !isOver && (
+                      <div style={{
+                        textAlign: 'center', padding: 24,
+                        fontSize: 11, color: T.textMuted, fontStyle: 'italic',
+                      }}>Aucun contact</div>
+                    )}
+                    {colContacts.map((c) => {
+                      const score = leadScore(c);
+                      const isDragging = dragId === c.id;
+                      const truncEmail = c.email && c.email.length > 24 ? c.email.slice(0, 22) + '...' : c.email;
+
+                      return (
+                        <div
+                          key={c.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, c.id)}
+                          onDragEnd={() => { setDragId(null); setDragOverCol(null); }}
+                          onClick={() => openEdit(c)}
+                          style={{
+                            padding: '10px 12px', borderRadius: 10,
+                            background: T.surface2,
+                            border: `1px solid ${isDragging ? status.color : T.border}`,
+                            cursor: 'grab',
+                            transition: 'all .2s ease',
+                            opacity: isDragging ? 0.4 : 1,
+                            transform: isDragging ? 'scale(0.95)' : 'scale(1)',
+                          }}
+                        >
+                          {/* Name + ScoreRing row */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <div style={{ fontWeight: 600, fontSize: 12, color: T.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {c.name}
+                            </div>
+                            <ScoreRing score={score} size={26} strokeWidth={3} />
+                          </div>
+
+                          {/* Company */}
+                          {c.company && (
+                            <div style={{ fontSize: 10, color: T.textSecondary, marginBottom: 2 }}>
+                              {c.company}
+                            </div>
+                          )}
+
+                          {/* Email truncated */}
+                          {c.email && (
+                            <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {truncEmail}
+                            </div>
+                          )}
+
+                          {/* Bottom row: date + CA */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                            <span style={{ fontSize: 9, color: T.textMuted }}>
+                              {ago(c.createdAt)}
+                            </span>
+                            {c.ca > 0 && (
+                              <span style={{
+                                fontSize: 9, fontWeight: 700, color: T.green,
+                                background: T.greenBg, padding: '1px 6px', borderRadius: 6,
+                              }}>
+                                {fK(c.ca)}€
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Column stats footer */}
+                  <div style={{
+                    padding: '8px 12px',
+                    borderTop: `1px solid ${T.border}`,
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    fontSize: 10, color: T.textMuted,
+                  }}>
+                    <span title="CA total de la colonne">
+                      CA : <strong style={{ color: totalCA > 0 ? T.green : T.textMuted }}>{totalCA > 0 ? fK(totalCA) + '€' : '—'}</strong>
+                    </span>
+                    <span title="Score moyen de la colonne">
+                      Score moy. : <strong style={{ color: avgScore >= 60 ? T.orange : T.textMuted }}>{colContacts.length > 0 ? avgScore : '—'}</strong>
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* ---- BULK ACTIONS FLOATING BAR ---- */}
       {selected.size > 0 && viewMode === 'table' && (

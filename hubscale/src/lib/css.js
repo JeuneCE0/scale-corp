@@ -123,6 +123,8 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover{opacity:1}
   .grid-desktop-15-1{grid-template-columns:1fr !important}
   .grid-desktop-2{grid-template-columns:1fr !important}
   .notif-panel{width:300px}
+  .pipeline-cols{grid-template-columns:repeat(3, 1fr) !important}
+  .analytics-funnel-grid{grid-template-columns:1fr !important}
 }
 
 /* Mobile (<768px) */
@@ -139,6 +141,13 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover{opacity:1}
   .modal-inner{width:100% !important;max-width:100% !important;margin:8px !important;padding:16px !important}
   .notif-panel{width:calc(100vw - 32px);right:-8px}
   .cal-cell{min-height:50px}
+  .pipeline-cols{display:flex !important;flex-direction:column !important;gap:16px !important}
+  .pipeline-col{max-height:400px !important}
+  .analytics-funnel-grid{grid-template-columns:1fr !important}
+  .integration-search-bar{flex-direction:column !important}
+  .integration-cat-tabs{justify-content:flex-start !important}
+  .api-log-entry{flex-direction:column !important;align-items:flex-start !important;gap:6px !important}
+  .offline-banner-text{font-size:10px !important}
 }
 @media(min-width:769px){
   .mobile-header{display:none !important}
@@ -146,6 +155,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover{opacity:1}
 @media(max-width:480px){
   .kpi-grid{grid-template-columns:1fr !important}
   .grid-2-mobile-1{grid-template-columns:1fr !important}
+  .pipeline-cols{display:flex !important;flex-direction:column !important}
 }
 
 /* Smart compact numbers on mobile */
