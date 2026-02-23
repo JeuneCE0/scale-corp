@@ -638,6 +638,12 @@ export default function App() {
     setView('landing');
   }, []);
 
+  const navigate = useCallback((tabId) => {
+    setTab(tabId);
+    setPageKey((k) => k + 1);
+    mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   // Global keyboard shortcuts: Cmd+K (search), Cmd+? (shortcuts help), 1-5 (tabs), N (new)
   useEffect(() => {
     if (!authed) return;
@@ -690,12 +696,6 @@ export default function App() {
     store('onboarded', true);
     setOnboarded(true);
     if (!load('tourDone')) setTourOpen(true);
-  }, []);
-
-  const navigate = useCallback((tabId) => {
-    setTab(tabId);
-    setPageKey((k) => k + 1);
-    mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   const handleTabChange = useCallback((tabId) => {
