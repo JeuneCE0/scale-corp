@@ -6,7 +6,7 @@ import { Spinner, ErrorBoundary, Btn, Badge, NotificationDot, useToast, ToastCon
 import { t, getLang, setLang, onLangChange, AVAILABLE_LANGS } from './lib/i18n.js';
 import { daysSince, daysUntil, ago } from './lib/utils.js';
 import { NOTIFICATION_TYPES } from './lib/constants.js';
-import { isAuthenticated, getCurrentUser, logout as authLogout } from './lib/auth.js';
+import { isAuthenticated, getCurrentUser, logout as authLogout, initAuth } from './lib/auth.js';
 
 const Landing = lazy(() => import('./pages/Landing.jsx'));
 const Login = lazy(() => import('./pages/Login.jsx'));
@@ -553,7 +553,8 @@ function UserMenu({ user, onLogout }) {
 
 export default function App() {
   const [authed, setAuthed] = useState(() => isAuthenticated());
-  const [user, setUser] = useState(() => getCurrentUser());
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   // view: 'landing' | 'login' | 'checkout' | 'app'
   const [view, setView] = useState(() => isAuthenticated() ? 'app' : 'landing');
   const [checkoutPlan, setCheckoutPlan] = useState(null);
@@ -580,6 +581,18 @@ export default function App() {
       style.textContent = GLOBAL_CSS;
       document.head.appendChild(style);
     }
+  }, []);
+
+  // Initialize auth (async — restores session, fetches profile)
+  useEffect(() => {
+    initAuth().then((u) => {
+      if (u) {
+        setUser(u);
+        setAuthed(true);
+        setView('app');
+      }
+      setAuthLoading(false);
+    }).catch(() => setAuthLoading(false));
   }, []);
 
   // Listen for integration sync events and show toasts
@@ -616,8 +629,8 @@ export default function App() {
     setView('app');
   }, []);
 
-  const handleLogout = useCallback(() => {
-    authLogout();
+  const handleLogout = useCallback(async () => {
+    await authLogout();
     setUser(null);
     setAuthed(false);
     setView('landing');
@@ -709,6 +722,15 @@ export default function App() {
     : {};
 
   // ─── View routing (all hooks are declared above, safe from Rules of Hooks) ───
+
+  // Auth loading
+  if (authLoading) {
+    return (
+      <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Spinner size={32} />
+      </div>
+    );
+  }
 
   // Landing page
   if (view === 'landing' && !authed) {

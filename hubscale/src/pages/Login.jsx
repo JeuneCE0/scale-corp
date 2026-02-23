@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { T, FONT } from '../lib/theme.js';
 import { login, signup, ensureDemoAccount } from '../lib/auth.js';
+import { isSupabaseConfigured } from '../lib/supabase.js';
 import { Btn, Inp } from '../components/ui.jsx';
 
 export default function Login({ onAuth, initialMode, onBack }) {
@@ -11,9 +12,10 @@ export default function Login({ onAuth, initialMode, onBack }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [info, setInfo] = useState('');
   const emailRef = useRef(null);
 
-  // Ensure demo account exists on mount
+  // Ensure demo account exists on mount (only in local mode)
   useEffect(() => { ensureDemoAccount(); }, []);
 
   // Autofocus email field
@@ -21,27 +23,35 @@ export default function Login({ onAuth, initialMode, onBack }) {
     setTimeout(() => emailRef.current?.querySelector('input')?.focus(), 200);
   }, [mode]);
 
-  const handleSubmit = useCallback((e) => {
+  const handleSubmit = useCallback(async (e) => {
     e?.preventDefault?.();
     setError('');
+    setInfo('');
     setLoading(true);
 
-    // Small delay for perceived loading
-    setTimeout(() => {
+    try {
       let result;
       if (mode === 'signup') {
-        result = signup({ name, email, password });
+        result = await signup({ name, email, password });
       } else {
-        result = login(email, password);
+        result = await login(email, password);
       }
 
-      setLoading(false);
       if (result.ok) {
         onAuth(result.user);
       } else {
         setError(result.error);
+        // Check if it's an email verification message
+        if (result.error.includes('email') || result.error.includes('Vérifiez')) {
+          setInfo(result.error);
+          setError('');
+        }
       }
-    }, 400);
+    } catch (err) {
+      setError(err.message || 'Une erreur est survenue');
+    } finally {
+      setLoading(false);
+    }
   }, [mode, name, email, password, onAuth]);
 
   const fillDemo = useCallback(() => {
@@ -53,10 +63,13 @@ export default function Login({ onAuth, initialMode, onBack }) {
   const toggleMode = useCallback(() => {
     setMode((m) => m === 'login' ? 'signup' : 'login');
     setError('');
+    setInfo('');
     setName('');
     setEmail('');
     setPassword('');
   }, []);
+
+  const showDemoSection = !isSupabaseConfigured();
 
   return (
     <div style={{
@@ -161,6 +174,15 @@ export default function Login({ onAuth, initialMode, onBack }) {
               </div>
             )}
 
+            {info && (
+              <div style={{
+                padding: '8px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                background: T.accentBg, color: T.accent, border: `1px solid ${T.accent}22`,
+              }}>
+                {info}
+              </div>
+            )}
+
             <Btn
               type="submit"
               disabled={loading}
@@ -178,8 +200,8 @@ export default function Login({ onAuth, initialMode, onBack }) {
             </Btn>
           </form>
 
-          {/* Demo credentials */}
-          {mode === 'login' && (
+          {/* Demo credentials (only in local/dev mode) */}
+          {showDemoSection && mode === 'login' && (
             <div style={{
               marginTop: 16, padding: '10px 14px', borderRadius: 8,
               background: T.surface2, border: `1px solid ${T.border}`,
