@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspens
 import { T, FONT } from './lib/theme.js';
 import { GLOBAL_CSS } from './lib/css.js';
 import { load, store } from './lib/store.js';
-import { Spinner, ErrorBoundary, Btn, Badge, NotificationDot } from './components/ui.jsx';
+import { Spinner, ErrorBoundary, Btn, Badge, NotificationDot, useToast, ToastContainer } from './components/ui.jsx';
 import { t, getLang, setLang, onLangChange, AVAILABLE_LANGS } from './lib/i18n.js';
 import { daysSince, daysUntil, ago } from './lib/utils.js';
 import { NOTIFICATION_TYPES } from './lib/constants.js';
@@ -378,6 +378,11 @@ const SHORTCUTS = [
   { keys: ['Enter'], desc: 'Valider formulaire' },
   { keys: ['1–5'], desc: 'Naviguer entre les onglets' },
   { keys: ['N'], desc: 'Nouveau (contact dans CRM, événement dans Agenda)' },
+  { keys: ['G', 'D'], desc: 'Aller au Dashboard' },
+  { keys: ['G', 'C'], desc: 'Aller au CRM' },
+  { keys: ['G', 'F'], desc: 'Aller aux Finances (Data)' },
+  { keys: ['G', 'A'], desc: 'Aller à l\'Agenda' },
+  { keys: ['G', 'S'], desc: 'Aller aux Paramètres' },
 ];
 
 // --- Guided Tour ---
@@ -558,6 +563,10 @@ export default function App() {
   const [lang, setLangState] = useState(getLang);
   const [transitionPhase, setTransitionPhase] = useState('visible');
   const mainRef = useRef(null);
+  const chordKeyTimestamp = useRef(0);
+  const [chordPending, setChordPending] = useState(false);
+  const chordTimerRef = useRef(null);
+  const toast = useToast();
 
   useEffect(() => {
     if (!document.getElementById('hs-css')) {
@@ -567,6 +576,19 @@ export default function App() {
       document.head.appendChild(style);
     }
   }, []);
+
+  // Listen for integration sync events and show toasts
+  useEffect(() => {
+    const handleSync = (e) => {
+      const { name, action } = e.detail || {};
+      if (!name) return;
+      if (action === 'connect') toast.add(`${name} connecté avec succès`, 'success');
+      else if (action === 'resync') toast.add(`${name} re-synchronisé`, 'info');
+      else if (action === 'disconnect') toast.add(`${name} déconnecté`, 'warning');
+    };
+    window.addEventListener('hs:integration-sync', handleSync);
+    return () => window.removeEventListener('hs:integration-sync', handleSync);
+  }, [toast]);
 
   // Sync lang state with i18n module
   useEffect(() => onLangChange(setLangState), []);
@@ -609,11 +631,28 @@ export default function App() {
           e.preventDefault();
           window.dispatchEvent(new CustomEvent('hs:shortcut-new'));
         }
+
+        // Chord shortcuts: G then D/C/F/A/S (GitHub-style)
+        const chordTargets = { d: 'overview', c: 'crm', f: 'data', a: 'agenda', s: 'settings' };
+        const lowerKey = e.key.toLowerCase();
+
+        if (lowerKey === 'g') {
+          chordKeyTimestamp.current = Date.now();
+          setChordPending(true);
+          if (chordTimerRef.current) clearTimeout(chordTimerRef.current);
+          chordTimerRef.current = setTimeout(() => setChordPending(false), 1000);
+        } else if (chordTargets[lowerKey] && (Date.now() - chordKeyTimestamp.current) < 1000) {
+          e.preventDefault();
+          chordKeyTimestamp.current = 0;
+          setChordPending(false);
+          if (chordTimerRef.current) clearTimeout(chordTimerRef.current);
+          navigate(chordTargets[lowerKey]);
+        }
       }
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [authed]);
+  }, [authed, navigate]);
 
   const handleOnboardingComplete = useCallback(() => {
     store('onboarded', true);
@@ -785,6 +824,24 @@ export default function App() {
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} onNavigate={navigate} />
       <ShortcutsHelp open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <GuidedTour open={tourOpen} onClose={() => setTourOpen(false)} onNavigate={navigate} />
+      <ToastContainer toasts={toast.toasts} />
+
+      {/* Chord indicator toast */}
+      {chordPending && (
+        <div className="fade-in" style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 1300, background: T.surface2, border: `1px solid ${T.border}`,
+          borderRadius: 8, padding: '6px 16px', boxShadow: '0 8px 24px rgba(0,0,0,.4)',
+          display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'none',
+        }}>
+          <kbd style={{
+            fontSize: 13, fontWeight: 700, color: T.accent, background: T.bg,
+            padding: '2px 8px', borderRadius: 5, border: `1px solid ${T.border}`,
+            fontFamily: FONT,
+          }}>G</kbd>
+          <span style={{ fontSize: 12, color: T.textMuted, fontWeight: 600 }}>...</span>
+        </div>
+      )}
     </div>
   );
 }
