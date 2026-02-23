@@ -376,7 +376,7 @@ export default function Landing({ onLogin, onSignup }) {
                 boxShadow: `0 0 8px ${C.green}`,
               }} />
               <span style={{ fontSize: 12, fontWeight: 600, color: C.textSec }}>
-                Nouveau : Integrations Stripe &amp; Revolut en temps reel
+                +850 entreprises ont deja remplace leurs 5 outils par HubScale
               </span>
             </div>
           </RevealDiv>
@@ -387,18 +387,18 @@ export default function Landing({ onLogin, onSignup }) {
               fontSize: 56, fontWeight: 900, lineHeight: 1.1,
               letterSpacing: -1.5, margin: '0 0 20px',
             }}>
-              Le portail client B2B<br />
-              <span className="ld-grad-text">qui scale avec vous</span>
+              Vous perdez 10h/semaine<br />
+              <span className="ld-grad-text">a jongler entre vos outils</span>
             </h1>
           </RevealDiv>
 
           <RevealDiv delay={0.2}>
             <p className="ld-hero-sub" style={{
               fontSize: 18, color: C.textSec, lineHeight: 1.7,
-              maxWidth: 560, margin: '0 auto 36px',
+              maxWidth: 580, margin: '0 auto 36px',
             }}>
-              CRM, finances, agenda et integrations API dans un seul dashboard.
-              Pilotez votre croissance B2B sans friction.
+              CRM sur un onglet, finances sur un autre, agenda ailleurs. Vous n'avez aucune vision d'ensemble.
+              HubScale reunit tout dans un seul dashboard — et vos decisions deviennent evidentes.
             </p>
           </RevealDiv>
 
@@ -407,16 +407,16 @@ export default function Landing({ onLogin, onSignup }) {
             <div className="ld-hero-btns" style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button className="ld-btn ld-btn-primary" onClick={() => onSignup()}
                 style={{ padding: '14px 32px', fontSize: 15 }}>
-                Demarrer gratuitement
+                Reprendre le controle
                 <span style={{ fontSize: 18 }}>{'\u2192'}</span>
               </button>
               <button className="ld-btn ld-btn-secondary" onClick={() => scrollTo('demo')}
                 style={{ padding: '14px 28px', fontSize: 15 }}>
-                Voir la demo
+                Voir le dashboard
               </button>
             </div>
             <p style={{ fontSize: 12, color: C.textMuted, marginTop: 14 }}>
-              14 jours gratuits &middot; CB requise &middot; Setup en 2 min
+              Essai 14 jours &middot; Setup en 2 min &middot; Annulez en 1 clic
             </p>
           </RevealDiv>
         </div>
@@ -459,7 +459,7 @@ export default function Landing({ onLogin, onSignup }) {
       <section style={{ borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, padding: '32px 24px', overflow: 'hidden' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', textAlign: 'center' }}>
           <p style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 20 }}>
-            Ils nous font confiance
+            Ils ont arrete de perdre du temps. Vous aussi ?
           </p>
           <div style={{ display: 'flex', overflow: 'hidden', maskImage: 'linear-gradient(90deg,transparent,black 15%,black 85%,transparent)' }}>
             <div style={{ display: 'flex', gap: 60, animation: 'ldTickerScroll 30s linear infinite', whiteSpace: 'nowrap' }}>
@@ -480,10 +480,10 @@ export default function Landing({ onLogin, onSignup }) {
       <Sect>
         <div className="ld-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24, textAlign: 'center' }}>
           {[
-            { value: 850, suffix: '+', label: 'Entreprises actives', color: C.orange },
-            { value: 2, prefix: '', suffix: 'M\u20ac+', label: 'Volume transactionnel / mois', color: C.green },
-            { value: 99, suffix: '.9%', label: 'Uptime SLA', color: C.blue },
-            { value: 4, suffix: '.8/5', label: 'Satisfaction client', color: C.purple },
+            { value: 850, suffix: '+', label: 'Entreprises qui ont dit stop au chaos', color: C.orange },
+            { value: 10, prefix: '', suffix: 'h', label: 'Gagnees par equipe chaque semaine', color: C.green },
+            { value: 99, suffix: '.9%', label: 'Uptime — vos donnees, toujours la', color: C.blue },
+            { value: 4, suffix: '.8/5', label: 'Note moyenne sur 850+ avis', color: C.purple },
           ].map((s, i) => (
             <RevealDiv key={s.label} delay={i * 0.1}>
               <div>
@@ -506,20 +506,20 @@ export default function Landing({ onLogin, onSignup }) {
               Fonctionnalites
             </p>
             <h2 style={{ fontSize: 38, fontWeight: 900, letterSpacing: -.5, lineHeight: 1.15, margin: '0 0 14px' }}>
-              Tout ce dont vous avez besoin.<br />
-              <span style={{ color: C.textSec }}>Rien de superflu.</span>
+              5 outils en 1.<br />
+              <span style={{ color: C.textSec }}>Finis les onglets, les exports manuels et les copier-coller.</span>
             </h2>
           </div>
         </RevealDiv>
 
         <div className="ld-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
           {[
-            { icon: '\uD83D\uDCCA', title: 'Dashboard temps reel', desc: 'KPIs, CA, MRR, charges et tresorerie visibles en un coup d\'oeil. Graphiques interactifs et export PDF.', color: C.orange },
-            { icon: '\uD83D\uDC65', title: 'CRM Pipeline', desc: 'Gerez vos prospects, leads et clients avec un pipeline visuel. Lead scoring, relances auto et historique complet.', color: C.blue },
-            { icon: '\uD83D\uDCB0', title: 'Data Financiere', desc: 'Suivi du CA, charges, resultats et tresorerie mois par mois. Previsions IA et alertes de seuil.', color: C.green },
-            { icon: '\uD83D\uDCC5', title: 'Agenda Intelligent', desc: 'Calendrier synchronise avec Google Calendar. Vues mois/semaine, rappels et evenements d\'equipe.', color: C.purple },
-            { icon: '\uD83D\uDD17', title: 'Integrations API', desc: 'Stripe, Revolut, GoHighLevel, Google Calendar et Meta Ads connectes en un clic.', color: C.accent },
-            { icon: '\uD83D\uDD12', title: 'Securite & RGPD', desc: 'Donnees hebergees en Europe. Chiffrement AES-256, authentification securisee et droit a l\'oubli.', color: C.red },
+            { icon: '\uD83D\uDCCA', title: 'Dashboard temps reel', desc: 'Vous consultez 3 tableaux Excel pour connaitre votre CA ? Ici, un seul ecran. KPIs, MRR, tresorerie — tout est la, en temps reel.', color: C.orange },
+            { icon: '\uD83D\uDC65', title: 'CRM Pipeline', desc: 'Vos leads tombent entre les mailles ? Pipeline visuel, lead scoring automatique, relances programmees. Plus aucun prospect ne passe a la trappe.', color: C.blue },
+            { icon: '\uD83D\uDCB0', title: 'Data Financiere', desc: 'Marre de decouvrir un trou de tresorerie trop tard ? Suivi mois par mois, previsions IA et alertes avant que ca brule.', color: C.green },
+            { icon: '\uD83D\uDCC5', title: 'Agenda Intelligent', desc: 'RDV oublies, double-bookings, rappels rates ? Agenda synchronise avec Google Cal, rappels auto et vue equipe integree.', color: C.purple },
+            { icon: '\uD83D\uDD17', title: 'Integrations API', desc: 'Vous ressaisissez les memes donnees dans 5 outils differents ? Stripe, Revolut, GHL, Meta Ads — un clic, tout se synchronise.', color: C.accent },
+            { icon: '\uD83D\uDD12', title: 'Securite & RGPD', desc: 'Vos donnees clients dans un Google Sheet partage ? Non. Hebergement EU, chiffrement AES-256, conformite RGPD native.', color: C.red },
           ].map((feat, i) => (
             <RevealDiv key={feat.title} delay={i * 0.08}>
               <div className="ld-card" style={{ height: '100%' }}>
@@ -547,16 +547,19 @@ export default function Landing({ onLogin, onSignup }) {
               Comment ca marche
             </p>
             <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5 }}>
-              Operationnel en <span className="ld-grad-text">3 etapes</span>
+              2 minutes. <span className="ld-grad-text">C'est tout.</span>
             </h2>
+            <p style={{ fontSize: 14, color: C.textSec, marginTop: 10, maxWidth: 480, margin: '10px auto 0' }}>
+              Pas de formation, pas de consultant, pas de migration de 3 mois. Vous commencez maintenant.
+            </p>
           </div>
         </RevealDiv>
 
         <div className="ld-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
           {[
-            { step: '01', title: 'Creez votre espace', desc: 'Inscription en 30 secondes. Renseignez les infos de votre societe et personnalisez votre dashboard.', icon: '\u26A1' },
-            { step: '02', title: 'Connectez vos outils', desc: 'Liez Stripe, Revolut, Google Calendar et votre CRM en un clic. Les donnees se synchronisent automatiquement.', icon: '\uD83D\uDD17' },
-            { step: '03', title: 'Pilotez votre croissance', desc: 'Dashboard en temps reel, alertes intelligentes, previsions IA. Prenez les bonnes decisions, vite.', icon: '\uD83D\uDE80' },
+            { step: '01', title: 'Creez votre compte', desc: 'Entrez votre email, choisissez un forfait. 30 secondes, pas un formulaire de 15 champs.', icon: '\u26A1' },
+            { step: '02', title: 'Branchez vos outils', desc: 'Stripe, Revolut, Google Cal, GHL — un clic par outil. Vos donnees remontent en temps reel, sans ressaisie.', icon: '\uD83D\uDD17' },
+            { step: '03', title: 'Arretez de subir, pilotez', desc: 'Vision 360° instantanee. Vous voyez ce qui fonctionne, ce qui coince, et vous agissez. Enfin.', icon: '\uD83D\uDE80' },
           ].map((s, i) => (
             <RevealDiv key={s.step} delay={i * 0.15}>
               <div style={{ textAlign: 'center', padding: '0 12px' }}>
@@ -591,10 +594,10 @@ export default function Landing({ onLogin, onSignup }) {
                 Ecosysteme
               </p>
               <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5 }}>
-                Vos outils, <span className="ld-grad-text">connectes</span>
+                Arretez de copier-coller<br /><span className="ld-grad-text">entre vos outils</span>
               </h2>
               <p style={{ fontSize: 14, color: C.textSec, marginTop: 10 }}>
-                Synchronisez vos donnees en temps reel avec les services que vous utilisez deja.
+                Un clic = vos donnees remontent. Pas d'export CSV, pas de Zapier, pas de bricolage.
               </p>
             </div>
           </RevealDiv>
@@ -627,7 +630,7 @@ export default function Landing({ onLogin, onSignup }) {
 
           <RevealDiv delay={0.3}>
             <p style={{ textAlign: 'center', fontSize: 12, color: C.textMuted, marginTop: 28 }}>
-              + Webhooks personnalises &amp; API REST pour vos integrations sur mesure
+              + Webhooks &amp; API REST — pour ceux qui veulent aller encore plus loin
             </p>
           </RevealDiv>
         </Sect>
@@ -642,10 +645,10 @@ export default function Landing({ onLogin, onSignup }) {
               Tarifs
             </p>
             <h2 style={{ fontSize: 38, fontWeight: 900, letterSpacing: -.5, margin: '0 0 10px' }}>
-              Un prix simple,<br /><span className="ld-grad-text">transparent</span>
+              Moins cher que votre stack actuelle.<br /><span className="ld-grad-text">Plus puissant aussi.</span>
             </h2>
             <p style={{ fontSize: 14, color: C.textSec }}>
-              14 jours d'essai gratuit sur tous les plans. Sans engagement.
+              Vous payez deja pour 5 outils separes. HubScale les remplace tous — pour une fraction du prix.
             </p>
           </div>
         </RevealDiv>
@@ -734,7 +737,7 @@ export default function Landing({ onLogin, onSignup }) {
                 Temoignages
               </p>
               <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5 }}>
-                Ce que nos <span className="ld-grad-text">clients disent</span>
+                Ils galéraient comme vous.<br /><span className="ld-grad-text">Ils ont change.</span>
               </h2>
             </div>
           </RevealDiv>
@@ -742,15 +745,15 @@ export default function Landing({ onLogin, onSignup }) {
           <div className="ld-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
             {[
               {
-                quote: 'HubScale a remplace 4 outils differents. Notre equipe gagne 10h par semaine et notre pipeline est enfin visible en temps reel.',
+                quote: 'On perdait des leads parce qu\'on oubliait de les relancer. Depuis HubScale, le pipeline est visible, les rappels sont auto. On a signe 30% de plus en 3 mois.',
                 name: 'Marie Laurent', role: 'CEO @ TechVision', color: C.orange,
               },
               {
-                quote: 'L\'integration Stripe + Revolut nous donne une vision financiere complete sans aucun effort. Le ROI est evident des le premier mois.',
+                quote: 'Je decouvrais les problemes de tresorerie avec 2 semaines de retard. Maintenant, j\'ai une alerte avant que ca devienne critique. Le ROI est immediat.',
                 name: 'Thomas Dubois', role: 'CFO @ DataFlow SAS', color: C.green,
               },
               {
-                quote: 'Le meilleur rapport qualite-prix du marche. L\'onboarding est fluide, le support repond en moins de 2h. Je recommande a 100%.',
+                quote: 'On payait 450\u20ac/mois pour Pipedrive + Pennylane + Calendly + Zapier. HubScale fait tout ca pour 249\u20ac. Et ca marche mieux.',
                 name: 'Sophie Martin', role: 'COO @ CloudNine', color: C.purple,
               },
             ].map((t, i) => (
@@ -793,19 +796,19 @@ export default function Landing({ onLogin, onSignup }) {
               FAQ
             </p>
             <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5 }}>
-              Questions frequentes
+              Vous hesitez encore ?
             </h2>
           </div>
         </RevealDiv>
 
         <div style={{ maxWidth: 700, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[
-            { q: 'Puis-je essayer HubScale gratuitement ?', a: 'Oui, tous nos plans incluent un essai gratuit de 14 jours. Une carte bancaire est requise a l\'inscription pour activer votre essai, mais vous ne serez debite qu\'a la fin de la periode d\'essai. Annulez a tout moment.' },
-            { q: 'Mes donnees sont-elles securisees ?', a: 'Absolument. Vos donnees sont hebergees en Europe (AWS eu-west), chiffrees en AES-256 au repos et en transit. Nous sommes conformes RGPD et SOC 2 Type II.' },
-            { q: 'Combien de temps prend la mise en place ?', a: 'En moyenne 2 minutes pour creer votre espace. Les integrations Stripe et Revolut se connectent en un clic. L\'import de contacts existants prend moins de 5 minutes.' },
-            { q: 'Puis-je migrer depuis un autre outil ?', a: 'Oui, nous proposons un import CSV/Excel pour les contacts, et notre equipe peut vous accompagner dans la migration gratuite pour les plans Professional et Enterprise.' },
-            { q: 'Y a-t-il un engagement ?', a: 'Aucun engagement. Tous nos plans sont sans engagement et vous pouvez annuler a tout moment depuis votre espace client. Les plans annuels sont rembourses au prorata.' },
-            { q: 'Quel support est disponible ?', a: 'Plan Starter : support email sous 24h. Professional : support prioritaire sous 4h + chat. Enterprise : account manager dedie + SLA avec temps de reponse garanti sous 1h.' },
+            { q: 'Je ne veux pas payer avant d\'avoir teste — c\'est possible ?', a: 'Bien sur. 14 jours d\'essai gratuit. Une CB est requise pour activer l\'essai, mais aucun debit avant la fin de la periode. Annulez en 1 clic.' },
+            { q: 'Mes donnees sensibles sont vraiment en securite ?', a: 'Hebergement 100% europeen (AWS eu-west), chiffrement AES-256 au repos et en transit, conformite RGPD et SOC 2 Type II. Plus secure que votre Google Sheet partage.' },
+            { q: 'J\'ai pas le temps de migrer — ca prend combien de temps ?', a: '2 minutes pour creer votre espace. Les integrations se connectent en un clic. Import CSV pour vos contacts existants en moins de 5 minutes. Pas de consultant, pas de formation.' },
+            { q: 'J\'utilise deja Pipedrive / Pennylane / autre — je peux migrer ?', a: 'Oui. Import CSV/Excel pour les contacts, et notre equipe vous accompagne gratuitement dans la migration sur les plans Professional et Enterprise.' },
+            { q: 'Et si ca me plait pas ? Je suis bloque ?', a: 'Zero engagement. Mensuel ou annuel, vous annulez quand vous voulez depuis votre espace. Les plans annuels sont rembourses au prorata. Pas de piege.' },
+            { q: 'J\'ai un probleme a 23h — qui me repond ?', a: 'Starter : email sous 24h. Professional : support prioritaire sous 4h + chat live. Enterprise : account manager dedie + SLA garanti sous 1h, 7j/7.' },
           ].map((faq, i) => (
             <RevealDiv key={i} delay={i * 0.05}>
               <FaqItem q={faq.q} a={faq.a} />
@@ -839,17 +842,16 @@ export default function Landing({ onLogin, onSignup }) {
             }} />
 
             <h2 style={{ fontSize: 32, fontWeight: 900, letterSpacing: -.5, margin: '0 0 12px', lineHeight: 1.2 }}>
-              Pret a scaler votre<br />
-              <span className="ld-grad-text">activite B2B ?</span>
+              Chaque jour sans HubScale,<br />
+              <span className="ld-grad-text">c'est du temps et de l'argent perdus.</span>
             </h2>
             <p style={{ fontSize: 15, color: C.textSec, lineHeight: 1.7, margin: '0 0 28px' }}>
-              Rejoignez +850 entreprises qui pilotent leur croissance avec HubScale.
-              Essai gratuit 14 jours. Annulez a tout moment.
+              850+ entreprises ont deja repris le controle. Dans 2 minutes, vous pouvez etre la prochaine.
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button className="ld-btn ld-btn-primary" onClick={() => onSignup()}
                 style={{ padding: '14px 36px', fontSize: 15 }}>
-                Demarrer gratuitement
+                Reprendre le controle
                 <span style={{ fontSize: 18 }}>{'\u2192'}</span>
               </button>
               <button className="ld-btn ld-btn-secondary" onClick={onLogin}
@@ -858,7 +860,7 @@ export default function Landing({ onLogin, onSignup }) {
               </button>
             </div>
             <p style={{ fontSize: 12, color: C.textMuted, marginTop: 16 }}>
-              Setup en 2 min &middot; 14 jours gratuits &middot; Annulez a tout moment
+              14 jours gratuits &middot; Setup en 2 min &middot; Annulez en 1 clic
             </p>
           </div>
         </RevealDiv>
@@ -880,7 +882,7 @@ export default function Landing({ onLogin, onSignup }) {
                 <span style={{ fontWeight: 800, fontSize: 16, color: C.text }}>HubScale</span>
               </div>
               <p style={{ fontSize: 13, color: C.textSec, lineHeight: 1.7, maxWidth: 260 }}>
-                Le portail client B2B qui scale avec vous. CRM, finances et integrations dans un seul dashboard.
+                Le dashboard B2B qui remplace votre chaos d'outils. CRM, finances, agenda et integrations — en un seul endroit.
               </p>
             </div>
 
