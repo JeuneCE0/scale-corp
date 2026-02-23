@@ -4,8 +4,9 @@ import { GLOBAL_CSS } from './lib/css.js';
 import { load, store } from './lib/store.js';
 import { Spinner, ErrorBoundary, Btn, Badge, NotificationDot, useToast, ToastContainer } from './components/ui.jsx';
 import { t, getLang, setLang, onLangChange, AVAILABLE_LANGS } from './lib/i18n.js';
-import { daysSince, daysUntil, ago } from './lib/utils.js';
+import { daysSince, daysUntil, ago, forecastCA, businessHealth, fmt } from './lib/utils.js';
 import { NOTIFICATION_TYPES } from './lib/constants.js';
+import { getIntegrationMeta } from './lib/integrationData.js';
 import { isAuthenticated, getCurrentUser, logout as authLogout, initAuth } from './lib/auth.js';
 
 const Landing = lazy(() => import('./pages/Landing.jsx'));
@@ -138,6 +139,146 @@ function useNotifications() {
         time: now.toISOString(),
         tab: 'settings',
       });
+    }
+
+    // 5. Smart business alerts — financial thresholds
+    if (finHistory.length >= 2) {
+      const last = finHistory[finHistory.length - 1];
+      const prev = finHistory[finHistory.length - 2];
+
+      // Margin alert (<10% critical, <20% warning)
+      if (last.ca > 0) {
+        const margin = (last.result / last.ca) * 100;
+        if (margin < 10) {
+          notifs.push({
+            id: 'alert-margin-critical',
+            type: 'alert',
+            message: `Marge critique : ${Math.round(margin)}% — risque de perte nette`,
+            time: now.toISOString(),
+            tab: 'data',
+          });
+        } else if (margin < 20) {
+          notifs.push({
+            id: 'alert-margin-warning',
+            type: 'alert',
+            message: `Marge faible : ${Math.round(margin)}% — surveillez vos charges`,
+            time: now.toISOString(),
+            tab: 'data',
+          });
+        }
+      }
+
+      // CA decline > 15%
+      if (prev.ca > 0) {
+        const caDecline = ((prev.ca - last.ca) / prev.ca) * 100;
+        if (caDecline > 15) {
+          notifs.push({
+            id: 'alert-ca-decline',
+            type: 'alert',
+            message: `CA en baisse de ${Math.round(caDecline)}% vs mois dernier (${fmt(last.ca)} € vs ${fmt(prev.ca)} €)`,
+            time: now.toISOString(),
+            tab: 'data',
+          });
+        }
+      }
+
+      // Charges spike > 20%
+      if (prev.charges > 0) {
+        const chargesSpike = ((last.charges - prev.charges) / prev.charges) * 100;
+        if (chargesSpike > 20) {
+          notifs.push({
+            id: 'alert-charges-spike',
+            type: 'alert',
+            message: `Charges en hausse de ${Math.round(chargesSpike)}% : ${fmt(last.charges)} € vs ${fmt(prev.charges)} €`,
+            time: now.toISOString(),
+            tab: 'data',
+          });
+        }
+      }
+
+      // Negative result alert
+      if (last.result < 0) {
+        notifs.push({
+          id: 'alert-negative-result',
+          type: 'alert',
+          message: `Résultat net négatif : ${fmt(last.result)} € — revoyez vos charges`,
+          time: now.toISOString(),
+          tab: 'data',
+        });
+      }
+    }
+
+    // 6. Forecast warning
+    if (finHistory.length >= 3) {
+      const forecast = forecastCA(finHistory, 3);
+      const lastCA = finHistory[finHistory.length - 1]?.ca || 0;
+      if (forecast.length > 0 && lastCA > 0) {
+        const forecastEnd = forecast[forecast.length - 1]?.ca || 0;
+        const pctChange = Math.round(((forecastEnd - lastCA) / lastCA) * 100);
+        if (pctChange < -20) {
+          notifs.push({
+            id: 'alert-forecast-decline',
+            type: 'alert',
+            message: `Prévision : CA en baisse de ${Math.abs(pctChange)}% dans 3 mois`,
+            time: now.toISOString(),
+            tab: 'analytics',
+          });
+        }
+      }
+    }
+
+    // 7. Business health degradation
+    const healthScore = businessHealth(finHistory, contacts, integrations);
+    if (healthScore < 30) {
+      notifs.push({
+        id: 'alert-health-critical',
+        type: 'alert',
+        message: `Santé business critique (${healthScore}/100) — actions requises`,
+        time: now.toISOString(),
+        tab: 'overview',
+      });
+    } else if (healthScore < 50) {
+      notifs.push({
+        id: 'alert-health-warning',
+        type: 'finance',
+        message: `Santé business faible (${healthScore}/100) — connectez plus d'outils`,
+        time: now.toISOString(),
+        tab: 'settings',
+      });
+    }
+
+    // 8. Treasury low warning
+    if (finHistory.length > 0) {
+      const lastTreso = finHistory[finHistory.length - 1]?.treso || 0;
+      const avgCharges = Math.round(finHistory.slice(-3).reduce((s, r) => s + (r.charges || 0), 0) / Math.min(finHistory.length, 3));
+      if (lastTreso > 0 && avgCharges > 0 && lastTreso < avgCharges * 2) {
+        notifs.push({
+          id: 'alert-treasury-low',
+          type: 'alert',
+          message: `Trésorerie faible : ${fmt(lastTreso)} € (< 2 mois de charges)`,
+          time: now.toISOString(),
+          tab: 'data',
+        });
+      }
+    }
+
+    // 9. Conversion rate alert
+    if (contacts.length >= 5) {
+      const clients = contacts.filter((c) => c.status === 'client').length;
+      const lost = contacts.filter((c) => c.status === 'perdu').length;
+      const denom = clients + lost;
+      if (denom >= 3) {
+        const convRate = Math.round((clients / denom) * 100);
+        if (convRate < 20) {
+          notifs.push({
+            id: 'alert-conversion-low',
+            type: 'relance',
+            message: `Taux de conversion bas : ${convRate}% — optimisez votre pipeline`,
+            time: now.toISOString(),
+            tab: 'crm',
+          });
+        }
+      }
     }
 
     return notifs;

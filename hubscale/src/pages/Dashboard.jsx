@@ -365,8 +365,8 @@ export default function Dashboard({ onNavigate }) {
   /* ---------------------------------------------------------------- */
   const [widgetOrder, setWidgetOrder] = useState(() => {
     const saved = load('dashWidgetOrder');
-    if (saved && saved.includes('integrations-hub')) return saved;
-    return ['chart-pipeline', 'crm-banner', 'pub-banner', 'integrations-hub', 'activity-tasks'];
+    if (saved && saved.includes('cashflow-projection') && saved.includes('cross-insights')) return saved;
+    return ['chart-pipeline', 'integration-kpis', 'cashflow-projection', 'cross-insights', 'crm-banner', 'pub-banner', 'integrations-hub', 'activity-tasks'];
   });
   const [dragWidget, setDragWidget] = useState(null);
   const handleWidgetDragStart = useCallback((e, id) => { setDragWidget(id); e.dataTransfer.effectAllowed = 'move'; }, []);
@@ -417,6 +417,220 @@ export default function Dashboard({ onNavigate }) {
     });
     return cats;
   }, [integrations]);
+
+  /* ---------------------------------------------------------------- */
+  /*  Integration KPIs (live data from connected tools)                 */
+  /* ---------------------------------------------------------------- */
+  const integrationKPIs = useMemo(() => {
+    const kpis = [];
+
+    // Stripe/PayPal: MRR & revenue trend
+    if (integrations['Stripe'] || integrations['PayPal']) {
+      const last3 = finHistory.slice(-3);
+      const avgCA = last3.length > 0 ? Math.round(last3.reduce((s, r) => s + (r.ca || 0), 0) / last3.length) : 0;
+      const prevCA = finHistory.length >= 4 ? finHistory[finHistory.length - 4]?.ca || 0 : 0;
+      const trend = prevCA > 0 ? Math.round(((avgCA - prevCA) / prevCA) * 100) : 0;
+      kpis.push({ icon: '💳', label: 'MRR moyen', value: `${fmt(avgCA)} €`, trend, color: T.green, source: integrations['Stripe'] ? 'Stripe' : 'PayPal' });
+    }
+
+    // Email marketing: subscribers
+    const emailTools = ['Mailchimp', 'ActiveCampaign', 'Klaviyo', 'Sendinblue', 'Lemlist', 'Brevo'];
+    for (const tool of emailTools) {
+      if (integrations[tool]) {
+        const meta = getIntegrationMeta(tool);
+        if (meta?.subscribers) {
+          kpis.push({ icon: '📧', label: 'Abonnés email', value: fmt(meta.subscribers), trend: null, color: T.blue, source: tool });
+        }
+        break;
+      }
+    }
+
+    // Support: open tickets
+    const supportTools = ['Zendesk', 'Freshdesk', 'Intercom'];
+    for (const tool of supportTools) {
+      if (integrations[tool]) {
+        const meta = getIntegrationMeta(tool);
+        if (meta?.openTickets != null) {
+          kpis.push({ icon: '🎧', label: 'Tickets ouverts', value: String(meta.openTickets), trend: null, color: meta.openTickets > 20 ? T.red : meta.openTickets > 10 ? T.orange : T.green, source: tool });
+        }
+        break;
+      }
+    }
+
+    // CRM: synced contacts
+    const crmTools = ['GoHighLevel', 'HubSpot', 'Salesforce', 'Zoho', 'Pipedrive'];
+    for (const tool of crmTools) {
+      if (integrations[tool]) {
+        const meta = getIntegrationMeta(tool);
+        if (meta?.syncedContacts) {
+          kpis.push({ icon: '👥', label: 'Contacts CRM', value: fmt(contacts.length), trend: null, color: T.purple, source: tool });
+        }
+        break;
+      }
+    }
+
+    // E-commerce: orders
+    const ecomTools = ['Shopify', 'WooCommerce'];
+    for (const tool of ecomTools) {
+      if (integrations[tool]) {
+        const meta = getIntegrationMeta(tool);
+        if (meta?.ordersImported) {
+          kpis.push({ icon: '🛍️', label: 'Commandes', value: fmt(meta.ordersImported), trend: null, color: T.orange, source: tool });
+        }
+        break;
+      }
+    }
+
+    // Bank: last treasury
+    const bankTools = ['Revolut', 'Qonto', 'Shine', 'Bunq', 'N26'];
+    for (const tool of bankTools) {
+      if (integrations[tool]) {
+        const lastTreso = finHistory.length > 0 ? finHistory[finHistory.length - 1]?.treso || 0 : 0;
+        if (lastTreso > 0) {
+          kpis.push({ icon: '🏦', label: 'Trésorerie', value: `${fmt(lastTreso)} €`, trend: null, color: T.blue, source: tool });
+        }
+        break;
+      }
+    }
+
+    return kpis;
+  }, [integrations, finHistory, contacts]);
+
+  /* ---------------------------------------------------------------- */
+  /*  Cash Flow Projection                                             */
+  /* ---------------------------------------------------------------- */
+  const cashFlowData = useMemo(() => {
+    if (finHistory.length < 2) return null;
+
+    const lastTreso = finHistory[finHistory.length - 1]?.treso || 0;
+    const last3 = finHistory.slice(-3);
+    const avgResult = Math.round(last3.reduce((s, r) => s + (r.result || 0), 0) / last3.length);
+    const avgCharges = Math.round(last3.reduce((s, r) => s + (r.charges || 0), 0) / last3.length);
+    const fcst = forecastCA(finHistory, 3);
+
+    const months = [];
+    let runningTreso = lastTreso;
+    for (let i = 0; i < 3; i++) {
+      const projectedCA = fcst[i]?.ca || (finHistory[finHistory.length - 1]?.ca || 0);
+      const projectedCharges = avgCharges;
+      const netFlow = projectedCA - projectedCharges;
+      runningTreso += netFlow;
+      months.push({
+        key: fcst[i]?.key || `M+${i + 1}`,
+        ca: projectedCA,
+        charges: projectedCharges,
+        net: netFlow,
+        treso: Math.max(0, runningTreso),
+      });
+    }
+
+    const runwayMonths = avgCharges > 0 ? Math.round(lastTreso / avgCharges * 10) / 10 : Infinity;
+
+    return {
+      currentTreso: lastTreso,
+      avgResult,
+      avgCharges,
+      months,
+      runwayMonths,
+      trend: avgResult >= 0 ? 'positive' : 'negative',
+    };
+  }, [finHistory]);
+
+  /* ---------------------------------------------------------------- */
+  /*  Cross-Data Insights                                              */
+  /* ---------------------------------------------------------------- */
+  const crossInsights = useMemo(() => {
+    const insights = [];
+
+    // 1. Real cost per client
+    const clientCount = contacts.filter((c) => c.status === 'client').length;
+    if (clientCount > 0 && finHistory.length > 0) {
+      const totalCharges = finHistory.slice(-3).reduce((s, r) => s + (r.charges || 0), 0);
+      const avgMonthlyCharges = Math.round(totalCharges / Math.min(finHistory.length, 3));
+      const costPerClient = Math.round(avgMonthlyCharges / clientCount);
+      insights.push({
+        icon: '💸',
+        label: 'Coût moyen / client',
+        value: `${fmt(costPerClient)} € /mois`,
+        detail: `${fmt(avgMonthlyCharges)} € de charges / ${clientCount} clients`,
+        color: T.orange,
+      });
+    }
+
+    // 2. Revenue per client
+    if (clientCount > 0 && finHistory.length > 0) {
+      const lastCA = finHistory[finHistory.length - 1]?.ca || 0;
+      const revenuePerClient = Math.round(lastCA / clientCount);
+      insights.push({
+        icon: '💰',
+        label: 'CA moyen / client',
+        value: `${fmt(revenuePerClient)} € /mois`,
+        detail: `${fmt(lastCA)} € CA / ${clientCount} clients`,
+        color: T.green,
+      });
+    }
+
+    // 3. Best performing acquisition channel
+    if (contacts.length >= 3) {
+      const sources = {};
+      contacts.forEach((c) => {
+        const src = c.source || 'manual';
+        if (!sources[src]) sources[src] = { total: 0, clients: 0, totalCA: 0 };
+        sources[src].total++;
+        if (c.status === 'client') {
+          sources[src].clients++;
+          sources[src].totalCA += (c.ca || 0);
+        }
+      });
+      const ranked = Object.entries(sources)
+        .filter(([, v]) => v.total >= 2)
+        .map(([src, v]) => ({ src, ...v, convRate: v.total > 0 ? Math.round((v.clients / v.total) * 100) : 0 }))
+        .sort((a, b) => b.convRate - a.convRate);
+      if (ranked.length > 0) {
+        const best = ranked[0];
+        const srcLabels = { manual: 'Saisie manuelle', csv_import: 'Import CSV', gohighlevel: 'GoHighLevel', hubspot: 'HubSpot', salesforce: 'Salesforce', zoho: 'Zoho', pipedrive: 'Pipedrive', brevo: 'Brevo', axonaut: 'Axonaut' };
+        insights.push({
+          icon: '🏆',
+          label: 'Meilleur canal',
+          value: srcLabels[best.src] || best.src,
+          detail: `${best.convRate}% conversion (${best.clients}/${best.total} contacts)`,
+          color: T.accent,
+        });
+      }
+    }
+
+    // 4. Ad spend efficiency (if ads connected)
+    const metaAds = load('metaAds') || {};
+    if (adPlatforms.length > 0 && metaAds.spend && clientCount > 0) {
+      const adCostPerClient = Math.round(metaAds.spend / (metaAds.conversions || 1));
+      const lastCA = finHistory.length > 0 ? (finHistory[finHistory.length - 1]?.ca || 0) : 0;
+      const ltv = clientCount > 0 ? Math.round(lastCA / clientCount * 6) : 0;
+      insights.push({
+        icon: '📢',
+        label: 'CPA vs LTV',
+        value: `${fmt(adCostPerClient)} € → ${fmt(ltv)} €`,
+        detail: `Coût acquisition ${fmt(adCostPerClient)} € | Valeur client 6 mois ~${fmt(ltv)} €`,
+        color: ltv > adCostPerClient * 3 ? T.green : ltv > adCostPerClient ? T.orange : T.red,
+      });
+    }
+
+    // 5. Monthly burn rate insight
+    if (finHistory.length >= 2) {
+      const last3 = finHistory.slice(-3);
+      const avgCharges = Math.round(last3.reduce((s, r) => s + (r.charges || 0), 0) / last3.length);
+      const avgCA = Math.round(last3.reduce((s, r) => s + (r.ca || 0), 0) / last3.length);
+      const profitMargin = avgCA > 0 ? Math.round(((avgCA - avgCharges) / avgCA) * 100) : 0;
+      insights.push({
+        icon: profitMargin >= 30 ? '🟢' : profitMargin >= 15 ? '🟡' : '🔴',
+        label: 'Marge nette moyenne',
+        value: `${profitMargin}%`,
+        detail: `CA moyen ${fmt(avgCA)} € — Charges moyennes ${fmt(avgCharges)} €`,
+        color: profitMargin >= 30 ? T.green : profitMargin >= 15 ? T.orange : T.red,
+      });
+    }
+
+    return insights;
+  }, [contacts, finHistory, adPlatforms]);
 
   /* ---------------------------------------------------------------- */
   /*  CRM stats                                                        */
@@ -788,6 +1002,129 @@ export default function Dashboard({ onNavigate }) {
               </Card>
             </div>
           ),
+
+          /* ------ Integration KPIs ------ */
+          'integration-kpis': integrationKPIs.length > 0 ? (
+            <Card delay={4} style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>📡</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>KPIs Intégrations</span>
+                  <HelpTip text="Données en temps réel de vos outils connectés" />
+                </div>
+                <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>Gérer →</Btn>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+                {integrationKPIs.map((kpi) => (
+                  <div key={kpi.label} style={{
+                    padding: '14px 16px', borderRadius: 12,
+                    background: kpi.color + '10', border: `1px solid ${kpi.color}22`,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ fontSize: 20 }}>{kpi.icon}</span>
+                      <span style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, background: T.surface2, padding: '2px 6px', borderRadius: 4 }}>{kpi.source}</span>
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: kpi.color, lineHeight: 1.2 }}>{kpi.value}</div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, marginTop: 4 }}>{kpi.label}</div>
+                    {kpi.trend != null && kpi.trend !== 0 && (
+                      <div style={{ fontSize: 10, fontWeight: 700, color: kpi.trend >= 0 ? T.green : T.red, marginTop: 4 }}>
+                        {kpi.trend >= 0 ? '↑' : '↓'} {Math.abs(kpi.trend)}%
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : null,
+
+          /* ------ Cash Flow Projection ------ */
+          'cashflow-projection': cashFlowData ? (
+            <PremiumGate label="Projection trésorerie" blur={false}>
+              <Card delay={5} style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>🏦</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Projection Trésorerie</span>
+                    <HelpTip text="Estimation sur 3 mois basée sur vos tendances de CA et charges" />
+                  </div>
+                  <Badge
+                    label={`Runway: ${cashFlowData.runwayMonths === Infinity ? '∞' : cashFlowData.runwayMonths + ' mois'}`}
+                    color={cashFlowData.runwayMonths >= 6 ? T.green : cashFlowData.runwayMonths >= 3 ? T.orange : T.red}
+                    bg={cashFlowData.runwayMonths >= 6 ? T.greenBg : cashFlowData.runwayMonths >= 3 ? T.orangeBg : T.redBg}
+                  />
+                </div>
+
+                {/* Current treasury bar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '12px 16px', borderRadius: 10, background: T.surface2, border: `1px solid ${T.border}` }}>
+                  <div>
+                    <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 2 }}>Trésorerie actuelle</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: cashFlowData.currentTreso > cashFlowData.avgCharges * 2 ? T.green : T.orange }}>{fmt(cashFlowData.currentTreso)} €</div>
+                  </div>
+                  <div style={{ flex: 1 }} />
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 2 }}>Résultat moyen /mois</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: cashFlowData.avgResult >= 0 ? T.green : T.red }}>
+                      {cashFlowData.avgResult >= 0 ? '+' : ''}{fmt(cashFlowData.avgResult)} €
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3-month projection */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                  {cashFlowData.months.map((m, i) => {
+                    const MONTH_NAMES = ['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+                    const [, mo] = (m.key || '').split('-');
+                    const monthLabel = mo ? MONTH_NAMES[parseInt(mo)] : `M+${i + 1}`;
+                    const tresoColor = m.treso > cashFlowData.avgCharges * 2 ? T.green : m.treso > cashFlowData.avgCharges ? T.orange : T.red;
+                    return (
+                      <div key={m.key} style={{
+                        padding: '12px 14px', borderRadius: 10, textAlign: 'center',
+                        background: tresoColor + '08', border: `1px solid ${tresoColor}22`,
+                      }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', marginBottom: 8 }}>{monthLabel}</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: tresoColor }}>{fmt(m.treso)} €</div>
+                        <div style={{ fontSize: 9, color: T.textMuted, marginTop: 4 }}>
+                          CA: {fmt(m.ca)} € | Ch: {fmt(m.charges)} €
+                        </div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: m.net >= 0 ? T.green : T.red, marginTop: 4 }}>
+                          {m.net >= 0 ? '+' : ''}{fmt(m.net)} € net
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            </PremiumGate>
+          ) : null,
+
+          /* ------ Cross-Data Insights ------ */
+          'cross-insights': crossInsights.length > 0 ? (
+            <PremiumGate label="Insights croisés" blur={false}>
+              <Card delay={5} style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                  <span style={{ fontSize: 16 }}>🔬</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Insights Business</span>
+                  <HelpTip text="Analyses croisées de vos données CRM, financières et marketing" />
+                  <Badge label="Auto" color={T.accent} bg={T.accentBg} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+                  {crossInsights.map((insight) => (
+                    <div key={insight.label} style={{
+                      padding: '14px 16px', borderRadius: 12,
+                      background: insight.color + '08', border: `1px solid ${insight.color}22`,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontSize: 18 }}>{insight.icon}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary }}>{insight.label}</span>
+                      </div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: insight.color, lineHeight: 1.3, marginBottom: 6 }}>{insight.value}</div>
+                      <div style={{ fontSize: 10, color: T.textMuted, lineHeight: 1.4 }}>{insight.detail}</div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </PremiumGate>
+          ) : null,
 
           /* ------ Activity + Tasks ------ */
           'activity-tasks': (
