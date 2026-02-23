@@ -4,7 +4,7 @@ import { login, signup, ensureDemoAccount } from '../lib/auth.js';
 import { isSupabaseConfigured } from '../lib/supabase.js';
 import { Btn, Inp } from '../components/ui.jsx';
 
-export default function Login({ onAuth, initialMode, onBack }) {
+export default function Login({ onAuth, initialMode, onBack, onForgotPassword }) {
   const [mode, setMode] = useState(initialMode || 'login'); // 'login' | 'signup'
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -164,6 +164,22 @@ export default function Login({ onAuth, initialMode, onBack }) {
                 {showPassword ? 'Masquer' : 'Voir'}
               </button>
             </div>
+
+            {mode === 'login' && onForgotPassword && (
+              <div style={{ textAlign: 'right', marginTop: -4 }}>
+                <button
+                  type="button"
+                  onClick={onForgotPassword}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 11, color: T.accent, fontFamily: FONT,
+                    padding: 0, textDecoration: 'underline', textUnderlineOffset: 2,
+                  }}
+                >
+                  Mot de passe oublié ?
+                </button>
+              </div>
+            )}
 
             {error && (
               <div style={{

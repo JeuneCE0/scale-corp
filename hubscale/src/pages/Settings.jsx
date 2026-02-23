@@ -5,6 +5,9 @@ import { Card, Section, Btn, Inp, Sel, TabBar, Toggle, ConfirmDialog, Badge, Pro
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { SECTORS, PLANS, INTEGRATIONS } from '../lib/constants.js';
 import { onIntegrationConnect, getIntegrationMeta } from '../lib/integrationData.js';
+import { isSupabaseConfigured } from '../lib/supabase.js';
+import { startOAuthFlow, disconnectIntegration as apiDisconnect, requestDataExport, requestAccountDeletion, createBillingPortalSession } from '../lib/api.js';
+import { sanitizeText, sanitizeEmail, sanitizePhone, sanitizeUrl } from '../lib/sanitize.js';
 
 const INTEGRATION_CATEGORIES = [
   { label: 'Tous', cat: null },
@@ -111,7 +114,20 @@ export default function Settings() {
   const upd = useCallback((k, v) => setCompany((prev) => ({ ...prev, [k]: v })), []);
 
   const saveCompany = useCallback(() => {
-    store('settings_company', company);
+    const sanitized = {
+      ...company,
+      name: sanitizeText(company.name, 200),
+      siret: sanitizeText(company.siret, 50),
+      tva: sanitizeText(company.tva, 50),
+      address: sanitizeText(company.address, 300),
+      city: sanitizeText(company.city, 100),
+      zip: sanitizeText(company.zip, 20),
+      email: sanitizeEmail(company.email) || company.email,
+      phone: sanitizePhone(company.phone),
+      website: sanitizeUrl(company.website) || company.website,
+    };
+    store('settings_company', sanitized);
+    setCompany(sanitized);
     setSavedCompany(true);
     setTimeout(() => setSavedCompany(false), 2000);
   }, [company]);
@@ -131,11 +147,33 @@ export default function Settings() {
     return list;
   }, [integrationSearch, integrationCatFilter]);
 
-  const toggleIntegration = useCallback((name) => {
+  const toggleIntegration = useCallback(async (name) => {
     setBouncingIntegration(name);
     setTimeout(() => setBouncingIntegration(null), 400);
 
     const wasOff = !integrations[name];
+
+    // Production mode: use real OAuth flow
+    if (isSupabaseConfigured()) {
+      if (wasOff) {
+        setSyncStatus((prev) => ({ ...prev, [name]: 'syncing' }));
+        try {
+          const result = await startOAuthFlow(name);
+          if (result.url) {
+            // Redirect to OAuth provider
+            window.location.href = result.url;
+            return;
+          }
+        } catch (err) {
+          // If OAuth not configured for this integration, fall through to local mode
+          console.warn(`[oauth] ${name}: ${err.message}, falling back to local mode`);
+        }
+        setSyncStatus((prev) => ({ ...prev, [name]: null }));
+      } else {
+        // Disconnect via API
+        try { await apiDisconnect(name); } catch {}
+      }
+    }
 
     setIntegrations((prev) => {
       const updated = { ...prev, [name]: !prev[name] };
@@ -869,6 +907,14 @@ export default function Settings() {
         <>
           <div className="fade-up" style={{ textAlign: 'center', marginBottom: 24 }}>
             <p style={{ color: T.textSecondary, fontSize: 12 }}>Paiement sécurisé via Stripe. Annulez à tout moment.</p>
+            {isSupabaseConfigured() && (
+              <Btn v="secondary" small style={{ marginTop: 8 }} onClick={async () => {
+                try {
+                  const { url } = await createBillingPortalSession();
+                  if (url) window.location.href = url;
+                } catch (err) { alert('Erreur : ' + err.message); }
+              }}>Gérer mon abonnement Stripe</Btn>
+            )}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 12 }}>
               <span style={{ fontSize: 12, fontWeight: annual ? 500 : 700, color: annual ? T.textMuted : T.text }}>Mensuel</span>
               <Toggle on={annual} onToggle={() => setAnnual(!annual)} label={<><span>Annuel</span> <span style={{ color: T.green, fontWeight: 700 }}>-20%</span></>} />
@@ -1432,14 +1478,37 @@ export default function Settings() {
                 <div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 8 }}>
                   Conformément au RGPD, vous pouvez demander la suppression complète de toutes vos données personnelles.
                 </div>
-                <Btn v="danger" small onClick={() => { setSubTab('Compte'); setShowDeleteConfirm(true); }}>Demander la suppression</Btn>
+                <Btn v="danger" small onClick={async () => {
+                  if (isSupabaseConfigured()) {
+                    if (window.confirm('Êtes-vous sûr ? Cette action est irréversible et supprimera toutes vos données.')) {
+                      try {
+                        await requestAccountDeletion();
+                        window.location.reload();
+                      } catch (err) { alert(err.message); }
+                    }
+                  } else {
+                    setSubTab('Compte'); setShowDeleteConfirm(true);
+                  }
+                }}>Demander la suppression</Btn>
               </div>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 4 }}>Export des données (RGPD Art. 20)</div>
                 <div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 8 }}>
                   Téléchargez l'intégralité de vos données dans un format portable.
                 </div>
-                <Btn v="secondary" small onClick={() => exportData('backup')}>Exporter mes données</Btn>
+                <Btn v="secondary" small onClick={async () => {
+                  if (isSupabaseConfigured()) {
+                    try {
+                      const data = await requestDataExport();
+                      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a'); a.href = url; a.download = 'hubscale_gdpr_export.json'; a.click();
+                      URL.revokeObjectURL(url);
+                    } catch (err) { alert('Erreur : ' + err.message); }
+                  } else {
+                    exportData('backup');
+                  }
+                }}>Exporter mes données</Btn>
               </div>
             </div>
           </Card>

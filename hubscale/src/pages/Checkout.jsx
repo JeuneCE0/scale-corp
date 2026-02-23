@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { T, FONT } from '../lib/theme.js';
 import { signup, ensureDemoAccount } from '../lib/auth.js';
+import { isSupabaseConfigured } from '../lib/supabase.js';
+import { createCheckoutSession } from '../lib/api.js';
 import { store } from '../lib/store.js';
 import { PLANS } from '../lib/constants.js';
 import { Btn, Inp } from '../components/ui.jsx';
@@ -119,8 +121,34 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
     setStep(2);
   }, [name, email, password]);
 
-  // ─── Step 2: Payment validation & submit ─────────────────────────────
-  const handleSubmit = useCallback(() => {
+  // ─── Step 2: Stripe Checkout (when Supabase is configured) ─────────
+  const handleStripeCheckout = useCallback(async () => {
+    setError('');
+    setLoading(true);
+    setProcessing(true);
+
+    try {
+      // Create account first
+      const authResult = await signup({ name, email, password });
+      if (!authResult.ok) {
+        setLoading(false);
+        setProcessing(false);
+        setError(authResult.error);
+        return;
+      }
+
+      // Create Stripe Checkout session and redirect
+      const result = await createCheckoutSession(selectedPlan);
+      window.location.href = result.url;
+    } catch (err) {
+      setLoading(false);
+      setProcessing(false);
+      setError(err.message || 'Erreur lors de la création de la session de paiement');
+    }
+  }, [name, email, password, selectedPlan]);
+
+  // ─── Step 2: Demo payment validation & submit (local mode) ────────
+  const handleSubmit = useCallback(async () => {
     const digits = cardNumber.replace(/\D/g, '');
     if (!cardName.trim()) { setError('Le nom sur la carte est requis'); return; }
     if (digits.length < 15) { setError('Numéro de carte invalide'); return; }
@@ -140,9 +168,9 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
     setProcessing(true);
 
     // Simulate payment processing
-    setTimeout(() => {
+    setTimeout(async () => {
       // Create account
-      const result = signup({ name, email, password });
+      const result = await signup({ name, email, password });
       if (!result.ok) {
         setLoading(false);
         setProcessing(false);
@@ -424,106 +452,145 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
               </div>
             </div>
 
-            {/* Card form */}
-            <div ref={cardRef} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <Inp label="Nom sur la carte" value={cardName} onChange={setCardName} placeholder="JEAN DUPONT" autoComplete="cc-name" />
-
-              {/* Card number with brand detection */}
-              <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: T.textSecondary, marginBottom: 4 }}>
-                  Numéro de carte
-                </label>
+            {/* Payment form — Stripe Checkout when Supabase is configured, demo card form otherwise */}
+            {isSupabaseConfigured() ? (
+              <>
+                {/* Stripe Checkout mode */}
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  background: T.surface2, border: `1px solid ${T.border}`,
-                  borderRadius: 8, padding: '0 10px',
-                  transition: 'border-color .2s ease',
+                  padding: '20px 16px', borderRadius: 12, textAlign: 'center',
+                  background: T.surface2, border: `1px solid ${T.border}`, marginBottom: 4,
                 }}>
-                  {/* Card icon */}
-                  <div style={{ flexShrink: 0, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {cardBrand ? (
-                      <span style={{ fontSize: 10, fontWeight: 800, color: cardBrand.color, background: `${cardBrand.color}15`, padding: '2px 4px', borderRadius: 3 }}>
-                        {cardBrand.brand}
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: 16, color: T.textMuted }}>{'\uD83D\uDCB3'}</span>
-                    )}
+                  <div style={{ fontSize: 24, marginBottom: 8 }}>{'\uD83D\uDD12'}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 4 }}>
+                    Paiement sécurisé via Stripe
                   </div>
-                  <input
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                    placeholder="4242 4242 4242 4242"
-                    autoComplete="cc-number"
-                    inputMode="numeric"
-                    maxLength={19}
-                    style={{
-                      flex: 1, background: 'transparent', border: 'none', color: T.text,
-                      fontSize: 14, fontFamily: F, padding: '10px 0', outline: 'none',
-                      letterSpacing: 1.5, fontWeight: 600,
-                    }}
-                  />
+                  <div style={{ fontSize: 11, color: T.textSecondary, lineHeight: 1.5 }}>
+                    Vous allez être redirigé vers la page de paiement sécurisée Stripe
+                    pour entrer vos informations de carte bancaire.
+                  </div>
                 </div>
-              </div>
 
-              {/* Expiry + CVC side by side */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: T.textSecondary, marginBottom: 4 }}>
-                    Expiration
-                  </label>
-                  <input
-                    value={cardExpiry}
-                    onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
-                    placeholder="MM/AA"
-                    autoComplete="cc-exp"
-                    inputMode="numeric"
-                    maxLength={5}
-                    style={{
-                      width: '100%', background: T.surface2, border: `1px solid ${T.border}`,
-                      borderRadius: 8, color: T.text, fontSize: 13, fontFamily: FONT,
-                      padding: '10px 12px', outline: 'none', letterSpacing: 1, fontWeight: 600,
-                      transition: 'border-color .2s ease',
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: T.textSecondary, marginBottom: 4 }}>
-                    CVC
-                  </label>
-                  <input
-                    value={cardCvc}
-                    onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                    placeholder="123"
-                    autoComplete="cc-csc"
-                    inputMode="numeric"
-                    maxLength={4}
-                    style={{
-                      width: '100%', background: T.surface2, border: `1px solid ${T.border}`,
-                      borderRadius: 8, color: T.text, fontSize: 13, fontFamily: FONT,
-                      padding: '10px 12px', outline: 'none', letterSpacing: 1, fontWeight: 600,
-                      transition: 'border-color .2s ease',
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
+                {error && (
+                  <div style={{
+                    marginTop: 10, padding: '8px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                    background: T.redBg, color: T.red, border: `1px solid ${T.red}22`,
+                  }}>{error}</div>
+                )}
 
-            {error && (
-              <div style={{
-                marginTop: 10, padding: '8px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-                background: T.redBg, color: T.red, border: `1px solid ${T.red}22`,
-              }}>{error}</div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+                  <Btn v="secondary" onClick={() => { setStep(1); setError(''); }} style={{ flex: 0 }}>
+                    {'\u2190'}
+                  </Btn>
+                  <Btn full disabled={loading} onClick={handleStripeCheckout}
+                    style={{ background: GRAD, boxShadow: '0 2px 12px rgba(249,115,22,.3)', opacity: loading ? 0.7 : 1 }}>
+                    {loading ? 'Redirection...' : 'Procéder au paiement Stripe'}
+                  </Btn>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Demo mode — local card form mockup */}
+                <div ref={cardRef} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <Inp label="Nom sur la carte" value={cardName} onChange={setCardName} placeholder="JEAN DUPONT" autoComplete="cc-name" />
+
+                  {/* Card number with brand detection */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: T.textSecondary, marginBottom: 4 }}>
+                      Numéro de carte
+                    </label>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      background: T.surface2, border: `1px solid ${T.border}`,
+                      borderRadius: 8, padding: '0 10px',
+                      transition: 'border-color .2s ease',
+                    }}>
+                      {/* Card icon */}
+                      <div style={{ flexShrink: 0, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {cardBrand ? (
+                          <span style={{ fontSize: 10, fontWeight: 800, color: cardBrand.color, background: `${cardBrand.color}15`, padding: '2px 4px', borderRadius: 3 }}>
+                            {cardBrand.brand}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 16, color: T.textMuted }}>{'\uD83D\uDCB3'}</span>
+                        )}
+                      </div>
+                      <input
+                        value={cardNumber}
+                        onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                        placeholder="4242 4242 4242 4242"
+                        autoComplete="cc-number"
+                        inputMode="numeric"
+                        maxLength={19}
+                        style={{
+                          flex: 1, background: 'transparent', border: 'none', color: T.text,
+                          fontSize: 14, fontFamily: FONT, padding: '10px 0', outline: 'none',
+                          letterSpacing: 1.5, fontWeight: 600,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Expiry + CVC side by side */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: T.textSecondary, marginBottom: 4 }}>
+                        Expiration
+                      </label>
+                      <input
+                        value={cardExpiry}
+                        onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
+                        placeholder="MM/AA"
+                        autoComplete="cc-exp"
+                        inputMode="numeric"
+                        maxLength={5}
+                        style={{
+                          width: '100%', background: T.surface2, border: `1px solid ${T.border}`,
+                          borderRadius: 8, color: T.text, fontSize: 13, fontFamily: FONT,
+                          padding: '10px 12px', outline: 'none', letterSpacing: 1, fontWeight: 600,
+                          transition: 'border-color .2s ease',
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: T.textSecondary, marginBottom: 4 }}>
+                        CVC
+                      </label>
+                      <input
+                        value={cardCvc}
+                        onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        placeholder="123"
+                        autoComplete="cc-csc"
+                        inputMode="numeric"
+                        maxLength={4}
+                        style={{
+                          width: '100%', background: T.surface2, border: `1px solid ${T.border}`,
+                          borderRadius: 8, color: T.text, fontSize: 13, fontFamily: FONT,
+                          padding: '10px 12px', outline: 'none', letterSpacing: 1, fontWeight: 600,
+                          transition: 'border-color .2s ease',
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {error && (
+                  <div style={{
+                    marginTop: 10, padding: '8px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                    background: T.redBg, color: T.red, border: `1px solid ${T.red}22`,
+                  }}>{error}</div>
+                )}
+
+                <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+                  <Btn v="secondary" onClick={() => { setStep(1); setError(''); }} style={{ flex: 0 }}>
+                    {'\u2190'}
+                  </Btn>
+                  <Btn full disabled={loading} onClick={handleSubmit}
+                    style={{ background: GRAD, boxShadow: '0 2px 12px rgba(249,115,22,.3)', opacity: loading ? 0.7 : 1 }}>
+                    {loading ? 'Traitement...' : `Démarrer l'essai gratuit`}
+                  </Btn>
+                </div>
+              </>
             )}
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-              <Btn v="secondary" onClick={() => { setStep(1); setError(''); }} style={{ flex: 0 }}>
-                {'\u2190'}
-              </Btn>
-              <Btn full disabled={loading} onClick={handleSubmit}
-                style={{ background: GRAD, boxShadow: '0 2px 12px rgba(249,115,22,.3)', opacity: loading ? 0.7 : 1 }}>
-                {loading ? 'Traitement...' : `Démarrer l'essai gratuit`}
-              </Btn>
-            </div>
 
             {/* Trust signals */}
             <div style={{

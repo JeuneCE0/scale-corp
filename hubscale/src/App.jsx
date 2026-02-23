@@ -18,6 +18,7 @@ const Agenda = lazy(() => import('./pages/Agenda.jsx'));
 const Analytics = lazy(() => import('./pages/Analytics.jsx'));
 const Settings = lazy(() => import('./pages/Settings.jsx'));
 const Onboarding = lazy(() => import('./pages/Onboarding.jsx'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: '📊' },
@@ -755,12 +756,23 @@ export default function App() {
     );
   }
 
+  // Password reset
+  if (view === 'reset-password' && !authed) {
+    return (
+      <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
+        <Suspense fallback={<LoadingFallback />}>
+          <ResetPassword onBack={() => setView('login')} />
+        </Suspense>
+      </div>
+    );
+  }
+
   // Login only (existing users)
   if (!authed) {
     return (
       <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
         <Suspense fallback={<LoadingFallback />}>
-          <Login onAuth={handleAuth} initialMode="login" onBack={() => setView('landing')} />
+          <Login onAuth={handleAuth} initialMode="login" onBack={() => setView('landing')} onForgotPassword={() => setView('reset-password')} />
         </Suspense>
       </div>
     );
