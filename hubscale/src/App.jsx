@@ -10,6 +10,7 @@ import { isAuthenticated, getCurrentUser, logout as authLogout } from './lib/aut
 
 const Landing = lazy(() => import('./pages/Landing.jsx'));
 const Login = lazy(() => import('./pages/Login.jsx'));
+const Checkout = lazy(() => import('./pages/Checkout.jsx'));
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
 const CRM = lazy(() => import('./pages/CRM.jsx'));
 const Data = lazy(() => import('./pages/Data.jsx'));
@@ -545,8 +546,9 @@ function UserMenu({ user, onLogout }) {
 export default function App() {
   const [authed, setAuthed] = useState(() => isAuthenticated());
   const [user, setUser] = useState(() => getCurrentUser());
-  // view: 'landing' | 'login' | 'signup' | 'app'
+  // view: 'landing' | 'login' | 'checkout' | 'app'
   const [view, setView] = useState(() => isAuthenticated() ? 'app' : 'landing');
+  const [checkoutPlan, setCheckoutPlan] = useState(null);
   const [tab, setTab] = useState('overview');
   const [onboarded, setOnboarded] = useState(() => load('onboarded') === true);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -588,18 +590,29 @@ export default function App() {
       <Suspense fallback={<div style={{ minHeight: '100vh', background: T.bg }} />}>
         <Landing
           onLogin={() => setView('login')}
-          onSignup={() => setView('signup')}
+          onSignup={(planId) => { setCheckoutPlan(planId || null); setView('checkout'); }}
         />
       </Suspense>
     );
   }
 
-  // Login / Signup
+  // Checkout (plan + CB + account creation)
+  if (view === 'checkout' && !authed) {
+    return (
+      <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
+        <Suspense fallback={<LoadingFallback />}>
+          <Checkout onAuth={handleAuth} onBack={() => setView('landing')} preselectedPlan={checkoutPlan} />
+        </Suspense>
+      </div>
+    );
+  }
+
+  // Login only (existing users)
   if (!authed) {
     return (
       <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
         <Suspense fallback={<LoadingFallback />}>
-          <Login onAuth={handleAuth} initialMode={view === 'signup' ? 'signup' : 'login'} onBack={() => setView('landing')} />
+          <Login onAuth={handleAuth} initialMode="login" onBack={() => setView('landing')} />
         </Suspense>
       </div>
     );

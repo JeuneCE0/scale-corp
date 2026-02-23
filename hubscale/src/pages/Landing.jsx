@@ -332,7 +332,7 @@ export default function Landing({ onLogin, onSignup }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button className="ld-btn ld-btn-secondary" onClick={onLogin}
               style={{ padding: '8px 18px', fontSize: 13 }}>Connexion</button>
-            <button className="ld-btn ld-btn-primary" onClick={onSignup}
+            <button className="ld-btn ld-btn-primary" onClick={() => onSignup()}
               style={{ padding: '8px 20px', fontSize: 13 }}>Essai gratuit</button>
             {/* Mobile hamburger */}
             <button className="ld-mobile-toggle" onClick={() => setMobileMenu((o) => !o)}
@@ -405,7 +405,7 @@ export default function Landing({ onLogin, onSignup }) {
           {/* CTAs */}
           <RevealDiv delay={0.3}>
             <div className="ld-hero-btns" style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button className="ld-btn ld-btn-primary" onClick={onSignup}
+              <button className="ld-btn ld-btn-primary" onClick={() => onSignup()}
                 style={{ padding: '14px 32px', fontSize: 15 }}>
                 Demarrer gratuitement
                 <span style={{ fontSize: 18 }}>{'\u2192'}</span>
@@ -416,7 +416,7 @@ export default function Landing({ onLogin, onSignup }) {
               </button>
             </div>
             <p style={{ fontSize: 12, color: C.textMuted, marginTop: 14 }}>
-              14 jours gratuits &middot; Sans carte bancaire &middot; Setup en 2 min
+              14 jours gratuits &middot; CB requise &middot; Setup en 2 min
             </p>
           </RevealDiv>
         </div>
@@ -704,7 +704,7 @@ export default function Landing({ onLogin, onSignup }) {
                   </div>
 
                   <button className={`ld-btn ${pop ? 'ld-btn-primary' : 'ld-btn-secondary'}`}
-                    onClick={onSignup}
+                    onClick={() => onSignup(plan.id)}
                     style={{ width: '100%', padding: '12px 0', fontSize: 14, marginBottom: 24 }}>
                     {pop ? 'Demarrer maintenant' : 'Choisir ce plan'}
                   </button>
@@ -800,7 +800,7 @@ export default function Landing({ onLogin, onSignup }) {
 
         <div style={{ maxWidth: 700, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[
-            { q: 'Puis-je essayer HubScale gratuitement ?', a: 'Oui, tous nos plans incluent un essai gratuit de 14 jours sans carte bancaire. Vous pouvez tester l\'integralite des fonctionnalites avant de vous engager.' },
+            { q: 'Puis-je essayer HubScale gratuitement ?', a: 'Oui, tous nos plans incluent un essai gratuit de 14 jours. Une carte bancaire est requise a l\'inscription pour activer votre essai, mais vous ne serez debite qu\'a la fin de la periode d\'essai. Annulez a tout moment.' },
             { q: 'Mes donnees sont-elles securisees ?', a: 'Absolument. Vos donnees sont hebergees en Europe (AWS eu-west), chiffrees en AES-256 au repos et en transit. Nous sommes conformes RGPD et SOC 2 Type II.' },
             { q: 'Combien de temps prend la mise en place ?', a: 'En moyenne 2 minutes pour creer votre espace. Les integrations Stripe et Revolut se connectent en un clic. L\'import de contacts existants prend moins de 5 minutes.' },
             { q: 'Puis-je migrer depuis un autre outil ?', a: 'Oui, nous proposons un import CSV/Excel pour les contacts, et notre equipe peut vous accompagner dans la migration gratuite pour les plans Professional et Enterprise.' },
@@ -844,10 +844,10 @@ export default function Landing({ onLogin, onSignup }) {
             </h2>
             <p style={{ fontSize: 15, color: C.textSec, lineHeight: 1.7, margin: '0 0 28px' }}>
               Rejoignez +850 entreprises qui pilotent leur croissance avec HubScale.
-              Commencez gratuitement, sans carte bancaire.
+              Essai gratuit 14 jours. Annulez a tout moment.
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button className="ld-btn ld-btn-primary" onClick={onSignup}
+              <button className="ld-btn ld-btn-primary" onClick={() => onSignup()}
                 style={{ padding: '14px 36px', fontSize: 15 }}>
                 Demarrer gratuitement
                 <span style={{ fontSize: 18 }}>{'\u2192'}</span>
