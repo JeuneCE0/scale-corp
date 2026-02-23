@@ -8,6 +8,7 @@ import { daysSince, daysUntil, ago } from './lib/utils.js';
 import { NOTIFICATION_TYPES } from './lib/constants.js';
 import { isAuthenticated, getCurrentUser, logout as authLogout } from './lib/auth.js';
 
+const Landing = lazy(() => import('./pages/Landing.jsx'));
 const Login = lazy(() => import('./pages/Login.jsx'));
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
 const CRM = lazy(() => import('./pages/CRM.jsx'));
@@ -544,6 +545,8 @@ function UserMenu({ user, onLogout }) {
 export default function App() {
   const [authed, setAuthed] = useState(() => isAuthenticated());
   const [user, setUser] = useState(() => getCurrentUser());
+  // view: 'landing' | 'login' | 'signup' | 'app'
+  const [view, setView] = useState(() => isAuthenticated() ? 'app' : 'landing');
   const [tab, setTab] = useState('overview');
   const [onboarded, setOnboarded] = useState(() => load('onboarded') === true);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -569,20 +572,34 @@ export default function App() {
   const handleAuth = useCallback((u) => {
     setUser(u);
     setAuthed(true);
+    setView('app');
   }, []);
 
   const handleLogout = useCallback(() => {
     authLogout();
     setUser(null);
     setAuthed(false);
+    setView('landing');
   }, []);
 
-  // If not authenticated, show login
+  // Landing page
+  if (view === 'landing' && !authed) {
+    return (
+      <Suspense fallback={<div style={{ minHeight: '100vh', background: T.bg }} />}>
+        <Landing
+          onLogin={() => setView('login')}
+          onSignup={() => setView('signup')}
+        />
+      </Suspense>
+    );
+  }
+
+  // Login / Signup
   if (!authed) {
     return (
       <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
         <Suspense fallback={<LoadingFallback />}>
-          <Login onAuth={handleAuth} />
+          <Login onAuth={handleAuth} initialMode={view === 'signup' ? 'signup' : 'login'} onBack={() => setView('landing')} />
         </Suspense>
       </div>
     );

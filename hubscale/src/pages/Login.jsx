@@ -3,8 +3,8 @@ import { T, FONT } from '../lib/theme.js';
 import { login, signup, ensureDemoAccount } from '../lib/auth.js';
 import { Btn, Inp } from '../components/ui.jsx';
 
-export default function Login({ onAuth }) {
-  const [mode, setMode] = useState('login'); // 'login' | 'signup'
+export default function Login({ onAuth, initialMode, onBack }) {
+  const [mode, setMode] = useState(initialMode || 'login'); // 'login' | 'signup'
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -227,6 +227,18 @@ export default function Login({ onAuth }) {
 
         {/* Footer */}
         <div style={{ textAlign: 'center', marginTop: 20 }}>
+          {onBack && (
+            <button
+              onClick={onBack}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 12, color: T.textMuted, fontFamily: FONT,
+                marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              {'\u2190'} Retour au site
+            </button>
+          )}
           <p style={{ fontSize: 10, color: T.textMuted }}>
             En vous connectant, vous acceptez nos conditions d'utilisation
           </p>
