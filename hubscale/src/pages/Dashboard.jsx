@@ -49,15 +49,15 @@ const LazyChart = lazy(() =>
               itemStyle={{ color: T.text }}
               cursor={{ fill: 'rgba(255,255,255,.05)' }}
               formatter={(v, name) => {
-                if (name === 'forecast') return [`${fmt(v)}EUR`, 'Prevision'];
-                return [`${fmt(v)}EUR`, name === 'ca' ? 'CA' : 'Charges'];
+                if (name === 'forecast') return [`${fmt(v)} €`, 'Prevision'];
+                return [`${fmt(v)} €`, name === 'ca' ? 'CA' : 'Charges'];
               }}
             />
             <Area type="monotone" dataKey="ca" stroke={T.green} strokeWidth={2} fill="url(#caGrad)" />
             <Area type="monotone" dataKey="charges" stroke={T.red} strokeWidth={1.5} fill="none" strokeDasharray="4 3" />
             <Area type="monotone" dataKey="forecast" stroke={T.blue} strokeWidth={2} fill="url(#forecastGrad)" strokeDasharray="6 3" />
-            {avgCharges > 0 && <ReferenceLine y={avgCharges} stroke={T.red} strokeDasharray="3 3" strokeWidth={1} label={{ value: `Seuil: ${fK(avgCharges)}EUR`, fill: T.textMuted, fontSize: 8, position: 'left' }} />}
-            {caGoal > 0 && <ReferenceLine y={caGoal} stroke={T.orange} strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Objectif: ${fK(caGoal)}EUR`, fill: T.orange, fontSize: 9, position: 'right' }} />}
+            {avgCharges > 0 && <ReferenceLine y={avgCharges} stroke={T.red} strokeDasharray="3 3" strokeWidth={1} label={{ value: `Seuil: ${fmt(avgCharges)} €`, fill: T.textMuted, fontSize: 8, position: 'left' }} />}
+            {caGoal > 0 && <ReferenceLine y={caGoal} stroke={T.orange} strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Objectif: ${fmt(caGoal)} €`, fill: T.orange, fontSize: 9, position: 'right' }} />}
           </AreaChart>
         </ResponsiveContainer>
       );
@@ -320,7 +320,7 @@ export default function Dashboard({ onNavigate }) {
     events.sort((a, b) => (b.id || '').localeCompare(a.id || '')).slice(0, 3)
       .forEach((e) => items.push({ text: `Evenement : ${e.title}`, time: e.date ? `le ${new Date(e.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : '', icon: '📅', ts: new Date(e.date || 0) }));
     const lastFin = finHistory[finHistory.length - 1];
-    if (lastFin) items.push({ text: `Donnees financieres saisies - ${fmt(lastFin.ca || 0)}EUR CA`, time: '', icon: '💰', ts: new Date(0) });
+    if (lastFin) items.push({ text: `Donnees financieres saisies - ${fmt(lastFin.ca || 0)} € CA`, time: '', icon: '💰', ts: new Date(0) });
     return items.sort((a, b) => b.ts - a.ts).slice(0, 5);
   }, [contacts, events, finHistory]);
 
@@ -590,14 +590,14 @@ export default function Dashboard({ onNavigate }) {
       {/*  KPI Cards with sparklines                                    */}
       {/* ============================================================ */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <KPI label="CA MENSUEL" value={`${fK(lastRow.ca || 0)}EUR`} sub={caEvo != null ? `${caEvo >= 0 ? '+' : ''}${caEvo}% vs mois dernier` : 'Aucune donnee precedente'} accent={T.green} icon="💰" delay={1} sparkData={sparkCA} helpTip="Chiffre d'affaires du dernier mois saisi" />
-        <KPI label="CHARGES" value={`${fK(lastRow.charges || 0)}EUR`} sub="Fixes + Variables" accent={T.red} icon="📉" delay={2} sparkData={sparkCharges} helpTip="Total des charges fixes et variables" />
-        <KPI label="RESULTAT NET" value={`${fK(lastRow.result || 0)}EUR`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '---'} accent={T.orange} icon="📊" delay={3} sparkData={sparkResult} helpTip="CA moins charges = benefice net" />
+        <KPI label="CA MENSUEL" value={`${fmt(lastRow.ca || 0)} €`} sub={caEvo != null ? `${caEvo >= 0 ? '+' : ''}${caEvo}% vs mois dernier` : 'Aucune donnee precedente'} accent={T.green} icon="💰" delay={1} sparkData={sparkCA} helpTip="Chiffre d'affaires du dernier mois saisi" />
+        <KPI label="CHARGES" value={`${fmt(lastRow.charges || 0)} €`} sub="Fixes + Variables" accent={T.red} icon="📉" delay={2} sparkData={sparkCharges} helpTip="Total des charges fixes et variables" />
+        <KPI label="RESULTAT NET" value={`${fmt(lastRow.result || 0)} €`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '---'} accent={T.orange} icon="📊" delay={3} sparkData={sparkResult} helpTip="CA moins charges = benefice net" />
         {forecastLabel && (
           <KPI
             label="PREVISION 3 MOIS"
             value={`${forecastLabel.pct >= 0 ? '+' : ''}${forecastLabel.pct}%`}
-            sub={`Projection: ${fK(forecastLabel.value)}EUR`}
+            sub={`Projection: ${fmt(forecastLabel.value)} €`}
             accent={forecastLabel.pct >= 0 ? T.blue : T.red}
             icon="📈"
             delay={3}
@@ -622,7 +622,7 @@ export default function Dashboard({ onNavigate }) {
                 <ProgressBar value={lastRow.ca || 0} max={caGoal} color={(lastRow.ca || 0) >= caGoal ? T.green : T.orange} h={8} />
               </div>
               <div style={{ fontSize: 12, fontWeight: 700, color: (lastRow.ca || 0) >= caGoal ? T.green : T.orange, whiteSpace: 'nowrap' }}>
-                {fK(lastRow.ca || 0)}EUR / {fK(caGoal)}EUR ({Math.min(Math.round(((lastRow.ca || 0) / caGoal) * 100), 999)}%)
+                {fmt(lastRow.ca || 0)} € / {fmt(caGoal)} € ({Math.min(Math.round(((lastRow.ca || 0) / caGoal) * 100), 999)}%)
               </div>
             </div>
           </Card>
@@ -769,7 +769,7 @@ export default function Dashboard({ onNavigate }) {
                       </div>
                       {p.value > 0 && (
                         <div style={{ marginLeft: 90, fontSize: 9, color: T.textMuted, marginTop: 1 }}>
-                          ~{fK(p.value)}EUR
+                          ~{fmt(p.value)} €
                         </div>
                       )}
                     </div>
@@ -778,7 +778,7 @@ export default function Dashboard({ onNavigate }) {
                 {pipeline.some((p) => p.value > 0) && (
                   <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase' }}>Valeur totale pipeline</span>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: T.accent }}>{fK(pipeline.reduce((s, p) => s + p.value, 0))}EUR</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: T.accent }}>{fmt(pipeline.reduce((s, p) => s + p.value, 0))} €</span>
                   </div>
                 )}
               </Card>

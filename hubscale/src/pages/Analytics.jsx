@@ -47,7 +47,7 @@ const LazyRevenueTrendsChart = lazy(() =>
               cursor={{ fill: 'rgba(255,255,255,.05)' }}
               formatter={(v, name) => {
                 const labels = { ca: 'CA', charges: 'Charges', avg3m: 'Moy. 3 mois', forecastCA: 'Prevision', yoy: 'N-1' };
-                return [`${fmt(v)} EUR`, labels[name] || name];
+                return [`${fmt(v)} €`, labels[name] || name];
               }}
             />
             <Area type="monotone" dataKey="ca" stroke={T.green} strokeWidth={2} fill="url(#caGradAnalytics)" />
@@ -97,7 +97,7 @@ const LazyForecastChart = lazy(() =>
             <Tooltip
               contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 11, color: T.text }}
               labelStyle={{ color: T.text, fontWeight: 700 }}
-              formatter={(v, name) => [`${fmt(v)} EUR`, name === 'actual' ? 'CA Reel' : 'Prevision']}
+              formatter={(v, name) => [`${fmt(v)} €`, name === 'actual' ? 'CA Reel' : 'Prevision']}
             />
             <Area type="monotone" dataKey="actual" stroke={T.green} strokeWidth={2} fill="url(#actualGradForecast)" />
             <Area type="monotone" dataKey="forecast" stroke={T.blue} strokeWidth={2} fill="url(#forecastGradPredict)" strokeDasharray="8 4" />
@@ -368,7 +368,7 @@ export default function Analytics({ onNavigate }) {
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
         <KPI
           label="CA TOTAL"
-          value={`${fK(totalCA)} EUR`}
+          value={`${fmt(totalCA)} €`}
           sub={`Sur ${finHistory.length} mois`}
           accent={T.green}
           icon="💰"
@@ -378,7 +378,7 @@ export default function Analytics({ onNavigate }) {
         />
         <KPI
           label="CA MOYEN MENSUEL"
-          value={`${fK(avgMonthlyCA)} EUR`}
+          value={`${fmt(avgMonthlyCA)} €`}
           sub="Moyenne sur la periode"
           accent={T.blue}
           icon="📊"
@@ -388,7 +388,7 @@ export default function Analytics({ onNavigate }) {
         <KPI
           label="MARGE NETTE"
           value={`${margeNette}%`}
-          sub={`Resultat: ${fK(totalResult)} EUR`}
+          sub={`Resultat: ${fmt(totalResult)} €`}
           accent={margeNette >= 20 ? T.green : margeNette >= 10 ? T.orange : T.red}
           icon="📈"
           delay={3}
@@ -688,13 +688,13 @@ export default function Analytics({ onNavigate }) {
                   <span style={{ fontSize: 18 }}>{platform.icon}</span>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{platform.name}</div>
-                    <div style={{ fontSize: 9, color: T.textMuted }}>Budget: {fK(platform.spend)} EUR</div>
+                    <div style={{ fontSize: 9, color: T.textMuted }}>Budget: {fmt(platform.spend)} €</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 10, color: T.textMuted }}>CPA</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: T.orange }}>{platform.cpa} EUR</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: T.orange }}>{platform.cpa} €</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 10, color: T.textMuted }}>CTR</span>
@@ -763,7 +763,7 @@ export default function Analytics({ onNavigate }) {
                           background: T.blueBg, border: `1px solid ${T.blue}22`,
                         }}>
                           <div style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, marginBottom: 4 }}>{monthLabel(f.key)}</div>
-                          <div style={{ fontSize: 18, fontWeight: 800, color: T.blue }}>{fK(f.ca)} EUR</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: T.blue }}>{fmt(f.ca)} €</div>
                           <div style={{ fontSize: 10, fontWeight: 600, color: diff >= 0 ? T.green : T.red, marginTop: 2 }}>
                             {diff >= 0 ? '+' : ''}{diff}% vs dernier mois
                           </div>

@@ -150,7 +150,7 @@ function CGU() {
               {plan.name}
             </div>
             <div style={{ fontSize: 28, fontWeight: 800, color: T.text, marginBottom: 4, fontFamily: FONT }}>
-              {plan.price}<span style={{ fontSize: 14, fontWeight: 500, color: T.textSecondary }}> EUR/mois</span>
+              {plan.price}<span style={{ fontSize: 14, fontWeight: 500, color: T.textSecondary }}> €/mois</span>
             </div>
             <ul style={{ ...list, fontSize: 11, margin: '12px 0 0', paddingLeft: 16 }}>
               {plan.features.map((f, i) => <li key={i}>{f}</li>)}
@@ -284,7 +284,7 @@ function CGU() {
         <li>Via le formulaire de contact disponible sur la plateforme</li>
       </UL>
       <P>
-        HubScale SAS - Capital social : 50 000 EUR - RCS Paris B 912 345 678 - N TVA : FR 82 912345678
+        HubScale SAS - Capital social : 50 000 € - RCS Paris B 912 345 678 - N TVA : FR 82 912345678
       </P>
     </div>
   );
