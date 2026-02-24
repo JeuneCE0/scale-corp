@@ -703,6 +703,14 @@ export default function Dashboard({ onNavigate }) {
   }, [contacts, finHistory]);
 
   /* ---------------------------------------------------------------- */
+  /*  Ad Platforms (must be before crossInsights which depends on it)   */
+  /* ---------------------------------------------------------------- */
+  const adPlatforms = useMemo(() =>
+    ['Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads'].filter((n) => integrations[n]),
+    [integrations]
+  );
+
+  /* ---------------------------------------------------------------- */
   /*  CRM stats                                                        */
   /* ---------------------------------------------------------------- */
   const crmStats = useMemo(() => [
@@ -718,11 +726,6 @@ export default function Dashboard({ onNavigate }) {
     const denom = clients + lost;
     return denom > 0 ? Math.round((clients / denom) * 100) : 0;
   }, [contacts]);
-
-  const adPlatforms = useMemo(() =>
-    ['Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads'].filter((n) => integrations[n]),
-    [integrations]
-  );
 
   const pubStats = useMemo(() => {
     const meta = load('metaAds') || {};
