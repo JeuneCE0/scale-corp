@@ -346,7 +346,7 @@ export default function Landing({ onLogin, onSignup }) {
           </div>
 
           <div className="ld-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-            {[['Fonctionnalites', 'features'], ['Tarifs', 'pricing'], ['Temoignages', 'testimonials'], ['FAQ', 'faq']].map(([label, id]) => (
+            {[['Fonctionnalités', 'features'], ['Tarifs', 'pricing'], ['Témoignages', 'testimonials'], ['FAQ', 'faq']].map(([label, id]) => (
               <button key={id} className="ld-nav-link" onClick={() => scrollTo(id)}>{label}</button>
             ))}
           </div>
@@ -370,7 +370,7 @@ export default function Landing({ onLogin, onSignup }) {
             padding: '16px 0 20px', borderTop: `1px solid ${C.border}`,
             display: 'flex', flexDirection: 'column', gap: 12,
           }}>
-            {[['Fonctionnalites', 'features'], ['Tarifs', 'pricing'], ['Temoignages', 'testimonials'], ['FAQ', 'faq']].map(([label, id]) => (
+            {[['Fonctionnalités', 'features'], ['Tarifs', 'pricing'], ['Témoignages', 'testimonials'], ['FAQ', 'faq']].map(([label, id]) => (
               <button key={id} className="ld-nav-link" onClick={() => scrollTo(id)}
                 style={{ textAlign: 'left', padding: '8px 0', fontSize: 15 }}>{label}</button>
             ))}
@@ -412,7 +412,7 @@ export default function Landing({ onLogin, onSignup }) {
                   boxShadow: `0 0 8px ${C.green}`,
                 }} />
                 <span style={{ fontSize: 12, fontWeight: 600, color: C.textSec }}>
-                  <strong style={{ color: C.text }}>847 dirigeants</strong> voient leurs vrais chiffres en temps reel
+                  <strong style={{ color: C.text }}>847 dirigeants</strong> voient leurs vrais chiffres en temps réel
                 </span>
               </div>
             </div>
@@ -434,8 +434,8 @@ export default function Landing({ onLogin, onSignup }) {
               fontSize: 18, color: C.textSec, lineHeight: 1.7,
               maxWidth: 560, margin: '0 auto 36px',
             }}>
-              CA, tresorerie, pipeline, agenda — eparpilles dans 5 outils. Vous decidez a l'aveugle.
-              <br /><strong style={{ color: C.text }}>HubScale centralise tout : vos chiffres reels, d'un coup d'oeil.</strong>
+              CA, trésorerie, pipeline, agenda — éparpillés dans 5 outils. Vous décidez à l'aveugle.
+              <br /><strong style={{ color: C.text }}>HubScale centralise tout : vos chiffres réels, d'un coup d'oeil.</strong>
             </p>
           </RevealDiv>
 
@@ -449,7 +449,7 @@ export default function Landing({ onLogin, onSignup }) {
               </button>
               <button className="ld-btn ld-btn-secondary" onClick={() => scrollTo('demo')}
                 style={{ padding: '14px 28px', fontSize: 15 }}>
-                Voir la demo
+                Voir la démo
               </button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginTop: 16, flexWrap: 'wrap' }}>
@@ -504,7 +504,7 @@ export default function Landing({ onLogin, onSignup }) {
       <section style={{ borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, padding: '32px 24px', overflow: 'hidden' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', textAlign: 'center' }}>
           <p style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 20 }}>
-            Ils ont arrete de perdre du temps. Vous aussi ?
+            Ils ont arrêté de perdre du temps. Vous aussi ?
           </p>
           <div style={{ display: 'flex', overflow: 'hidden', maskImage: 'linear-gradient(90deg,transparent,black 15%,black 85%,transparent)' }}>
             <div style={{ display: 'flex', gap: 60, animation: 'ldTickerScroll 30s linear infinite', whiteSpace: 'nowrap' }}>
@@ -525,10 +525,10 @@ export default function Landing({ onLogin, onSignup }) {
       <section style={{ padding: '32px 24px', background: C.bg }}>
         <div className="ld-trust-row" style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
           {[
-            { icon: '\uD83C\uDDEA\uD83C\uDDFA', label: 'Heberge en Europe', sub: 'AWS eu-west', color: C.blue },
+            { icon: '\uD83C\uDDEA\uD83C\uDDFA', label: 'Hébergé en Europe', sub: 'AWS eu-west', color: C.blue },
             { icon: '\uD83D\uDD12', label: 'Chiffrement AES-256', sub: 'repos + transit', color: C.green },
             { icon: '\uD83D\uDEE1\uFE0F', label: 'Conforme RGPD', sub: 'DPA inclus', color: C.purple },
-            { icon: '\u2705', label: 'SOC 2 Type II', sub: 'audit certifie', color: C.orange },
+            { icon: '\u2705', label: 'SOC 2 Type II', sub: 'audit certifié', color: C.orange },
             { icon: '\u23F0', label: 'SLA 99.9%', sub: 'uptime garanti', color: C.accent },
           ].map((badge) => (
             <div key={badge.label} className="ld-trust-badge">
@@ -548,9 +548,9 @@ export default function Landing({ onLogin, onSignup }) {
         <div className="ld-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24, textAlign: 'center' }}>
           {[
             { value: 850, suffix: '+', label: 'Dirigeants qui voient enfin leurs vrais chiffres', color: C.orange },
-            { value: 1, prefix: '', suffix: ' ecran', label: 'Pour toutes vos donnees essentielles', color: C.green },
-            { value: 99, suffix: '.9%', label: 'Uptime — vos chiffres, toujours a jour', color: C.blue },
-            { value: 4, suffix: '.8/5', label: 'Note moyenne — "enfin de la clarte"', color: C.purple },
+            { value: 1, prefix: '', suffix: ' écran', label: 'Pour toutes vos données essentielles', color: C.green },
+            { value: 99, suffix: '.9%', label: 'Uptime — vos chiffres, toujours à jour', color: C.blue },
+            { value: 4, suffix: '.8/5', label: 'Note moyenne — "enfin de la clarté"', color: C.purple },
           ].map((s, i) => (
             <RevealDiv key={s.label} delay={i * 0.1}>
               <div>
@@ -574,7 +574,7 @@ export default function Landing({ onLogin, onSignup }) {
                 Avant / Apres
               </p>
               <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5 }}>
-                Vos chiffres sont eparpilles.<br /><span className="ld-grad-text">Vous decidez a l'aveugle.</span>
+                Vos chiffres sont éparpillés.<br /><span className="ld-grad-text">Vous décidez à l'aveugle.</span>
               </h2>
             </div>
           </RevealDiv>
@@ -592,9 +592,9 @@ export default function Landing({ onLogin, onSignup }) {
                   {[
                     { icon: '\uD83D\uDCC9', text: 'CA dans Stripe, charges dans votre banque', issue: 'Pas de vision globale' },
                     { icon: '\uD83D\uDC65', text: 'Contacts dans votre CRM, deals dans un tableur', issue: 'Pipeline flou' },
-                    { icon: '\uD83D\uDCC5', text: 'RDV dans Google Cal, relances dans votre tete', issue: 'Oublis garantis' },
-                    { icon: '\uD83D\uDCCA', text: 'Reporting a la main, chiffres jamais a jour', issue: 'Decisions a l\'aveugle' },
-                    { icon: '\u23F3', text: 'Des heures a jongler entre onglets et exports', issue: 'Temps perdu' },
+                    { icon: '\uD83D\uDCC5', text: 'RDV dans Google Cal, relances dans votre tête', issue: 'Oublis garantis' },
+                    { icon: '\uD83D\uDCCA', text: 'Reporting à la main, chiffres jamais à jour', issue: 'Décisions a l\'aveugle' },
+                    { icon: '\u23F3', text: 'Des heures à jongler entre onglets et exports', issue: 'Temps perdu' },
                   ].map((item) => (
                     <div key={item.text} style={{
                       display: 'flex', alignItems: 'flex-start', gap: 10,
@@ -649,7 +649,7 @@ export default function Landing({ onLogin, onSignup }) {
                       boxShadow: '0 8px 32px rgba(249,115,22,.25)',
                     }}>H</div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: .5 }}>
-                      Toutes vos sources connectees
+                      Toutes vos sources connectées
                     </div>
                   </div>
                   {/* Connected sources */}
@@ -665,10 +665,10 @@ export default function Landing({ onLogin, onSignup }) {
                   {/* Results */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {[
-                      { icon: '\u2705', text: 'CA, charges, marges — toujours a jour', detail: 'Temps reel' },
+                      { icon: '\u2705', text: 'CA, charges, marges — toujours à jour', detail: 'Temps réel' },
                       { icon: '\u2705', text: 'Pipeline CRM complet avec lead scoring', detail: 'Vision 360' },
-                      { icon: '\u2705', text: 'Agenda unifie, relances automatiques', detail: 'Zero oubli' },
-                      { icon: '\u2705', text: 'Un seul ecran pour toutes vos decisions', detail: 'Clarte totale' },
+                      { icon: '\u2705', text: 'Agenda unifié, relances automatiques', detail: 'Zéro oubli' },
+                      { icon: '\u2705', text: 'Un seul écran pour toutes vos décisions', detail: 'Clarté totale' },
                     ].map((r) => (
                       <div key={r.text} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: 13, flexShrink: 0 }}>{r.icon}</span>
@@ -686,7 +686,7 @@ export default function Landing({ onLogin, onSignup }) {
                   textAlign: 'center',
                 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: C.green }}>
-                    Gardez vos outils. Voyez enfin tout au meme endroit.
+                    Gardez vos outils. Voyez enfin tout au même endroit.
                   </span>
                 </div>
               </div>
@@ -701,23 +701,23 @@ export default function Landing({ onLogin, onSignup }) {
         <RevealDiv>
           <div style={{ textAlign: 'center', marginBottom: 56 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: C.orange, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
-              Fonctionnalites
+              Fonctionnalités
             </p>
             <h2 style={{ fontSize: 38, fontWeight: 900, letterSpacing: -.5, lineHeight: 1.15, margin: '0 0 14px' }}>
               Toutes vos datas essentielles.<br />
-              <span style={{ color: C.textSec }}>Un seul ecran, des decisions claires.</span>
+              <span style={{ color: C.textSec }}>Un seul écran, des décisions claires.</span>
             </h2>
           </div>
         </RevealDiv>
 
         <div className="ld-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
           {[
-            { icon: '\uD83D\uDCCA', title: 'Dashboard temps reel', desc: 'CA, MRR, tresorerie, pipeline — vos KPIs essentiels sur un seul ecran. Vous ouvrez HubScale et vous savez exactement ou vous en etes.', color: C.orange },
-            { icon: '\uD83D\uDC65', title: 'CRM Pipeline', desc: 'Visualisez chaque deal en cours, son montant, son avancement. Lead scoring automatique et relances programmees. Vous savez qui relancer et quand.', color: C.blue },
-            { icon: '\uD83D\uDCB0', title: 'Data Financiere', desc: 'Revenus, charges, marges — mois par mois, en temps reel. Plus besoin d\'attendre votre comptable pour savoir si le mois est bon.', color: C.green },
-            { icon: '\uD83D\uDCC5', title: 'Agenda Intelligent', desc: 'RDV clients, deadlines, appels — tout au meme endroit. Synchro Google Cal, rappels auto. Vous ne ratez plus rien.', color: C.purple },
-            { icon: '\uD83D\uDD17', title: 'Integrations API', desc: 'Stripe, Revolut, Qonto, HubSpot, Pipedrive — vos donnees remontent automatiquement. Zero ressaisie, zero copier-coller.', color: C.accent },
-            { icon: '\uD83D\uDD12', title: 'Securite & RGPD', desc: 'Vos donnees business meritent mieux qu\'un Google Sheet. Hebergement EU, chiffrement AES-256, conformite RGPD native.', color: C.red },
+            { icon: '\uD83D\uDCCA', title: 'Dashboard temps réel', desc: 'CA, MRR, trésorerie, pipeline — vos KPIs essentiels sur un seul écran. Vous ouvrez HubScale et vous savez exactement où vous en êtes.', color: C.orange },
+            { icon: '\uD83D\uDC65', title: 'CRM Pipeline', desc: 'Visualisez chaque deal en cours, son montant, son avancement. Lead scoring automatique et relances programmées. Vous savez qui relancer et quand.', color: C.blue },
+            { icon: '\uD83D\uDCB0', title: 'Data Financière', desc: 'Revenus, charges, marges — mois par mois, en temps réel. Plus besoin d\'attendre votre comptable pour savoir si le mois est bon.', color: C.green },
+            { icon: '\uD83D\uDCC5', title: 'Agenda Intelligent', desc: 'RDV clients, deadlines, appels — tout au même endroit. Synchro Google Cal, rappels auto. Vous ne ratez plus rien.', color: C.purple },
+            { icon: '\uD83D\uDD17', title: 'Intégrations API', desc: 'Stripe, Revolut, Qonto, HubSpot, Pipedrive — vos données remontent automatiquement. Zéro ressaisie, zéro copier-coller.', color: C.accent },
+            { icon: '\uD83D\uDD12', title: 'Sécurité & RGPD', desc: 'Vos données business méritent mieux qu\'un Google Sheet. Hébergement EU, chiffrement AES-256, conformité RGPD native.', color: C.red },
           ].map((feat, i) => (
             <RevealDiv key={feat.title} delay={i * 0.08}>
               <div className="ld-card" style={{ height: '100%' }}>
@@ -742,22 +742,22 @@ export default function Landing({ onLogin, onSignup }) {
         <RevealDiv>
           <div style={{ textAlign: 'center', marginBottom: 56 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
-              Comment ca marche
+              Comment ça marche
             </p>
             <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5 }}>
               2 minutes. <span className="ld-grad-text">C'est tout.</span>
             </h2>
             <p style={{ fontSize: 14, color: C.textSec, marginTop: 10, maxWidth: 480, margin: '10px auto 0' }}>
-              En 2 minutes, vous passez du flou total a une vision claire de votre activite.
+              En 2 minutes, vous passez du flou total à une vision claire de votre activité.
             </p>
           </div>
         </RevealDiv>
 
         <div className="ld-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
           {[
-            { step: '01', title: 'Creez votre espace', desc: 'Email, mot de passe, c\'est parti. 30 secondes. Pas un formulaire de 15 champs.', icon: '\u26A1' },
-            { step: '02', title: 'Connectez vos sources', desc: 'Stripe, Revolut, Google Cal, CRM — un clic par outil. Vos donnees remontent automatiquement.', icon: '\uD83D\uDD17' },
-            { step: '03', title: 'Decidez avec clarte', desc: 'Vos chiffres reels apparaissent sur un seul ecran. Vous voyez ce qui marche, ce qui coince, et vous decidez en connaissance de cause.', icon: '\uD83C\uDFAF' },
+            { step: '01', title: 'Créez votre espace', desc: 'Email, mot de passe, c\'est parti. 30 secondes. Pas un formulaire de 15 champs.', icon: '\u26A1' },
+            { step: '02', title: 'Connectez vos sources', desc: 'Stripe, Revolut, Google Cal, CRM — un clic par outil. Vos données remontent automatiquement.', icon: '\uD83D\uDD17' },
+            { step: '03', title: 'Décidez avec clarté', desc: 'Vos chiffres réels apparaissent sur un seul écran. Vous voyez ce qui marche, ce qui coince, et vous décidez en connaissance de cause.', icon: '\uD83C\uDFAF' },
           ].map((s, i) => (
             <RevealDiv key={s.step} delay={i * 0.15}>
               <div style={{ textAlign: 'center', padding: '0 12px' }}>
@@ -789,10 +789,10 @@ export default function Landing({ onLogin, onSignup }) {
           <RevealDiv>
             <div style={{ textAlign: 'center', marginBottom: 48 }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: C.green, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
-                Ecosysteme
+                Écosystème
               </p>
               <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5 }}>
-                Vos donnees remontent<br /><span className="ld-grad-text">automatiquement.</span>
+                Vos données remontent<br /><span className="ld-grad-text">automatiquement.</span>
               </h2>
               <p style={{ fontSize: 14, color: C.textSec, marginTop: 10 }}>
                 Connectez vos outils en un clic. Plus d'export CSV, plus de Zapier, plus de saisie manuelle.
@@ -808,7 +808,7 @@ export default function Landing({ onLogin, onSignup }) {
               { name: 'Shopify', icon: '\uD83D\uDECD\uFE0F', color: '#96bf48' },
               { name: 'WooCommerce', icon: '\uD83D\uDED2', color: '#7f54b3' },
             ]},
-            { label: 'Banque & Comptabilite', items: [
+            { label: 'Banque & Comptabilité', items: [
               { name: 'Revolut', icon: '\uD83C\uDFE6', color: '#0075eb' },
               { name: 'Qonto', icon: '\uD83C\uDFDB\uFE0F', color: '#5C2D91' },
               { name: 'Shine', icon: '\u2728', color: '#FF6B00' },
@@ -843,7 +843,7 @@ export default function Landing({ onLogin, onSignup }) {
               { name: 'Jira', icon: '\uD83D\uDD37', color: '#0052cc' },
               { name: 'Slack', icon: '\uD83D\uDCAC', color: '#4a154b' },
             ]},
-            { label: 'Publicite', items: [
+            { label: 'Publicité', items: [
               { name: 'Meta Ads', icon: '\uD83D\uDCE3', color: '#0668e1' },
               { name: 'Google Ads', icon: '\uD83D\uDD0D', color: '#4285f4' },
               { name: 'TikTok Ads', icon: '\uD83C\uDFB5', color: '#010101' },
@@ -900,7 +900,7 @@ export default function Landing({ onLogin, onSignup }) {
               Un prix clair.<br /><span className="ld-grad-text">Toutes vos datas dedans.</span>
             </h2>
             <p style={{ fontSize: 14, color: C.textSec }}>
-              Pas de supplement par module. CRM, finances, agenda, integrations — tout est inclus.
+              Pas de supplément par module. CRM, finances, agenda, intégrations — tout est inclus.
             </p>
           </div>
         </RevealDiv>
@@ -961,7 +961,7 @@ export default function Landing({ onLogin, onSignup }) {
                   <button className={`ld-btn ${pop ? 'ld-btn-primary' : 'ld-btn-secondary'}`}
                     onClick={() => onSignup(plan.id)}
                     style={{ width: '100%', padding: '12px 0', fontSize: 14, marginBottom: 24 }}>
-                    {pop ? 'Demarrer maintenant' : 'Choisir ce plan'}
+                    {pop ? 'Démarrer maintenant' : 'Choisir ce plan'}
                   </button>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -989,10 +989,10 @@ export default function Landing({ onLogin, onSignup }) {
                 Centralisation
               </p>
               <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5 }}>
-                Vos outils restent. <span className="ld-grad-text">La visibilite arrive.</span>
+                Vos outils restent. <span className="ld-grad-text">La visibilité arrive.</span>
               </h2>
               <p style={{ fontSize: 14, color: C.textSec, marginTop: 10, maxWidth: 520, margin: '10px auto 0' }}>
-                HubScale ne remplace rien. Il se connecte a vos outils existants et centralise toute la data sur un seul ecran.
+                HubScale ne remplace rien. Il se connecte à vos outils existants et centralise toute la data sur un seul écran.
               </p>
             </div>
           </RevealDiv>
@@ -1062,11 +1062,11 @@ export default function Landing({ onLogin, onSignup }) {
                 {/* Results column */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {[
-                    { label: 'Dashboard unifie', desc: 'Tous vos KPIs sur 1 ecran', icon: '\uD83D\uDCCA', color: C.orange },
-                    { label: 'Vision financiere', desc: 'CA, charges, marges temps reel', icon: '\uD83D\uDCB0', color: C.green },
-                    { label: 'Pipeline clair', desc: 'Deals, scoring, previsions', icon: '\uD83C\uDFAF', color: C.blue },
-                    { label: 'Alertes intelligentes', desc: 'Relances, depassements, objectifs', icon: '\uD83D\uDD14', color: C.purple },
-                    { label: 'Decisions eclairees', desc: 'Fini le pilotage a l\'aveugle', icon: '\u2705', color: C.accent },
+                    { label: 'Dashboard unifié', desc: 'Tous vos KPIs sur 1 écran', icon: '\uD83D\uDCCA', color: C.orange },
+                    { label: 'Vision financière', desc: 'CA, charges, marges temps réel', icon: '\uD83D\uDCB0', color: C.green },
+                    { label: 'Pipeline clair', desc: 'Deals, scoring, prévisions', icon: '\uD83C\uDFAF', color: C.blue },
+                    { label: 'Alertes intelligentes', desc: 'Relances, dépassements, objectifs', icon: '\uD83D\uDD14', color: C.purple },
+                    { label: 'Décisions éclairées', desc: 'Fini le pilotage à l\'aveugle', icon: '\u2705', color: C.accent },
                   ].map((res, i) => (
                     <RevealDiv key={res.label} delay={0.5 + i * 0.06}>
                       <div style={{
@@ -1089,11 +1089,11 @@ export default function Landing({ onLogin, onSignup }) {
               <div style={{ textAlign: 'center', marginTop: 40 }}>
                 <button className="ld-btn ld-btn-primary" onClick={() => onSignup()}
                   style={{ padding: '12px 28px', fontSize: 14 }}>
-                  Centraliser mes donnees
+                  Centraliser mes données
                   <span style={{ fontSize: 16 }}>{'\u2192'}</span>
                 </button>
                 <p style={{ fontSize: 11, color: C.textMuted, marginTop: 10 }}>
-                  60+ integrations disponibles — connectez vos outils en 1 clic
+                  60+ intégrations disponibles — connectez vos outils en 1 clic
                 </p>
               </div>
             </div>
@@ -1108,10 +1108,10 @@ export default function Landing({ onLogin, onSignup }) {
           <RevealDiv>
             <div style={{ textAlign: 'center', marginBottom: 48 }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: C.purple, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
-                Temoignages
+                Témoignages
               </p>
               <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5 }}>
-                Ils pilotaient a l'aveugle.<br /><span className="ld-grad-text">Maintenant, ils voient clair.</span>
+                Ils pilotaient à l'aveugle.<br /><span className="ld-grad-text">Maintenant, ils voient clair.</span>
               </h2>
             </div>
           </RevealDiv>
@@ -1119,34 +1119,34 @@ export default function Landing({ onLogin, onSignup }) {
           <div className="ld-testi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
             {[
               {
-                quote: 'Avant, je demandais a 3 personnes differentes pour connaitre mon CA reel. Maintenant j\'ouvre HubScale et j\'ai la reponse en 2 secondes.',
-                metric: '1 ecran', metricSub: 'pour toutes les datas',
-                name: 'Marie Laurent', role: 'CEO @ TechVision', size: '25 employes', tag: 'Clarte', color: C.orange,
+                quote: 'Avant, je demandais à 3 personnes différentes pour connaître mon CA réel. Maintenant j\'ouvre HubScale et j\'ai la réponse en 2 secondes.',
+                metric: '1 écran', metricSub: 'pour toutes les datas',
+                name: 'Marie Laurent', role: 'CEO @ TechVision', size: '25 employés', tag: 'Clarté', color: C.orange,
               },
               {
-                quote: 'Je decouvrais les trous de tresorerie 2 semaines trop tard. Maintenant, je vois le probleme venir et je peux agir avant qu\'il soit trop tard.',
-                metric: '-2 semaines', metricSub: 'de delai sur les alertes',
-                name: 'Thomas Dubois', role: 'CFO @ DataFlow SAS', size: '80 employes', tag: 'Decision', color: C.green,
+                quote: 'Je découvrais les trous de trésorerie 2 semaines trop tard. Maintenant, je vois le problème venir et je peux agir avant qu\'il soit trop tard.',
+                metric: '-2 semaines', metricSub: 'de délai sur les alertes',
+                name: 'Thomas Dubois', role: 'CFO @ DataFlow SAS', size: '80 employés', tag: 'Décision', color: C.green,
               },
               {
-                quote: 'On avait nos chiffres dans 5 outils differents. Personne n\'avait la meme version de la verite. HubScale a mis tout le monde sur la meme page.',
-                metric: '1 source', metricSub: 'de verite pour toute l\'equipe',
-                name: 'Sophie Martin', role: 'COO @ CloudNine', size: '12 employes', tag: 'Centralisation', color: C.purple,
+                quote: 'On avait nos chiffres dans 5 outils différents. Personne n\'avait la même version de la vérité. HubScale a mis tout le monde sur la même page.',
+                metric: '1 source', metricSub: 'de vérité pour toute l\'équipe',
+                name: 'Sophie Martin', role: 'COO @ CloudNine', size: '12 employés', tag: 'Centralisation', color: C.purple,
               },
               {
-                quote: 'Le setup a pris 10 min. On a connecte Stripe et Revolut, et on a vu nos vrais chiffres pour la premiere fois. Un moment "wahou".',
+                quote: 'Le setup a pris 10 min. On a connecté Stripe et Revolut, et on a vu nos vrais chiffres pour la première fois. Un moment "wahou".',
                 metric: '10 min', metricSub: 'pour voir ses vrais chiffres',
-                name: 'Julien Moreau', role: 'Fondateur @ FinServ Pro', size: '8 employes', tag: 'Setup', color: C.blue,
+                name: 'Julien Moreau', role: 'Fondateur @ FinServ Pro', size: '8 employés', tag: 'Setup', color: C.blue,
               },
               {
-                quote: 'Mon equipe commerciale n\'avait aucune visibilite sur le pipeline reel. En 1 semaine, on a identifie 15 leads oublies et converti 4.',
-                metric: '4 deals recuperes', metricSub: 'grace a la visibilite',
-                name: 'Amelie Renard', role: 'VP Sales @ AlphaDigital', size: '45 employes', tag: 'Visibilite', color: C.accent,
+                quote: 'Mon équipe commerciale n\'avait aucune visibilité sur le pipeline réel. En 1 semaine, on a identifié 15 leads oubliés et converti 4.',
+                metric: '4 deals récupérés', metricSub: 'grâce à la visibilité',
+                name: 'Amélie Renard', role: 'VP Sales @ AlphaDigital', size: '45 employés', tag: 'Visibilité', color: C.accent,
               },
               {
-                quote: 'En comite de direction, je peux enfin presenter des chiffres fiables en temps reel. Plus de tableaux Excel douteux prepares a la derniere minute.',
+                quote: 'En comité de direction, je peux enfin présenter des chiffres fiables en temps réel. Plus de tableaux Excel douteux préparés à la dernière minute.',
                 metric: '0 erreur', metricSub: 'de reporting depuis 6 mois',
-                name: 'Pierre Lefevre', role: 'DAF @ GreenTech', size: '110 employes', tag: 'Reporting', color: C.red,
+                name: 'Pierre Lefèvre', role: 'DAF @ GreenTech', size: '110 employés', tag: 'Reporting', color: C.red,
               },
             ].map((t, i) => (
               <RevealDiv key={t.name} delay={i * 0.08}>
@@ -1203,19 +1203,19 @@ export default function Landing({ onLogin, onSignup }) {
               FAQ
             </p>
             <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5 }}>
-              Vous hesitez encore ?
+              Vous hésitez encore ?
             </h2>
           </div>
         </RevealDiv>
 
         <div style={{ maxWidth: 700, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[
-            { q: 'Je ne veux pas payer avant d\'avoir teste — c\'est possible ?', a: 'Bien sur. 14 jours d\'essai gratuit. Une CB est requise pour activer l\'essai, mais aucun debit avant la fin de la periode. Annulez en 1 clic.' },
-            { q: 'Mes donnees sensibles sont vraiment en securite ?', a: 'Hebergement 100% europeen (AWS eu-west), chiffrement AES-256 au repos et en transit, conformite RGPD et SOC 2 Type II. Plus secure que votre Google Sheet partage.' },
-            { q: 'J\'ai pas le temps de migrer — ca prend combien de temps ?', a: '2 minutes pour creer votre espace. Les integrations se connectent en un clic. Import CSV pour vos contacts existants en moins de 5 minutes. Pas de consultant, pas de formation.' },
-            { q: 'J\'utilise deja Pipedrive / Pennylane / Stripe — HubScale va les remplacer ?', a: 'Non, et c\'est le principe ! HubScale se connecte a vos outils existants et centralise leurs donnees sur un seul ecran. Vous gardez Pipedrive pour votre CRM, Stripe pour les paiements, Pennylane pour la compta — HubScale vous donne la vision d\'ensemble que ces outils ne peuvent pas offrir seuls.' },
-            { q: 'Et si ca me plait pas ? Je suis bloque ?', a: 'Zero engagement. Mensuel ou annuel, vous annulez quand vous voulez depuis votre espace. Les plans annuels sont rembourses au prorata. Pas de piege.' },
-            { q: 'J\'ai un probleme a 23h — qui me repond ?', a: 'Starter : email sous 24h. Professional : support prioritaire sous 4h + chat live. Enterprise : account manager dedie + SLA garanti sous 1h, 7j/7.' },
+            { q: 'Je ne veux pas payer avant d\'avoir testé — c\'est possible ?', a: 'Bien sûr. 14 jours d\'essai gratuit. Une CB est requise pour activer l\'essai, mais aucun débit avant la fin de la période. Annulez en 1 clic.' },
+            { q: 'Mes données sensibles sont vraiment en sécurité ?', a: 'Hébergement 100% européen (AWS eu-west), chiffrement AES-256 au repos et en transit, conformité RGPD et SOC 2 Type II. Plus sécurisé que votre Google Sheet partagé.' },
+            { q: 'J\'ai pas le temps de migrer — ça prend combien de temps ?', a: '2 minutes pour créer votre espace. Les intégrations se connectent en un clic. Import CSV pour vos contacts existants en moins de 5 minutes. Pas de consultant, pas de formation.' },
+            { q: 'J\'utilise déjà Pipedrive / Pennylane / Stripe — HubScale va les remplacer ?', a: 'Non, et c\'est le principe ! HubScale se connecte à vos outils existants et centralise leurs données sur un seul écran. Vous gardez Pipedrive pour votre CRM, Stripe pour les paiements, Pennylane pour la compta — HubScale vous donne la vision d\'ensemble que ces outils ne peuvent pas offrir seuls.' },
+            { q: 'Et si ça me plaît pas ? Je suis bloqué ?', a: 'Zéro engagement. Mensuel ou annuel, vous annulez quand vous voulez depuis votre espace. Les plans annuels sont remboursés au prorata. Pas de piège.' },
+            { q: 'J\'ai un problème à 23h — qui me répond ?', a: 'Starter : email sous 24h. Professional : support prioritaire sous 4h + chat live. Enterprise : account manager dédié + SLA garanti sous 1h, 7j/7.' },
           ].map((faq, i) => (
             <RevealDiv key={i} delay={i * 0.05}>
               <FaqItem q={faq.q} a={faq.a} />
@@ -1250,10 +1250,10 @@ export default function Landing({ onLogin, onSignup }) {
 
             <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5, margin: '0 0 14px', lineHeight: 1.2 }}>
               Vos vrais chiffres.<br />
-              <span className="ld-grad-text">D'un coup d'oeil. En temps reel.</span>
+              <span className="ld-grad-text">D'un coup d'oeil. En temps réel.</span>
             </h2>
             <p style={{ fontSize: 15, color: C.textSec, lineHeight: 1.7, margin: '0 0 24px' }}>
-              847 dirigeants ont arrete de piloter a l'aveugle. Centralisez vos datas et prenez des decisions claires.
+              847 dirigeants ont arrêté de piloter à l'aveugle. Centralisez vos datas et prenez des décisions claires.
             </p>
 
             {/* Guarantee badges */}
@@ -1261,7 +1261,7 @@ export default function Landing({ onLogin, onSignup }) {
               {[
                 { icon: '\uD83D\uDD12', text: 'Sans carte bancaire' },
                 { icon: '\u2B50', text: '14 jours gratuits' },
-                { icon: '\uD83D\uDCB8', text: 'Satisfait ou rembourse' },
+                { icon: '\uD83D\uDCB8', text: 'Satisfait ou remboursé' },
               ].map((g) => (
                 <div key={g.text} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 16 }}>{g.icon}</span>
@@ -1278,7 +1278,7 @@ export default function Landing({ onLogin, onSignup }) {
               </button>
             </div>
             <p style={{ fontSize: 11, color: C.textMuted, marginTop: 14 }}>
-              Pas d'engagement &middot; Migration gratuite &middot; Support prioritaire des le 1er jour
+              Pas d'engagement &middot; Migration gratuite &middot; Support prioritaire dès le 1er jour
             </p>
           </div>
         </RevealDiv>
@@ -1300,7 +1300,7 @@ export default function Landing({ onLogin, onSignup }) {
                 <span style={{ fontWeight: 800, fontSize: 16, color: C.text }}>HubScale</span>
               </div>
               <p style={{ fontSize: 13, color: C.textSec, lineHeight: 1.7, maxWidth: 260 }}>
-                Toutes les datas essentielles de votre activite, centralisees sur un seul ecran. Pour voir clair et decider vite.
+                Toutes les datas essentielles de votre activité, centralisées sur un seul écran. Pour voir clair et décider vite.
               </p>
             </div>
 
@@ -1308,15 +1308,15 @@ export default function Landing({ onLogin, onSignup }) {
             <div>
               <h4 style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 14 }}>Produit</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {['Dashboard', 'CRM', 'Data', 'Agenda', 'Integrations'].map((l) => (
+                {['Dashboard', 'CRM', 'Data', 'Agenda', 'Intégrations'].map((l) => (
                   <span key={l} style={{ fontSize: 13, color: C.textSec, cursor: 'pointer' }}>{l}</span>
                 ))}
               </div>
             </div>
             <div>
-              <h4 style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 14 }}>Societe</h4>
+              <h4 style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 14 }}>Société</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {['A propos', 'Blog', 'Carriere', 'Contact', 'Partenaires'].map((l) => (
+                {['À propos', 'Blog', 'Carrière', 'Contact', 'Partenaires'].map((l) => (
                   <span key={l} style={{ fontSize: 13, color: C.textSec, cursor: 'pointer' }}>{l}</span>
                 ))}
               </div>
@@ -1324,7 +1324,7 @@ export default function Landing({ onLogin, onSignup }) {
             <div>
               <h4 style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 14 }}>Legal</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {['CGV', 'Confidentialite', 'RGPD', 'Mentions legales', 'Cookies'].map((l) => (
+                {['CGV', 'Confidentialité', 'RGPD', 'Mentions légales', 'Cookies'].map((l) => (
                   <span key={l} style={{ fontSize: 13, color: C.textSec, cursor: 'pointer' }}>{l}</span>
                 ))}
               </div>
@@ -1337,7 +1337,7 @@ export default function Landing({ onLogin, onSignup }) {
             borderTop: `1px solid ${C.border}`, paddingTop: 24, flexWrap: 'wrap', gap: 12,
           }}>
             <span style={{ fontSize: 12, color: C.textMuted }}>
-              © {new Date().getFullYear()} HubScale. Tous droits reserves. Fait avec {'\u2764'} en France.
+              © {new Date().getFullYear()} HubScale. Tous droits réservés. Fait avec {'\u2764'} en France.
             </span>
             <div style={{ display: 'flex', gap: 16 }}>
               {['Twitter', 'LinkedIn', 'GitHub'].map((s) => (
