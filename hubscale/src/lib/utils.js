@@ -192,6 +192,98 @@ export function getStreak(finHistory) {
   return streak;
 }
 
+/** Generate next invoice number: FA-2026-001 */
+export function nextInvoiceNumber(invoices) {
+  const year = new Date().getFullYear();
+  const prefix = `FA-${year}-`;
+  const existing = (invoices || [])
+    .filter((inv) => inv.number && inv.number.startsWith(prefix))
+    .map((inv) => parseInt(inv.number.replace(prefix, ''), 10))
+    .filter((n) => !isNaN(n));
+  const next = existing.length > 0 ? Math.max(...existing) + 1 : 1;
+  return `${prefix}${String(next).padStart(3, '0')}`;
+}
+
+/** Check if invoice is overdue */
+export function isInvoiceOverdue(invoice) {
+  if (!invoice || invoice.status === 'paid' || invoice.status === 'draft') return false;
+  if (!invoice.dueDate) return false;
+  return new Date(invoice.dueDate) < new Date();
+}
+
+/** Compute invoice totals */
+export function computeInvoiceTotals(items, defaultTva = 20) {
+  let totalHT = 0;
+  let totalTVA = 0;
+  (items || []).forEach((item) => {
+    const lineHT = (item.qty || 0) * (item.unitPrice || 0);
+    const tvaRate = item.tva != null ? item.tva : defaultTva;
+    totalHT += lineHT;
+    totalTVA += lineHT * (tvaRate / 100);
+  });
+  return {
+    totalHT: Math.round(totalHT * 100) / 100,
+    totalTVA: Math.round(totalTVA * 100) / 100,
+    totalTTC: Math.round((totalHT + totalTVA) * 100) / 100,
+  };
+}
+
+/** Weekly recap: compute stats for the current week */
+export function weeklyRecap(finHistory, contacts, events, invoices) {
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Monday
+  weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  weekEnd.setHours(23, 59, 59, 999);
+
+  // New contacts this week
+  const newContacts = (contacts || []).filter((c) => {
+    if (!c.createdAt) return false;
+    const d = new Date(c.createdAt);
+    return d >= weekStart && d <= now;
+  });
+
+  // New clients this week
+  const newClients = newContacts.filter((c) => c.status === 'client').length;
+
+  // Events this week
+  const weekEvents = (events || []).filter((e) => {
+    if (!e.date) return false;
+    const d = new Date(e.date);
+    return d >= weekStart && d <= weekEnd;
+  });
+
+  // Invoices this week
+  const weekInvoices = (invoices || []).filter((inv) => {
+    if (!inv.createdAt) return false;
+    const d = new Date(inv.createdAt);
+    return d >= weekStart && d <= now;
+  });
+  const invoicedAmount = weekInvoices.reduce((s, inv) => s + (inv.totalTTC || 0), 0);
+  const paidAmount = weekInvoices.filter((inv) => inv.status === 'paid').reduce((s, inv) => s + (inv.totalTTC || 0), 0);
+
+  // Current month financial data
+  const curKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const curMonth = (finHistory || []).find((r) => r.key === curKey);
+  const caGoalStored = typeof localStorage !== 'undefined' ? null : null; // will be passed in
+
+  return {
+    newContacts: newContacts.length,
+    newClients,
+    weekEvents: weekEvents.length,
+    completedEvents: weekEvents.filter((e) => new Date(e.date) < now).length,
+    upcomingEvents: weekEvents.filter((e) => new Date(e.date) >= now).length,
+    invoicesCreated: weekInvoices.length,
+    invoicedAmount,
+    paidAmount,
+    currentCA: curMonth?.ca || 0,
+    currentCharges: curMonth?.charges || 0,
+    currentResult: curMonth?.result || 0,
+  };
+}
+
 /** Generate demo contacts for onboarding */
 export function generateDemoContacts() {
   const now = new Date();

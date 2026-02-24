@@ -4,7 +4,7 @@ import { store, load } from '../lib/store.js';
 import { Card, Section, Btn, Inp, Sel, TabBar, Toggle, ConfirmDialog, Badge, ProgressBar, PremiumGate } from '../components/ui.jsx';
 import { canAccessPro } from '../lib/plan.js';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
-import { SECTORS, PLANS, INTEGRATIONS } from '../lib/constants.js';
+import { SECTORS, PLANS, INTEGRATIONS, AUTOMATION_RULES } from '../lib/constants.js';
 import { onIntegrationConnect, getIntegrationMeta } from '../lib/integrationData.js';
 import { isSupabaseConfigured } from '../lib/supabase.js';
 import { startOAuthFlow, disconnectIntegration as apiDisconnect, requestDataExport, requestAccountDeletion, createBillingPortalSession } from '../lib/api.js';
@@ -22,7 +22,7 @@ const INTEGRATION_CATEGORIES = [
   { label: 'Support', cat: 'support' },
 ];
 
-const SUB_TABS = ['Compte', 'Utilisateurs', 'Facturation', 'Intégrations', 'Data & Export', 'RGPD & Légal'];
+const SUB_TABS = ['Compte', 'Utilisateurs', 'Facturation', 'Intégrations', 'Automatisations', 'Data & Export', 'RGPD & Légal'];
 
 const ACCENT_COLORS = [
   { name: 'Orange', value: '#f97316' },
@@ -1342,6 +1342,61 @@ export default function Settings() {
           </PremiumGate>
         </Section>
       )}
+
+      {/* -------- AUTOMATISATIONS -------- */}
+      {subTab === 'Automatisations' && (() => {
+        const [automations, setAutomations] = React.useState(() => {
+          const saved = load('automations') || {};
+          const defaults = {};
+          AUTOMATION_RULES.forEach((r) => { defaults[r.id] = r.defaultEnabled; });
+          return { ...defaults, ...saved };
+        });
+
+        const toggleRule = (id) => {
+          setAutomations((prev) => {
+            const next = { ...prev, [id]: !prev[id] };
+            store('automations', next);
+            return next;
+          });
+        };
+
+        const enabledCount = Object.values(automations).filter(Boolean).length;
+
+        return (
+          <>
+            <Section title="AUTOMATISATIONS" sub={`${enabledCount} règle(s) active(s) sur ${AUTOMATION_RULES.length}`}>
+              <Card>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {['crm', 'finance'].map((cat) => (
+                    <div key={cat}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+                        {cat === 'crm' ? 'CRM & Commercial' : 'Finance & Facturation'}
+                      </div>
+                      {AUTOMATION_RULES.filter((r) => r.category === cat).map((rule) => (
+                        <div key={rule.id} style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '12px 16px', borderRadius: 10, background: T.surface2,
+                          border: `1px solid ${automations[rule.id] ? T.accent + '33' : T.border}`,
+                          marginBottom: 8, transition: 'all .2s',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+                            <span style={{ fontSize: 18 }}>{rule.icon}</span>
+                            <div>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{rule.label}</div>
+                              <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{rule.description}</div>
+                            </div>
+                          </div>
+                          <Toggle checked={!!automations[rule.id]} onChange={() => toggleRule(rule.id)} />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </Section>
+          </>
+        );
+      })()}
 
       {/* -------- DATA & EXPORT -------- */}
       {subTab === 'Data & Export' && (

@@ -5,7 +5,8 @@ import { load, store } from './lib/store.js';
 import { Spinner, ErrorBoundary, Btn, Badge, NotificationDot, useToast, ToastContainer } from './components/ui.jsx';
 import { t, getLang, setLang, onLangChange, AVAILABLE_LANGS } from './lib/i18n.js';
 import { daysSince, daysUntil, ago, forecastCA, businessHealth, fmt } from './lib/utils.js';
-import { NOTIFICATION_TYPES } from './lib/constants.js';
+import { NOTIFICATION_TYPES, AUTOMATION_RULES } from './lib/constants.js';
+import { isInvoiceOverdue } from './lib/utils.js';
 import { getIntegrationMeta } from './lib/integrationData.js';
 import { isAuthenticated, getCurrentUser, logout as authLogout, initAuth } from './lib/auth.js';
 
@@ -262,7 +263,49 @@ function useNotifications() {
       }
     }
 
-    // 9. Conversion rate alert
+    // 9. Invoice overdue alerts (automation-driven)
+    const automations = load('automations') || {};
+    const invoices = load('invoices') || [];
+    invoices.forEach((inv) => {
+      if (inv.status === 'paid' || inv.status === 'draft') return;
+      if (isInvoiceOverdue(inv)) {
+        const daysPast = Math.floor((Date.now() - new Date(inv.dueDate).getTime()) / 86400000);
+        if (daysPast >= 7 && automations['invoice-overdue-7j'] !== false) {
+          notifs.push({
+            id: `invoice-overdue-7j-${inv.id}`,
+            type: 'alert',
+            message: `Facture ${inv.number} impayée depuis ${daysPast}j (${fmt(inv.totalTTC || 0)} €) — ${inv.contactName || 'Client inconnu'}`,
+            time: inv.dueDate,
+            tab: 'data',
+          });
+        } else if (daysPast >= 3 && automations['invoice-overdue-3j'] !== false) {
+          notifs.push({
+            id: `invoice-overdue-3j-${inv.id}`,
+            type: 'finance',
+            message: `Facture ${inv.number} en retard de ${daysPast}j — ${inv.contactName || ''}`,
+            time: inv.dueDate,
+            tab: 'data',
+          });
+        }
+      }
+    });
+
+    // 10. CA goal reached (automation)
+    const caGoal = load('caGoal') || 0;
+    if (caGoal > 0 && finHistory.length > 0 && automations['ca-objectif-atteint'] !== false) {
+      const last = finHistory[finHistory.length - 1];
+      if (last.ca >= caGoal) {
+        notifs.push({
+          id: 'auto-ca-objectif',
+          type: 'tip',
+          message: `Objectif CA atteint ! ${fmt(last.ca)} € / ${fmt(caGoal)} € ce mois`,
+          time: now.toISOString(),
+          tab: 'data',
+        });
+      }
+    }
+
+    // 11. Conversion rate alert
     if (contacts.length >= 5) {
       const clients = contacts.filter((c) => c.status === 'client').length;
       const lost = contacts.filter((c) => c.status === 'perdu').length;
@@ -470,6 +513,9 @@ function GlobalSearch({ open, onClose, onNavigate }) {
     const finances = load('finHistory') || [];
     finances.filter((f) => (f.key || '').includes(q))
       .slice(0, 3).forEach((f) => items.push({ type: 'finance', label: `Mois ${f.key}`, sub: `CA: ${f.ca}€`, tab: 'data', icon: '💰' }));
+    const invoicesSearch = load('invoices') || [];
+    invoicesSearch.filter((inv) => (inv.number || '').toLowerCase().includes(q) || (inv.contactName || '').toLowerCase().includes(q))
+      .slice(0, 3).forEach((inv) => items.push({ type: 'facture', label: inv.number, sub: `${inv.contactName || ''} — ${inv.totalTTC || 0}€`, tab: 'data', icon: '📋' }));
     [{ label: 'Dashboard', tab: 'overview', icon: '📊' }, { label: 'CRM', tab: 'crm', icon: '👥' },
      { label: 'Data', tab: 'data', icon: '💰' }, { label: 'Agenda', tab: 'agenda', icon: '📅' },
      { label: 'Analytics', tab: 'analytics', icon: '📈' }, { label: 'Paramètres', tab: 'settings', icon: '⚙️' }]

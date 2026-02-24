@@ -7,7 +7,7 @@ import { Card, Btn, Inp, Badge, Modal, EmptyState, Sel, TabBar, ConfirmDialog, P
 import { isPaid, canAccessPro } from '../lib/plan.js';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { useUndoStack } from '../hooks/useUndoStack.js';
-import { CRM_STATUSES as STATUSES, CRM_FILTER_TABS as FILTER_TABS, LEAD_SCORE_LABELS } from '../lib/constants.js';
+import { CRM_STATUSES as STATUSES, CRM_FILTER_TABS as FILTER_TABS, LEAD_SCORE_LABELS, PIPELINE_STAGES } from '../lib/constants.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -177,7 +177,7 @@ export default function CRM() {
   const [showModal, setShowModal] = useState(false);
   const [showLimitGate, setShowLimitGate] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '' });
+  const [form, setForm] = useState({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '', dealValue: '', dealProbability: '', expectedCloseDate: '' });
   const [newComment, setNewComment] = useState('');
 
   // ---- Undo stack for deletions ----
@@ -228,7 +228,7 @@ export default function CRM() {
     return c;
   }, [contacts]);
 
-  // ---- Pipeline value KPI ----
+  // ---- Pipeline value KPI (weighted by probability) ----
   const pipelineValue = useMemo(() => {
     const finHistory = load('finHistory') || [];
     const clients = contacts.filter((c) => c.status === 'client');
@@ -238,7 +238,25 @@ export default function CRM() {
       avgCA = Math.round(totalCA / finHistory.length / Math.max(clients.length, 1));
     }
     const pipelineContacts = contacts.filter((c) => c.status !== 'perdu' && c.status !== 'client');
-    return pipelineContacts.length * avgCA;
+    return pipelineContacts.reduce((total, c) => {
+      const value = c.dealValue || avgCA;
+      const proba = c.dealProbability || (PIPELINE_STAGES.find((s) => s.id === c.status)?.proba || 20);
+      return total + Math.round(value * proba / 100);
+    }, 0);
+  }, [contacts]);
+
+  // ---- Weighted pipeline by stage ----
+  const pipelineByStage = useMemo(() => {
+    return PIPELINE_STAGES.filter((s) => s.id !== 'perdu').map((stage) => {
+      const stageContacts = contacts.filter((c) => c.status === stage.id);
+      const rawValue = stageContacts.reduce((s, c) => s + (c.dealValue || 0), 0);
+      const weightedValue = stageContacts.reduce((s, c) => {
+        const val = c.dealValue || 0;
+        const proba = c.dealProbability || stage.proba;
+        return s + Math.round(val * proba / 100);
+      }, 0);
+      return { ...stage, count: stageContacts.length, rawValue, weightedValue };
+    });
   }, [contacts]);
 
   // ---- Filtering (status + search + score) ----
@@ -290,14 +308,14 @@ export default function CRM() {
   const openNew = useCallback(() => {
     if (atContactLimit) { setShowLimitGate(true); return; }
     setEditId(null);
-    setForm({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '' });
+    setForm({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '', dealValue: '', dealProbability: '', expectedCloseDate: '' });
     setNewComment('');
     setShowModal(true);
   }, [atContactLimit]);
 
   const openEdit = useCallback((c) => {
     setEditId(c.id);
-    setForm({ name: c.name, email: c.email, company: c.company, phone: c.phone, status: c.status, notes: c.notes || '' });
+    setForm({ name: c.name, email: c.email, company: c.company, phone: c.phone, status: c.status, notes: c.notes || '', dealValue: c.dealValue ? String(c.dealValue) : '', dealProbability: c.dealProbability ? String(c.dealProbability) : '', expectedCloseDate: c.expectedCloseDate || '' });
     setNewComment('');
     setShowModal(true);
   }, []);
@@ -346,11 +364,14 @@ export default function CRM() {
           }
         }
 
-        return { ...c, ...form, commentaires: updatedComments, history };
+        const dealFields = { dealValue: parseFloat(form.dealValue) || 0, dealProbability: parseFloat(form.dealProbability) || 0, expectedCloseDate: form.expectedCloseDate || '' };
+        return { ...c, ...form, ...dealFields, commentaires: updatedComments, history };
       }));
     } else {
+      const dealFields = { dealValue: parseFloat(form.dealValue) || 0, dealProbability: parseFloat(form.dealProbability) || 0, expectedCloseDate: form.expectedCloseDate || '' };
       const newContact = {
         ...form,
+        ...dealFields,
         id: uid(),
         createdAt: new Date().toISOString(),
         commentaires: commentToAdd ? [commentToAdd] : [],
@@ -367,7 +388,7 @@ export default function CRM() {
       setContacts((prev) => [...prev, newContact]);
     }
 
-    setForm({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '' });
+    setForm({ name: '', email: '', company: '', phone: '', status: 'prospect', notes: '', dealValue: '', dealProbability: '', expectedCloseDate: '' });
     setNewComment('');
     setEditId(null);
     setShowModal(false);
@@ -607,10 +628,10 @@ export default function CRM() {
             <div style={{ fontSize: 9, fontWeight: 700, color: s.color, letterSpacing: .8, marginTop: 2 }}>{s.label}</div>
           </div>
         ))}
-        {/* Pipeline Value KPI */}
+        {/* Pipeline Value KPI — weighted */}
         <div className="glass-static" style={{ padding: '12px 14px', textAlign: 'center', borderLeft: `3px solid ${T.accent}` }}>
           <div style={{ fontSize: 24, fontWeight: 800, color: T.accent }}>{fK(pipelineValue)}€</div>
-          <div style={{ fontSize: 9, fontWeight: 700, color: T.accent, letterSpacing: .8, marginTop: 2 }}>PIPELINE</div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: T.accent, letterSpacing: .8, marginTop: 2 }}>PIPELINE PONDÉRÉ</div>
         </div>
       </div>
 
@@ -1021,39 +1042,61 @@ export default function CRM() {
                             </div>
                           )}
 
-                          {/* Bottom row: date + CA */}
+                          {/* Bottom row: date + deal value */}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
                             <span style={{ fontSize: 9, color: T.textMuted }}>
                               {ago(c.createdAt)}
                             </span>
-                            {c.ca > 0 && (
-                              <span style={{
-                                fontSize: 9, fontWeight: 700, color: T.green,
-                                background: T.greenBg, padding: '1px 6px', borderRadius: 6,
-                              }}>
-                                {fK(c.ca)}€
-                              </span>
-                            )}
+                            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                              {c.dealValue > 0 && (
+                                <span style={{ fontSize: 9, fontWeight: 700, color: T.green, background: T.greenBg, padding: '1px 6px', borderRadius: 6 }}>
+                                  {fK(c.dealValue)}€
+                                </span>
+                              )}
+                              {c.dealProbability > 0 && (
+                                <span style={{ fontSize: 8, fontWeight: 600, color: T.textMuted }}>
+                                  {c.dealProbability}%
+                                </span>
+                              )}
+                            </div>
                           </div>
+                          {c.expectedCloseDate && (
+                            <div style={{ fontSize: 8, color: T.textMuted, marginTop: 2 }}>
+                              Closing : {new Date(c.expectedCloseDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
                   </div>
 
                   {/* Column stats footer */}
-                  <div style={{
-                    padding: '8px 12px',
-                    borderTop: `1px solid ${T.border}`,
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    fontSize: 10, color: T.textMuted,
-                  }}>
-                    <span title="CA total de la colonne">
-                      CA : <strong style={{ color: totalCA > 0 ? T.green : T.textMuted }}>{totalCA > 0 ? fK(totalCA) + '€' : '—'}</strong>
-                    </span>
-                    <span title="Score moyen de la colonne">
-                      Score moy. : <strong style={{ color: avgScore >= 60 ? T.orange : T.textMuted }}>{colContacts.length > 0 ? avgScore : '—'}</strong>
-                    </span>
-                  </div>
+                  {(() => {
+                    const dealTotal = colContacts.reduce((s, c) => s + (c.dealValue || 0), 0);
+                    const stageProba = PIPELINE_STAGES.find((s) => s.id === status.id)?.proba || 20;
+                    const weighted = colContacts.reduce((s, c) => {
+                      const val = c.dealValue || 0;
+                      const proba = c.dealProbability || stageProba;
+                      return s + Math.round(val * proba / 100);
+                    }, 0);
+                    return (
+                      <div style={{
+                        padding: '8px 12px',
+                        borderTop: `1px solid ${T.border}`,
+                        fontSize: 10, color: T.textMuted,
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                          <span>Deals : <strong style={{ color: dealTotal > 0 ? T.green : T.textMuted }}>{dealTotal > 0 ? fK(dealTotal) + '€' : '—'}</strong></span>
+                          <span>Score moy. : <strong style={{ color: avgScore >= 60 ? T.orange : T.textMuted }}>{colContacts.length > 0 ? avgScore : '—'}</strong></span>
+                        </div>
+                        {weighted > 0 && (
+                          <div style={{ fontSize: 9, color: T.accent, fontWeight: 700 }}>
+                            Pondéré : {fK(weighted)}€
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -1129,6 +1172,23 @@ export default function CRM() {
         <Inp label="Téléphone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="+33 6 00 00 00 00" />
         <Sel label="Statut" value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={STATUSES.map((s) => ({ value: s.id, label: s.label }))} />
         <Inp label="Notes" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} placeholder="Notes..." />
+
+        {/* Deal fields */}
+        <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 12, marginTop: 8, marginBottom: 12 }}>
+          <label style={{ display: 'block', color: T.textSecondary, fontSize: 11, fontWeight: 600, marginBottom: 8, letterSpacing: .3 }}>
+            Opportunité commerciale
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            <Inp label="Montant estimé (€)" value={form.dealValue} onChange={(v) => setForm({ ...form, dealValue: v })} type="number" placeholder="0" suffix="€" />
+            <Inp label="Probabilité (%)" value={form.dealProbability} onChange={(v) => setForm({ ...form, dealProbability: v })} type="number" placeholder={String(PIPELINE_STAGES.find((s) => s.id === form.status)?.proba || 20)} suffix="%" />
+            <Inp label="Date closing estimée" value={form.expectedCloseDate} onChange={(v) => setForm({ ...form, expectedCloseDate: v })} type="date" />
+          </div>
+          {form.dealValue && form.dealProbability && (
+            <div style={{ marginTop: 6, fontSize: 10, fontWeight: 600, color: T.accent }}>
+              Valeur pondérée : {fmt(Math.round(parseFloat(form.dealValue || 0) * parseFloat(form.dealProbability || 0) / 100))} €
+            </div>
+          )}
+        </div>
 
         {/* Comment input */}
         <div style={{ marginBottom: 12 }}>

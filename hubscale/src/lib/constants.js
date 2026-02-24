@@ -136,3 +136,93 @@ export const ONBOARDING_CHECKLIST = [
   { id: 'event', label: 'Créer un événement', icon: '📅', tab: 'agenda' },
   { id: 'integration', label: 'Connecter une intégration', icon: '🔗', tab: 'settings' },
 ];
+
+export const INVOICE_STATUSES = [
+  { id: 'draft', label: 'Brouillon', color: T.textMuted, bg: T.surface2, icon: '📝' },
+  { id: 'sent', label: 'Envoyée', color: T.blue, bg: T.blueBg, icon: '📤' },
+  { id: 'paid', label: 'Payée', color: T.green, bg: T.greenBg, icon: '✅' },
+  { id: 'overdue', label: 'En retard', color: T.red, bg: T.redBg, icon: '⚠️' },
+];
+
+export const TVA_RATES = [
+  { value: 0, label: '0%' },
+  { value: 5.5, label: '5,5%' },
+  { value: 10, label: '10%' },
+  { value: 20, label: '20%' },
+];
+
+export const PIPELINE_STAGES = [
+  { id: 'prospect', label: 'Prospect', proba: 10, color: T.orange },
+  { id: 'lead', label: 'Lead qualifié', proba: 30, color: T.blue },
+  { id: 'negociation', label: 'Négociation', proba: 60, color: T.purple },
+  { id: 'proposal', label: 'Proposition', proba: 80, color: T.accent },
+  { id: 'client', label: 'Gagné', proba: 100, color: T.green },
+  { id: 'perdu', label: 'Perdu', proba: 0, color: T.red },
+];
+
+export const AUTOMATION_RULES = [
+  {
+    id: 'relance-prospect-7j',
+    label: 'Relance prospect inactif (7j)',
+    description: 'Notification si un prospect n\'a pas d\'activité depuis 7 jours',
+    icon: '⏰',
+    category: 'crm',
+    defaultEnabled: true,
+  },
+  {
+    id: 'relance-lead-14j',
+    label: 'Relance lead inactif (14j)',
+    description: 'Notification si un lead n\'a pas d\'activité depuis 14 jours',
+    icon: '⏰',
+    category: 'crm',
+    defaultEnabled: true,
+  },
+  {
+    id: 'invoice-overdue-3j',
+    label: 'Facture impayée (+3j)',
+    description: 'Alerte si une facture dépasse son échéance de 3 jours',
+    icon: '💸',
+    category: 'finance',
+    defaultEnabled: true,
+  },
+  {
+    id: 'invoice-overdue-7j',
+    label: 'Relance facture impayée (+7j)',
+    description: 'Alerte urgente si une facture dépasse son échéance de 7 jours',
+    icon: '🚨',
+    category: 'finance',
+    defaultEnabled: true,
+  },
+  {
+    id: 'ca-objectif-atteint',
+    label: 'Objectif CA atteint',
+    description: 'Notification de célébration quand le CA mensuel dépasse l\'objectif',
+    icon: '🎉',
+    category: 'finance',
+    defaultEnabled: true,
+  },
+  {
+    id: 'charges-hausse-15',
+    label: 'Charges en hausse (+15%)',
+    description: 'Alerte si les charges augmentent de plus de 15% vs mois précédent',
+    icon: '📈',
+    category: 'finance',
+    defaultEnabled: true,
+  },
+  {
+    id: 'new-client-invoice',
+    label: 'Nouveau client → créer facture',
+    description: 'Rappel de créer une facture quand un contact passe en statut client',
+    icon: '📋',
+    category: 'crm',
+    defaultEnabled: false,
+  },
+  {
+    id: 'treso-basse-2mois',
+    label: 'Trésorerie < 2 mois de charges',
+    description: 'Alerte critique si la trésorerie couvre moins de 2 mois de charges',
+    icon: '🏦',
+    category: 'finance',
+    defaultEnabled: true,
+  },
+];

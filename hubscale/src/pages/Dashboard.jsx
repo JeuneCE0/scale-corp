@@ -3,7 +3,7 @@ import { T, FONT } from '../lib/theme.js';
 import { fK, fmt, ago, businessHealth, businessWeather, getStreak, forecastCA, daysSince, daysUntil, leadScore } from '../lib/utils.js';
 import { load, store } from '../lib/store.js';
 import { KPI, Card, Badge, ProgressBar, Spinner, Btn, Inp, HelpTip, ScoreRing, StreakBadge, WeatherWidget, ChecklistItem, AnimatedNumber, Sparkline, PremiumGate, UpgradeBanner } from '../components/ui.jsx';
-import { ONBOARDING_CHECKLIST, CRM_STATUSES, NOTIFICATION_TYPES, INTEGRATIONS, EXPENSE_CATEGORIES } from '../lib/constants.js';
+import { ONBOARDING_CHECKLIST, CRM_STATUSES, NOTIFICATION_TYPES, INTEGRATIONS, EXPENSE_CATEGORIES, INVOICE_STATUSES } from '../lib/constants.js';
 import { getIntegrationMeta } from '../lib/integrationData.js';
 
 /* ------------------------------------------------------------------ */
@@ -365,8 +365,8 @@ export default function Dashboard({ onNavigate }) {
   /* ---------------------------------------------------------------- */
   const [widgetOrder, setWidgetOrder] = useState(() => {
     const saved = load('dashWidgetOrder');
-    if (saved && saved.includes('expense-breakdown')) return saved;
-    return ['chart-pipeline', 'integration-kpis', 'expense-breakdown', 'cashflow-projection', 'cross-insights', 'crm-banner', 'pub-banner', 'integrations-hub', 'activity-tasks'];
+    if (saved && saved.includes('weekly-recap')) return saved;
+    return ['weekly-recap', 'chart-pipeline', 'integration-kpis', 'expense-breakdown', 'cashflow-projection', 'cross-insights', 'crm-banner', 'pub-banner', 'integrations-hub', 'activity-tasks'];
   });
   const [dragWidget, setDragWidget] = useState(null);
   const handleWidgetDragStart = useCallback((e, id) => { setDragWidget(id); e.dataTransfer.effectAllowed = 'move'; }, []);
@@ -660,6 +660,47 @@ export default function Dashboard({ onNavigate }) {
       }))
       .sort((a, b) => b.value - a.value);
   }, [finHistory]);
+
+  /* ---------------------------------------------------------------- */
+  /*  Weekly Recap                                                      */
+  /* ---------------------------------------------------------------- */
+  const recap = useMemo(() => {
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const invoices = load('invoices') || [];
+    const events = load('events') || [];
+
+    const newContacts = contacts.filter((c) => c.createdAt && new Date(c.createdAt) >= weekStart);
+    const newClients = newContacts.filter((c) => c.status === 'client').length;
+    const weekEvents = events.filter((e) => {
+      if (!e.date) return false;
+      const d = new Date(e.date);
+      const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 6);
+      return d >= weekStart && d <= weekEnd;
+    });
+    const weekInvoices = invoices.filter((inv) => inv.createdAt && new Date(inv.createdAt) >= weekStart);
+    const invoicedTTC = weekInvoices.reduce((s, inv) => s + (inv.totalTTC || 0), 0);
+    const paidTTC = weekInvoices.filter((inv) => inv.status === 'paid').reduce((s, inv) => s + (inv.totalTTC || 0), 0);
+    const overdueInvoices = invoices.filter((inv) => inv.status === 'overdue');
+    const overdueAmount = overdueInvoices.reduce((s, inv) => s + (inv.totalTTC || 0), 0);
+
+    // Current month CA vs goal
+    const curKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const curMonth = finHistory.find((r) => r.key === curKey);
+    const caGoal = load('caGoal') || 0;
+
+    return {
+      newContacts: newContacts.length, newClients,
+      weekEvents: weekEvents.length, upcomingEvents: weekEvents.filter((e) => new Date(e.date) >= now).length,
+      invoicesCreated: weekInvoices.length, invoicedTTC, paidTTC,
+      overdueCount: overdueInvoices.length, overdueAmount,
+      currentCA: curMonth?.ca || 0, caGoal,
+      caProgress: caGoal > 0 && curMonth ? Math.min(100, Math.round((curMonth.ca / caGoal) * 100)) : 0,
+    };
+  }, [contacts, finHistory]);
 
   /* ---------------------------------------------------------------- */
   /*  CRM stats                                                        */
@@ -973,6 +1014,52 @@ export default function Dashboard({ onNavigate }) {
       {/* ============================================================ */}
       {widgetOrder.map((id) => {
         const WIDGETS = {
+          /* ------ Weekly Recap ------ */
+          'weekly-recap': (
+            <Card delay={2} style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>{'📋'}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Récap de la semaine</span>
+                </div>
+                <span style={{ fontSize: 10, color: T.textMuted, fontWeight: 600 }}>
+                  {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
+                {[
+                  { icon: '👤', label: 'Nouveaux contacts', value: recap.newContacts, color: T.blue },
+                  { icon: '🤝', label: 'Nouveaux clients', value: recap.newClients, color: T.green },
+                  { icon: '📅', label: 'Événements', value: recap.weekEvents, color: T.orange, sub: recap.upcomingEvents > 0 ? `${recap.upcomingEvents} à venir` : '' },
+                  { icon: '📋', label: 'Factures créées', value: recap.invoicesCreated, color: T.accent, sub: recap.invoicedTTC > 0 ? `${fK(recap.invoicedTTC)}€` : '' },
+                  { icon: '✅', label: 'Encaissé', value: `${fK(recap.paidTTC)}€`, color: T.green },
+                  ...(recap.overdueCount > 0 ? [{ icon: '⚠️', label: 'Impayées', value: recap.overdueCount, color: T.red, sub: `${fK(recap.overdueAmount)}€ en retard` }] : []),
+                ].map((item) => (
+                  <div key={item.label} style={{ padding: '10px 12px', borderRadius: 8, background: item.color + '08', border: `1px solid ${item.color}15` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <span style={{ fontSize: 12 }}>{item.icon}</span>
+                      <span style={{ fontSize: 9, fontWeight: 600, color: T.textMuted }}>{item.label}</span>
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: item.color, lineHeight: 1.2 }}>{item.value}</div>
+                    {item.sub && <div style={{ fontSize: 9, color: item.color, fontWeight: 600, marginTop: 2 }}>{item.sub}</div>}
+                  </div>
+                ))}
+              </div>
+              {/* CA Goal Progress */}
+              {recap.caGoal > 0 && (
+                <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: T.surface2, border: `1px solid ${T.border}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: T.textMuted }}>Objectif CA du mois</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: recap.caProgress >= 100 ? T.green : T.accent }}>
+                      {fmt(recap.currentCA)} / {fmt(recap.caGoal)} € ({recap.caProgress}%)
+                    </span>
+                  </div>
+                  <ProgressBar value={recap.caProgress} max={100} color={recap.caProgress >= 100 ? T.green : T.accent} h={6} />
+                </div>
+              )}
+            </Card>
+          ),
+
           /* ------ Chart + Pipeline ------ */
           'chart-pipeline': (
             <div className="grid-desktop-15-1" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 14, marginBottom: 20 }}>
