@@ -537,6 +537,14 @@ export default function Dashboard({ onNavigate }) {
   }, [finHistory]);
 
   /* ---------------------------------------------------------------- */
+  /*  Ad Platforms (must be before crossInsights which depends on it)   */
+  /* ---------------------------------------------------------------- */
+  const adPlatforms = useMemo(() =>
+    ['Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads'].filter((n) => integrations[n]),
+    [integrations]
+  );
+
+  /* ---------------------------------------------------------------- */
   /*  Cross-Data Insights                                              */
   /* ---------------------------------------------------------------- */
   const crossInsights = useMemo(() => {
@@ -701,14 +709,6 @@ export default function Dashboard({ onNavigate }) {
       caProgress: caGoal > 0 && curMonth ? Math.min(100, Math.round((curMonth.ca / caGoal) * 100)) : 0,
     };
   }, [contacts, finHistory]);
-
-  /* ---------------------------------------------------------------- */
-  /*  Ad Platforms (must be before crossInsights which depends on it)   */
-  /* ---------------------------------------------------------------- */
-  const adPlatforms = useMemo(() =>
-    ['Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads'].filter((n) => integrations[n]),
-    [integrations]
-  );
 
   /* ---------------------------------------------------------------- */
   /*  CRM stats                                                        */
