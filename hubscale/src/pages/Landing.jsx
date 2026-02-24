@@ -223,9 +223,10 @@ export default function Landing({ onLogin, onSignup }) {
   const [annual, setAnnual] = useState(true);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [pastHero, setPastHero] = useState(false);
 
   useEffect(() => {
-    const h = () => setScrolled(window.scrollY > 20);
+    const h = () => { setScrolled(window.scrollY > 20); setPastHero(window.scrollY > 600); };
     window.addEventListener('scroll', h, { passive: true });
     return () => window.removeEventListener('scroll', h);
   }, []);
@@ -378,6 +379,31 @@ export default function Landing({ onLogin, onSignup }) {
         )}
       </nav>
 
+      {/* ══════════════ STICKY CTA BAR ══════════════ */}
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 99,
+        padding: '10px 24px',
+        background: 'rgba(9,9,11,.95)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+        borderTop: `1px solid ${C.border}`,
+        transform: pastHero ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform .35s ease',
+      }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: GRAD, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#fff' }}>H</div>
+            <span style={{ fontSize: 13, color: C.textSec, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ color: C.green, fontWeight: 700 }}>{'\u2713'}</span> 14 jours gratuits
+              <span style={{ color: C.textMuted }}>&middot;</span> Sans carte bancaire
+            </span>
+          </div>
+          <button className="ld-btn ld-btn-primary" onClick={() => onSignup()}
+            style={{ padding: '8px 24px', fontSize: 13 }}>
+            Essai gratuit
+            <span style={{ fontSize: 14 }}>{'\u2192'}</span>
+          </button>
+        </div>
+      </div>
+
 
       {/* ══════════════ HERO ══════════════ */}
       <section className="ld-hero-bg" style={{ position: 'relative', paddingTop: 120, paddingBottom: 40, textAlign: 'center' }}>
@@ -501,21 +527,27 @@ export default function Landing({ onLogin, onSignup }) {
 
 
       {/* ══════════════ LOGOS / TRUST ══════════════ */}
-      <section style={{ borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, padding: '32px 24px', overflow: 'hidden' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', textAlign: 'center' }}>
-          <p style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 20 }}>
-            Ils ont arrêté de perdre du temps. Vous aussi ?
-          </p>
-          <div style={{ display: 'flex', overflow: 'hidden', maskImage: 'linear-gradient(90deg,transparent,black 15%,black 85%,transparent)' }}>
-            <div style={{ display: 'flex', gap: 60, animation: 'ldTickerScroll 30s linear infinite', whiteSpace: 'nowrap' }}>
-              {[...Array(2)].flatMap((_, i) =>
-                ['TechVision', 'DataFlow SAS', 'CloudNine', 'FinServ Pro', 'GreenTech', 'AlphaDigital', 'NovaStar', 'MediaPulse'].map((name, j) => (
-                  <span key={`${i}-${j}`} style={{ fontSize: 16, fontWeight: 800, color: C.textMuted, opacity: .4, letterSpacing: -.3 }}>
-                    {name}
-                  </span>
-                ))
-              )}
-            </div>
+      <section style={{ borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, padding: '28px 24px' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 32, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 1, whiteSpace: 'nowrap' }}>Ils en parlent</span>
+            {[
+              { name: 'BPI France', icon: '\uD83C\uDDEB\uD83C\uDDF7' },
+              { name: 'Station F', icon: '\uD83D\uDE80' },
+              { name: 'Maddyness', icon: '\uD83D\uDCF0' },
+              { name: 'FrenchWeb', icon: '\uD83C\uDF10' },
+              { name: 'Journal du Net', icon: '\uD83D\uDCBB' },
+              { name: 'Les Echos Start', icon: '\uD83D\uDCC8' },
+            ].map((pub) => (
+              <div key={pub.name} style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 14px', borderRadius: 8,
+                background: C.surface, border: `1px solid ${C.border}`,
+              }}>
+                <span style={{ fontSize: 14 }}>{pub.icon}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: C.textMuted }}>{pub.name}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -735,6 +767,79 @@ export default function Landing({ onLogin, onSignup }) {
           ))}
         </div>
       </Sect>
+
+
+      {/* ══════════════ POUR QUI ? ══════════════ */}
+      <section style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+        <Sect>
+          <RevealDiv>
+            <div style={{ textAlign: 'center', marginBottom: 48 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: C.purple, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+                Pour qui ?
+              </p>
+              <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5 }}>
+                Vous vous reconnaissez ?<br /><span className="ld-grad-text">HubScale est fait pour vous.</span>
+              </h2>
+            </div>
+          </RevealDiv>
+
+          <div className="ld-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 18, maxWidth: 900, margin: '0 auto' }}>
+            {[
+              {
+                icon: '\uD83D\uDE80', title: 'Freelances & Solopreneurs',
+                pain: 'Vous jonglez entre Stripe, votre banque, un CRM et 3 tableurs. Vous ne savez jamais exactement combien vous gagnez ce mois-ci.',
+                solve: 'Un seul écran avec votre CA, vos factures, votre pipeline et votre trésorerie. En temps réel.',
+                color: C.orange,
+              },
+              {
+                icon: '\uD83C\uDFE2', title: 'Dirigeants de PME',
+                pain: 'Vos données sont dans 5 outils différents. Vous demandez à 3 personnes pour avoir un chiffre fiable. Les décisions prennent trop de temps.',
+                solve: 'Toute la data de votre entreprise centralisée. Vous ouvrez HubScale et vous savez où vous en êtes.',
+                color: C.blue,
+              },
+              {
+                icon: '\uD83D\uDCBC', title: 'Agences & ESN',
+                pain: 'Chaque client est un projet, chaque projet a son budget. Impossible de voir la rentabilité globale sans un marathon Excel.',
+                solve: 'Pipeline pondéré, P&L par mois, catalogue de services et facturation intégrée. La rentabilité en un coup d\'oeil.',
+                color: C.green,
+              },
+              {
+                icon: '\uD83D\uDED2', title: 'E-commerçants',
+                pain: 'Shopify, Meta Ads, Stripe, votre comptable... vos données sont partout sauf au même endroit. Vous ne savez pas quel canal est rentable.',
+                solve: 'Revenus, dépenses pub, marges par canal — tout centralisé. Vous voyez ce qui rapporte et ce qui coûte.',
+                color: C.purple,
+              },
+            ].map((p, i) => (
+              <RevealDiv key={p.title} delay={i * 0.1}>
+                <div className="ld-card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                    <div style={{
+                      width: 44, height: 44, borderRadius: 12,
+                      background: `${p.color}15`, border: `1px solid ${p.color}22`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0,
+                    }}>{p.icon}</div>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: p.color }}>{p.title}</h3>
+                  </div>
+                  <div style={{
+                    padding: '10px 14px', borderRadius: 10, marginBottom: 12,
+                    background: `${C.red}06`, border: `1px solid ${C.red}12`,
+                  }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: C.red, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 4 }}>La douleur</div>
+                    <p style={{ fontSize: 12, color: C.textSec, lineHeight: 1.55, margin: 0 }}>{p.pain}</p>
+                  </div>
+                  <div style={{
+                    padding: '10px 14px', borderRadius: 10, flex: 1,
+                    background: `${C.green}06`, border: `1px solid ${C.green}12`,
+                  }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: C.green, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 4 }}>Avec HubScale</div>
+                    <p style={{ fontSize: 12, color: C.textSec, lineHeight: 1.55, margin: 0 }}>{p.solve}</p>
+                  </div>
+                </div>
+              </RevealDiv>
+            ))}
+          </div>
+        </Sect>
+      </section>
 
 
       {/* ══════════════ HOW IT WORKS ══════════════ */}
@@ -979,6 +1084,60 @@ export default function Landing({ onLogin, onSignup }) {
         </div>
       </Sect>
 
+      {/* ══════════════ COMPARATIF PLANS ══════════════ */}
+      <section style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+        <Sect style={{ paddingTop: 40, paddingBottom: 40 }}>
+          <RevealDiv>
+            <div style={{ textAlign: 'center', marginBottom: 32 }}>
+              <h3 style={{ fontSize: 22, fontWeight: 800, letterSpacing: -.3, margin: '0 0 8px' }}>
+                Comparez en un coup d'oeil
+              </h3>
+              <p style={{ fontSize: 13, color: C.textSec }}>Chaque plan inclut toutes les fonctionnalités de base.</p>
+            </div>
+          </RevealDiv>
+          <RevealDiv delay={0.1}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', maxWidth: 800, margin: '0 auto', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '10px 14px', color: C.textMuted, fontWeight: 600, borderBottom: `1px solid ${C.border}` }}></th>
+                    {PLANS.map((plan) => (
+                      <th key={plan.id} style={{
+                        padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: plan.recommended ? C.orange : C.text,
+                        borderBottom: `1px solid ${C.border}`,
+                      }}>{plan.name}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { feat: 'Dashboard & KPIs', vals: [true, true, true] },
+                    { feat: 'CRM & Pipeline', vals: ['50 contacts', 'Illimité', 'Illimité'] },
+                    { feat: 'Données financières', vals: [true, true, true] },
+                    { feat: 'Agenda & Rappels', vals: [true, true, true] },
+                    { feat: 'Intégrations', vals: ['3', '20', 'Illimité'] },
+                    { feat: 'Facturation', vals: [false, true, true] },
+                    { feat: 'P&L & Catalogue', vals: [false, true, true] },
+                    { feat: 'Automatisations', vals: [false, '5 règles', 'Illimité'] },
+                    { feat: 'Support', vals: ['Email', 'Prioritaire 4h', 'Dédié 1h'] },
+                    { feat: 'Export & API', vals: [false, 'CSV', 'CSV + API'] },
+                  ].map((row, ri) => (
+                    <tr key={row.feat} style={{ background: ri % 2 === 0 ? 'transparent' : `${C.surface2}50` }}>
+                      <td style={{ padding: '10px 14px', color: C.textSec, fontWeight: 500, borderBottom: `1px solid ${C.border}22` }}>{row.feat}</td>
+                      {row.vals.map((v, vi) => (
+                        <td key={vi} style={{ padding: '10px 14px', textAlign: 'center', borderBottom: `1px solid ${C.border}22`, color: v === false ? C.textMuted : v === true ? C.green : C.text, fontWeight: v === true || v === false ? 700 : 500 }}>
+                          {v === true ? '\u2713' : v === false ? '\u2014' : v}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </RevealDiv>
+        </Sect>
+      </section>
+
 
       {/* ══════════════ CENTRALISATION EN ACTION ══════════════ */}
       <section style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
@@ -1191,6 +1350,151 @@ export default function Landing({ onLogin, onSignup }) {
               </RevealDiv>
             ))}
           </div>
+        </Sect>
+      </section>
+
+
+      {/* ══════════════ CAS D'ÉTUDE ══════════════ */}
+      <Sect>
+        <RevealDiv>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: C.orange, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+              Résultats concrets
+            </p>
+            <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5 }}>
+              Ce qu'ils ont gagné <span className="ld-grad-text">en centralisant.</span>
+            </h2>
+          </div>
+        </RevealDiv>
+
+        <div className="ld-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
+          {[
+            {
+              company: 'DataFlow SAS', size: '80 employés', sector: 'SaaS B2B',
+              before: '5 outils, 8h/sem de reporting manuel',
+              after: '1 dashboard, reporting automatique',
+              metrics: [
+                { label: 'Temps gagné', value: '-8h', sub: '/semaine', color: C.green },
+                { label: 'Visibilité', value: '100%', sub: 'temps réel', color: C.blue },
+              ],
+              quote: 'On a récupéré une journée entière par semaine.',
+              author: 'Thomas D., CFO',
+              color: C.green,
+            },
+            {
+              company: 'AlphaDigital', size: '45 employés', sector: 'Agence marketing',
+              before: 'Pipeline dans Pipedrive, CA dans Stripe, marges dans Excel',
+              after: 'Tout centralisé, pipeline pondéré',
+              metrics: [
+                { label: 'Deals récupérés', value: '+15', sub: 'en 30 jours', color: C.orange },
+                { label: 'CA additionnel', value: '+47k€', sub: 'en 3 mois', color: C.green },
+              ],
+              quote: 'On a identifié des leads oubliés dès la première semaine.',
+              author: 'Amélie R., VP Sales',
+              color: C.orange,
+            },
+            {
+              company: 'FinServ Pro', size: '8 employés', sector: 'Conseil financier',
+              before: 'Aucune visibilité trésorerie, découverte des trous à J+15',
+              after: 'Alertes automatiques, prévisions cash',
+              metrics: [
+                { label: 'Délai alerte', value: '-15j', sub: 'de réaction', color: C.blue },
+                { label: 'Setup', value: '10min', sub: 'connecté', color: C.purple },
+              ],
+              quote: 'On voit les problèmes venir 2 semaines avant.',
+              author: 'Julien M., Fondateur',
+              color: C.blue,
+            },
+          ].map((cs, i) => (
+            <RevealDiv key={cs.company} delay={i * 0.12}>
+              <div className="ld-card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                  <div>
+                    <h4 style={{ fontSize: 15, fontWeight: 700, color: C.text, margin: '0 0 2px' }}>{cs.company}</h4>
+                    <span style={{ fontSize: 10, color: C.textMuted }}>{cs.size} &middot; {cs.sector}</span>
+                  </div>
+                  <span style={{
+                    fontSize: 9, fontWeight: 800, color: cs.color, textTransform: 'uppercase',
+                    padding: '3px 8px', borderRadius: 6, background: `${cs.color}15`, border: `1px solid ${cs.color}22`,
+                  }}>Cas réel</span>
+                </div>
+
+                {/* Before/After */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, color: C.textMuted, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                    <span style={{ color: C.red, fontWeight: 700, flexShrink: 0 }}>{'\u2717'}</span>
+                    <span>{cs.before}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: C.textSec, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                    <span style={{ color: C.green, fontWeight: 700, flexShrink: 0 }}>{'\u2713'}</span>
+                    <span>{cs.after}</span>
+                  </div>
+                </div>
+
+                {/* Metrics */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+                  {cs.metrics.map((m) => (
+                    <div key={m.label} style={{
+                      padding: '10px 8px', borderRadius: 10, textAlign: 'center',
+                      background: `${m.color}08`, border: `1px solid ${m.color}18`,
+                    }}>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: m.color, lineHeight: 1 }}>{m.value}</div>
+                      <div style={{ fontSize: 9, color: C.textMuted, marginTop: 2 }}>{m.label}</div>
+                      <div style={{ fontSize: 8, color: C.textMuted }}>{m.sub}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Quote */}
+                <p style={{ fontSize: 12, color: C.textSec, fontStyle: 'italic', lineHeight: 1.5, margin: '0 0 8px', flex: 1 }}>
+                  "{cs.quote}"
+                </p>
+                <span style={{ fontSize: 11, fontWeight: 600, color: C.textMuted }}>{cs.author}</span>
+              </div>
+            </RevealDiv>
+          ))}
+        </div>
+      </Sect>
+
+
+      {/* ══════════════ GARANTIE ══════════════ */}
+      <section style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+        <Sect style={{ paddingTop: 56, paddingBottom: 56 }}>
+          <RevealDiv>
+            <div style={{
+              maxWidth: 700, margin: '0 auto', textAlign: 'center',
+              padding: '40px 32px', borderRadius: 20,
+              background: `linear-gradient(135deg, ${C.green}08, ${C.blue}08)`,
+              border: `2px solid ${C.green}20`,
+              position: 'relative',
+            }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: 20, margin: '0 auto 20px',
+                background: `${C.green}15`, border: `2px solid ${C.green}30`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32,
+              }}>{'\uD83D\uDEE1\uFE0F'}</div>
+              <h3 style={{ fontSize: 26, fontWeight: 900, margin: '0 0 12px', color: C.text }}>
+                Garantie <span style={{ color: C.green }}>Zéro Risque</span>
+              </h3>
+              <p style={{ fontSize: 14, color: C.textSec, lineHeight: 1.7, margin: '0 0 24px', maxWidth: 480, marginLeft: 'auto', marginRight: 'auto' }}>
+                14 jours d'essai gratuit, sans carte bancaire. Si ça ne vous convient pas, vous ne payez rien. Sur les plans annuels, remboursement au prorata à tout moment. Zéro engagement, zéro piège.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 24, flexWrap: 'wrap' }}>
+                {[
+                  { icon: '\u2705', text: '14 jours gratuits' },
+                  { icon: '\uD83D\uDCB3', text: 'Sans carte bancaire' },
+                  { icon: '\u21A9\uFE0F', text: 'Remboursement prorata' },
+                  { icon: '\uD83D\uDD13', text: 'Annulation en 1 clic' },
+                ].map((g) => (
+                  <div key={g.text} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 16 }}>{g.icon}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{g.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </RevealDiv>
         </Sect>
       </section>
 
