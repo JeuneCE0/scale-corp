@@ -223,8 +223,6 @@ export default function Landing({ onLogin, onSignup }) {
   const [annual, setAnnual] = useState(true);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [calcTools, setCalcTools] = useState(4);
-  const [calcHours, setCalcHours] = useState(8);
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 20);
@@ -294,14 +292,12 @@ export default function Landing({ onLogin, onSignup }) {
   .ld-testi-grid{grid-template-columns:1fr 1fr!important}
   .ld-avant-grid{grid-template-columns:1fr!important}
   .ld-avant-grid>div:nth-child(2){display:none}
-  .ld-calc-grid{grid-template-columns:1fr!important}
 }
 @media(max-width:480px){
   .ld-hero-h1{font-size:28px!important}
   .ld-stats-grid{grid-template-columns:1fr!important}
   .ld-avant-grid{grid-template-columns:1fr!important}
   .ld-testi-grid{grid-template-columns:1fr!important}
-  .ld-calc-grid{grid-template-columns:1fr!important}
 }
 .ld-trust-badge{display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:12px;background:${C.surface};border:1px solid ${C.border};transition:all .3s ease}
 .ld-trust-badge:hover{border-color:${C.accent}44;transform:translateY(-2px)}
@@ -315,14 +311,10 @@ export default function Landing({ onLogin, onSignup }) {
 @keyframes ldPulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.3)}50%{box-shadow:0 0 0 8px rgba(34,197,94,0)}}
 .ld-live-dot{animation:ldPulse 2s ease-in-out infinite}
 .ld-strike{text-decoration:line-through;opacity:.5}
-.ld-calc-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:${GRAD};cursor:pointer;border:2px solid #fff;box-shadow:0 2px 8px rgba(249,115,22,.4)}
-.ld-calc-slider::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:${C.border}}
-.ld-calc-slider{-webkit-appearance:none;width:100%;background:transparent;outline:none}
 @media(max-width:768px){
   .ld-avant-grid{grid-template-columns:1fr!important}
   .ld-testi-grid{grid-template-columns:1fr!important}
   .ld-trust-row{flex-wrap:wrap!important}
-  .ld-calc-grid{grid-template-columns:1fr!important}
 }
 `;
     document.head.appendChild(style);
@@ -588,45 +580,43 @@ export default function Landing({ onLogin, onSignup }) {
           </RevealDiv>
 
           <div className="ld-avant-grid" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 24, alignItems: 'stretch', maxWidth: 900, margin: '0 auto' }}>
-            {/* AVANT */}
+            {/* SANS HUBSCALE */}
             <RevealDiv>
               <div className="ld-avant-card" style={{ borderColor: `${C.red}44`, height: '100%' }}>
                 <div style={{
                   display: 'inline-flex', padding: '4px 12px', borderRadius: 8,
                   background: `${C.red}15`, color: C.red, fontSize: 10, fontWeight: 800,
                   textTransform: 'uppercase', letterSpacing: .5, marginBottom: 20,
-                }}>Avant</div>
+                }}>Sans HubScale</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {[
-                    { tool: 'Pipedrive', price: '49', cat: 'CRM' },
-                    { tool: 'Pennylane', price: '69', cat: 'Compta' },
-                    { tool: 'Calendly', price: '12', cat: 'Agenda' },
-                    { tool: 'Zapier', price: '29', cat: 'Automation' },
-                    { tool: 'Google Sheets', price: '12', cat: 'Reporting' },
-                    { tool: 'Notion', price: '10', cat: 'Notes' },
+                    { icon: '\uD83D\uDCC9', text: 'CA dans Stripe, charges dans votre banque', issue: 'Pas de vision globale' },
+                    { icon: '\uD83D\uDC65', text: 'Contacts dans votre CRM, deals dans un tableur', issue: 'Pipeline flou' },
+                    { icon: '\uD83D\uDCC5', text: 'RDV dans Google Cal, relances dans votre tete', issue: 'Oublis garantis' },
+                    { icon: '\uD83D\uDCCA', text: 'Reporting a la main, chiffres jamais a jour', issue: 'Decisions a l\'aveugle' },
+                    { icon: '\u23F3', text: 'Des heures a jongler entre onglets et exports', issue: 'Temps perdu' },
                   ].map((item) => (
-                    <div key={item.tool} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '8px 12px', borderRadius: 10, background: `${C.red}08`,
+                    <div key={item.text} style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 10,
+                      padding: '10px 12px', borderRadius: 10, background: `${C.red}08`,
                       border: `1px solid ${C.red}15`,
                     }}>
+                      <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{item.icon}</span>
                       <div>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{item.tool}</span>
-                        <span style={{ fontSize: 10, color: C.textMuted, marginLeft: 6 }}>{item.cat}</span>
+                        <div style={{ fontSize: 12, color: C.textSec, lineHeight: 1.4 }}>{item.text}</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: C.red, marginTop: 2 }}>{item.issue}</div>
                       </div>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: C.red }}>{item.price}€</span>
                     </div>
                   ))}
                 </div>
                 <div style={{
-                  marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}`,
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  marginTop: 16, padding: '10px 14px', borderRadius: 10,
+                  background: `${C.red}10`, border: `1px solid ${C.red}20`,
+                  textAlign: 'center',
                 }}>
-                  <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600 }}>Total mensuel</span>
-                  <span style={{ fontSize: 24, fontWeight: 900, color: C.red }}>181€</span>
-                </div>
-                <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6, textAlign: 'right' }}>
-                  + aucune vision d'ensemble de votre activite
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.red }}>
+                    5+ outils. 0 vision d'ensemble.
+                  </span>
                 </div>
               </div>
             </RevealDiv>
@@ -641,59 +631,62 @@ export default function Landing({ onLogin, onSignup }) {
               }}>{'\u2192'}</div>
             </RevealDiv>
 
-            {/* APRES */}
+            {/* AVEC HUBSCALE */}
             <RevealDiv delay={0.15}>
               <div className="ld-avant-card" style={{ borderColor: `${C.green}44`, height: '100%' }}>
                 <div style={{
                   display: 'inline-flex', padding: '4px 12px', borderRadius: 8,
                   background: `${C.green}15`, color: C.green, fontSize: 10, fontWeight: 800,
                   textTransform: 'uppercase', letterSpacing: .5, marginBottom: 20,
-                }}>Apres</div>
-                <div style={{
-                  textAlign: 'center', padding: '24px 0',
-                }}>
-                  <div style={{
-                    width: 72, height: 72, borderRadius: 20, background: GRAD,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 900, fontSize: 28, color: '#fff', margin: '0 auto 16px',
-                    boxShadow: '0 12px 40px rgba(249,115,22,.25)',
-                  }}>H</div>
-                  <h3 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 4px', color: C.text }}>HubScale Professional</h3>
-                  <p style={{ fontSize: 13, color: C.textSec, margin: '0 0 16px' }}>
-                    CRM + Finances + Agenda + Integrations + Reporting
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'left', padding: '0 8px' }}>
+                }}>Avec HubScale</div>
+                <div style={{ padding: '8px 0' }}>
+                  {/* Hub visual */}
+                  <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                    <div style={{
+                      width: 56, height: 56, borderRadius: 16, background: GRAD,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 900, fontSize: 22, color: '#fff', margin: '0 auto 10px',
+                      boxShadow: '0 8px 32px rgba(249,115,22,.25)',
+                    }}>H</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: .5 }}>
+                      Toutes vos sources connectees
+                    </div>
+                  </div>
+                  {/* Connected sources */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 18 }}>
+                    {['Stripe', 'Revolut', 'HubSpot', 'Google Cal', 'Qonto', 'Meta Ads'].map((src) => (
+                      <span key={src} style={{
+                        fontSize: 10, fontWeight: 600, color: C.text,
+                        padding: '4px 10px', borderRadius: 8,
+                        background: C.surface2, border: `1px solid ${C.border}`,
+                      }}>{src}</span>
+                    ))}
+                  </div>
+                  {/* Results */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {[
-                      'Tous vos KPIs sur un seul ecran',
-                      'Pipeline CRM avec chiffres en temps reel',
-                      'CA, marges, tresorerie — toujours a jour',
-                      'Agenda unifie — plus rien n\'echappe',
-                      '40+ sources de donnees connectees en 1 clic',
-                    ].map((f) => (
-                      <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ color: C.green, fontSize: 12, fontWeight: 700 }}>{'\u2713'}</span>
-                        <span style={{ fontSize: 12, color: C.textSec }}>{f}</span>
+                      { icon: '\u2705', text: 'CA, charges, marges — toujours a jour', detail: 'Temps reel' },
+                      { icon: '\u2705', text: 'Pipeline CRM complet avec lead scoring', detail: 'Vision 360' },
+                      { icon: '\u2705', text: 'Agenda unifie, relances automatiques', detail: 'Zero oubli' },
+                      { icon: '\u2705', text: 'Un seul ecran pour toutes vos decisions', detail: 'Clarte totale' },
+                    ].map((r) => (
+                      <div key={r.text} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 13, flexShrink: 0 }}>{r.icon}</span>
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontSize: 12, color: C.textSec }}>{r.text}</span>
+                        </div>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: C.green, background: `${C.green}15`, padding: '2px 6px', borderRadius: 4 }}>{r.detail}</span>
                       </div>
                     ))}
                   </div>
                 </div>
                 <div style={{
-                  marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}`,
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                }}>
-                  <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600 }}>Total mensuel</span>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: 14, color: C.textMuted, textDecoration: 'line-through', marginRight: 8 }}>181€</span>
-                    <span style={{ fontSize: 24, fontWeight: 900, color: C.green }}>199€</span>
-                  </div>
-                </div>
-                <div style={{
-                  marginTop: 10, padding: '8px 12px', borderRadius: 10,
+                  marginTop: 16, padding: '10px 14px', borderRadius: 10,
                   background: `${C.green}12`, border: `1px solid ${C.green}25`,
                   textAlign: 'center',
                 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: C.green }}>
-                    Vos vrais chiffres, d'un coup d'oeil. Des decisions claires.
+                    Gardez vos outils. Voyez enfin tout au meme endroit.
                   </span>
                 </div>
               </div>
@@ -987,83 +980,121 @@ export default function Landing({ onLogin, onSignup }) {
       </Sect>
 
 
-      {/* ══════════════ ROI CALCULATOR ══════════════ */}
+      {/* ══════════════ CENTRALISATION EN ACTION ══════════════ */}
       <section style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
         <Sect>
           <RevealDiv>
             <div style={{ textAlign: 'center', marginBottom: 48 }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: C.green, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
-                Calculateur ROI
+                Centralisation
               </p>
               <h2 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -.5 }}>
-                Combien vous coutent <span className="ld-grad-text">vos donnees eparpillees</span> ?
+                Vos outils restent. <span className="ld-grad-text">La visibilite arrive.</span>
               </h2>
+              <p style={{ fontSize: 14, color: C.textSec, marginTop: 10, maxWidth: 520, margin: '10px auto 0' }}>
+                HubScale ne remplace rien. Il se connecte a vos outils existants et centralise toute la data sur un seul ecran.
+              </p>
             </div>
           </RevealDiv>
 
           <RevealDiv delay={0.1}>
-            <div style={{
-              maxWidth: 700, margin: '0 auto', background: C.surface2,
-              border: `1px solid ${C.border}`, borderRadius: 20, padding: 32,
-            }}>
-              {/* Sliders */}
-              <div style={{ marginBottom: 28 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Nombre d'outils SaaS actuels</label>
-                  <span style={{ fontSize: 15, fontWeight: 800, color: C.orange }}>{calcTools}</span>
+            <div style={{ maxWidth: 800, margin: '0 auto' }}>
+              {/* Flow visualization: Sources → HubScale → Results */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 24, alignItems: 'center' }}>
+                {/* Sources column */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    { cat: 'Paiements', tools: ['Stripe', 'PayPal', 'Shopify'], icon: '\uD83D\uDCB3', color: C.purple },
+                    { cat: 'Banque', tools: ['Revolut', 'Qonto', 'N26'], icon: '\uD83C\uDFE6', color: C.blue },
+                    { cat: 'CRM', tools: ['HubSpot', 'Pipedrive', 'Salesforce'], icon: '\uD83D\uDC65', color: C.orange },
+                    { cat: 'Marketing', tools: ['Meta Ads', 'Google Ads', 'Mailchimp'], icon: '\uD83D\uDCE3', color: C.green },
+                    { cat: 'Agenda', tools: ['Google Cal', 'Calendly'], icon: '\uD83D\uDCC5', color: C.accent },
+                  ].map((src, i) => (
+                    <RevealDiv key={src.cat} delay={0.1 + i * 0.06}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 14px', borderRadius: 12,
+                        background: C.surface2, border: `1px solid ${C.border}`,
+                      }}>
+                        <span style={{
+                          width: 32, height: 32, borderRadius: 8,
+                          background: `${src.color}15`, border: `1px solid ${src.color}22`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0,
+                        }}>{src.icon}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: src.color, textTransform: 'uppercase', letterSpacing: .3 }}>{src.cat}</div>
+                          <div style={{ fontSize: 10, color: C.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {src.tools.join(' · ')}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 10, color: C.textMuted }}>{'\u2192'}</span>
+                      </div>
+                    </RevealDiv>
+                  ))}
                 </div>
-                <input type="range" className="ld-calc-slider" min="2" max="10" value={calcTools}
-                  onChange={(e) => setCalcTools(Number(e.target.value))} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.textMuted, marginTop: 4 }}>
-                  <span>2 outils</span><span>10 outils</span>
-                </div>
-              </div>
 
-              <div style={{ marginBottom: 28 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Heures perdues / semaine a jongler</label>
-                  <span style={{ fontSize: 15, fontWeight: 800, color: C.orange }}>{calcHours}h</span>
-                </div>
-                <input type="range" className="ld-calc-slider" min="2" max="20" value={calcHours}
-                  onChange={(e) => setCalcHours(Number(e.target.value))} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.textMuted, marginTop: 4 }}>
-                  <span>2h</span><span>20h</span>
-                </div>
-              </div>
-
-              {/* Results */}
-              <div className="ld-calc-grid" style={{
-                display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14,
-                paddingTop: 20, borderTop: `1px solid ${C.border}`,
-              }}>
-                {(() => {
-                  const avgToolCost = 35;
-                  const currentCost = calcTools * avgToolCost;
-                  const hubscaleCost = 199;
-                  const saved = Math.max(0, currentCost - hubscaleCost);
-                  const hourlyRate = 50;
-                  const timeSaved = Math.round(calcHours * 0.8);
-                  const timeMoney = timeSaved * hourlyRate * 4;
-                  return [
-                    { label: 'Economie outils /mois', value: `${saved}\u20ac`, sub: `${calcTools} outils x ~${avgToolCost}\u20ac = ${currentCost}\u20ac vs 199\u20ac`, color: C.green },
-                    { label: 'Temps recupere /semaine', value: `${timeSaved}h`, sub: `${calcHours}h perdues \u2192 ${calcHours - timeSaved}h avec HubScale`, color: C.blue },
-                    { label: 'Valeur temps /mois', value: `${timeMoney.toLocaleString('fr-FR')}\u20ac`, sub: `${timeSaved}h x ${hourlyRate}\u20ac/h x 4 sem.`, color: C.orange },
-                  ].map((r) => (
-                    <div key={r.label} style={{ textAlign: 'center', padding: '16px 8px', borderRadius: 14, background: `${r.color}08`, border: `1px solid ${r.color}18` }}>
-                      <div style={{ fontSize: 28, fontWeight: 900, color: r.color, lineHeight: 1.1 }}>{r.value}</div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: C.text, marginTop: 4 }}>{r.label}</div>
-                      <div style={{ fontSize: 9, color: C.textMuted, marginTop: 2 }}>{r.sub}</div>
+                {/* Central Hub */}
+                <RevealDiv delay={0.4}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                    {/* Converging lines visual */}
+                    <div style={{
+                      width: 80, height: 80, borderRadius: 22, background: GRAD,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 900, fontSize: 32, color: '#fff',
+                      boxShadow: '0 16px 48px rgba(249,115,22,.3), 0 0 0 4px rgba(249,115,22,.08)',
+                      position: 'relative',
+                    }}>
+                      H
+                      {/* Pulse ring */}
+                      <div style={{
+                        position: 'absolute', inset: -8, borderRadius: 26,
+                        border: `2px solid ${C.orange}30`,
+                        animation: 'ldPulseRing 3s ease-in-out infinite',
+                      }} />
                     </div>
-                  ));
-                })()}
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: C.text }}>HubScale</div>
+                      <div style={{ fontSize: 9, color: C.textMuted, textTransform: 'uppercase', letterSpacing: .5 }}>Centralise tout</div>
+                    </div>
+                  </div>
+                </RevealDiv>
+
+                {/* Results column */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    { label: 'Dashboard unifie', desc: 'Tous vos KPIs sur 1 ecran', icon: '\uD83D\uDCCA', color: C.orange },
+                    { label: 'Vision financiere', desc: 'CA, charges, marges temps reel', icon: '\uD83D\uDCB0', color: C.green },
+                    { label: 'Pipeline clair', desc: 'Deals, scoring, previsions', icon: '\uD83C\uDFAF', color: C.blue },
+                    { label: 'Alertes intelligentes', desc: 'Relances, depassements, objectifs', icon: '\uD83D\uDD14', color: C.purple },
+                    { label: 'Decisions eclairees', desc: 'Fini le pilotage a l\'aveugle', icon: '\u2705', color: C.accent },
+                  ].map((res, i) => (
+                    <RevealDiv key={res.label} delay={0.5 + i * 0.06}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 14px', borderRadius: 12,
+                        background: `${res.color}08`, border: `1px solid ${res.color}18`,
+                      }}>
+                        <span style={{ fontSize: 16, flexShrink: 0 }}>{res.icon}</span>
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: res.color }}>{res.label}</div>
+                          <div style={{ fontSize: 10, color: C.textMuted }}>{res.desc}</div>
+                        </div>
+                      </div>
+                    </RevealDiv>
+                  ))}
+                </div>
               </div>
 
-              <div style={{ textAlign: 'center', marginTop: 24 }}>
+              {/* Bottom CTA */}
+              <div style={{ textAlign: 'center', marginTop: 40 }}>
                 <button className="ld-btn ld-btn-primary" onClick={() => onSignup()}
                   style={{ padding: '12px 28px', fontSize: 14 }}>
-                  Commencer a economiser
+                  Centraliser mes donnees
                   <span style={{ fontSize: 16 }}>{'\u2192'}</span>
                 </button>
+                <p style={{ fontSize: 11, color: C.textMuted, marginTop: 10 }}>
+                  60+ integrations disponibles — connectez vos outils en 1 clic
+                </p>
               </div>
             </div>
           </RevealDiv>
@@ -1182,7 +1213,7 @@ export default function Landing({ onLogin, onSignup }) {
             { q: 'Je ne veux pas payer avant d\'avoir teste — c\'est possible ?', a: 'Bien sur. 14 jours d\'essai gratuit. Une CB est requise pour activer l\'essai, mais aucun debit avant la fin de la periode. Annulez en 1 clic.' },
             { q: 'Mes donnees sensibles sont vraiment en securite ?', a: 'Hebergement 100% europeen (AWS eu-west), chiffrement AES-256 au repos et en transit, conformite RGPD et SOC 2 Type II. Plus secure que votre Google Sheet partage.' },
             { q: 'J\'ai pas le temps de migrer — ca prend combien de temps ?', a: '2 minutes pour creer votre espace. Les integrations se connectent en un clic. Import CSV pour vos contacts existants en moins de 5 minutes. Pas de consultant, pas de formation.' },
-            { q: 'J\'utilise deja Pipedrive / Pennylane / autre — je peux migrer ?', a: 'Oui. Import CSV/Excel pour les contacts, et notre equipe vous accompagne gratuitement dans la migration sur les plans Professional et Enterprise.' },
+            { q: 'J\'utilise deja Pipedrive / Pennylane / Stripe — HubScale va les remplacer ?', a: 'Non, et c\'est le principe ! HubScale se connecte a vos outils existants et centralise leurs donnees sur un seul ecran. Vous gardez Pipedrive pour votre CRM, Stripe pour les paiements, Pennylane pour la compta — HubScale vous donne la vision d\'ensemble que ces outils ne peuvent pas offrir seuls.' },
             { q: 'Et si ca me plait pas ? Je suis bloque ?', a: 'Zero engagement. Mensuel ou annuel, vous annulez quand vous voulez depuis votre espace. Les plans annuels sont rembourses au prorata. Pas de piege.' },
             { q: 'J\'ai un probleme a 23h — qui me repond ?', a: 'Starter : email sous 24h. Professional : support prioritaire sous 4h + chat live. Enterprise : account manager dedie + SLA garanti sous 1h, 7j/7.' },
           ].map((faq, i) => (
