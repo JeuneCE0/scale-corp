@@ -656,7 +656,7 @@ export default function Dashboard({ onNavigate }) {
         label: catMap[id]?.label || id,
         icon: catMap[id]?.icon || '📋',
         color: catMap[id]?.color || '#71717a',
-        value: Math.round(value / Math.min(recent.length, 3)),
+        value: Math.round(value / (Math.min(recent.length, 3) || 1)),
       }))
       .sort((a, b) => b.value - a.value);
   }, [finHistory]);
@@ -1012,7 +1012,7 @@ export default function Dashboard({ onNavigate }) {
       {/* ============================================================ */}
       {/*  Draggable widget sections                                    */}
       {/* ============================================================ */}
-      {widgetOrder.map((id) => {
+      {widgetOrder.map((id) => { try {
         const WIDGETS = {
           /* ------ Weekly Recap ------ */
           'weekly-recap': (
@@ -1444,8 +1444,8 @@ export default function Dashboard({ onNavigate }) {
                   {[
                     { label: 'Budget', value: `${fK(pubStats.spend)}€`, pct: 100, color: T.orange },
                     { label: 'Impressions', value: fK(pubStats.impressions), pct: 80, color: T.blue },
-                    { label: 'Clics', value: fmt(pubStats.clicks), pct: Math.round((pubStats.clicks / pubStats.impressions) * 100 * 10), color: T.purple },
-                    { label: 'Conversions', value: String(pubStats.conversions), pct: Math.round((pubStats.conversions / pubStats.clicks) * 100 * 5), color: T.green },
+                    { label: 'Clics', value: fmt(pubStats.clicks), pct: pubStats.impressions > 0 ? Math.round((pubStats.clicks / pubStats.impressions) * 100 * 10) : 0, color: T.purple },
+                    { label: 'Conversions', value: String(pubStats.conversions), pct: pubStats.clicks > 0 ? Math.round((pubStats.conversions / pubStats.clicks) * 100 * 5) : 0, color: T.green },
                   ].map((step, i) => (
                     <React.Fragment key={step.label}>
                       <div style={{ flex: 1, textAlign: 'center' }}>
@@ -1561,6 +1561,7 @@ export default function Dashboard({ onNavigate }) {
             {content}
           </div>
         );
+      } catch (e) { console.error(`Widget ${id} error:`, e); return null; }
       })}
     </div>
   );
