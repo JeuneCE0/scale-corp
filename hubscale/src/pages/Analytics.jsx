@@ -2,7 +2,7 @@ import React, { useMemo, lazy, Suspense } from 'react';
 import { T, FONT } from '../lib/theme.js';
 import { load } from '../lib/store.js';
 import { fmt, fK, pct, monthLabel, forecastCA, leadScore, daysSince, MONTHS_FR, curMonth, nextMonth, sameMonthLastYear } from '../lib/utils.js';
-import { Card, Section, Badge, Btn, ProgressBar, ScoreRing, Sparkline, KPI, Spinner, HelpTip, PremiumGate } from '../components/ui.jsx';
+import { Card, Section, Badge, Btn, ProgressBar, ScoreRing, Sparkline, KPI, Spinner, HelpTip, PremiumGate, ErrorBoundary } from '../components/ui.jsx';
 import { INTEGRATIONS, CRM_STATUSES, LEAD_SCORE_LABELS } from '../lib/constants.js';
 
 /* ------------------------------------------------------------------ */
@@ -46,7 +46,7 @@ const LazyRevenueTrendsChart = lazy(() =>
               itemStyle={{ color: T.text }}
               cursor={{ fill: 'rgba(255,255,255,.05)' }}
               formatter={(v, name) => {
-                const labels = { ca: 'CA', charges: 'Charges', avg3m: 'Moy. 3 mois', forecastCA: 'Prevision', yoy: 'N-1' };
+                const labels = { ca: 'CA', charges: 'Charges', avg3m: 'Moy. 3 mois', forecastCA: 'Prévision', yoy: 'N-1' };
                 return [`${fmt(v)} €`, labels[name] || name];
               }}
             />
@@ -97,7 +97,7 @@ const LazyForecastChart = lazy(() =>
             <Tooltip
               contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 11, color: T.text }}
               labelStyle={{ color: T.text, fontWeight: 700 }}
-              formatter={(v, name) => [`${fmt(v)} €`, name === 'actual' ? 'CA Reel' : 'Prevision']}
+              formatter={(v, name) => [`${fmt(v)} €`, name === 'actual' ? 'CA Réel' : 'Prévision']}
             />
             <Area type="monotone" dataKey="actual" stroke={T.green} strokeWidth={2} fill="url(#actualGradForecast)" />
             <Area type="monotone" dataKey="forecast" stroke={T.blue} strokeWidth={2} fill="url(#forecastGradPredict)" strokeDasharray="8 4" />
@@ -125,7 +125,7 @@ export default function Analytics({ onNavigate }) {
   /* ---------------------------------------------------------------- */
   const now = new Date();
   const dateRangeLabel = useMemo(() => {
-    const monthNames = ['Janvier', 'Fevrier', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Aout', 'Septembre', 'Octobre', 'Novembre', 'Decembre'];
+    const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
     return `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
   }, []);
 
@@ -265,7 +265,7 @@ export default function Analytics({ onNavigate }) {
   /* ================================================================ */
   const integrationCategories = useMemo(() => {
     const cats = {};
-    const catLabels = { paiements: 'Paiements', banque: 'Banque', agenda: 'Agenda', crm: 'CRM', marketing: 'Marketing', projet: 'Projet', publicite: 'Publicite', support: 'Support' };
+    const catLabels = { paiements: 'Paiements', banque: 'Banque', agenda: 'Agenda', crm: 'CRM', marketing: 'Marketing', projet: 'Projet', publicite: 'Publicité', support: 'Support' };
     const catColors = { paiements: T.orange, banque: T.blue, agenda: T.green, crm: T.purple, marketing: T.accent, projet: T.blue, publicite: T.red, support: T.green };
 
     INTEGRATIONS.forEach((ig) => {
@@ -352,11 +352,11 @@ export default function Analytics({ onNavigate }) {
               Rapports & Analytics
             </h1>
             <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>
-              Analyse detaillee de votre activite -- {dateRangeLabel}
+              Analyse détaillée de votre activité -- {dateRangeLabel}
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Badge label={`${finHistory.length} mois de donnees`} color={T.accent} bg={T.accentBg} />
+            <Badge label={`${finHistory.length} mois de données`} color={T.accent} bg={T.accentBg} />
             <Badge label={`${contacts.length} contacts`} color={T.green} bg={T.greenBg} />
           </div>
         </div>
@@ -374,16 +374,16 @@ export default function Analytics({ onNavigate }) {
           icon="💰"
           delay={1}
           sparkData={sparkCA}
-          helpTip="Somme de tous les CA enregistres"
+          helpTip="Somme de tous les CA enregistrés"
         />
         <KPI
           label="CA MOYEN MENSUEL"
           value={`${fmt(avgMonthlyCA)} €`}
-          sub="Moyenne sur la periode"
+          sub="Moyenne sur la période"
           accent={T.blue}
           icon="📊"
           delay={2}
-          helpTip="CA total divise par le nombre de mois"
+          helpTip="CA total divisé par le nombre de mois"
         />
         <KPI
           label="MARGE NETTE"
@@ -410,13 +410,13 @@ export default function Analytics({ onNavigate }) {
           accent={crmConversion >= 50 ? T.green : crmConversion >= 25 ? T.orange : T.red}
           icon="🎯"
           delay={5}
-          helpTip="Ratio de clients gagnes vs total clos"
+          helpTip="Ratio de clients gagnés vs total clos"
         />
         {avgROAS !== null && (
           <KPI
             label="ROAS MOYEN"
             value={`${avgROAS}x`}
-            sub={`${adPlatforms.length} plateforme${adPlatforms.length > 1 ? 's' : ''} connectee${adPlatforms.length > 1 ? 's' : ''}`}
+            sub={`${adPlatforms.length} plateforme${adPlatforms.length > 1 ? 's' : ''} connectée${adPlatforms.length > 1 ? 's' : ''}`}
             accent={avgROAS >= 3 ? T.green : avgROAS >= 1 ? T.orange : T.red}
             icon="💎"
             delay={6}
@@ -446,7 +446,7 @@ export default function Analytics({ onNavigate }) {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <div style={{ width: 12, height: 3, background: T.blue, borderRadius: 2 }} />
-                <span style={{ fontSize: 10, color: T.textMuted }}>Prevision</span>
+                <span style={{ fontSize: 10, color: T.textMuted }}>Prévision</span>
               </div>
               {yoyDataExists && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -455,17 +455,19 @@ export default function Analytics({ onNavigate }) {
                 </div>
               )}
             </div>
-            <HelpTip text="Graphique combinant CA, charges, moyenne mobile 3 mois, prevision lineaire et comparaison annee precedente" />
+            <HelpTip text="Graphique combinant CA, charges, moyenne mobile 3 mois, prévision linéaire et comparaison année précédente" />
           </div>
           <div style={{ height: 280 }}>
-            <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Spinner size={20} /></div>}>
-              <LazyRevenueTrendsChart
-                data={revenueTrendsData}
-                avgData={revenueTrendsData.filter((d) => d.avg3m !== null)}
-                yoyData={revenueTrendsData.filter((d) => d.yoy !== null)}
-                forecastData={forecastDataForChart}
-              />
-            </Suspense>
+            <ErrorBoundary fallbackTitle="Erreur du graphique">
+              <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Spinner size={20} /></div>}>
+                <LazyRevenueTrendsChart
+                  data={revenueTrendsData}
+                  avgData={revenueTrendsData.filter((d) => d.avg3m !== null)}
+                  yoyData={revenueTrendsData.filter((d) => d.yoy !== null)}
+                  forecastData={forecastDataForChart}
+                />
+              </Suspense>
+            </ErrorBoundary>
           </div>
 
           {/* Monthly growth rates */}
@@ -623,7 +625,7 @@ export default function Analytics({ onNavigate }) {
                   </div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: cat.color }}>{cat.label}</div>
                   <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>
-                    {cat.connected}/{cat.total} connectees
+                    {cat.connected}/{cat.total} connectées
                   </div>
                   <div style={{ marginTop: 6 }}>
                     <ProgressBar value={cat.connected} max={cat.total} color={cat.color} h={4} />
@@ -640,7 +642,7 @@ export default function Analytics({ onNavigate }) {
             </div>
             {recentSyncEvents.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 24, color: T.textMuted, fontSize: 11 }}>
-                Aucun evenement de synchronisation
+                Aucun événement de synchronisation
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -680,7 +682,7 @@ export default function Analytics({ onNavigate }) {
       {/*  SECTION 6: Channel ROI (if ad platforms connected)           */}
       {/* ============================================================ */}
       {channelROI && (
-        <Section title="ROI par canal publicitaire" sub="Performance detaillee par plateforme connectee">
+        <Section title="ROI par canal publicitaire" sub="Performance détaillée par plateforme connectée">
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(channelROI.length, 4)}, 1fr)`, gap: 14 }}>
             {channelROI.map((platform) => (
               <Card key={platform.name}>
@@ -731,20 +733,22 @@ export default function Analytics({ onNavigate }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <div style={{ width: 12, height: 3, background: T.green, borderRadius: 2 }} />
-                  <span style={{ fontSize: 10, color: T.textMuted }}>CA Reel</span>
+                  <span style={{ fontSize: 10, color: T.textMuted }}>CA Réel</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <div style={{ width: 12, height: 3, background: T.blue, borderRadius: 2, borderTop: '2px dashed ' + T.blue }} />
-                  <span style={{ fontSize: 10, color: T.textMuted }}>Prevision (pointille)</span>
+                  <span style={{ fontSize: 10, color: T.textMuted }}>Prévision (pointillé)</span>
                 </div>
               </div>
               <div style={{ height: 220 }}>
-                <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Spinner size={20} /></div>}>
-                  <LazyForecastChart
-                    actualData={forecastChartActualData}
-                    forecastData={forecastChartPredictData}
-                  />
-                </Suspense>
+                <ErrorBoundary fallbackTitle="Erreur du graphique">
+                  <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Spinner size={20} /></div>}>
+                    <LazyForecastChart
+                      actualData={forecastChartActualData}
+                      forecastData={forecastChartPredictData}
+                    />
+                  </Suspense>
+                </ErrorBoundary>
               </div>
 
               {/* Forecast details */}

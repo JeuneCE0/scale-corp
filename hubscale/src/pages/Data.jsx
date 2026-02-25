@@ -3,7 +3,7 @@ import { T } from '../lib/theme.js';
 import { fmt, fK, pf, curMonth, monthLabel, prevMonth, sameMonthLastYear, forecastCA, businessHealth } from '../lib/utils.js';
 import { storeDebounced, load, store } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
-import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState, Pagination, ProgressBar, HelpTip, Spinner, Badge, ScoreRing, PremiumGate } from '../components/ui.jsx';
+import { KPI, Card, Section, Btn, Inp, TabBar, EmptyState, Pagination, ProgressBar, HelpTip, Spinner, Badge, ScoreRing, PremiumGate, ErrorBoundary } from '../components/ui.jsx';
 import { isPaid, canAccessPro } from '../lib/plan.js';
 import { EXPENSE_CATEGORIES, INVOICE_STATUSES, TVA_RATES } from '../lib/constants.js';
 import { uid, nextInvoiceNumber, computeInvoiceTotals, isInvoiceOverdue, formatDateFR, weeklyRecap } from '../lib/utils.js';
@@ -1627,9 +1627,11 @@ export default function Data() {
                 )}
               </div>
               <div style={{ height: 220 }}>
-                <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Spinner size={20} /></div>}>
-                  <LazyFinChart forecastData={forecast} />
-                </Suspense>
+                <ErrorBoundary fallbackTitle="Erreur du graphique">
+                  <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Spinner size={20} /></div>}>
+                    <LazyFinChart forecastData={forecast} />
+                  </Suspense>
+                </ErrorBoundary>
               </div>
             </Card>
           </div>
@@ -1700,9 +1702,11 @@ export default function Data() {
             <Section title="RÉPARTITION DES CHARGES" sub="Moyenne mensuelle par catégorie (3 derniers mois)">
               <Card>
                 <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 20, alignItems: 'center' }}>
-                  <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}><Spinner size={20} /></div>}>
-                    <LazyExpenseDonut data={expenseBreakdown} />
-                  </Suspense>
+                  <ErrorBoundary fallbackTitle="Erreur du graphique">
+                    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}><Spinner size={20} /></div>}>
+                      <LazyExpenseDonut data={expenseBreakdown} />
+                    </Suspense>
+                  </ErrorBoundary>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {expenseBreakdown.map((cat) => {
                       const total = expenseBreakdown.reduce((s, c) => s + c.value, 0);

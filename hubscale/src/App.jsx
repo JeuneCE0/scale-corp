@@ -892,6 +892,7 @@ export default function App() {
       setTab(tabId);
       setPageKey((k) => k + 1);
       setTransitionPhase('entering');
+      window.scrollTo(0, 0);
       setTimeout(() => setTransitionPhase('visible'), 30);
     }, 80);
   }, []);

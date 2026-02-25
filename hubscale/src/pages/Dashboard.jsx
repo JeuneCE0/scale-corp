@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect, lazy, Suspense } from
 import { T, FONT } from '../lib/theme.js';
 import { fK, fmt, ago, businessHealth, businessWeather, getStreak, forecastCA, daysSince, daysUntil, leadScore } from '../lib/utils.js';
 import { load, store } from '../lib/store.js';
-import { KPI, Card, Badge, ProgressBar, Spinner, Btn, Inp, HelpTip, ScoreRing, StreakBadge, WeatherWidget, ChecklistItem, AnimatedNumber, Sparkline, PremiumGate, UpgradeBanner } from '../components/ui.jsx';
+import { KPI, Card, Badge, ProgressBar, Spinner, Btn, Inp, HelpTip, ScoreRing, StreakBadge, WeatherWidget, ChecklistItem, AnimatedNumber, Sparkline, PremiumGate, UpgradeBanner, ErrorBoundary } from '../components/ui.jsx';
 import { ONBOARDING_CHECKLIST, CRM_STATUSES, NOTIFICATION_TYPES, INTEGRATIONS, EXPENSE_CATEGORIES, INVOICE_STATUSES } from '../lib/constants.js';
 import { getIntegrationMeta } from '../lib/integrationData.js';
 
@@ -18,12 +18,12 @@ const LazyChart = lazy(() =>
       const forecast = forecastCA(history, 3);
       const CA_DATA = history.slice(-6).map((r) => {
         const [, m] = (r.key || '').split('-');
-        const months = ['', 'Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aou', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const months = ['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
         return { month: months[parseInt(m)] || r.key, ca: r.ca || 0, charges: r.charges || 0, type: 'actual' };
       });
       forecast.forEach((f) => {
         const [, m] = (f.key || '').split('-');
-        const months = ['', 'Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aou', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const months = ['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
         CA_DATA.push({ month: months[parseInt(m)] || f.key, ca: f.ca, charges: 0, forecast: f.ca, type: 'forecast' });
       });
       if (CA_DATA.length === 0) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 11, color: T.textMuted }}>Aucune donnée financière</div>;
@@ -74,7 +74,7 @@ const KEY_INTEGRATIONS = ['Stripe', 'Revolut', 'Google Calendar', 'GoHighLevel',
 const GREETING = () => {
   const h = new Date().getHours();
   if (h < 12) return 'Bonjour';
-  if (h < 18) return 'Bon apres-midi';
+  if (h < 18) return 'Bon après-midi';
   return 'Bonsoir';
 };
 
@@ -178,7 +178,7 @@ export default function Dashboard({ onNavigate }) {
         icon: NOTIFICATION_TYPES.event.icon,
         color: NOTIFICATION_TYPES.event.color,
         bg: NOTIFICATION_TYPES.event.bg,
-        text: `${todayEvents.length} evenement${todayEvents.length > 1 ? 's' : ''} aujourd'hui`,
+        text: `${todayEvents.length} événement${todayEvents.length > 1 ? 's' : ''} aujourd'hui`,
         detail: todayEvents.map((e) => `${e.time || ''} ${e.title}`).join(', '),
         tab: 'agenda',
         priority: 2,
@@ -196,7 +196,7 @@ export default function Dashboard({ onNavigate }) {
         icon: '📋',
         color: T.blue,
         bg: T.blueBg,
-        text: `${upcomingEvents.length} evenement${upcomingEvents.length > 1 ? 's' : ''} dans les 3 prochains jours`,
+        text: `${upcomingEvents.length} événement${upcomingEvents.length > 1 ? 's' : ''} dans les 3 prochains jours`,
         detail: upcomingEvents.map((e) => e.title).join(', '),
         tab: 'agenda',
         priority: 3,
@@ -771,7 +771,7 @@ export default function Dashboard({ onNavigate }) {
               {GREETING()}{companyInfo.name ? `, ${companyInfo.name}` : ''} !
             </h1>
             <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>
-              Vue d'ensemble de votre activite et performances
+              Vue d'ensemble de votre activité et performances
             </p>
           </div>
 
@@ -788,8 +788,8 @@ export default function Dashboard({ onNavigate }) {
                 <span style={{ fontSize: 11, fontWeight: 800, color: healthPct > 50 ? T.green : healthPct > 0 ? T.orange : T.red }}>{healthPct}%</span>
               </ScoreRing>
               <div className="hide-mobile">
-                <div style={{ fontSize: 11, fontWeight: 700, color: healthPct > 50 ? T.green : T.orange }}>Sante globale</div>
-                <div style={{ fontSize: 9, color: T.textMuted }}>{totalConnected}/{INTEGRATIONS.length} APIs connectees</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: healthPct > 50 ? T.green : T.orange }}>Santé globale</div>
+                <div style={{ fontSize: 9, color: T.textMuted }}>{totalConnected}/{INTEGRATIONS.length} APIs connectées</div>
               </div>
             </div>
           </div>
@@ -852,7 +852,7 @@ export default function Dashboard({ onNavigate }) {
                   <div style={{ flex: 1, minWidth: 120, maxWidth: 200 }}>
                     <ProgressBar value={checklistCompleted} max={checklistTotal} color={T.accent} h={6} />
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: T.accent }}>{checklistCompleted}/{checklistTotal} completes</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: T.accent }}>{checklistCompleted}/{checklistTotal} complétées</span>
                 </div>
               </div>
               <span
@@ -885,14 +885,14 @@ export default function Dashboard({ onNavigate }) {
         {forecastLabel && (
           <PremiumGate label="Prévisions IA" blur>
             <KPI
-              label="PREVISION 3 MOIS"
+              label="PRÉVISION 3 MOIS"
               value={`${forecastLabel.pct >= 0 ? '+' : ''}${forecastLabel.pct}%`}
               sub={`Projection: ${fmt(forecastLabel.value)} €`}
               accent={forecastLabel.pct >= 0 ? T.blue : T.red}
               icon="📈"
               delay={3}
               sparkData={forecast.map((f) => f.ca)}
-              helpTip="Prevision lineaire sur 3 mois basee sur la tendance recente"
+              helpTip="Prévision linéaire sur 3 mois basée sur la tendance récente"
             />
           </PremiumGate>
         )}
@@ -1072,20 +1072,22 @@ export default function Dashboard({ onNavigate }) {
                     <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
                       Evolution CA — 6 derniers mois
                     </span>
-                    <HelpTip text="Vert = CA, Rouge pointille = Charges, Bleu = Prevision, Lignes = seuils" />
+                    <HelpTip text="Vert = CA, Rouge pointillé = Charges, Bleu = Prévision, Lignes = seuils" />
                   </div>
                   {forecastLabel && (
                     <Badge
-                      label={`Prevision: ${forecastLabel.pct >= 0 ? '+' : ''}${forecastLabel.pct}% sur 3 mois`}
+                      label={`Prévision: ${forecastLabel.pct >= 0 ? '+' : ''}${forecastLabel.pct}% sur 3 mois`}
                       color={forecastLabel.pct >= 0 ? T.blue : T.red}
                       bg={forecastLabel.pct >= 0 ? T.blueBg : T.redBg}
                     />
                   )}
                 </div>
                 <div style={{ height: 200 }}>
-                  <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Spinner size={20} /></div>}>
-                    <LazyChart />
-                  </Suspense>
+                  <ErrorBoundary fallbackTitle="Erreur du graphique">
+                    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Spinner size={20} /></div>}>
+                      <LazyChart />
+                    </Suspense>
+                  </ErrorBoundary>
                 </div>
               </Card>
 
@@ -1292,11 +1294,11 @@ export default function Dashboard({ onNavigate }) {
             <div className="grid-desktop-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 20 }}>
               <Card delay={5}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-                  Activite recente
+                  Activité récente
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {activity.length === 0 ? (
-                    <div style={{ fontSize: 11, color: T.textMuted, textAlign: 'center', padding: 12 }}>Aucune activite recente</div>
+                    <div style={{ fontSize: 11, color: T.textMuted, textAlign: 'center', padding: 12 }}>Aucune activité récente</div>
                   ) : activity.map((a, i) => (
                     <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                       <span style={{ fontSize: 14, flexShrink: 0 }}>{a.icon}</span>
@@ -1386,7 +1388,7 @@ export default function Dashboard({ onNavigate }) {
                   <div style={{ fontSize: 24, fontWeight: 800, color: T.blue }}>
                     {fK(pipeline.reduce((s, p) => s + p.value, 0))}€
                   </div>
-                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>Valeur estimee</div>
+                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>Valeur estimée</div>
                 </div>
                 <div style={{ padding: '12px 14px', borderRadius: 10, background: T.orange + '10', border: `1px solid ${T.orange}22`, textAlign: 'center' }}>
                   <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>A relancer</div>
@@ -1433,12 +1435,12 @@ export default function Dashboard({ onNavigate }) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 16 }}>📢</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Publicite</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Publicité</span>
                   {pubStats.platforms.map((p) => (
                     <Badge key={p} label={p} color={T.green} bg={T.greenBg} />
                   ))}
                 </div>
-                <Btn v="ghost" small onClick={() => onNavigate?.('data')}>Voir details →</Btn>
+                <Btn v="ghost" small onClick={() => onNavigate?.('data')}>Voir détails →</Btn>
               </div>
 
               {/* Funnel visuel: Budget → Impressions → Clicks → Conversions */}
@@ -1484,10 +1486,10 @@ export default function Dashboard({ onNavigate }) {
             <Card delay={7} style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                 <span style={{ fontSize: 16 }}>📢</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Publicite</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Publicité</span>
               </div>
               <div style={{ textAlign: 'center', padding: '16px 0', color: T.textMuted, fontSize: 11 }}>
-                Connectez une plateforme publicitaire dans les parametres pour voir vos stats
+                Connectez une plateforme publicitaire dans les paramètres pour voir vos stats
               </div>
               <div style={{ textAlign: 'center' }}>
                 <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>Connecter une plateforme</Btn>

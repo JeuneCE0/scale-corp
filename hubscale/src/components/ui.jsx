@@ -131,12 +131,38 @@ export function Card({ children, style: sx, onClick, accent, delay = 0 }) {
 // --- Modal ---
 export function Modal({ open, onClose, title, children, wide }) {
   const modalRef = useRef(null);
+  const previousFocusRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
-    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    previousFocusRef.current = document.activeElement;
+    const handleKey = (e) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      // Focus trap: Tab cycles within modal
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusable = modalRef.current.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
     document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
+    // Auto-focus first input or close button
+    requestAnimationFrame(() => {
+      if (!modalRef.current) return;
+      const firstInput = modalRef.current.querySelector('input, select, textarea');
+      if (firstInput) firstInput.focus();
+      else { const closeBtn = modalRef.current.querySelector('button'); if (closeBtn) closeBtn.focus(); }
+    });
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      // Restore focus
+      if (previousFocusRef.current && previousFocusRef.current.focus) {
+        try { previousFocusRef.current.focus(); } catch {}
+      }
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -200,12 +226,32 @@ export function Sparkline({ data = [], color = T.accent, width = 56, height = 20
 // --- Help Tooltip ---
 export function HelpTip({ text }) {
   const [show, setShow] = useState(false);
+  const tipRef = useRef(null);
+  const triggerRef = useRef(null);
+  const [pos, setPos] = useState({ left: '50%', transform: 'translateX(-50%)' });
+
+  useEffect(() => {
+    if (!show || !tipRef.current || !triggerRef.current) return;
+    const tip = tipRef.current.getBoundingClientRect();
+    const trigger = triggerRef.current.getBoundingClientRect();
+    const vw = window.innerWidth;
+    // Check if tooltip goes off right edge
+    if (trigger.left + trigger.width / 2 + tip.width / 2 > vw - 8) {
+      setPos({ right: 0, left: 'auto', transform: 'none' });
+    // Check if tooltip goes off left edge
+    } else if (trigger.left + trigger.width / 2 - tip.width / 2 < 8) {
+      setPos({ left: 0, transform: 'none' });
+    } else {
+      setPos({ left: '50%', transform: 'translateX(-50%)' });
+    }
+  }, [show]);
+
   return (
-    <span style={{ position: 'relative', display: 'inline-flex', marginLeft: 3, verticalAlign: 'middle' }}
+    <span ref={triggerRef} style={{ position: 'relative', display: 'inline-flex', marginLeft: 3, verticalAlign: 'middle' }}
       onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} onClick={() => setShow(!show)}>
-      <span style={{ width: 13, height: 13, borderRadius: 7, background: T.border, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: T.textMuted, cursor: 'help' }} aria-label={text}>?</span>
+      <span style={{ width: 13, height: 13, borderRadius: 7, background: T.border, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: T.textMuted, cursor: 'help' }} role="img" aria-label={text}>?</span>
       {show && (
-        <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: 6, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: '6px 10px', fontSize: 10, color: T.textSecondary, whiteSpace: 'nowrap', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,.3)', pointerEvents: 'none' }}>
+        <div ref={tipRef} style={{ position: 'absolute', bottom: '100%', ...pos, marginBottom: 6, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: '6px 10px', fontSize: 10, color: T.textSecondary, whiteSpace: 'nowrap', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,.3)', pointerEvents: 'none' }}>
           {text}
         </div>
       )}

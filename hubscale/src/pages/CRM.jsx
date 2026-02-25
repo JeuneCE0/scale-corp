@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { T } from '../lib/theme.js';
-import { uid, ago, fmt, fK, daysSince, leadScore } from '../lib/utils.js';
+import { uid, ago, fmt, fK, daysSince, leadScore, isValidEmail } from '../lib/utils.js';
 import { storeDebounced, load } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
 import { Card, Btn, Inp, Badge, Modal, EmptyState, Sel, TabBar, ConfirmDialog, Pagination, ScoreRing, triggerConfetti, PremiumGate } from '../components/ui.jsx';
@@ -323,7 +323,7 @@ export default function CRM() {
   // ---- Validation ----
   const validateEmail = useCallback((email) => {
     if (!email) return '';
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? '' : 'Format email invalide';
+    return isValidEmail(email) ? '' : 'Format email invalide';
   }, []);
 
   const checkDuplicate = useCallback((name, email) => {

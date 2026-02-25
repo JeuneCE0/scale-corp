@@ -358,7 +358,7 @@ function PrivacyPolicy() {
       <UL>
         <li>Adresse IP et données de géolocalisation approximative</li>
         <li>Type de navigateur et système d'exploitation</li>
-        <li>Pages visitees et actions effectuées sur la plateforme</li>
+        <li>Pages visitées et actions effectuées sur la plateforme</li>
         <li>Horodatages de connexion et durée des sessions</li>
       </UL>
 
@@ -479,7 +479,7 @@ function PrivacyPolicy() {
       </div>
 
       <P>
-        La liste complete et actualisée de nos sous-traitants est disponible sur demande auprès
+        La liste complète et actualisée de nos sous-traitants est disponible sur demande auprès
         de notre DPO. HubScale s'assure contractuellement que chaque sous-traitant présente des
         garanties suffisantes en matière de protection des données.
       </P>
@@ -589,12 +589,12 @@ function PrivacyPolicy() {
 
       <SH>11. Modifications</SH>
       <P>
-        HubScale se réserve le droit de modifier la présente Politique de Confidentialité a tout
+        HubScale se réserve le droit de modifier la présente Politique de Confidentialité à tout
         moment. Toute modification substantielle sera communiquée aux Utilisateurs par email et
-        par notification dans l'application au moins 30 jours avant son entree en vigueur.
+        par notification dans l'application au moins 30 jours avant son entrée en vigueur.
       </P>
       <P>
-        La poursuite de l'utilisation du Service après la date d'entree en vigueur des modifications
+        La poursuite de l'utilisation du Service après la date d'entrée en vigueur des modifications
         vaut acceptation de la nouvelle Politique de Confidentialité.
       </P>
 

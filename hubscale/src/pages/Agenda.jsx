@@ -414,7 +414,7 @@ export default function Agenda() {
     <div className="fade-up" style={{ marginTop: 12 }}>
       {/* Month navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Btn v="ghost" small onClick={goToPrevMonth} aria-label="Mois precedent">← Mois precedent</Btn>
+        <Btn v="ghost" small onClick={goToPrevMonth} aria-label="Mois précédent">← Mois précédent</Btn>
         <span style={{ fontSize: 16, fontWeight: 800, color: T.text }}>
           {MONTH_NAMES_FR[calMonth]} {calYear}
         </span>
@@ -636,7 +636,7 @@ export default function Agenda() {
       {undo.canUndo && !undoMsg && (
         <div style={{ marginBottom: 12, fontSize: 11, color: T.textMuted, display: 'flex', alignItems: 'center', gap: 8 }}>
           <Btn v="ghost" small onClick={undo.undo}>↩ Annuler ({undo.stackSize})</Btn>
-          <span>Ctrl+Z pour annuler la derniere suppression</span>
+          <span>Ctrl+Z pour annuler la dernière suppression</span>
         </div>
       )}
 

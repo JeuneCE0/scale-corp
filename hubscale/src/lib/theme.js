@@ -8,7 +8,7 @@ export const DARK = {
   borderLight: '#3f3f46',
   text: '#fafafa',
   textSecondary: '#a1a1aa',
-  textMuted: '#52525b',
+  textMuted: '#71717a',
   accent: '#6366f1',    // Indigo
   accentHover: '#818cf8',
   accentBg: 'rgba(99,102,241,.1)',

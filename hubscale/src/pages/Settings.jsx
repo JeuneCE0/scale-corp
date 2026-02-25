@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { T, getTheme, applyTheme } from '../lib/theme.js';
 import { store, load } from '../lib/store.js';
+import { isValidEmail } from '../lib/utils.js';
 import { Card, Section, Btn, Inp, Sel, TabBar, Toggle, ConfirmDialog, Badge, ProgressBar, PremiumGate } from '../components/ui.jsx';
 import { canAccessPro } from '../lib/plan.js';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
@@ -18,7 +19,7 @@ const INTEGRATION_CATEGORIES = [
   { label: 'CRM', cat: 'crm' },
   { label: 'Marketing', cat: 'marketing' },
   { label: 'Projet', cat: 'projet' },
-  { label: 'Publicite', cat: 'publicite' },
+  { label: 'Publicité', cat: 'publicite' },
   { label: 'Support', cat: 'support' },
 ];
 
@@ -39,8 +40,6 @@ function csvEscape(val) {
   if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
   return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
 }
-
-const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
 function getLocalStorageSize() {
   try {

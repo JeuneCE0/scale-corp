@@ -97,6 +97,9 @@ export const formatDateFR = (d) => {
 /** Format time: "14:30" */
 export const formatTime = (t) => t || '';
 
+/** Validate email address */
+export const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
 /** Simple linear forecast for CA based on history trend */
 export function forecastCA(history, months = 3) {
   if (!history || history.length < 2) return [];
@@ -267,7 +270,6 @@ export function weeklyRecap(finHistory, contacts, events, invoices) {
   // Current month financial data
   const curKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const curMonth = (finHistory || []).find((r) => r.key === curKey);
-  const caGoalStored = typeof localStorage !== 'undefined' ? null : null; // will be passed in
 
   return {
     newContacts: newContacts.length,
