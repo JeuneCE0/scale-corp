@@ -475,9 +475,9 @@ export function PremiumGate({ children, requiredPlan = 'professional', label, bl
   const daysLeft = trial ? trial.daysLeft : null;
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 16 }}>
       {blur && (
-        <div style={{ filter: 'blur(6px)', pointerEvents: 'none', userSelect: 'none', opacity: 0.5 }}>
+        <div style={{ filter: 'blur(5px)', pointerEvents: 'none', userSelect: 'none', opacity: 0.7 }}>
           {children}
         </div>
       )}
@@ -485,7 +485,7 @@ export function PremiumGate({ children, requiredPlan = 'professional', label, bl
         position: blur ? 'absolute' : 'relative', inset: 0,
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         zIndex: 10, padding: 24, textAlign: 'center',
-        background: blur ? 'rgba(9,9,11,.7)' : 'transparent',
+        background: blur ? 'rgba(9,9,11,.45)' : 'transparent',
         borderRadius: 16, backdropFilter: blur ? 'blur(2px)' : 'none',
       }}>
         <div style={{

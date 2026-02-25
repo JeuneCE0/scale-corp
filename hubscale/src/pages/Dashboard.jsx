@@ -883,7 +883,7 @@ export default function Dashboard({ onNavigate }) {
         <KPI label="CHARGES" value={`${fmt(lastRow.charges || 0)} €`} sub="Fixes + Variables" accent={T.red} icon="📉" delay={2} sparkData={sparkCharges} helpTip="Total des charges fixes et variables" />
         <KPI label="RESULTAT NET" value={`${fmt(lastRow.result || 0)} €`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '---'} accent={T.orange} icon="📊" delay={3} sparkData={sparkResult} helpTip="CA moins charges = benefice net" />
         {forecastLabel && (
-          <PremiumGate label="Prévisions IA" blur={false}>
+          <PremiumGate label="Prévisions IA" blur>
             <KPI
               label="PREVISION 3 MOIS"
               value={`${forecastLabel.pct >= 0 ? '+' : ''}${forecastLabel.pct}%`}
@@ -1200,7 +1200,7 @@ export default function Dashboard({ onNavigate }) {
 
           /* ------ Cash Flow Projection ------ */
           'cashflow-projection': cashFlowData ? (
-            <PremiumGate label="Projection trésorerie" blur={false}>
+            <PremiumGate label="Projection trésorerie" blur>
               <Card delay={5} style={{ marginBottom: 20 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1260,7 +1260,7 @@ export default function Dashboard({ onNavigate }) {
 
           /* ------ Cross-Data Insights ------ */
           'cross-insights': crossInsights.length > 0 ? (
-            <PremiumGate label="Insights croisés" blur={false}>
+            <PremiumGate label="Insights croisés" blur>
               <Card delay={5} style={{ marginBottom: 20 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                   <span style={{ fontSize: 16 }}>🔬</span>
