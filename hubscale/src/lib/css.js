@@ -142,7 +142,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover{opacity:1}
   .nav-tabs-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   .nav-tabs-scroll::-webkit-scrollbar{display:none}
   .page-pad{padding:12px 14px 30px !important}
-  .modal-inner{width:100% !important;max-width:100% !important;margin:8px !important;padding:16px !important}
+  .modal-inner{width:100% !important;max-width:100% !important;margin:8px !important;max-height:calc(100vh - 16px) !important}
   .notif-panel{width:calc(100vw - 32px);right:-8px}
   .cal-cell{min-height:50px}
   .pipeline-cols{display:flex !important;flex-direction:column !important;gap:16px !important}

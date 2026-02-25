@@ -15,7 +15,7 @@ const LazyRevenueTrendsChart = lazy(() =>
       if (!data || data.length === 0) {
         return (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 11, color: T.textMuted }}>
-            Aucune donnee financiere
+            Aucune donnée financière
           </div>
         );
       }
@@ -75,7 +75,7 @@ const LazyForecastChart = lazy(() =>
       if (combined.length === 0) {
         return (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 11, color: T.textMuted }}>
-            Donnees insuffisantes pour la prevision
+            Données insuffisantes pour la prévision
           </div>
         );
       }
@@ -603,12 +603,12 @@ export default function Analytics({ onNavigate }) {
       {/* ============================================================ */}
       {/*  SECTION 4: Integration Coverage                              */}
       {/* ============================================================ */}
-      <Section title="Couverture des integrations" sub="Etat de connexion par categorie et historique de synchronisation">
+      <Section title="Couverture des intégrations" sub="État de connexion par catégorie et historique de synchronisation">
         <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 14 }} className="grid-desktop-15-1">
           {/* Integration categories grid */}
           <Card>
             <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 }}>
-              Couverture par categorie
+              Couverture par catégorie
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
               {integrationCategories.map((cat) => (
@@ -670,7 +670,7 @@ export default function Analytics({ onNavigate }) {
               </div>
             )}
             <div style={{ marginTop: 12, textAlign: 'center' }}>
-              <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>Gerer les integrations</Btn>
+              <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>Gérer les intégrations</Btn>
             </div>
           </Card>
         </div>
@@ -720,11 +720,11 @@ export default function Analytics({ onNavigate }) {
       {/* ============================================================ */}
       {/*  SECTION 7: Predictions                                       */}
       {/* ============================================================ */}
-      <Section title="Previsions" sub="Projection du CA sur les 3 prochains mois basee sur la tendance recente">
+      <Section title="Prévisions" sub="Projection du CA sur les 3 prochains mois basée sur la tendance récente">
         <Card>
           {finHistory.length < 2 ? (
             <div style={{ textAlign: 'center', padding: 24, color: T.textMuted, fontSize: 11 }}>
-              Ajoutez au moins 2 mois de donnees financieres pour generer des previsions
+              Ajoutez au moins 2 mois de données financières pour générer des prévisions
             </div>
           ) : (
             <div>
@@ -751,7 +751,7 @@ export default function Analytics({ onNavigate }) {
               {forecast.length > 0 && (
                 <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${T.border}` }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                    Previsions detaillees
+                    Prévisions detaillees
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: `repeat(${forecast.length}, 1fr)`, gap: 10 }}>
                     {forecast.map((f, i) => {

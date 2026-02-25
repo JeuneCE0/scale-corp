@@ -396,7 +396,7 @@ export default function Agenda() {
       background: T.surface2, border: `1px solid ${T.border}`,
     }}>
       <span style={{ fontSize: 12, fontWeight: 700, color: T.accent }}>
-        {upcoming.length} a venir
+        {upcoming.length} à venir
       </span>
       <span style={{ width: 1, height: 14, background: T.border }} />
       <span style={{ fontSize: 12, fontWeight: 700, color: T.orange }}>
@@ -502,16 +502,16 @@ export default function Agenda() {
                 {selectedDay.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </span>
               <span style={{ marginLeft: 8, fontSize: 11, color: T.textMuted }}>
-                {selectedDayEvents.length} evenement{selectedDayEvents.length !== 1 ? 's' : ''}
+                {selectedDayEvents.length} événement{selectedDayEvents.length !== 1 ? 's' : ''}
               </span>
             </div>
-            <Btn v="secondary" small onClick={() => openNew(toISO(selectedDay))} aria-label="Creer un evenement ce jour">
+            <Btn v="secondary" small onClick={() => openNew(toISO(selectedDay))} aria-label="Créer un événement ce jour">
               + Ajouter
             </Btn>
           </div>
           {selectedDayEvents.length === 0 ? (
             <div style={{ color: T.textMuted, fontSize: 12, textAlign: 'center', padding: '12px 0' }}>
-              Aucun evenement ce jour
+              Aucun événement ce jour
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -550,17 +550,17 @@ export default function Agenda() {
   /* ── List view ──────────────────────────────────────────── */
   const renderList = () => (
     <>
-      <Section title="A VENIR" sub={`${upcoming.length} evenement${upcoming.length !== 1 ? 's' : ''}`}>
+      <Section title="A VENIR" sub={`${upcoming.length} événement${upcoming.length !== 1 ? 's' : ''}`}>
         {upcoming.length === 0 ? (
-          <Card><EmptyState icon="📅" title="Aucun evenement a venir" sub="Planifiez vos reunions, deadlines et evenements"
-            action={<Btn onClick={() => openNew()} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Creer un evenement</Btn>} /></Card>
+          <Card><EmptyState icon="📅" title="Aucun événement à venir" sub="Planifiez vos réunions, deadlines et événements"
+            action={<Btn onClick={() => openNew()} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Créer un événement</Btn>} /></Card>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{upcoming.map((e) => renderEvent(e, false))}</div>
         )}
       </Section>
 
       {past.length > 0 && (
-        <Section title="PASSES" sub={`${past.length} evenement${past.length !== 1 ? 's' : ''}`}>
+        <Section title="PASSÉS" sub={`${past.length} événement${past.length !== 1 ? 's' : ''}`}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{past.map((e) => renderEvent(e, true))}</div>
         </Section>
       )}
@@ -574,16 +574,16 @@ export default function Agenda() {
       <div className="fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Agenda</h1>
-          <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Reunions, deadlines et evenements</p>
+          <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Réunions, deadlines et événements</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {notifPermission !== 'granted' && 'Notification' in window && (
             <Btn v="secondary" small onClick={requestNotifPermission} aria-label="Activer les notifications">🔔 Notifications</Btn>
           )}
           {notifPermission === 'granted' && (
-            <span style={{ fontSize: 10, color: T.green, fontWeight: 600 }}>🔔 Rappels actives</span>
+            <span style={{ fontSize: 10, color: T.green, fontWeight: 600 }}>🔔 Rappels activés</span>
           )}
-          <Btn onClick={() => openNew()} aria-label="Creer un evenement" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: '0 2px 12px rgba(249,115,22,.3)' }}>+ Evenement</Btn>
+          <Btn onClick={() => openNew()} aria-label="Créer un événement" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: '0 2px 12px rgba(249,115,22,.3)' }}>+ Événement</Btn>
         </div>
       </div>
 
@@ -644,8 +644,8 @@ export default function Agenda() {
       {view === 'list' ? renderList() : renderCalendar()}
 
       {/* Create/Edit modal */}
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={editId ? "Modifier l'evenement" : 'Nouvel evenement'}>
-        <Inp label="Titre *" value={form.title} onChange={(v) => setForm({ ...form, title: v })} placeholder="Titre de l'evenement" />
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={editId ? "Modifier l'événement" : 'Nouvel événement'}>
+        <Inp label="Titre *" value={form.title} onChange={(v) => setForm({ ...form, title: v })} placeholder="Titre de l'événement" />
         <div className="grid-2-mobile-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Inp label="Date *" type="date" value={form.date} onChange={(v) => setForm({ ...form, date: v })} />
           <Inp label="Heure" type="time" value={form.time} onChange={(v) => setForm({ ...form, time: v })} />
@@ -663,9 +663,9 @@ export default function Agenda() {
         {/* Conflict warning */}
         {conflict && (
           <div style={{ fontSize: 11, color: T.orange, padding: '8px 10px', borderRadius: 6, background: T.orangeBg, marginBottom: 8 }}>
-            Conflit horaire avec "{conflict.title}" le {conflict.date} a {conflict.time}
+            Conflit horaire avec "{conflict.title}" le {conflict.date} à {conflict.time}
             <div style={{ marginTop: 4 }}>
-              <Btn v="ghost" small onClick={() => { setConflict(null); forceSave(); }}>Creer quand meme</Btn>
+              <Btn v="ghost" small onClick={() => { setConflict(null); forceSave(); }}>Créer quand même</Btn>
             </div>
           </div>
         )}
@@ -673,7 +673,7 @@ export default function Agenda() {
         <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Btn v="ghost" onClick={() => setShowModal(false)}>Annuler</Btn>
           <Btn onClick={saveEvent} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>
-            {editId ? 'Enregistrer' : 'Creer'}
+            {editId ? 'Enregistrer' : 'Créer'}
           </Btn>
         </div>
       </Modal>
@@ -681,8 +681,8 @@ export default function Agenda() {
       {/* Delete confirmation */}
       <ConfirmDialog
         open={del.isOpen}
-        title="Supprimer cet evenement ?"
-        message="L'evenement sera definitivement supprime. Cette action est irreversible."
+        title="Supprimer cet événement ?"
+        message="L'événement sera définitivement supprimé. Cette action est irréversible."
         onConfirm={del.execute}
         onCancel={del.cancel}
       />

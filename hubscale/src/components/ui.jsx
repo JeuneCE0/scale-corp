@@ -142,14 +142,16 @@ export function Modal({ open, onClose, title, children, wide }) {
   if (!open) return null;
   return (
     <div className="fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={title}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', overflowY: 'auto', backdropFilter: 'blur(8px)' }}>
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px', backdropFilter: 'blur(8px)' }}>
       <div ref={modalRef} className="scale-in modal-inner" onClick={(e) => e.stopPropagation()}
-        style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 24, width: wide ? 700 : 480, maxWidth: '100%', boxShadow: '0 24px 64px rgba(0,0,0,.4)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, width: wide ? 700 : 480, maxWidth: '100%', maxHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,.4)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px 0 24px', flexShrink: 0 }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{title}</h3>
           <Btn v="ghost" small onClick={onClose} aria-label="Fermer">✕</Btn>
         </div>
-        {children}
+        <div style={{ padding: '16px 24px 24px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
+          {children}
+        </div>
       </div>
     </div>
   );

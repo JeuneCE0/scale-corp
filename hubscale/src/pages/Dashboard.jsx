@@ -26,7 +26,7 @@ const LazyChart = lazy(() =>
         const months = ['', 'Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aou', 'Sep', 'Oct', 'Nov', 'Dec'];
         CA_DATA.push({ month: months[parseInt(m)] || f.key, ca: f.ca, charges: 0, forecast: f.ca, type: 'forecast' });
       });
-      if (CA_DATA.length === 0) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 11, color: T.textMuted }}>Aucune donnee financiere</div>;
+      if (CA_DATA.length === 0) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 11, color: T.textMuted }}>Aucune donnée financière</div>;
       const avgCharges = Math.round(CA_DATA.filter(d => d.charges > 0).reduce((s, d) => s + d.charges, 0) / (CA_DATA.filter(d => d.charges > 0).length || 1));
       return (
         <ResponsiveContainer width="100%" height="100%">
@@ -212,7 +212,7 @@ export default function Dashboard({ onNavigate }) {
         icon: NOTIFICATION_TYPES.finance.icon,
         color: NOTIFICATION_TYPES.finance.color,
         bg: NOTIFICATION_TYPES.finance.bg,
-        text: 'Donnees financieres manquantes ce mois',
+        text: 'Données financières manquantes ce mois',
         detail: `Aucune saisie pour ${curMonthKey}`,
         tab: 'data',
         priority: 2,
@@ -318,9 +318,9 @@ export default function Dashboard({ onNavigate }) {
     contacts.filter((c) => c.createdAt).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3)
       .forEach((c) => items.push({ text: `Nouveau contact : ${c.name}${c.company ? ` (${c.company})` : ''}`, time: ago(c.createdAt), icon: '👤', ts: new Date(c.createdAt) }));
     events.sort((a, b) => (b.id || '').localeCompare(a.id || '')).slice(0, 3)
-      .forEach((e) => items.push({ text: `Evenement : ${e.title}`, time: e.date ? `le ${new Date(e.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : '', icon: '📅', ts: new Date(e.date || 0) }));
+      .forEach((e) => items.push({ text: `Événement : ${e.title}`, time: e.date ? `le ${new Date(e.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : '', icon: '📅', ts: new Date(e.date || 0) }));
     const lastFin = finHistory[finHistory.length - 1];
-    if (lastFin) items.push({ text: `Donnees financieres saisies - ${fmt(lastFin.ca || 0)} € CA`, time: '', icon: '💰', ts: new Date(0) });
+    if (lastFin) items.push({ text: `Données financières saisies - ${fmt(lastFin.ca || 0)} € CA`, time: '', icon: '💰', ts: new Date(0) });
     return items.sort((a, b) => b.ts - a.ts).slice(0, 5);
   }, [contacts, events, finHistory]);
 
@@ -329,8 +329,8 @@ export default function Dashboard({ onNavigate }) {
   /* ---------------------------------------------------------------- */
   const [tasks, setTasks] = useState(() => load('dashboard_tasks') || [
     { text: 'Relancer les prospects', done: false },
-    { text: 'Verifier les integrations', done: false },
-    { text: 'Saisir les donnees du mois', done: false },
+    { text: 'Vérifier les intégrations', done: false },
+    { text: 'Saisir les données du mois', done: false },
   ]);
   const [newTask, setNewTask] = useState('');
 
@@ -749,9 +749,9 @@ export default function Dashboard({ onNavigate }) {
   /* ---------------------------------------------------------------- */
   const QUICK_ACTIONS = [
     { label: 'Ajouter un contact', icon: '👤', target: 'crm' },
-    { label: 'Saisir des donnees', icon: '📊', target: 'data' },
-    { label: 'Creer un evenement', icon: '📅', target: 'agenda' },
-    { label: 'Voir parametres', icon: '⚙️', target: 'settings' },
+    { label: 'Saisir des données', icon: '📊', target: 'data' },
+    { label: 'Créer un événement', icon: '📅', target: 'agenda' },
+    { label: 'Voir paramètres', icon: '⚙️', target: 'settings' },
   ];
 
   /* ================================================================ */
@@ -805,7 +805,7 @@ export default function Dashboard({ onNavigate }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <span style={{ fontSize: 16 }}>⚡</span>
               <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Actions du jour</span>
-              <HelpTip text="Actions recommandees basees sur vos donnees en temps reel" />
+              <HelpTip text="Actions recommandées basées sur vos données en temps réel" />
               <Badge label={`${dailyActions.length}`} color={T.orange} bg={T.orangeBg} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
@@ -879,9 +879,9 @@ export default function Dashboard({ onNavigate }) {
       {/*  KPI Cards with sparklines                                    */}
       {/* ============================================================ */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <KPI label="CA MENSUEL" value={`${fmt(lastRow.ca || 0)} €`} sub={caEvo != null ? `${caEvo >= 0 ? '+' : ''}${caEvo}% vs mois dernier` : 'Aucune donnee precedente'} accent={T.green} icon="💰" delay={1} sparkData={sparkCA} helpTip="Chiffre d'affaires du dernier mois saisi" />
+        <KPI label="CA MENSUEL" value={`${fmt(lastRow.ca || 0)} €`} sub={caEvo != null ? `${caEvo >= 0 ? '+' : ''}${caEvo}% vs mois dernier` : 'Aucune donnée précédente'} accent={T.green} icon="💰" delay={1} sparkData={sparkCA} helpTip="Chiffre d'affaires du dernier mois saisi" />
         <KPI label="CHARGES" value={`${fmt(lastRow.charges || 0)} €`} sub="Fixes + Variables" accent={T.red} icon="📉" delay={2} sparkData={sparkCharges} helpTip="Total des charges fixes et variables" />
-        <KPI label="RESULTAT NET" value={`${fmt(lastRow.result || 0)} €`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '---'} accent={T.orange} icon="📊" delay={3} sparkData={sparkResult} helpTip="CA moins charges = benefice net" />
+        <KPI label="RÉSULTAT NET" value={`${fmt(lastRow.result || 0)} €`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '---'} accent={T.orange} icon="📊" delay={3} sparkData={sparkResult} helpTip="CA moins charges = bénéfice net" />
         {forecastLabel && (
           <PremiumGate label="Prévisions IA" blur>
             <KPI
@@ -1094,7 +1094,7 @@ export default function Dashboard({ onNavigate }) {
                   <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
                     Pipeline commercial
                   </span>
-                  <HelpTip text="Nombre de contacts par etape et valeur estimee du pipeline" />
+                  <HelpTip text="Nombre de contacts par étape et valeur estimée du pipeline" />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {pipeline.map((p) => (
