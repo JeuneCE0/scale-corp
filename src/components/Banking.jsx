@@ -136,7 +136,7 @@ export function SocBankWidget({bankData,onSync,soc}){
  const[catDropdown,setCatDropdown]=useState(null);
  const[catDropPos,setCatDropPos]=useState(null);
  const[selectedTx,setSelectedTx]=useState(new Set());
- const saveCatOverride=(txId,catId)=>{const next={...txCatOverrides,[txId]:catId};setTxCatOverrides(next);try{localStorage.setItem(`scTxCat_${soc?.id}`,JSON.stringify(next));}catch{}setCatDropdown(null);};
+ const saveCatOverride=(txId,catId)=>{const next={...txCatOverrides,[txId]:catId};setTxCatOverrides(next);try{localStorage.setItem(`scTxCat_${soc?.id}`,JSON.stringify(next));window.dispatchEvent(new Event("ls-cat-update"));}catch(e){console.warn("saveCatOverride:",e);}setCatDropdown(null);};
  const getCat=(tx)=>txCatOverrides[tx.id]?TX_CATEGORIES.find(c=>c.id===txCatOverrides[tx.id])||categorizeTransaction(tx):categorizeTransaction(tx);
  if(!bankData)return <Card style={{textAlign:"center",padding:20}}>
   <div style={{fontSize:28,marginBottom:6}}>🏦</div>

@@ -751,7 +751,7 @@ export async function sSet(k,v){
   sbUpsert('user_settings',{society_id:_currentSocId||'global',key:k,value:v});
   // Also legacy store
   storeCall("set",k,v);
- }catch(e){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+ }catch(e){try{localStorage.setItem(k,JSON.stringify(v));}catch(e2){console.warn("sSet localStorage fallback:",e2);}}
 }
 // One-time pull from Supabase to localStorage on login
 export async function syncFromSupabase(socId){
