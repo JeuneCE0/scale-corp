@@ -474,60 +474,104 @@ export function PremiumGate({ children, requiredPlan = 'professional', label, bl
   const trial = getTrialInfo();
   const daysLeft = trial ? trial.daysLeft : null;
 
+  const goSettings = () => {
+    const el = document.querySelector('[data-tab="settings"]') || document.querySelector('[aria-label="Paramètres"]');
+    if (el) el.click();
+    else window.dispatchEvent(new CustomEvent('hs:navigate', { detail: 'settings' }));
+  };
+
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 16 }}>
-      {blur && (
-        <div style={{ filter: 'blur(5px)', pointerEvents: 'none', userSelect: 'none', opacity: 0.7 }}>
-          {children}
-        </div>
-      )}
+    <div
+      onClick={blur ? goSettings : undefined}
+      style={{
+        position: 'relative', borderRadius: 18, cursor: blur ? 'pointer' : 'default',
+        padding: 2, /* space for the animated border */
+        background: 'transparent', overflow: 'hidden',
+      }}
+    >
+      {/* ── Animated spinning conic border (the "flame" ring) ── */}
       <div style={{
-        position: blur ? 'absolute' : 'relative', inset: 0,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        zIndex: 10, padding: 24, textAlign: 'center',
-        background: blur ? 'rgba(9,9,11,.45)' : 'transparent',
-        borderRadius: 16, backdropFilter: blur ? 'blur(2px)' : 'none',
+        position: 'absolute', inset: -40,
+        background: 'conic-gradient(from 0deg, #f97316, #f59e0b, #ef4444, #f97316, transparent 40%, transparent 60%, #f97316, #ef4444, #f59e0b, #f97316)',
+        animation: 'premiumSpin 3s linear infinite',
+        zIndex: 0, borderRadius: 18,
+      }} />
+      {/* ── Glow pulse behind the border ── */}
+      <div style={{
+        position: 'absolute', inset: -8,
+        background: 'conic-gradient(from 0deg, rgba(249,115,22,.4), rgba(245,158,11,.3), rgba(239,68,68,.3), rgba(249,115,22,.4), transparent 40%, transparent 60%, rgba(249,115,22,.4))',
+        animation: 'premiumSpin 3s linear infinite, premiumGlow 2s ease-in-out infinite',
+        zIndex: 0, borderRadius: 22,
+      }} />
+
+      {/* ── Inner content container ── */}
+      <div style={{
+        position: 'relative', zIndex: 1, borderRadius: 16,
+        background: T.bg, overflow: 'hidden',
       }}>
-        <div style={{
-          width: 48, height: 48, borderRadius: 14,
-          background: 'linear-gradient(135deg, #f97316, #f59e0b)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          marginBottom: 14, boxShadow: '0 4px 20px rgba(249,115,22,.3)',
-        }}>
-          <span style={{ fontSize: 22 }}>{'🔒'}</span>
-        </div>
-        <div style={{ fontSize: 15, fontWeight: 800, color: T.text, marginBottom: 6 }}>
-          {label || 'Fonctionnalité Premium'}
-        </div>
-        <div style={{ fontSize: 12, color: T.textSecondary, marginBottom: 16, maxWidth: 280, lineHeight: 1.5 }}>
-          {daysLeft != null
-            ? `Débloquez cette fonctionnalité en souscrivant maintenant. Il vous reste ${daysLeft}j d'essai.`
-            : 'Souscrivez un abonnement pour débloquer cette fonctionnalité.'}
-        </div>
-        <button
-          onClick={() => {
-            const el = document.querySelector('[data-tab="settings"]') || document.querySelector('[aria-label="Paramètres"]');
-            if (el) el.click();
-            else window.dispatchEvent(new CustomEvent('hs:navigate', { detail: 'settings' }));
-          }}
-          style={{
-            background: 'linear-gradient(135deg, #f97316, #f59e0b)',
-            color: '#fff', border: 'none', borderRadius: 10,
-            padding: '10px 24px', fontSize: 13, fontWeight: 700,
-            cursor: 'pointer', fontFamily: FONT,
-            boxShadow: '0 4px 16px rgba(249,115,22,.3)',
-            transition: 'transform .15s ease, box-shadow .15s ease',
-          }}
-          onMouseEnter={(e) => { e.target.style.transform = 'translateY(-1px)'; e.target.style.boxShadow = '0 6px 24px rgba(249,115,22,.4)'; }}
-          onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 16px rgba(249,115,22,.3)'; }}
-        >
-          Souscrire maintenant
-        </button>
-        {requiredPlan === 'professional' && (
-          <div style={{ fontSize: 10, color: T.textMuted, marginTop: 8 }}>
-            Disponible avec le forfait Professional et supérieur
+        {blur && (
+          <div style={{ filter: 'blur(5px)', pointerEvents: 'none', userSelect: 'none', opacity: 0.65 }}>
+            {children}
           </div>
         )}
+        <div style={{
+          position: blur ? 'absolute' : 'relative', inset: 0,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          zIndex: 10, padding: 28, textAlign: 'center',
+          background: blur ? 'rgba(9,9,11,.5)' : 'transparent',
+          borderRadius: 16,
+        }}>
+          {/* ── Lock icon with pulse ── */}
+          <div style={{
+            width: 52, height: 52, borderRadius: 16, position: 'relative',
+            background: 'linear-gradient(135deg, #f97316, #ef4444)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            marginBottom: 16, boxShadow: '0 6px 28px rgba(249,115,22,.4)',
+            animation: 'premiumBounce 2s ease-in-out infinite',
+          }}>
+            <span style={{ fontSize: 24 }}>{'🔒'}</span>
+            {/* Shine sweep */}
+            <div style={{
+              position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden',
+              pointerEvents: 'none',
+            }}>
+              <div style={{
+                position: 'absolute', top: 0, width: '40%', height: '100%',
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent)',
+                animation: 'premiumShine 2.5s ease-in-out infinite',
+              }} />
+            </div>
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: T.text, marginBottom: 4 }}>
+            {label || 'Fonctionnalité Premium'}
+          </div>
+          <div style={{ fontSize: 12, color: T.textSecondary, marginBottom: 18, maxWidth: 300, lineHeight: 1.5 }}>
+            {daysLeft != null
+              ? `Débloquez cette fonctionnalité maintenant — il vous reste ${daysLeft}j d'essai gratuit !`
+              : 'Débloquez cette fonctionnalité et passez au niveau supérieur.'}
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); goSettings(); }}
+            style={{
+              background: 'linear-gradient(135deg, #f97316, #ef4444)',
+              color: '#fff', border: 'none', borderRadius: 12,
+              padding: '12px 28px', fontSize: 14, fontWeight: 800,
+              cursor: 'pointer', fontFamily: FONT, letterSpacing: 0.3,
+              boxShadow: '0 6px 24px rgba(249,115,22,.4), inset 0 1px 0 rgba(255,255,255,.15)',
+              transition: 'transform .15s ease, box-shadow .15s ease',
+              position: 'relative', overflow: 'hidden',
+            }}
+            onMouseEnter={(e) => { e.target.style.transform = 'translateY(-2px) scale(1.03)'; e.target.style.boxShadow = '0 8px 32px rgba(249,115,22,.5), inset 0 1px 0 rgba(255,255,255,.15)'; }}
+            onMouseLeave={(e) => { e.target.style.transform = 'translateY(0) scale(1)'; e.target.style.boxShadow = '0 6px 24px rgba(249,115,22,.4), inset 0 1px 0 rgba(255,255,255,.15)'; }}
+          >
+            {'🔓'} Débloquer maintenant
+          </button>
+          {requiredPlan === 'professional' && (
+            <div style={{ fontSize: 10, color: T.textMuted, marginTop: 10 }}>
+              Forfait Professional et supérieur
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -26,6 +26,10 @@ body{margin:0;overflow-x:hidden;font-family:${FONT};background:${T.bg};color:${T
 @keyframes numberTick{0%{opacity:0;transform:translateY(-100%)}100%{opacity:1;transform:translateY(0)}}
 @keyframes glowPulse{0%,100%{box-shadow:0 0 5px rgba(249,115,22,.2)}50%{box-shadow:0 0 20px rgba(249,115,22,.4)}}
 @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
+@keyframes premiumSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes premiumGlow{0%,100%{opacity:.6;filter:blur(12px)}50%{opacity:1;filter:blur(18px)}}
+@keyframes premiumShine{0%{left:-120%}100%{left:220%}}
+@keyframes premiumBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
 
 .fade-up{animation:fadeUp .4s ease forwards;opacity:0}
 .fade-in{animation:fadeIn .3s ease forwards}
