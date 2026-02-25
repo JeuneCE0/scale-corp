@@ -142,9 +142,9 @@ export function Modal({ open, onClose, title, children, wide }) {
   if (!open) return null;
   return (
     <div className="fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={title}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px', backdropFilter: 'blur(8px)' }}>
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1000, display: 'flex', overflowY: 'auto', padding: '24px 16px', backdropFilter: 'blur(8px)' }}>
       <div ref={modalRef} className="scale-in modal-inner" onClick={(e) => e.stopPropagation()}
-        style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, width: wide ? 700 : 480, maxWidth: '100%', maxHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,.4)' }}>
+        style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, width: wide ? 700 : 480, maxWidth: '100%', maxHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,.4)', margin: 'auto', flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px 0 24px', flexShrink: 0 }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{title}</h3>
           <Btn v="ghost" small onClick={onClose} aria-label="Fermer">✕</Btn>
@@ -486,90 +486,63 @@ export function PremiumGate({ children, requiredPlan = 'professional', label, bl
     <div
       onClick={blur ? goSettings : undefined}
       style={{
-        position: 'relative', borderRadius: 18, cursor: blur ? 'pointer' : 'default',
-        padding: 2, /* space for the animated border */
-        background: 'transparent', overflow: 'hidden',
+        position: 'relative', borderRadius: 16, cursor: blur ? 'pointer' : 'default',
+        padding: 1,
+        background: 'linear-gradient(90deg, rgba(249,115,22,.15), rgba(249,115,22,.5), rgba(239,68,68,.3), rgba(249,115,22,.15))',
+        backgroundSize: '300% 100%',
+        animation: 'premiumShimmer 8s ease-in-out infinite',
       }}
     >
-      {/* ── Animated spinning conic border (the "flame" ring) ── */}
       <div style={{
-        position: 'absolute', inset: -40,
-        background: 'conic-gradient(from 0deg, #f97316, #f59e0b, #ef4444, #f97316, transparent 40%, transparent 60%, #f97316, #ef4444, #f59e0b, #f97316)',
-        animation: 'premiumSpin 3s linear infinite',
-        zIndex: 0, borderRadius: 18,
-      }} />
-      {/* ── Glow pulse behind the border ── */}
-      <div style={{
-        position: 'absolute', inset: -8,
-        background: 'conic-gradient(from 0deg, rgba(249,115,22,.4), rgba(245,158,11,.3), rgba(239,68,68,.3), rgba(249,115,22,.4), transparent 40%, transparent 60%, rgba(249,115,22,.4))',
-        animation: 'premiumSpin 3s linear infinite, premiumGlow 2s ease-in-out infinite',
-        zIndex: 0, borderRadius: 22,
-      }} />
-
-      {/* ── Inner content container ── */}
-      <div style={{
-        position: 'relative', zIndex: 1, borderRadius: 16,
+        position: 'relative', borderRadius: 15,
         background: T.bg, overflow: 'hidden',
       }}>
         {blur && (
-          <div style={{ filter: 'blur(5px)', pointerEvents: 'none', userSelect: 'none', opacity: 0.65 }}>
+          <div style={{ filter: 'blur(5px)', pointerEvents: 'none', userSelect: 'none', opacity: 0.6 }}>
             {children}
           </div>
         )}
         <div style={{
           position: blur ? 'absolute' : 'relative', inset: 0,
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          zIndex: 10, padding: 28, textAlign: 'center',
-          background: blur ? 'rgba(9,9,11,.5)' : 'transparent',
-          borderRadius: 16,
+          zIndex: 10, padding: 24, textAlign: 'center',
+          background: blur ? 'rgba(9,9,11,.45)' : 'transparent',
+          borderRadius: 15,
         }}>
-          {/* ── Lock icon with pulse ── */}
           <div style={{
-            width: 52, height: 52, borderRadius: 16, position: 'relative',
-            background: 'linear-gradient(135deg, #f97316, #ef4444)',
+            width: 44, height: 44, borderRadius: 12,
+            background: 'linear-gradient(135deg, rgba(249,115,22,.15), rgba(239,68,68,.1))',
+            border: '1px solid rgba(249,115,22,.25)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            marginBottom: 16, boxShadow: '0 6px 28px rgba(249,115,22,.4)',
-            animation: 'premiumBounce 2s ease-in-out infinite',
+            marginBottom: 12,
           }}>
-            <span style={{ fontSize: 24 }}>{'🔒'}</span>
-            {/* Shine sweep */}
-            <div style={{
-              position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden',
-              pointerEvents: 'none',
-            }}>
-              <div style={{
-                position: 'absolute', top: 0, width: '40%', height: '100%',
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent)',
-                animation: 'premiumShine 2.5s ease-in-out infinite',
-              }} />
-            </div>
+            <span style={{ fontSize: 20 }}>{'🔒'}</span>
           </div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: T.text, marginBottom: 4 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>
             {label || 'Fonctionnalité Premium'}
           </div>
-          <div style={{ fontSize: 12, color: T.textSecondary, marginBottom: 18, maxWidth: 300, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 12, color: T.textSecondary, marginBottom: 16, maxWidth: 280, lineHeight: 1.5 }}>
             {daysLeft != null
-              ? `Débloquez cette fonctionnalité maintenant — il vous reste ${daysLeft}j d'essai gratuit !`
-              : 'Débloquez cette fonctionnalité et passez au niveau supérieur.'}
+              ? `Débloquez cette fonctionnalité — il vous reste ${daysLeft}j d'essai.`
+              : 'Passez au niveau supérieur pour débloquer.'}
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); goSettings(); }}
             style={{
               background: 'linear-gradient(135deg, #f97316, #ef4444)',
-              color: '#fff', border: 'none', borderRadius: 12,
-              padding: '12px 28px', fontSize: 14, fontWeight: 800,
-              cursor: 'pointer', fontFamily: FONT, letterSpacing: 0.3,
-              boxShadow: '0 6px 24px rgba(249,115,22,.4), inset 0 1px 0 rgba(255,255,255,.15)',
+              color: '#fff', border: 'none', borderRadius: 10,
+              padding: '10px 24px', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', fontFamily: FONT,
+              boxShadow: '0 4px 16px rgba(249,115,22,.25)',
               transition: 'transform .15s ease, box-shadow .15s ease',
-              position: 'relative', overflow: 'hidden',
             }}
-            onMouseEnter={(e) => { e.target.style.transform = 'translateY(-2px) scale(1.03)'; e.target.style.boxShadow = '0 8px 32px rgba(249,115,22,.5), inset 0 1px 0 rgba(255,255,255,.15)'; }}
-            onMouseLeave={(e) => { e.target.style.transform = 'translateY(0) scale(1)'; e.target.style.boxShadow = '0 6px 24px rgba(249,115,22,.4), inset 0 1px 0 rgba(255,255,255,.15)'; }}
+            onMouseEnter={(e) => { e.target.style.transform = 'translateY(-1px)'; e.target.style.boxShadow = '0 6px 20px rgba(249,115,22,.35)'; }}
+            onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 16px rgba(249,115,22,.25)'; }}
           >
-            {'🔓'} Débloquer maintenant
+            Débloquer
           </button>
           {requiredPlan === 'professional' && (
-            <div style={{ fontSize: 10, color: T.textMuted, marginTop: 10 }}>
+            <div style={{ fontSize: 10, color: T.textMuted, marginTop: 8 }}>
               Forfait Professional et supérieur
             </div>
           )}
