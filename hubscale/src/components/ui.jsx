@@ -541,7 +541,7 @@ export function PremiumGate({ children, requiredPlan = 'professional', label, bl
     >
       <div style={{
         position: 'relative', borderRadius: 15,
-        background: T.bg, overflow: 'hidden',
+        background: T.bg, overflow: 'visible',
       }}>
         {blur && (
           <div style={{ filter: 'blur(5px)', pointerEvents: 'none', userSelect: 'none', opacity: 0.6 }}>
@@ -553,7 +553,7 @@ export function PremiumGate({ children, requiredPlan = 'professional', label, bl
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           zIndex: 10, padding: 24, textAlign: 'center',
           background: blur ? 'rgba(9,9,11,.45)' : 'transparent',
-          borderRadius: 15,
+          borderRadius: 15, minHeight: blur ? 200 : undefined,
         }}>
           <div style={{
             width: 44, height: 44, borderRadius: 12,
