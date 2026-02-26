@@ -8,7 +8,7 @@ import {
   deadline, fK, fetchGHL, fmt, generateInvoices, getAlerts, getStripeChargesForClient, getStripeTotal, getTheme, ghlCreateContact,
   ghlCreateInvoice, ghlSendInvoice, ghlUpdateContact, healthScore, matchSubsToRevolut, ml, nextM, normalizeStr, pct,
   pf, prevM, project, revFinancials, runway, sSet, sbUpsert, simH, sinceLbl, sinceMonths, slackSend, subMonthly, teamMonthly,
-  uid, autoCategorize,
+  uid, autoCategorize, TIMING,
 } from "../shared.jsx";
 import { categorizeTransaction } from "./BankingPanel.jsx";
 import { TX_CATEGORIES } from "../shared.jsx";
@@ -539,7 +539,7 @@ export function ReplayMensuel({soc,reps,allM,socBank,clients,ghlData}){
   {title:"🚀 Objectif prochain mois",bg:"linear-gradient(135deg,#0a1a0a,#051a05)",render:()=><div style={{textAlign:"center",marginTop:30}}>{proj?<><div style={{fontSize:32,fontWeight:900,color:C.acc,animation:"celebIn .5s ease both"}}>{fmt(proj[0])}€</div><div style={{fontSize:12,color:C.td,marginTop:6}}>Projection {ml(nextM(cm))}</div><div style={{marginTop:20,padding:"12px 20px",background:"rgba(255,170,0,.08)",borderRadius:12,display:"inline-block"}}><div style={{fontSize:11,color:C.acc,fontWeight:700}}>🎯 Si tu maintiens le rythme :</div><div style={{fontSize:11,color:C.td,marginTop:4}}>T+2: {fmt(proj[1])}€ · T+3: {fmt(proj[2])}€</div></div></>:<div style={{color:C.td}}>Pas assez de données pour projeter</div>}</div>}
  ];
  const TOTAL=slides.length;
- useEffect(()=>{if(!open)return;timerRef.current=setInterval(()=>setSlide(p=>(p+1)%TOTAL),3000);return()=>clearInterval(timerRef.current);},[open]);
+ useEffect(()=>{if(!open)return;timerRef.current=setInterval(()=>setSlide(p=>(p+1)%TOTAL),TIMING.SLIDE_INTERVAL_MS);return()=>clearInterval(timerRef.current);},[open]);
  const copyShare=()=>{const txt=`📊 Replay ${soc?.nom} — ${ml(cm)}\nCA: ${fmt(ca)}€ | Marge: ${fmt(marge)}€ (${margePct}%)\nClients: ${activeCl.length} | MRR: ${fmt(mrr)}€\nCroissance: ${growth>=0?"+":""}${growth}%\nScore: ${score}/100`;navigator.clipboard?.writeText(txt);};
  if(!open)return <button onClick={()=>{setOpen(true);setSlide(0);setConfetti(false);}} style={{padding:"8px 16px",borderRadius:10,border:`1px solid ${C.acc}44`,background:C.accD,color:C.acc,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:6}}>🎬 Replay du mois</button>;
  return <div style={{position:"fixed",inset:0,zIndex:9999,background:"#06060b",fontFamily:FONT,display:"flex",flexDirection:"column",animation:"fi .3s ease"}}>

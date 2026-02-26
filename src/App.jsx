@@ -16,7 +16,7 @@ import {
   mkPrefill, mkRevolutDemo, mkSocRevDemo, ml, nextM, normalizeStr, pct, pf, prevM, project, qCA, qLabel, qMonths, qOf,
   refreshInvoiceStatuses, revFinancials, runway, sGet, sSet, sbAuthHeaders, sbGet, sbList, sbUpsert, simH, sinceLbl,
   sinceMonths, slackBotSend, slackMention, slackSend, slackWebhookSend, storeCall, subMonthly, syncFromSupabase,
-  syncGHLForSoc, syncRevolut, syncSocRevolut, syncStripeData, teamMonthly, uid, gr,
+  syncGHLForSoc, syncRevolut, syncSocRevolut, syncStripeData, teamMonthly, uid, gr, TIMING,
 } from "./shared.jsx";
 
 /* UI COMPONENTS */
@@ -123,13 +123,14 @@ function AppInner(){
    });
   }
  },[socs]);
- // Auto-sync GHL every 30s + on mount (only when authenticated)
+ // Auto-sync GHL every 30s + on mount — pauses when tab hidden, backs off on errors
  useEffect(()=>{
   if(!loaded||!role)return;
-  const doSync=()=>{syncGHL().catch(e=>console.warn("Auto-sync GHL failed:",e));};
-  doSync();
-  const id=setInterval(doSync,30000);
-  return()=>clearInterval(id);
+  let fails=0,id;
+  const schedule=()=>{const ms=Math.min(30000*Math.pow(2,fails),300000);id=setTimeout(tick,ms);};
+  const tick=()=>{if(document.hidden){id=setTimeout(tick,5000);return;}syncGHL().then(()=>{fails=0;}).catch(e=>{fails=Math.min(fails+1,4);console.warn("Auto-sync GHL failed:",e);}).finally(schedule);};
+  syncGHL().catch(e=>console.warn("Auto-sync GHL failed:",e));schedule();
+  return()=>clearTimeout(id);
  },[loaded,role,syncGHL]);
  const syncRev=useCallback(async()=>{
   let data=null;
@@ -156,10 +157,12 @@ function AppInner(){
  },[socs]);
  useEffect(()=>{
   if(!loaded||!role)return;
-  const doSync=async()=>{try{await Promise.all([syncRev(),syncAllSocBanks(),syncStripeData().then(sd=>{if(sd)setStripeData(sd);})]);} catch(e){console.warn("Auto-sync failed:",e);}};
-  doSync();
-  const id=setInterval(doSync,60000);
-  return()=>clearInterval(id);
+  let fails=0,id;
+  const doSync=async()=>{try{await Promise.all([syncRev(),syncAllSocBanks(),syncStripeData().then(sd=>{if(sd)setStripeData(sd);})]);fails=0;} catch(e){fails=Math.min(fails+1,4);console.warn("Auto-sync failed:",e);}};
+  const schedule=()=>{const ms=Math.min(60000*Math.pow(2,fails),600000);id=setTimeout(tick,ms);};
+  const tick=()=>{if(document.hidden){id=setTimeout(tick,5000);return;}doSync().finally(schedule);};
+  doSync();schedule();
+  return()=>clearTimeout(id);
  },[loaded,role,syncRev,syncAllSocBanks]);
  // Auto-generate reports for current month when socBank/ghlData change
  useEffect(()=>{
@@ -296,6 +299,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  const missing=actS.filter(s=>!gr(reps,s.id,cM2));const lateActions=actions.filter(a=>!a.done&&a.deadline<cM2);
  return <div className="glass-bg" style={{display:"flex",minHeight:"100vh",fontFamily:FONT,color:C.t}}>
   <style>{CSS}{POLISH_CSS}</style>
+  <a href="#main-content" className="skip-link" style={{position:"absolute",top:-40,left:0,background:C.acc,color:"#0a0a0f",padding:"8px 16px",zIndex:10001,fontWeight:700,fontSize:12,transition:"top .2s"}} onFocus={e=>{e.currentTarget.style.top="0";}} onBlur={e=>{e.currentTarget.style.top="-40px";}}>Aller au contenu principal</a>
   <SkeletonStyles/>
   <GlobalSearch open={showSearch} onClose={()=>setShowSearch(false)} clients={clients} socs={socs} socBank={socBank} ghlData={ghlData} onNavigate={handleSearchNav}/>
   {missedRecap&&<div className="fi" style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)"}} onClick={()=>setMissedRecap(null)}>
@@ -332,7 +336,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   {adminMobileMenu&&<div className="fi" onClick={()=>setAdminMobileMenu(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:150}}><div onClick={e=>e.stopPropagation()} style={{width:240,height:"100vh",background:C.card,borderRight:`1px solid ${C.brd}`,overflowY:"auto"}}>
    <Sidebar items={SB_ADMIN} activeTab={tab} setTab={t=>{setTab(t);setAdminMobileMenu(false);}} brandTitle={hold.brand?.name||"L'INCUBATEUR ECS"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>{setRole(null);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");}} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand}/>
   </div></div>}
-  <div className="sidebar-desktop"><Sidebar items={SB_ADMIN} activeTab={tab} setTab={setTab} brandTitle={hold.brand?.name||"L'INCUBATEUR ECS"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>{setRole(null);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");}} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand} extra={<div style={{display:"flex",flexDirection:"column",gap:2}}>
+  <nav className="sidebar-desktop" aria-label="Navigation principale"><Sidebar items={SB_ADMIN} activeTab={tab} setTab={setTab} brandTitle={hold.brand?.name||"L'INCUBATEUR ECS"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>{setRole(null);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");}} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand} extra={<div style={{display:"flex",flexDirection:"column",gap:2}}>
    {hold.slack?.enabled&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 4px"}}><span style={{width:5,height:5,borderRadius:3,background:C.g}}/>
     <span style={{fontSize:8,color:C.td}}>{SLACK_MODES[hold.slack?.mode]?.icon} Slack connecté</span>
     {missing.length>0&&<button onClick={async()=>{const results=[];for(const s of missing){const r=await slackSend(hold.slack,buildReminderSlackMsg(s,"report",deadline(cM2)));results.push({nom:s.nom,ok:r.ok});}const ok=results.filter(r=>r.ok).length;showToast(`📤 ${ok}/${results.length} rappels envoyés`, 'success');}} style={{marginLeft:"auto",fontSize:8,color:C.o,background:C.oD,border:"none",borderRadius:4,padding:"2px 5px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>🔔 {missing.length}</button>}
@@ -340,8 +344,8 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    <button onClick={()=>setMeeting(true)} style={{width:"100%",display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:6,border:`1px solid ${"#a78bfa"}22`,background:"#a78bfa"+"0a",color:"#a78bfa",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT,textAlign:"left"}}>
     <span>📋</span><span>Mode Réunion</span>
    </button>
-  </div>}/></div>
-  <div className="main-content" style={{flex:1,minWidth:0,height:"100vh",overflow:"auto"}}>
+  </div>}/></nav>
+  <main id="main-content" className="main-content" role="main" style={{flex:1,minWidth:0,height:"100vh",overflow:"auto"}}>
   {saving&&<div style={{position:"fixed",top:12,right:12,zIndex:100,width:14,height:14,border:`2px solid ${C.brd}`,borderTopColor:C.acc,borderRadius:"50%",animation:"sp .8s linear infinite"}}/>}
   <div className="admin-soc-selector" style={{position:"fixed",top:12,left:220,zIndex:90,display:"flex",alignItems:"center",gap:8}}>
    <select value="" onChange={e=>{if(e.target.value)setAdminSocView(e.target.value);}} style={{padding:"6px 28px 6px 10px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.card,color:C.t,fontSize:11,fontWeight:600,fontFamily:FONT,cursor:"pointer",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",appearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2371717a'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 8px center"}}>
@@ -920,7 +924,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   </>}
   </PageTransition>
   </div>
-  </div>
+  </main>
  </div>;
 }
 /* USER ACCESS PANEL */
