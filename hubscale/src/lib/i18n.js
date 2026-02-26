@@ -1,7 +1,7 @@
 // HubScale — Internationalization (i18n)
 
 const FR = {
-  'nav.overview': 'Overview', 'nav.crm': 'CRM', 'nav.data': 'Data', 'nav.agenda': 'Agenda', 'nav.settings': 'Paramètres',
+  'nav.overview': 'Overview', 'nav.crm': 'CRM', 'nav.data': 'Data', 'nav.agenda': 'Agenda', 'nav.analytics': 'Analytics', 'nav.settings': 'Paramètres',
   'dash.welcome': 'Bienvenue sur votre Dashboard',
   'dash.subtitle': "Vue d'ensemble de votre activité et performances",
   'crm.title': 'CRM', 'crm.subtitle': 'Gestion des contacts et pipeline commercial',
@@ -17,10 +17,11 @@ const FR = {
   'tour.step5': 'Les Paramètres personnalisent votre espace.',
   'tour.next': 'Suivant', 'tour.prev': 'Précédent', 'tour.finish': 'Terminer', 'tour.skip': 'Passer',
   'lang.label': 'Langue',
+  'greeting.morning': 'Bonjour', 'greeting.afternoon': 'Bon après-midi', 'greeting.evening': 'Bonsoir',
 };
 
 const EN = {
-  'nav.overview': 'Overview', 'nav.crm': 'CRM', 'nav.data': 'Data', 'nav.agenda': 'Agenda', 'nav.settings': 'Settings',
+  'nav.overview': 'Overview', 'nav.crm': 'CRM', 'nav.data': 'Data', 'nav.agenda': 'Agenda', 'nav.analytics': 'Analytics', 'nav.settings': 'Settings',
   'dash.welcome': 'Welcome to your Dashboard',
   'dash.subtitle': 'Overview of your activity and performance',
   'crm.title': 'CRM', 'crm.subtitle': 'Contact management and sales pipeline',
@@ -36,6 +37,7 @@ const EN = {
   'tour.step5': 'Settings let you customize your workspace.',
   'tour.next': 'Next', 'tour.prev': 'Previous', 'tour.finish': 'Finish', 'tour.skip': 'Skip',
   'lang.label': 'Language',
+  'greeting.morning': 'Good morning', 'greeting.afternoon': 'Good afternoon', 'greeting.evening': 'Good evening',
 };
 
 const LANGS = { fr: FR, en: EN };

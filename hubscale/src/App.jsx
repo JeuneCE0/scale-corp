@@ -24,12 +24,12 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
 const Legal = lazy(() => import('./pages/Legal.jsx'));
 
 const TABS = [
-  { id: 'overview', label: 'Overview', icon: '📊' },
-  { id: 'crm', label: 'CRM', icon: '👥' },
-  { id: 'data', label: 'Data', icon: '💰' },
-  { id: 'agenda', label: 'Agenda', icon: '📅' },
-  { id: 'analytics', label: 'Analytics', icon: '📈' },
-  { id: 'settings', label: 'Paramètres', icon: '⚙️' },
+  { id: 'overview', label: 'Overview', icon: '📊', color: '#f97316' },
+  { id: 'crm', label: 'CRM', icon: '👥', color: '#3b82f6' },
+  { id: 'data', label: 'Data', icon: '💰', color: '#22c55e' },
+  { id: 'agenda', label: 'Agenda', icon: '📅', color: '#a855f7' },
+  { id: 'analytics', label: 'Analytics', icon: '📈', color: '#6366f1' },
+  { id: 'settings', label: 'Paramètres', icon: '⚙️', color: '#71717a' },
 ];
 
 const TAB_LABELS = { overview: 'Dashboard', crm: 'CRM', data: 'Data', agenda: 'Agenda', analytics: 'Analytics', settings: 'Paramètres' };
@@ -37,9 +37,9 @@ const TAB_LABELS = { overview: 'Dashboard', crm: 'CRM', data: 'Data', agenda: 'A
 // --- Session Greeting ---
 function getGreeting() {
   const h = new Date().getHours();
-  if (h < 12) return 'Bonjour';
-  if (h < 18) return 'Bon après-midi';
-  return 'Bonsoir';
+  if (h < 12) return t('greeting.morning');
+  if (h < 18) return t('greeting.afternoon');
+  return t('greeting.evening');
 }
 
 // --- Loading Fallback ---
@@ -772,6 +772,12 @@ export default function App() {
     }
   }, []);
 
+  // Activate enterprise plan for demo — full access to all features
+  useEffect(() => {
+    store('plan', 'enterprise');
+    store('payment_method', true);
+  }, []);
+
   // Initialize auth (async — restores session, fetches profile)
   useEffect(() => {
     initAuth().then((u) => {
@@ -996,21 +1002,22 @@ export default function App() {
 
       <nav role="navigation" aria-label="Navigation principale" style={{
         position: 'sticky', top: 0, zIndex: 100,
-        background: 'rgba(9,9,11,.85)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        borderBottom: `1px solid ${T.border}`,
-        padding: '0 16px',
+        background: 'rgba(9,9,11,.9)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+        borderBottom: '1px solid rgba(255,255,255,.06)',
+        padding: '0 20px',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 48 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 52 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
-              width: 30, height: 30, borderRadius: 8,
+              width: 34, height: 34, borderRadius: 10,
               background: 'linear-gradient(135deg, #f97316, #f59e0b)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 800, fontSize: 14, color: '#fff', flexShrink: 0,
+              fontWeight: 800, fontSize: 16, color: '#fff', flexShrink: 0,
+              boxShadow: '0 2px 12px rgba(249,115,22,.25)',
             }}>H</div>
             <div className="hide-mobile">
-              <div style={{ fontWeight: 700, fontSize: 13, color: T.text, lineHeight: 1.2 }}>Client Portal</div>
-              <div style={{ fontSize: 9, color: T.textMuted, letterSpacing: .3 }}>HubScale — Espace client B2B</div>
+              <div style={{ fontWeight: 800, fontSize: 14, color: T.text, lineHeight: 1.2, letterSpacing: -.3 }}>HubScale</div>
+              <div style={{ fontSize: 9, color: T.textMuted, letterSpacing: .5, textTransform: 'uppercase' }}>Client Portal</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1044,28 +1051,32 @@ export default function App() {
           </div>
         </div>
 
-        <div className="nav-tabs-scroll" role="tablist" style={{ display: 'flex', gap: 0 }}>
-          {TABS.map((t) => {
-            const active = tab === t.id;
+        <div className="nav-tab-bar" role="tablist">
+          {TABS.map((tb) => {
+            const active = tab === tb.id;
             return (
               <button
-                key={t.id}
+                key={tb.id}
                 role="tab"
                 aria-selected={active}
-                aria-label={t.label}
-                onClick={() => handleTabChange(t.id)}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  padding: '8px 12px', fontFamily: FONT,
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  fontSize: 11, fontWeight: active ? 700 : 500,
-                  color: active ? T.text : T.textMuted,
-                  borderBottom: active ? '2px solid #f97316' : '2px solid transparent',
-                  transition: 'all .15s ease', whiteSpace: 'nowrap', flexShrink: 0,
-                }}
+                aria-label={tb.label}
+                className="nav-tab"
+                onClick={() => handleTabChange(tb.id)}
+                style={active ? {
+                  background: `${tb.color}18`,
+                  borderColor: `${tb.color}30`,
+                  color: T.text,
+                  fontWeight: 700,
+                } : undefined}
               >
-                <span style={{ fontSize: 12 }}>{t.icon}</span>
-                {t.label}
+                <span className="tab-icon" style={active ? {
+                  background: `${tb.color}25`,
+                  borderColor: `${tb.color}40`,
+                  boxShadow: `0 0 12px ${tb.color}20`,
+                } : undefined}>
+                  {tb.icon}
+                </span>
+                {t(`nav.${tb.id}`)}
               </button>
             );
           })}

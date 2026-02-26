@@ -3,7 +3,7 @@ import { T, FONT } from './theme.js';
 
 export const GLOBAL_CSS = `
 *{box-sizing:border-box;margin:0;padding:0}
-body{margin:0;overflow-x:hidden;font-family:${FONT};background:${T.bg};color:${T.text}}
+body{margin:0;overflow-x:hidden;font-family:${FONT};background:${T.bg};color:${T.text};background-image:radial-gradient(ellipse at 15% -5%,rgba(249,115,22,.07) 0%,transparent 50%),radial-gradient(ellipse at 85% -5%,rgba(99,102,241,.05) 0%,transparent 50%)}
 
 /* Animations */
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -13,7 +13,7 @@ body{margin:0;overflow-x:hidden;font-family:${FONT};background:${T.bg};color:${T
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 @keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-@keyframes pageEnter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pageEnter{from{opacity:0;transform:translateY(10px) scale(.998)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes pagePulse{0%{opacity:.5}50%{opacity:1}100%{opacity:.5}}
 @keyframes bounceIn{0%{opacity:0;transform:scale(.3)}50%{opacity:1;transform:scale(1.05)}70%{transform:scale(.95)}100%{transform:scale(1)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
@@ -70,9 +70,9 @@ body{margin:0;overflow-x:hidden;font-family:${FONT};background:${T.bg};color:${T
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid ${T.accent}44;outline-offset:2px}
 
 /* Glass morphism */
-.glass{background:rgba(17,17,19,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.06);border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.2)}
-.glass:hover{border-color:rgba(99,102,241,.15)}
-.glass-static{background:rgba(17,17,19,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.06);border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.2)}
+.glass{background:rgba(17,17,19,.55);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.07);border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.03);transition:border-color .25s ease,box-shadow .25s ease,transform .25s ease}
+.glass:hover{border-color:rgba(255,255,255,.12);box-shadow:0 8px 32px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.05);transform:translateY(-1px)}
+.glass-static{background:rgba(17,17,19,.55);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.07);border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.03)}
 .glass-input{background:rgba(9,9,11,.5);border:1px solid rgba(255,255,255,.06);border-radius:10px;transition:all .2s ease}
 .glass-input:focus-within{border-color:rgba(99,102,241,.4);box-shadow:0 0 12px rgba(99,102,241,.08)}
 
@@ -116,6 +116,13 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover{opacity:1}
 
 /* Score ring */
 .score-ring{position:relative;display:inline-flex;align-items:center;justify-content:center}
+
+/* Modern navigation tabs */
+.nav-tab-bar{display:flex;gap:2px;padding:4px 0 8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.nav-tab-bar::-webkit-scrollbar{display:none}
+.nav-tab{position:relative;background:transparent;border:1px solid transparent;cursor:pointer;padding:7px 14px;font-family:${FONT};display:flex;align-items:center;gap:7px;font-size:12px;font-weight:500;color:${T.textMuted};border-radius:10px;transition:all .2s ease;white-space:nowrap;flex-shrink:0}
+.nav-tab:hover:not([aria-selected="true"]){background:rgba(255,255,255,.04);color:${T.textSecondary}}
+.nav-tab .tab-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);transition:all .25s ease;flex-shrink:0}
 
 /* Tablet (769px - 1024px) */
 @media(min-width:769px) and (max-width:1024px){
@@ -168,7 +175,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover{opacity:1}
 .skip-nav:focus{top:0}
 
 /* Page transition */
-.page-transition{animation:pageEnter .3s ease forwards}
+.page-transition{animation:pageEnter .25s ease forwards}
 
 /* Drag handle */
 .drag-handle{cursor:grab;opacity:.3;transition:opacity .15s;user-select:none}
