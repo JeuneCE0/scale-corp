@@ -17,6 +17,7 @@ import {
   refreshInvoiceStatuses, revFinancials, runway, sGet, sSet, sbAuthHeaders, sbGet, sbList, sbUpsert, simH, sinceLbl,
   sinceMonths, slackBotSend, slackMention, slackSend, slackWebhookSend, storeCall, subMonthly, syncFromSupabase,
   syncGHLForSoc, syncRevolut, syncSocRevolut, syncStripeData, teamMonthly, uid, gr, TIMING,
+  fetchOAuthStatus, oauthConnect, oauthDisconnect, OAUTH_PROVIDERS,
 } from "./shared.jsx";
 
 /* UI COMPONENTS */
@@ -42,6 +43,58 @@ const BankingPanel = lazy(() => import("./components/Banking.jsx").then(m => ({ 
 /* Suspense fallback with skeleton loader */
 function LazyFallback() {
   return <SkeletonDashboard />;
+}
+
+/* OAuth Connections Panel — auto-detects + one-click connect */
+function OAuthConnectionsPanel({socs}){
+ const[oauthData,setOauthData]=useState(null);const[loading,setLoading]=useState(true);const[connectSoc,setConnectSoc]=useState(null);
+ useEffect(()=>{fetchOAuthStatus().then(d=>{setOauthData(d);setLoading(false);}).catch(()=>setLoading(false));},[]);
+ const tokenMap=useMemo(()=>{const m={};(oauthData?.tokens||[]).forEach(t=>{m[`${t.provider}_${t.society_id}`]=t;});return m;},[oauthData]);
+ const staticApis=[{name:"Stripe",status:false,icon:"💳",color:"#635BFF"},{name:"Slack",status:false,icon:"💬",color:"#4A154B"}];
+ const handleDisconnect=async(provider,socId)=>{const ok=await oauthDisconnect(provider,socId);if(ok){setOauthData(prev=>({...prev,tokens:(prev?.tokens||[]).filter(t=>t.id!==`${provider}_${socId}`)}));}};
+ return <Card style={{padding:16}}>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+   <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:16}}>🔌</span><span style={{fontWeight:700,fontSize:12}}>Connexions API</span></div>
+   {!loading&&oauthData&&<span style={{fontSize:8,color:C.td}}>{(oauthData.tokens||[]).length} connectée{(oauthData.tokens||[]).length>1?"s":""}</span>}
+  </div>
+  {loading?<div style={{textAlign:"center",padding:12,color:C.td,fontSize:11}}>Chargement...</div>:<>
+   {OAUTH_PROVIDERS.map(p=>{
+    const configured=oauthData?.configured?.[p.id];
+    const connected=(oauthData?.tokens||[]).filter(t=>t.provider===p.id);
+    return <div key={p.id} style={{padding:"8px 0",borderBottom:`1px solid ${C.brd}08`}}>
+     <div style={{display:"flex",alignItems:"center",gap:8}}>
+      <span style={{fontSize:14}}>{p.icon}</span>
+      <div style={{flex:1}}>
+       <span style={{fontSize:11,fontWeight:700}}>{p.name}</span>
+       <div style={{fontSize:9,color:C.td}}>{p.desc}</div>
+      </div>
+      {connected.length>0?<span style={{fontSize:9,color:C.g,fontWeight:700}}>✅ {connected.length} connecté{connected.length>1?"s":""}</span>
+       :configured?<Btn small v="secondary" onClick={()=>setConnectSoc({provider:p.id,name:p.name})} style={{fontSize:9}}>Connecter</Btn>
+       :<span style={{fontSize:9,color:C.td}}>Non configuré</span>}
+     </div>
+     {connected.length>0&&<div style={{marginLeft:24,marginTop:4}}>{connected.map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:6,padding:"2px 0",fontSize:9}}>
+      <span style={{color:C.g}}>●</span><span style={{fontWeight:600}}>{t.society_id}</span>
+      <span style={{color:C.td}}>{t.connected_at?`depuis ${ago(t.connected_at)}`:""}</span>
+      <button onClick={()=>handleDisconnect(t.provider,t.society_id)} style={{background:"none",border:"none",color:C.r,fontSize:8,cursor:"pointer",fontFamily:FONT}}>Déconnecter</button>
+     </div>)}</div>}
+    </div>;
+   })}
+   {staticApis.map(api=><div key={api.name} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.brd}08`}}>
+    <span style={{fontSize:14}}>{api.icon}</span>
+    <span style={{flex:1,fontSize:11,fontWeight:600}}>{api.name}</span>
+    <span style={{fontSize:9,color:C.td}}>Bientôt disponible</span>
+   </div>)}
+  </>}
+  {connectSoc&&<Modal open={!!connectSoc} onClose={()=>setConnectSoc(null)} title={`Connecter ${connectSoc.name}`}>
+   <div style={{color:C.td,fontSize:12,marginBottom:12}}>Sélectionnez la société à connecter :</div>
+   <div style={{display:"flex",flexDirection:"column",gap:6}}>
+    {socs.filter(s=>["active","lancement"].includes(s.stat)).map(s=><div key={s.id} onClick={()=>{oauthConnect(connectSoc.provider,s.id);}} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",background:C.bg,borderRadius:8,border:`1px solid ${C.brd}`,cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.acc+"66";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.brd;}}>
+     <span style={{width:8,height:8,borderRadius:4,background:s.color}}/><span style={{fontWeight:700,fontSize:12}}>{s.nom}</span><span style={{flex:1,fontSize:10,color:C.td}}>{s.porteur}</span>
+     <span style={{fontSize:10,color:C.acc,fontWeight:600}}>Connecter →</span>
+    </div>)}
+   </div>
+  </Modal>}
+ </Card>;
 }
 
 function AppInner(){
@@ -77,6 +130,8 @@ function AppInner(){
    if(sbSocs&&sbSocs.length>0){const sbMap=Object.fromEntries(sbSocs.map(x=>[x.id,x]));finalSocs=(s||DS).map(sc=>sbMap[sc.id]?{...sc,...sbMap[sc.id]}:sc);const newIds=sbSocs.filter(x=>!(s||DS).find(d=>d.id===x.id));if(newIds.length)finalSocs=[...finalSocs,...newIds];localStorage.setItem("scAs",JSON.stringify(finalSocs));}}catch(e){console.warn("Supabase sync init:",e);}
    setSocs(finalSocs);setReps(r||mkPrefill());setHold(finalHold);setActions(a||DEMO_ACTIONS);setJournal(j||DEMO_JOURNAL);setPulses(p||DEMO_PULSES);setDeals(d||DEMO_DEALS);setGhlData(g||{});setRevData(rv||null);setSocBank(sb||{});setOkrs(ok||DEMO_OKRS);setSynergies(sy||DEMO_SYNERGIES);setKb(kk||DEMO_KB);setSubs(su||DEMO_SUBS);setTeam(tm||DEMO_TEAM);setClients(cl||DEMO_CLIENTS);setInvoices(iv||mkDemoInvoices(cl||DEMO_CLIENTS,finalSocs));}catch{setSocs(DS);setReps(mkPrefill());setHold(DH);setActions(DEMO_ACTIONS);setJournal(DEMO_JOURNAL);setPulses(DEMO_PULSES);setDeals(DEMO_DEALS);setOkrs(DEMO_OKRS);setSynergies(DEMO_SYNERGIES);setKb(DEMO_KB);setSubs(DEMO_SUBS);setTeam(DEMO_TEAM);setClients(DEMO_CLIENTS);setInvoices(mkDemoInvoices(DEMO_CLIENTS,DS));}
    /* onboarding removed */
+   // Handle OAuth callback params
+   try{const u2=new URLSearchParams(window.location.search);const oauthResult=u2.get("oauth");if(oauthResult){const oauthProvider=u2.get("provider")||"";const oauthSoc=u2.get("society")||"";const oauthMsg=u2.get("msg")||"";if(oauthResult==="success"){showToast(`✅ ${oauthProvider} connecté pour ${oauthSoc}`,"success");}else{showToast(`❌ Erreur connexion ${oauthProvider}: ${oauthMsg}`,"error");}window.history.replaceState({},"",window.location.pathname);}}catch{}
    setLoaded(true);
    // Session persistence: check stored auth token
    try{const tk=localStorage.getItem("sc_auth_token");if(tk){fetch("/api/auth?action=me",{headers:{Authorization:"Bearer "+tk}}).then(r2=>r2.ok?r2.json():null).then(u=>{if(u&&u.id){setAuthUser(u);const meta=u.user_metadata||{};if(meta.role==="admin"){setRole("admin");setStoreToken("auth");setCurrentSocId("admin");syncFromSupabase("admin").catch(()=>{});}else if(meta.society_id){setRole(meta.society_id);setStoreToken("auth");setCurrentSocId(meta.society_id);syncFromSupabase(meta.society_id).catch(()=>{});}}}).catch(()=>{});}}catch{}
@@ -916,14 +971,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
      </div>)}
      <Btn small style={{marginTop:8}} onClick={()=>setTab(1)}>Gérer toutes →</Btn>
     </Card>
-    <Card style={{padding:16}}>
-     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}><span style={{fontSize:16}}>🔌</span><span style={{fontWeight:700,fontSize:12}}>Connexions API</span></div>
-     {[{name:"GoHighLevel",status:socs.some(s=>s.ghlLocationId),icon:"📡"},{name:"Revolut",status:socs.some(s=>s.revolutCompany),icon:"🏦"},{name:"Stripe",status:!!stripeData,icon:"💳"},{name:"Slack",status:hold.slack?.enabled,icon:"💬"},{name:"Meta Ads",status:false,icon:"📱"}].map(api=><div key={api.name} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:`1px solid ${C.brd}08`}}>
-      <span style={{fontSize:12}}>{api.icon}</span>
-      <span style={{flex:1,fontSize:11,fontWeight:600}}>{api.name}</span>
-      <span style={{fontSize:10,fontWeight:600,color:api.status?C.g:C.td}}>{api.status?"✅ Connecté":"⏳ Non connecté"}</span>
-     </div>)}
-    </Card>
+    <OAuthConnectionsPanel socs={socs}/>
    </div>
    <Sect title="📱 Widgets Porteur" sub="Embed pour chaque société">
     {actS.filter(s=>s.id!=="eco").map(s=><WidgetEmbed key={s.id} soc={s} clients={clients}/>)}

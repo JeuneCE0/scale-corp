@@ -373,6 +373,29 @@ export const DEMO_KB=[
  {id:"kb5",title:"Méthode pricing \"Value-Based\"",cat:"tip",author:"copy",content:"Ne jamais pricer au temps passé. Toujours pricer à la valeur créée.\n\nFormule : Prix = 10% de la valeur annuelle que tu génères pour le client.\n\nExemple : tu gères 50K€/an de pub → facture 5K€/mois minimum.",tags:["pricing","mindset"],date:"2026-02-01",likes:4},
  {id:"kb6",title:"Script Appel Découverte",cat:"playbook",author:"leadx",content:"Intro (2min) : Contexte, pourquoi cet appel\nDouleur (5min) : Quel est le plus gros frein à ta croissance ?\nImpact (3min) : Combien ça te coûte de ne rien faire ?\nSolution (5min) : Voici comment on résout ça\nClose (2min) : On démarre quand ?",tags:["vente","appel","closing"],date:"2026-02-08",likes:6},
 ];
+// --- OAuth Connection Helpers ---
+export async function fetchOAuthStatus(){
+ try{
+  const r=await fetch("/api/oauth?provider=ghl&action=status",{headers:sbAuthHeaders()});
+  if(!r.ok)return{tokens:[],configured:{}};
+  return await r.json();
+ }catch{return{tokens:[],configured:{}};}
+}
+export function oauthConnect(provider,societyId){
+ window.location.href=`/api/oauth?provider=${provider}&action=authorize&societyId=${encodeURIComponent(societyId)}`;
+}
+export async function oauthDisconnect(provider,societyId){
+ try{
+  const r=await fetch(`/api/oauth?provider=${provider}&action=disconnect&societyId=${encodeURIComponent(societyId)}`,{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({societyId})});
+  return r.ok;
+ }catch{return false;}
+}
+export const OAUTH_PROVIDERS=[
+ {id:"ghl",name:"GoHighLevel",icon:"📡",color:"#4CAF50",desc:"CRM, contacts, pipeline, factures"},
+ {id:"revolut",name:"Revolut Business",icon:"🏦",color:"#0075EB",desc:"Comptes bancaires, transactions"},
+ {id:"qonto",name:"Qonto",icon:"🏛️",color:"#482DDD",desc:"Comptes bancaires, transactions"},
+];
+
 export const GHL_STAGES_COLORS=["#60a5fa","#FFAA00","#fb923c","#34d399","#a78bfa","#f43f5e","#14b8a6","#eab308"];
 export const GHL_BASE="/api/ghl";
 export function mkGHLDemo(){ return {}; }

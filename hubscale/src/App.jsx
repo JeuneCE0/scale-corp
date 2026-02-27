@@ -837,6 +837,13 @@ export default function App() {
     mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  // Listen for checkout event from PremiumGate / TrialBanner
+  useEffect(() => {
+    const goCheckout = () => { setCheckoutPlan(null); setView('checkout'); };
+    window.addEventListener('hs:checkout', goCheckout);
+    return () => window.removeEventListener('hs:checkout', goCheckout);
+  }, []);
+
   // Global keyboard shortcuts: Cmd+K (search), Cmd+? (shortcuts help), 1-5 (tabs), N (new)
   useEffect(() => {
     if (!authed) return;

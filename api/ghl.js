@@ -2,12 +2,65 @@
 import { readFileSync, existsSync } from 'fs';
 import { applyHeaders, verifyAuth, canAccessGHLLocation, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest } from './_middleware.js';
 
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
 const LOCATION_KEY_MAP = {
   "NsV7HI2MbE6qHtRp410y": "GHL_ECO_KEY",
   "BjQ4DxmWrLl3nCNcjmhE": "GHL_LEADX_KEY",
   "2lB0paK192CFU1cLz5eT": "GHL_BCS_KEY",
   "nTgok0v3cxvVLOLXyR11": "GHL_MODERMA_KEY",
 };
+
+// Try to get OAuth token from Supabase api_tokens table
+async function getOAuthToken(locationId) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return null;
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/api_tokens?provider=eq.ghl&location_id=eq.${encodeURIComponent(locationId)}&select=access_token,expires_at,refresh_token,society_id`,
+      { headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` } }
+    );
+    if (!r.ok) return null;
+    const rows = await r.json();
+    if (!rows?.[0]) return null;
+    const token = rows[0];
+    // Check expiration — refresh if needed
+    if (token.expires_at && new Date(token.expires_at) < new Date()) {
+      return await refreshOAuthToken(token);
+    }
+    return token.access_token;
+  } catch { return null; }
+}
+
+async function refreshOAuthToken(stored) {
+  if (!stored.refresh_token) return null;
+  const clientId = process.env.GHL_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GHL_OAUTH_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return null;
+  try {
+    const r = await fetch('https://services.leadconnectorhq.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: stored.refresh_token, client_id: clientId, client_secret: clientSecret }).toString(),
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    // Store updated token
+    const payload = {
+      id: `ghl_${stored.society_id}`,
+      access_token: data.access_token,
+      refresh_token: data.refresh_token || stored.refresh_token,
+      expires_at: data.expires_in ? new Date(Date.now() + data.expires_in * 1000).toISOString() : null,
+      updated_at: new Date().toISOString(),
+    };
+    await fetch(`${SUPABASE_URL}/rest/v1/api_tokens`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+      body: JSON.stringify([payload]),
+    }).catch(() => {});
+    return data.access_token;
+  } catch { return null; }
+}
 
 const GHL_BASE = "https://services.leadconnectorhq.com";
 const VALID_ACTIONS = ['contacts', 'pipelines', 'opportunities', 'contacts_list', 'opportunities_all', 'calendars', 'conversations', 'contact_update', 'contact_create', 'contact_delete', 'calendar_events', 'conversations_list', 'conversations_messages', 'conversation_send', 'calendar_slots', 'notes_list', 'notes_create', 'webhook_events', 'invoice_create', 'invoice_send'];
@@ -42,11 +95,13 @@ export default async function handler(req, res) {
 
   if (!locationId) return badRequest(res, "Missing locationId");
 
+  // Resolve API key: env var first, then OAuth token from Supabase
   const envVar = LOCATION_KEY_MAP[locationId];
-  if (!envVar) return res.status(403).json({ error: "Invalid locationId" });
-
-  const apiKey = process.env[envVar];
-  if (!apiKey) return res.status(500).json({ error: "API key not configured" });
+  let apiKey = envVar ? process.env[envVar] : null;
+  if (!apiKey) {
+    apiKey = await getOAuthToken(locationId);
+  }
+  if (!apiKey) return res.status(500).json({ error: "API key not configured. Connect via OAuth or set environment variable." });
 
   const headers = {
     Authorization: `Bearer ${apiKey}`,
