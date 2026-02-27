@@ -271,15 +271,15 @@ export function PullToRefresh({ onRefresh, children }) {
 
 // ─── 7. BREADCRUMBS ───
 const TAB_NAMES_ADMIN = {
-  0: "Dashboard", 1: "Sociétés", 2: "Rapports", 3: "Clients", 4: "Facturation",
+  0: "Dashboard", 1: "Sociétés", 2: "Finances", 3: "Clients", 4: "Facturation",
   5: "AI Copilot", 6: "Deal Flow", 7: "CRM", 8: "Banking", 10: "Synergies",
-  11: "Knowledge Base", 13: "Abonnements", 14: "Accès", 15: "Holding", 16: "Marque",
-  17: "Intégrations", 18: "Publicité",
+  11: "Knowledge Base", 13: "Abonnements", 14: "Accès", 15: "Sales", 16: "Publicité",
+  17: "Rapports", 18: "Paramètres",
 };
 
 const TAB_NAMES_PORTEUR = {
-  0: "Dashboard", 1: "Analytique", 2: "Rapports", 3: "Clients", 4: "Conversations",
-  5: "Facturation", 6: "AI Coach", 7: "Abonnements", 8: "Banking", 9: "Knowledge Base",
+  0: "Dashboard", 1: "Activité", 2: "Sales", 3: "Publicité", 5: "Banque",
+  9: "Clients", 11: "Agenda", 12: "Paramètres", 13: "Rapports", 14: "Conversations",
 };
 
 export function Breadcrumbs({ tab, isAdmin, socName, onNavigate }) {
