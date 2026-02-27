@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { T } from '../lib/theme.js';
 import { uid, daysUntil } from '../lib/utils.js';
-import { storeDebounced, load } from '../lib/store.js';
+import { storeDebounced, load, store } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
 import { Card, Section, Btn, Inp, Sel, Modal, EmptyState, Badge, ConfirmDialog } from '../components/ui.jsx';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { useUndoStack } from '../hooks/useUndoStack.js';
 import { EVENT_TYPES, EVENT_TYPE_COLORS as TYPE_COLORS, EVENT_TYPE_ICONS as TYPE_ICONS } from '../lib/constants.js';
+import { startOAuthFlow } from '../lib/api.js';
+import { isSupabaseConfigured } from '../lib/supabase.js';
+import { onIntegrationConnect } from '../lib/integrationData.js';
 
 /* ── Reminder options ─────────────────────────────────────── */
 const REMINDER_OPTIONS = [
@@ -88,6 +91,47 @@ export default function Agenda() {
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [undoMsg, setUndoMsg] = useState('');
+
+  /* ── Google Calendar connection ──────────────────────────── */
+  const [gcalConnected, setGcalConnected] = useState(() => !!(load('integrations') || {})['Google Calendar']);
+  const [gcalConnecting, setGcalConnecting] = useState(false);
+  const [gcalDismissed, setGcalDismissed] = useState(false);
+
+  const connectGoogleCalendar = useCallback(async () => {
+    setGcalConnecting(true);
+    // Production: use real OAuth
+    if (isSupabaseConfigured()) {
+      try {
+        const result = await startOAuthFlow('Google Calendar');
+        if (result.url) { window.location.href = result.url; return; }
+      } catch (err) {
+        console.warn('[gcal] OAuth not available, falling back to local mode:', err.message);
+      }
+    }
+    // Local / demo mode: toggle integration + seed data
+    const integrations = load('integrations') || {};
+    store('integrations', { ...integrations, 'Google Calendar': true });
+    const timestamps = load('integrationTimestamps') || {};
+    store('integrationTimestamps', { ...timestamps, 'Google Calendar': new Date().toISOString() });
+    onIntegrationConnect('Google Calendar');
+    // Refresh events from store
+    setEvents(load('events') || []);
+    setGcalConnected(true);
+    setGcalConnecting(false);
+    window.dispatchEvent(new CustomEvent('hs:integration-sync', { detail: { name: 'Google Calendar', action: 'connect' } }));
+  }, []);
+
+  // Listen for external connection changes (e.g. from Settings page)
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail?.name === 'Google Calendar') {
+        setGcalConnected(e.detail.action === 'connect');
+        if (e.detail.action === 'connect') setEvents(load('events') || []);
+      }
+    };
+    window.addEventListener('hs:integration-sync', handler);
+    return () => window.removeEventListener('hs:integration-sync', handler);
+  }, []);
 
   // View mode: 'list' | 'calendar'
   const [view, setView] = useState('list');
@@ -589,6 +633,42 @@ export default function Agenda() {
 
       {/* Quick stats */}
       {statsBar}
+
+      {/* Google Calendar connection banner */}
+      {!gcalConnected && !gcalDismissed && (
+        <div className="fade-up" style={{
+          display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16,
+          padding: '16px 20px', borderRadius: 14,
+          background: `linear-gradient(135deg, ${T.surface2}, ${T.surface})`,
+          border: `1px solid ${T.border}`,
+          flexWrap: 'wrap',
+        }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 12,
+            background: '#4285f420', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 22, flexShrink: 0,
+          }}>{'📅'}</div>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 2 }}>
+              Connecter Google Calendar
+            </div>
+            <div style={{ fontSize: 11, color: T.textSecondary, lineHeight: 1.4 }}>
+              Synchronisez vos événements et rendez-vous directement dans votre agenda HubScale.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Btn v="ghost" small onClick={() => setGcalDismissed(true)} style={{ color: T.textMuted }}>Plus tard</Btn>
+            <Btn onClick={connectGoogleCalendar} small
+              disabled={gcalConnecting}
+              style={{
+                background: gcalConnecting ? T.surface2 : 'linear-gradient(135deg, #4285f4, #34a853)',
+                boxShadow: gcalConnecting ? 'none' : '0 2px 12px rgba(66,133,244,.3)',
+              }}>
+              {gcalConnecting ? '⟳ Connexion...' : 'Connecter'}
+            </Btn>
+          </div>
+        </div>
+      )}
 
       {/* View toggle + Aujourd'hui button */}
       <div className="fade-up" style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
