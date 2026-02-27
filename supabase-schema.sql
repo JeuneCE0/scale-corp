@@ -118,7 +118,48 @@ create table if not exists public.holding (
   updated_at timestamptz default now()
 );
 
+-- API OAuth tokens (for GHL, Revolut, Qonto, Meta Ads, Google Ads, TikTok, Stripe)
+create table if not exists public.api_tokens (
+  id text primary key, -- e.g. "meta_leadx", "ghl_eco"
+  provider text not null, -- ghl, revolut, qonto, meta, google_ads, tiktok, stripe
+  society_id text references public.societies(id),
+  access_token text,
+  refresh_token text,
+  token_type text default 'Bearer',
+  expires_at timestamptz,
+  scopes text,
+  location_id text, -- GHL location ID
+  company_id text, -- Revolut company / generic company ref
+  raw_metadata jsonb default '{}', -- full token response for provider-specific data
+  connected_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Ad attribution data (cross-platform, monthly aggregates synced from APIs)
+create table if not exists public.ad_attribution (
+  id uuid primary key default gen_random_uuid(),
+  society_id text references public.societies(id),
+  month text not null, -- YYYY-MM
+  platform text not null, -- meta, google, tiktok
+  spend numeric default 0,
+  impressions integer default 0,
+  clicks integer default 0,
+  leads integer default 0,
+  conversions integer default 0,
+  revenue numeric default 0,
+  roas numeric default 0,
+  cpl numeric default 0,
+  cpa numeric default 0,
+  ctr numeric default 0,
+  raw_data jsonb default '{}', -- full API response for drill-down
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique(society_id, month, platform)
+);
+
 -- Enable Row Level Security
+alter table public.api_tokens enable row level security;
+alter table public.ad_attribution enable row level security;
 alter table public.users enable row level security;
 alter table public.societies enable row level security;
 alter table public.client_data enable row level security;
@@ -139,3 +180,5 @@ create policy "Allow all via service key" on public.reports for all using (true)
 create policy "Allow all via service key" on public.tx_categories for all using (true);
 create policy "Allow all via service key" on public.user_settings for all using (true);
 create policy "Allow all via service key" on public.holding for all using (true);
+create policy "Allow all via service key" on public.api_tokens for all using (true);
+create policy "Allow all via service key" on public.ad_attribution for all using (true);

@@ -394,7 +394,117 @@ export const OAUTH_PROVIDERS=[
  {id:"ghl",name:"GoHighLevel",icon:"📡",color:"#4CAF50",desc:"CRM, contacts, pipeline, factures"},
  {id:"revolut",name:"Revolut Business",icon:"🏦",color:"#0075EB",desc:"Comptes bancaires, transactions"},
  {id:"qonto",name:"Qonto",icon:"🏛️",color:"#482DDD",desc:"Comptes bancaires, transactions"},
+ {id:"meta",name:"Meta Ads",icon:"📘",color:"#1877F2",desc:"Campagnes Facebook & Instagram, ROAS, attribution"},
+ {id:"google_ads",name:"Google Ads",icon:"🔍",color:"#4285F4",desc:"Campagnes Search & Display, conversions"},
+ {id:"tiktok",name:"TikTok Ads",icon:"🎵",color:"#010101",desc:"Campagnes TikTok, reach, conversions"},
+ {id:"stripe",name:"Stripe",icon:"💳",color:"#635BFF",desc:"Paiements, abonnements, revenus"},
 ];
+/* --- Ad Platform API Proxies --- */
+export const META_ADS_PROXY="/api/meta-ads";
+export const GOOGLE_ADS_PROXY="/api/google-ads";
+export const TIKTOK_ADS_PROXY="/api/tiktok-ads";
+
+export async function fetchMetaAds(action,societyId,params={}){
+ try{
+  const r=await fetch(META_ADS_PROXY,{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,societyId,...params})});
+  if(!r.ok)return null;return await r.json();
+ }catch(e){console.warn("Meta Ads fetch failed:",e.message);return null;}
+}
+export async function fetchGoogleAds(action,societyId,params={}){
+ try{
+  const r=await fetch(GOOGLE_ADS_PROXY,{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,societyId,...params})});
+  if(!r.ok)return null;return await r.json();
+ }catch(e){console.warn("Google Ads fetch failed:",e.message);return null;}
+}
+export async function fetchTikTokAds(action,societyId,params={}){
+ try{
+  const r=await fetch(TIKTOK_ADS_PROXY,{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,societyId,...params})});
+  if(!r.ok)return null;return await r.json();
+ }catch(e){console.warn("TikTok Ads fetch failed:",e.message);return null;}
+}
+
+// Unified ad data sync: pull from all connected ad platforms for a society
+export async function syncAdData(societyId,oauthTokens){
+ const connected=(oauthTokens||[]).filter(t=>t.society_id===societyId);
+ const hasMeta=connected.some(t=>t.provider==="meta");
+ const hasGoogle=connected.some(t=>t.provider==="google_ads");
+ const hasTiktok=connected.some(t=>t.provider==="tiktok");
+ const now=new Date();const since=new Date(now.getFullYear(),now.getMonth()-2,1).toISOString().split("T")[0];
+ const until=now.toISOString().split("T")[0];
+
+ const results={meta:null,google:null,tiktok:null,unified:[]};
+ const fetches=[];
+
+ if(hasMeta)fetches.push(fetchMetaAds("account_insights",societyId,{dateRange:{since,until,increment:"monthly"}}).then(d=>{results.meta=d;}));
+ if(hasGoogle)fetches.push(fetchGoogleAds("campaign_insights",societyId,{dateRange:{since,until}}).then(d=>{results.google=d;}));
+ if(hasTiktok)fetches.push(fetchTikTokAds("insights",societyId,{dateRange:{since,until}}).then(d=>{results.tiktok=d;}));
+
+ await Promise.allSettled(fetches);
+
+ // Build unified ad metrics
+ const byMonth={};
+ const addToMonth=(month,platform,data)=>{
+  if(!byMonth[month])byMonth[month]={month,platforms:{},totals:{spend:0,impressions:0,clicks:0,leads:0,conversions:0,revenue:0}};
+  byMonth[month].platforms[platform]=data;
+  byMonth[month].totals.spend+=data.spend||0;
+  byMonth[month].totals.impressions+=data.impressions||0;
+  byMonth[month].totals.clicks+=data.clicks||0;
+  byMonth[month].totals.leads+=data.leads||0;
+  byMonth[month].totals.conversions+=data.conversions||0;
+  byMonth[month].totals.revenue+=data.revenue||0;
+ };
+
+ // Meta data
+ (results.meta?.data||[]).forEach(row=>{
+  const month=row.date_start?.slice(0,7)||"";
+  if(month)addToMonth(month,"meta",{spend:row._spend,impressions:row._impressions,clicks:row._clicks,leads:row._leads,conversions:row._purchases,revenue:row._revenue,cpc:row._cpc,cpm:row._cpm,ctr:row._ctr,roas:row._roas,costPerLead:row._costPerLead});
+ });
+ // Google data
+ (results.google?.data||[]).forEach(row=>{
+  const month=row.date?.slice(0,7)||"";
+  if(month)addToMonth(month,"google",{spend:row.spend,impressions:row.impressions,clicks:row.clicks,conversions:row.conversions,revenue:row.revenue,cpc:row.cpc,cpm:row.cpm,ctr:row.ctr,roas:row.roas});
+ });
+ // TikTok data
+ (results.tiktok?.data||[]).forEach(row=>{
+  addToMonth(curM(),"tiktok",{spend:row.spend,impressions:row.impressions,clicks:row.clicks,conversions:row.conversions,cpc:row.cpc,cpm:row.cpm,ctr:row.ctr,reach:row.reach});
+ });
+
+ // Compute ROAS and color codes for each month
+ results.unified=Object.values(byMonth).sort((a,b)=>a.month.localeCompare(b.month)).map(m=>{
+  const t=m.totals;
+  t.roas=t.spend>0?Math.round(t.revenue/t.spend*100)/100:0;
+  t.cpl=t.leads>0?Math.round(t.spend/t.leads*100)/100:0;
+  t.cpa=t.conversions>0?Math.round(t.spend/t.conversions*100)/100:0;
+  t.ctr=t.impressions>0?Math.round(t.clicks/t.impressions*10000)/100:0;
+  // Color coding (Hyros-style): green > 2x ROAS, yellow 1-2x, red < 1x
+  t.roasColor=t.roas>=2?"#34d399":t.roas>=1?"#FFAA00":"#f87171";
+  return m;
+ });
+
+ return results;
+}
+
+// ROAS performance color (Hyros-style)
+export function roasColor(roas){return roas>=3?"#34d399":roas>=2?"#22c55e":roas>=1.5?"#FFAA00":roas>=1?"#fb923c":"#f87171";}
+export function roasLabel(roas){return roas>=3?"Excellent":roas>=2?"Bon":roas>=1.5?"Correct":roas>=1?"Faible":"Négatif";}
+// Attribution helpers
+export function calcAttribution(adData,ghlData,month){
+ // Cross-reference ad spend with GHL conversions for the month
+ const monthData=adData?.unified?.find(m=>m.month===month);
+ if(!monthData)return null;
+ const ghlMonth=ghlData?.opportunities?.filter(o=>(o.createdAt||"").startsWith(month))||[];
+ const wonDeals=ghlMonth.filter(o=>o.status==="won");
+ const totalAdSpend=monthData.totals.spend;
+ const totalRevenue=wonDeals.reduce((a,o)=>a+(o.value||0),0);
+ const totalLeads=ghlMonth.length;
+ return{
+  month,spend:totalAdSpend,revenue:totalRevenue,leads:totalLeads,deals:wonDeals.length,
+  roas:totalAdSpend>0?Math.round(totalRevenue/totalAdSpend*100)/100:0,
+  cpl:totalLeads>0?Math.round(totalAdSpend/totalLeads*100)/100:0,
+  cpa:wonDeals.length>0?Math.round(totalAdSpend/wonDeals.length*100)/100:0,
+  platforms:monthData.platforms,
+ };
+}
 
 export const GHL_STAGES_COLORS=["#60a5fa","#FFAA00","#fb923c","#34d399","#a78bfa","#f43f5e","#14b8a6","#eab308"];
 export const GHL_BASE="/api/ghl";

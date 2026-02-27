@@ -18,6 +18,7 @@ import {
   sinceMonths, slackBotSend, slackMention, slackSend, slackWebhookSend, storeCall, subMonthly, syncFromSupabase,
   syncGHLForSoc, syncRevolut, syncSocRevolut, syncStripeData, teamMonthly, uid, gr, TIMING,
   fetchOAuthStatus, oauthConnect, oauthDisconnect, OAUTH_PROVIDERS,
+  fetchMetaAds, fetchGoogleAds, fetchTikTokAds, syncAdData, roasColor, roasLabel, calcAttribution,
 } from "./shared.jsx";
 
 /* UI COMPONENTS */
@@ -50,7 +51,7 @@ function OAuthConnectionsPanel({socs}){
  const[oauthData,setOauthData]=useState(null);const[loading,setLoading]=useState(true);const[connectSoc,setConnectSoc]=useState(null);
  useEffect(()=>{fetchOAuthStatus().then(d=>{setOauthData(d);setLoading(false);}).catch(()=>setLoading(false));},[]);
  const tokenMap=useMemo(()=>{const m={};(oauthData?.tokens||[]).forEach(t=>{m[`${t.provider}_${t.society_id}`]=t;});return m;},[oauthData]);
- const staticApis=[{name:"Stripe",status:false,icon:"💳",color:"#635BFF"},{name:"Slack",status:false,icon:"💬",color:"#4A154B"}];
+ const staticApis=[{name:"Slack",status:false,icon:"💬",color:"#4A154B"}];
  const handleDisconnect=async(provider,socId)=>{const ok=await oauthDisconnect(provider,socId);if(ok){setOauthData(prev=>({...prev,tokens:(prev?.tokens||[]).filter(t=>t.id!==`${provider}_${socId}`)}));}};
  return <Card style={{padding:16}}>
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
@@ -97,6 +98,233 @@ function OAuthConnectionsPanel({socs}){
  </Card>;
 }
 
+/* Hyros-inspired Attribution Dashboard — Cross-platform ad tracking & ROAS */
+function AdAttributionDashboard({socs,reps,ghlData,oauthTokens}){
+ const actS=useMemo(()=>socs.filter(s=>["active","lancement"].includes(s.stat)),[socs]);
+ const[adData,setAdData]=useState({});const[loading,setLoading]=useState(true);
+ const[dateRange,setDateRange]=useState(()=>{const n=new Date();return{since:new Date(n.getFullYear(),n.getMonth()-2,1).toISOString().split("T")[0],until:n.toISOString().split("T")[0]};});
+ const[selectedSoc,setSelectedSoc]=useState("all");
+ const[attrModel,setAttrModel]=useState("last_click");
+ const cm=curM();
+
+ // Sync ad data for all connected societies
+ useEffect(()=>{
+  let cancelled=false;
+  async function load(){
+   setLoading(true);
+   const results={};
+   const socList=selectedSoc==="all"?actS:[actS.find(s=>s.id===selectedSoc)].filter(Boolean);
+   await Promise.allSettled(socList.map(async s=>{
+    const d=await syncAdData(s.id,oauthTokens);
+    if(!cancelled)results[s.id]=d;
+   }));
+   if(!cancelled){setAdData(results);setLoading(false);}
+  }
+  load();
+  return()=>{cancelled=true;};
+ },[oauthTokens,selectedSoc,actS]);
+
+ // Aggregate all data
+ const agg=useMemo(()=>{
+  const socIds=selectedSoc==="all"?actS.map(s=>s.id):[selectedSoc];
+  let totalSpend=0,totalRevenue=0,totalLeads=0,totalClicks=0,totalImpressions=0,totalConversions=0;
+  const byPlatform={meta:{spend:0,clicks:0,impressions:0,leads:0,conversions:0,revenue:0},google:{spend:0,clicks:0,impressions:0,conversions:0,revenue:0},tiktok:{spend:0,clicks:0,impressions:0,conversions:0}};
+  const monthlyData=[];const monthMap={};
+  socIds.forEach(sid=>{
+   const d=adData[sid];if(!d)return;
+   (d.unified||[]).forEach(m=>{
+    const t=m.totals;
+    totalSpend+=t.spend;totalRevenue+=t.revenue;totalLeads+=t.leads;totalClicks+=t.clicks;totalImpressions+=t.impressions;totalConversions+=t.conversions;
+    Object.entries(m.platforms||{}).forEach(([p,v])=>{if(byPlatform[p]){Object.keys(v).forEach(k=>{if(typeof v[k]==="number"&&byPlatform[p][k]!==undefined)byPlatform[p][k]+=v[k];});}});
+    if(!monthMap[m.month])monthMap[m.month]={month:m.month,spend:0,revenue:0,leads:0,clicks:0,impressions:0,conversions:0};
+    monthMap[m.month].spend+=t.spend;monthMap[m.month].revenue+=t.revenue;monthMap[m.month].leads+=t.leads;monthMap[m.month].clicks+=t.clicks;
+   });
+  });
+  // Fallback to report data if no API data
+  if(totalSpend===0){
+   socIds.forEach(sid=>{
+    const r=gr(reps,sid,cm);if(!r)return;
+    const pub=pf(r.pub),ca=pf(r.ca),leads=pf(r.leads);
+    totalSpend+=pub;totalRevenue+=ca;totalLeads+=leads;
+    if(!monthMap[cm])monthMap[cm]={month:cm,spend:0,revenue:0,leads:0,clicks:0,impressions:0,conversions:0};
+    monthMap[cm].spend+=pub;monthMap[cm].revenue+=ca;monthMap[cm].leads+=leads;
+   });
+  }
+  const roas=totalSpend>0?Math.round(totalRevenue/totalSpend*100)/100:0;
+  const cpl=totalLeads>0?Math.round(totalSpend/totalLeads*100)/100:0;
+  const cpa=totalConversions>0?Math.round(totalSpend/totalConversions*100)/100:0;
+  const ctr=totalImpressions>0?Math.round(totalClicks/totalImpressions*10000)/100:0;
+  return{totalSpend,totalRevenue,totalLeads,totalClicks,totalImpressions,totalConversions,roas,cpl,cpa,ctr,byPlatform,monthly:Object.values(monthMap).sort((a,b)=>a.month.localeCompare(b.month))};
+ },[adData,actS,selectedSoc,reps,cm]);
+
+ // Check connected ad platforms
+ const connectedPlatforms=useMemo(()=>{
+  const p=new Set();
+  (oauthTokens||[]).forEach(t=>{if(["meta","google_ads","tiktok"].includes(t.provider))p.add(t.provider);});
+  return p;
+ },[oauthTokens]);
+
+ // Funnel data
+ const funnel=[
+  {label:"Impressions",value:agg.totalImpressions,color:"#60a5fa",icon:"👁️"},
+  {label:"Clics",value:agg.totalClicks,color:"#FFAA00",icon:"🖱️"},
+  {label:"Leads",value:agg.totalLeads,color:"#fb923c",icon:"🎯"},
+  {label:"Conversions",value:agg.totalConversions||pf(gr(reps,selectedSoc==="all"?actS[0]?.id:selectedSoc,cm)?.leadsClos),color:"#34d399",icon:"💰"},
+ ];
+
+ return <>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,flexWrap:"wrap",gap:8}}>
+   <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE}}>📣 Attribution & Performance Ads</div>
+   <div style={{display:"flex",gap:6,alignItems:"center"}}>
+    <select value={selectedSoc} onChange={e=>setSelectedSoc(e.target.value)} style={{background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,color:C.t,padding:"6px 10px",fontSize:10,fontFamily:FONT}}>
+     <option value="all">Toutes les sociétés</option>
+     {actS.map(s=><option key={s.id} value={s.id}>{s.nom}</option>)}
+    </select>
+    <select value={attrModel} onChange={e=>setAttrModel(e.target.value)} style={{background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,color:C.t,padding:"6px 10px",fontSize:10,fontFamily:FONT}}>
+     <option value="last_click">Last Click</option>
+     <option value="first_click">First Click</option>
+     <option value="linear">Linéaire</option>
+    </select>
+   </div>
+  </div>
+
+  {/* Connected platforms status */}
+  <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+   {[{id:"meta",name:"Meta",icon:"📘",color:"#1877F2"},{id:"google_ads",name:"Google",icon:"🔍",color:"#4285F4"},{id:"tiktok",name:"TikTok",icon:"🎵",color:"#010101"}].map(p=>{
+    const on=connectedPlatforms.has(p.id);
+    return <div key={p.id} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:8,border:`1px solid ${on?p.color+"44":C.brd}`,background:on?p.color+"11":"transparent",fontSize:9,fontWeight:600}}>
+     <span>{p.icon}</span><span style={{color:on?p.color:C.td}}>{p.name}</span>
+     <span style={{width:6,height:6,borderRadius:3,background:on?C.g:C.td,marginLeft:2}}/>
+    </div>;
+   })}
+   {connectedPlatforms.size===0&&<span style={{fontSize:10,color:C.td,fontStyle:"italic"}}>Connectez vos plateformes pub via Paramètres → Connexions API</span>}
+  </div>
+
+  {loading&&connectedPlatforms.size>0?<div style={{textAlign:"center",padding:30,color:C.td}}>Chargement des données publicitaires...</div>:<>
+   {/* ROAS Hero KPI */}
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:8,marginBottom:14}} className="rg-auto">
+    <KPI label="Dépenses Ads" value={`${fmt(agg.totalSpend)}€`} accent={C.r} icon="💸" delay={1}/>
+    <KPI label="CA Attribué" value={`${fmt(agg.totalRevenue)}€`} accent={C.g} icon="💰" delay={2}/>
+    <KPI label="ROAS" value={agg.roas>0?`${agg.roas}x`:"—"} accent={roasColor(agg.roas)} icon="📈" delay={3}/>
+    <KPI label="CPL" value={agg.cpl>0?`${fmt(agg.cpl)}€`:"—"} accent={agg.cpl>50?C.r:agg.cpl>20?C.o:C.g} icon="🎯" delay={4}/>
+    <KPI label="CPA" value={agg.cpa>0?`${fmt(agg.cpa)}€`:"—"} accent={C.o} icon="💎" delay={5}/>
+    <KPI label="CTR" value={agg.ctr>0?`${agg.ctr}%`:"—"} accent={agg.ctr>2?C.g:agg.ctr>1?C.o:C.r} icon="🖱️" delay={6}/>
+   </div>
+
+   {/* ROAS Performance Badge */}
+   {agg.roas>0&&<div style={{textAlign:"center",marginBottom:14}}>
+    <div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"8px 20px",borderRadius:12,background:roasColor(agg.roas)+"15",border:`1px solid ${roasColor(agg.roas)}44`}}>
+     <span style={{fontSize:22,fontWeight:900,color:roasColor(agg.roas)}}>{agg.roas}x</span>
+     <div style={{textAlign:"left"}}><div style={{fontSize:11,fontWeight:700,color:roasColor(agg.roas)}}>{roasLabel(agg.roas)}</div>
+      <div style={{fontSize:9,color:C.td}}>ROAS Global — {ml(cm)}</div></div>
+    </div>
+   </div>}
+
+   {/* Conversion Funnel (Hyros-style) */}
+   <Card style={{padding:16,marginBottom:12}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:12}}>🔻 FUNNEL DE CONVERSION</div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:0}}>
+     {funnel.map((step,i)=>{
+      const maxVal=Math.max(...funnel.map(f=>f.value||1));
+      const w=Math.max(25,Math.round((step.value||0)/maxVal*100));
+      const convRate=i>0&&funnel[i-1].value>0?Math.round((step.value||0)/funnel[i-1].value*100):100;
+      return <Fragment key={i}>
+       {i>0&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",margin:"0 -4px",zIndex:1}}>
+        <div style={{fontSize:10,fontWeight:800,color:convRate>50?C.g:convRate>20?C.o:C.r}}>{convRate}%</div>
+        <div style={{fontSize:14,color:C.td}}>→</div>
+       </div>}
+       <div style={{display:"flex",flexDirection:"column",alignItems:"center",flex:1,maxWidth:140}}>
+        <div style={{width:`${w}%`,minWidth:40,background:`${step.color}22`,border:`1px solid ${step.color}44`,borderRadius:10,padding:"10px 8px",textAlign:"center",transition:"width .5s ease"}}>
+         <div style={{fontSize:16}}>{step.icon}</div>
+         <div style={{fontSize:14,fontWeight:900,color:step.color}}>{step.value>1000?fK(step.value):fmt(step.value)}</div>
+        </div>
+        <div style={{fontSize:9,fontWeight:600,marginTop:4,color:C.td}}>{step.label}</div>
+       </div>
+      </Fragment>;
+     })}
+    </div>
+   </Card>
+
+   {/* Two-column: Spend vs Revenue chart + Platform breakdown */}
+   <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+    <Card style={{padding:14}}>
+     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📊 DÉPENSES vs REVENUS</div>
+     <div style={{height:220}}>
+      <ResponsiveContainer>
+       <ComposedChart data={agg.monthly.length>0?agg.monthly:[{month:cm,spend:agg.totalSpend,revenue:agg.totalRevenue}]}>
+        <CartesianGrid strokeDasharray="3 3" stroke={C.brd}/>
+        <XAxis dataKey="month" tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>ml(v)}/>
+        <YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/>
+        <Tooltip content={<CTip/>}/>
+        <Legend wrapperStyle={{fontSize:9}}/>
+        <Bar dataKey="spend" fill={C.r} radius={[3,3,0,0]} name="Dépenses Ads"/>
+        <Bar dataKey="revenue" fill={C.g} radius={[3,3,0,0]} name="CA Attribué"/>
+        <Line type="monotone" dataKey="leads" stroke={C.o} name="Leads" yAxisId={0} dot={false} strokeWidth={2}/>
+       </ComposedChart>
+      </ResponsiveContainer>
+     </div>
+    </Card>
+
+    <Card style={{padding:14}}>
+     <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📡 PERFORMANCE PAR PLATEFORME</div>
+     {[{key:"meta",name:"Meta Ads",icon:"📘",color:"#1877F2"},{key:"google",name:"Google Ads",icon:"🔍",color:"#4285F4"},{key:"tiktok",name:"TikTok Ads",icon:"🎵",color:"#FF0050"}].map(p=>{
+      const d=agg.byPlatform[p.key];const spend=d?.spend||0;const rev=d?.revenue||0;const roas2=spend>0?Math.round(rev/spend*100)/100:0;
+      if(spend===0&&!connectedPlatforms.has(p.key==="google"?"google_ads":p.key))return <div key={p.key} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:`1px solid ${C.brd}08`,opacity:.5}}>
+       <span>{p.icon}</span><span style={{flex:1,fontSize:11,fontWeight:600}}>{p.name}</span><span style={{fontSize:9,color:C.td}}>Non connecté</span>
+      </div>;
+      return <div key={p.key} style={{padding:"10px 0",borderBottom:`1px solid ${C.brd}08`}}>
+       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+        <span style={{fontSize:14}}>{p.icon}</span>
+        <span style={{flex:1,fontWeight:700,fontSize:11}}>{p.name}</span>
+        <span style={{fontSize:12,fontWeight:900,color:roasColor(roas2)}}>{roas2>0?`${roas2}x`:""}</span>
+       </div>
+       <div style={{display:"flex",gap:12,fontSize:9,color:C.td}}>
+        <span>Dépensé: <strong style={{color:C.r}}>{fmt(spend)}€</strong></span>
+        <span>Revenus: <strong style={{color:C.g}}>{fmt(rev)}€</strong></span>
+        <span>Clics: <strong style={{color:C.b}}>{fmt(d?.clicks||0)}</strong></span>
+       </div>
+       {spend>0&&<div style={{marginTop:4,height:4,borderRadius:2,background:C.brd,overflow:"hidden"}}>
+        <div style={{height:"100%",borderRadius:2,background:roasColor(roas2),width:`${Math.min(roas2*33,100)}%`,transition:"width .5s"}}/>
+       </div>}
+      </div>;
+     })}
+    </Card>
+   </div>
+
+   {/* Per-society performance table (Hyros-style color-coded) */}
+   <Card style={{padding:14}}>
+    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>🏆 PERFORMANCE PAR SOCIÉTÉ</div>
+    <div style={{overflowX:"auto"}}>
+     <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+      <thead><tr style={{borderBottom:`2px solid ${C.brd}`}}>
+       {["Société","Dépenses","CA","ROAS","CPL","Leads","Clos","Conv.","Statut"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:C.td,fontWeight:600,fontSize:9}}>{h}</th>)}
+      </tr></thead>
+      <tbody>
+       {actS.filter(s=>s.id!=="eco").map((s,i)=>{
+        const r=gr(reps,s.id,cm);const pub=pf(r?.pub);const ca=pf(r?.ca);const leads=pf(r?.leads);const clos=pf(r?.leadsClos);
+        const roas2=pub>0?Math.round(ca/pub*100)/100:0;const cpl2=leads>0?Math.round(pub/leads):0;const conv=leads>0?Math.round(clos/leads*100):0;
+        const status=roas2>=3?"Excellent":roas2>=2?"Bon":roas2>=1?"Correct":pub>0?"En danger":"Pas de pub";
+        const statusColor=roas2>=3?C.g:roas2>=2?"#22c55e":roas2>=1?C.o:pub>0?C.r:C.td;
+        return <tr key={s.id} className={`fu d${Math.min(i+1,8)}`} style={{borderBottom:`1px solid ${C.brd}08`}}>
+         <td style={{padding:"6px 8px",fontWeight:600}}><span style={{width:6,height:6,borderRadius:3,background:s.color,display:"inline-block",marginRight:6}}/>{s.nom}</td>
+         <td style={{padding:"6px 8px",color:C.r}}>{pub>0?fmt(pub)+"€":"—"}</td>
+         <td style={{padding:"6px 8px",fontWeight:700,color:C.acc}}>{fmt(ca)}€</td>
+         <td style={{padding:"6px 8px"}}><span style={{fontWeight:800,color:roasColor(roas2),background:roasColor(roas2)+"18",padding:"2px 8px",borderRadius:6,fontSize:10}}>{roas2>0?roas2+"x":"—"}</span></td>
+         <td style={{padding:"6px 8px",color:cpl2>50?C.r:cpl2>20?C.o:C.g}}>{cpl2>0?fmt(cpl2)+"€":"—"}</td>
+         <td style={{padding:"6px 8px"}}>{leads||"—"}</td>
+         <td style={{padding:"6px 8px",color:C.g}}>{clos||"—"}</td>
+         <td style={{padding:"6px 8px",color:conv>20?C.g:conv>10?C.o:C.td}}>{conv>0?conv+"%":"—"}</td>
+         <td style={{padding:"6px 8px"}}><span style={{fontSize:9,fontWeight:600,color:statusColor,background:statusColor+"15",padding:"2px 8px",borderRadius:6}}>{status}</span></td>
+        </tr>;
+       })}
+      </tbody>
+     </table>
+    </div>
+   </Card>
+  </>}
+ </>;
+}
+
 function AppInner(){
  const[loaded,setLoaded]=useState(false);const[role,setRole]=useState(null);const[theme,setThemeState]=useState(getTheme);
  const toggleTheme=useCallback(()=>{const t=getTheme()==="dark"?"light":"dark";applyTheme(t);setThemeState(t);},[]);
@@ -105,6 +333,7 @@ function AppInner(){
  const[actions,setActions]=useState([]);const[journal,setJournal]=useState({});
  const[pulses,setPulses]=useState({});const[deals,setDeals]=useState([]);const[ghlData,setGhlData]=useState({});const[revData,setRevData]=useState(null);const[socBank,setSocBank]=useState({});const[stripeData,setStripeData]=useState(null);
  const[okrs,setOkrs]=useState([]);const[synergies,setSynergies]=useState([]);const[kb,setKb]=useState([]);
+ const[oauthTokens,setOauthTokens]=useState([]);
  const[subs,setSubs]=useState([]);const[team,setTeam]=useState([]);const[clients,setClients]=useState([]);const[invoices,setInvoices]=useState([]);
  const[pin,setPin]=useState("");const[lErr,setLErr]=useState("");const[shake,setShake]=useState(false);
  const[loginMode,setLoginMode]=useState("email");const[loginEmail,setLoginEmail]=useState("");const[loginPass,setLoginPass]=useState("");const[authUser,setAuthUser]=useState(null);const[authLoading,setAuthLoading]=useState(false);
@@ -141,6 +370,8 @@ function AppInner(){
  const save=useCallback(async(ns,nr,nh)=>{setSaving(true);try{if(ns!=null){setSocs(ns);await sSet("scAs",ns);await Promise.all((ns||[]).map(s=>sbUpsert('societies',{id:s.id,...s})));try{scChannel.current?.postMessage({type:"socs-updated"});}catch{}}if(nr!=null){setReps(nr);await sSet("scAr",nr);}if(nh!=null){setHold(nh);await sSet("scAh",nh);await sbUpsert('holding',{id:'main',config:nh});try{scChannel.current?.postMessage({type:"hold-updated"});}catch{}}}catch(e){console.warn("save():",e);}setSaving(false);},[]);
  // Periodic refresh from Supabase (every 15s) to sync changes across different browsers/devices
  useEffect(()=>{if(!loaded)return;const iv=setInterval(async()=>{try{const sbSocs=await fetchSocietiesFromSB();if(sbSocs&&sbSocs.length>0){setSocs(prev=>{const sbMap=Object.fromEntries(sbSocs.map(x=>[x.id,x]));const next=prev.map(sc=>sbMap[sc.id]?{...sc,...sbMap[sc.id]}:sc);if(JSON.stringify(next)===JSON.stringify(prev))return prev;return next;});}const sbHold=await fetchHoldingFromSB();if(sbHold)setHold(h=>JSON.stringify(h)===JSON.stringify(sbHold)?h:sbHold);}catch{}},15000);return()=>clearInterval(iv);},[loaded]);
+ // Fetch OAuth tokens for ad attribution dashboard
+ useEffect(()=>{if(!loaded)return;fetchOAuthStatus().then(d=>{setOauthTokens(d?.tokens||[]);}).catch(()=>{});},[loaded]);
  const saveAJ=useCallback(async(na,nj)=>{try{if(na!=null){setActions(na);await sSet("scAa",na);}if(nj!=null){setJournal(nj);await sSet("scAj",nj);}}catch(e){console.warn("saveAJ():",e);}},[]);
  const savePulse=useCallback(async(k,v)=>{const np={...pulses,[k]:v};setPulses(np);await sSet("scAp",np);},[pulses]);
  const saveDeals=useCallback(async(nd)=>{setDeals(nd);await sSet("scAd",nd);},[]);
@@ -869,36 +1100,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </div></>;
    })()}
   </>}
-  {tab===16&&<>
-   {/* PUBLICITÉ GLOBAL */}
-   <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>📣 Publicité — Vue consolidée</div>
-   {(()=>{
-    const totalPub=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.pub),0);
-    const totalCA=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.ca),0);
-    const totalLeads2=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.leads),0);
-    const cplG=totalLeads2>0?Math.round(totalPub/totalLeads2):0;
-    const roasG=totalPub>0?Math.round(totalCA/totalPub*100)/100:0;
-    return <><div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:14}}>
-     <KPI label="Dépenses Pub" value={`${fmt(totalPub)}€`} accent={C.r} icon="📣" delay={1}/>
-     <KPI label="CA Généré" value={`${fmt(totalCA)}€`} accent={C.g} icon="💰" delay={2}/>
-     <KPI label="CPL Moyen" value={cplG>0?`${fmt(cplG)}€`:"—"} accent={C.o} icon="📞" delay={3}/>
-     <KPI label="ROAS Global" value={roasG>0?`${roasG}x`:"—"} accent={roasG>3?C.g:roasG>1?C.o:C.r} icon="📈" delay={4}/>
-    </div>
-    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-     <Card style={{padding:14}}><div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>💸 PUB vs CA PAR SOCIÉTÉ</div>
-      <div style={{height:220}}><ResponsiveContainer><BarChart data={actS.filter(s=>s.id!=="eco"&&pf(gr(reps,s.id,cM2)?.pub)>0).map(s=>({nom:s.nom,pub:pf(gr(reps,s.id,cM2)?.pub),ca:pf(gr(reps,s.id,cM2)?.ca)}))}><CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis dataKey="nom" tick={{fill:C.td,fontSize:8}} axisLine={false} tickLine={false}/><YAxis tick={{fill:C.td,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>`${fK(v)}€`}/><Tooltip content={<CTip/>}/><Legend wrapperStyle={{fontSize:9}}/><Bar dataKey="pub" fill={C.r} radius={[3,3,0,0]} name="Pub"/><Bar dataKey="ca" fill={C.g} radius={[3,3,0,0]} name="CA"/></BarChart></ResponsiveContainer></div>
-     </Card>
-     <Card style={{padding:14}}><div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:8}}>📊 CPL / ROAS PAR SOCIÉTÉ</div>
-      {actS.filter(s=>s.id!=="eco").map((s,i)=>{const pub2=pf(gr(reps,s.id,cM2)?.pub);const ca2=pf(gr(reps,s.id,cM2)?.ca);const l2=pf(gr(reps,s.id,cM2)?.leads);const cpl2=l2>0?Math.round(pub2/l2):0;const roas2=pub2>0?Math.round(ca2/pub2*100)/100:0;
-       return <div key={s.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.brd}08`}}>
-        <span style={{width:5,height:5,borderRadius:3,background:s.color}}/><span style={{flex:1,fontSize:10,fontWeight:600}}>{s.nom}</span>
-        <span style={{fontSize:9,color:C.td}}>CPL: <strong style={{color:cpl2>50?C.r:C.g}}>{cpl2>0?fmt(cpl2)+"€":"—"}</strong></span>
-        <span style={{fontSize:9,color:C.td}}>ROAS: <strong style={{color:roas2>3?C.g:roas2>1?C.o:C.r}}>{roas2>0?roas2+"x":"—"}</strong></span>
-       </div>;})}
-     </Card>
-    </div></>;
-   })()}
-  </>}
+  {tab===16&&<AdAttributionDashboard socs={socs} reps={reps} ghlData={ghlData} oauthTokens={oauthTokens}/>}
   {tab===17&&<>
    {/* RAPPORTS */}
    <div style={{fontWeight:800,fontSize:16,fontFamily:FONT_TITLE,marginBottom:14}}>📋 Rapports Holding</div>

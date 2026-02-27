@@ -55,11 +55,53 @@ function getProviderConfig(provider, baseUrl) {
       scopes: ['offline_access', 'transactions:read', 'balances:read', 'organization:read'],
       redirectUri: `${baseUrl}/api/oauth?provider=qonto&action=callback`,
     },
+    meta: {
+      name: 'Meta Ads',
+      clientId: process.env.META_APP_ID,
+      clientSecret: process.env.META_APP_SECRET,
+      authorizeUrl: 'https://www.facebook.com/v21.0/dialog/oauth',
+      tokenUrl: 'https://graph.facebook.com/v21.0/oauth/access_token',
+      scopes: ['ads_read', 'ads_management', 'read_insights', 'business_management'],
+      redirectUri: `${baseUrl}/api/oauth?provider=meta&action=callback`,
+      // Meta long-lived tokens last 60 days — we exchange short-lived for long-lived
+      exchangeLongLived: true,
+    },
+    google_ads: {
+      name: 'Google Ads',
+      clientId: process.env.GOOGLE_ADS_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_ADS_CLIENT_SECRET,
+      authorizeUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+      tokenUrl: 'https://oauth2.googleapis.com/token',
+      scopes: ['https://www.googleapis.com/auth/adwords'],
+      redirectUri: `${baseUrl}/api/oauth?provider=google_ads&action=callback`,
+      extraAuthParams: { access_type: 'offline', prompt: 'consent' },
+    },
+    tiktok: {
+      name: 'TikTok Ads',
+      clientId: process.env.TIKTOK_APP_ID,
+      clientSecret: process.env.TIKTOK_APP_SECRET,
+      authorizeUrl: 'https://business-api.tiktok.com/portal/auth',
+      tokenUrl: 'https://business-api.tiktok.com/open_api/v1.3/oauth2/access_token/',
+      scopes: [],
+      redirectUri: `${baseUrl}/api/oauth?provider=tiktok&action=callback`,
+      // TikTok uses app_id param instead of client_id
+      customAuth: true,
+    },
+    stripe: {
+      name: 'Stripe',
+      clientId: process.env.STRIPE_CONNECT_CLIENT_ID,
+      clientSecret: process.env.STRIPE_SECRET_KEY,
+      authorizeUrl: 'https://connect.stripe.com/oauth/authorize',
+      tokenUrl: 'https://connect.stripe.com/oauth/token',
+      scopes: ['read_write'],
+      redirectUri: `${baseUrl}/api/oauth?provider=stripe&action=callback`,
+      extraAuthParams: { stripe_landing: 'login' },
+    },
   };
   return configs[provider] || null;
 }
 
-const VALID_PROVIDERS = ['ghl', 'revolut', 'qonto'];
+const VALID_PROVIDERS = ['ghl', 'revolut', 'qonto', 'meta', 'google_ads', 'tiktok', 'stripe'];
 const VALID_ACTIONS = ['authorize', 'callback', 'disconnect', 'status'];
 
 // --- Supabase token storage ---
@@ -216,6 +258,10 @@ export default async function handler(req, res) {
         ghl: !!process.env.GHL_OAUTH_CLIENT_ID,
         revolut: !!process.env.REVOLUT_OAUTH_CLIENT_ID,
         qonto: !!process.env.QONTO_OAUTH_CLIENT_ID,
+        meta: !!process.env.META_APP_ID,
+        google_ads: !!process.env.GOOGLE_ADS_CLIENT_ID,
+        tiktok: !!process.env.TIKTOK_APP_ID,
+        stripe: !!process.env.STRIPE_CONNECT_CLIENT_ID,
       };
       return res.status(200).json({ tokens, configured });
     } catch (e) {
@@ -257,15 +303,31 @@ export default async function handler(req, res) {
 
     const params = new URLSearchParams({
       response_type: 'code',
-      client_id: config.clientId,
       redirect_uri: config.redirectUri,
-      scope: config.scopes.join(' '),
       state: stateParam,
     });
+
+    // Provider-specific authorization params
+    if (provider === 'tiktok') {
+      params.set('app_id', config.clientId);
+    } else if (provider === 'stripe') {
+      params.set('client_id', config.clientId);
+      params.set('scope', config.scopes.join(' '));
+    } else {
+      params.set('client_id', config.clientId);
+      params.set('scope', config.scopes.join(' '));
+    }
 
     // GHL-specific: add userType for sub-account selection
     if (provider === 'ghl') {
       params.set('userType', 'Location');
+    }
+
+    // Extra auth params (Google: access_type/prompt, Stripe: stripe_landing, etc.)
+    if (config.extraAuthParams) {
+      for (const [k, v] of Object.entries(config.extraAuthParams)) {
+        params.set(k, v);
+      }
     }
 
     const authUrl = `${config.authorizeUrl}?${params.toString()}`;
@@ -293,28 +355,90 @@ export default async function handler(req, res) {
     const socId = stateData.societyId;
 
     try {
-      // Exchange authorization code for tokens
-      const body = new URLSearchParams({
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: config.redirectUri,
-        client_id: config.clientId,
-        client_secret: config.clientSecret,
-      });
+      let tokenData;
 
-      const tokenRes = await fetch(config.tokenUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString(),
-      });
+      if (provider === 'tiktok') {
+        // TikTok uses JSON body, not form-encoded
+        const tiktokRes = await fetch(config.tokenUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ app_id: config.clientId, secret: config.clientSecret, auth_code: code }),
+        });
+        if (!tiktokRes.ok) {
+          apiLog('error', { api: 'oauth', action: 'callback', provider }, { status: tiktokRes.status });
+          return res.redirect(302, `${baseUrl}/?oauth=error&provider=${provider}&msg=token_exchange_failed`);
+        }
+        const tiktokData = await tiktokRes.json();
+        if (tiktokData.code !== 0) {
+          return res.redirect(302, `${baseUrl}/?oauth=error&provider=${provider}&msg=${encodeURIComponent(tiktokData.message || 'tiktok_error')}`);
+        }
+        tokenData = {
+          access_token: tiktokData.data?.access_token,
+          advertiser_ids: tiktokData.data?.advertiser_ids || [],
+          scope: (tiktokData.data?.scope || []).join(','),
+        };
+      } else {
+        // Standard OAuth2 token exchange
+        const body = new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: config.redirectUri,
+          client_id: config.clientId,
+          client_secret: config.clientSecret,
+        });
 
-      if (!tokenRes.ok) {
-        const errText = await tokenRes.text();
-        apiLog('error', { api: 'oauth', action: 'callback', provider }, { status: tokenRes.status, error: errText });
-        return res.redirect(302, `${baseUrl}/?oauth=error&provider=${provider}&msg=token_exchange_failed`);
+        // Stripe uses a slightly different format
+        if (provider === 'stripe') {
+          body.delete('redirect_uri');
+          body.set('grant_type', 'authorization_code');
+        }
+
+        const tokenRes = await fetch(config.tokenUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body.toString(),
+        });
+
+        if (!tokenRes.ok) {
+          const errText = await tokenRes.text();
+          apiLog('error', { api: 'oauth', action: 'callback', provider }, { status: tokenRes.status, error: errText });
+          return res.redirect(302, `${baseUrl}/?oauth=error&provider=${provider}&msg=token_exchange_failed`);
+        }
+
+        tokenData = await tokenRes.json();
+
+        // Meta: exchange short-lived token for long-lived token (60 days)
+        if (provider === 'meta' && config.exchangeLongLived && tokenData.access_token) {
+          try {
+            const llRes = await fetch(`https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${config.clientId}&client_secret=${config.clientSecret}&fb_exchange_token=${tokenData.access_token}`);
+            if (llRes.ok) {
+              const llData = await llRes.json();
+              tokenData.access_token = llData.access_token;
+              tokenData.expires_in = llData.expires_in || 5184000; // 60 days
+            }
+          } catch { /* keep short-lived token */ }
+
+          // Fetch the user's ad accounts
+          try {
+            const acctRes = await fetch(`https://graph.facebook.com/v21.0/me/adaccounts?fields=id,name,account_id,currency,business_name&access_token=${tokenData.access_token}`);
+            if (acctRes.ok) {
+              const acctData = await acctRes.json();
+              tokenData.ad_accounts = acctData.data || [];
+            }
+          } catch { /* ignore */ }
+        }
+
+        // Stripe: extract connected account info
+        if (provider === 'stripe') {
+          tokenData.stripe_user_id = tokenData.stripe_user_id || null;
+          tokenData.stripe_publishable_key = tokenData.stripe_publishable_key || null;
+        }
+
+        // Google Ads: store developer token if available
+        if (provider === 'google_ads') {
+          tokenData.developer_token = process.env.GOOGLE_ADS_DEVELOPER_TOKEN || null;
+        }
       }
-
-      const tokenData = await tokenRes.json();
 
       // GHL returns locationId in the token response
       if (provider === 'ghl' && tokenData.locationId) {
