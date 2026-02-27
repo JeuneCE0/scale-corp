@@ -10,7 +10,7 @@ const LOCATION_KEY_MAP = {
 };
 
 const GHL_BASE = "https://services.leadconnectorhq.com";
-const VALID_ACTIONS = ['contacts', 'pipelines', 'opportunities', 'contacts_list', 'opportunities_all', 'calendars', 'conversations', 'contact_update', 'contact_create', 'contact_delete', 'calendar_events', 'conversations_list', 'conversations_messages', 'conversation_send', 'calendar_slots', 'notes_list', 'notes_create', 'webhook_events'];
+const VALID_ACTIONS = ['contacts', 'pipelines', 'opportunities', 'contacts_list', 'opportunities_all', 'calendars', 'conversations', 'contact_update', 'contact_create', 'contact_delete', 'calendar_events', 'conversations_list', 'conversations_messages', 'conversation_send', 'calendar_slots', 'notes_list', 'notes_create', 'webhook_events', 'invoice_create', 'invoice_send'];
 
 export default async function handler(req, res) {
   applyHeaders(req, res);
@@ -181,6 +181,22 @@ export default async function handler(req, res) {
         });
         if (!noteRes.ok) { const t = await noteRes.text(); return res.status(noteRes.status).json({ error: t }); }
         return res.status(200).json(await noteRes.json());
+      }
+      case "invoice_create": {
+        if (!params.invoiceData) return badRequest(res, "Missing invoiceData");
+        const invRes = await fetch(`${GHL_BASE}/invoices/`, {
+          method: "POST", headers, body: JSON.stringify(params.invoiceData)
+        });
+        if (!invRes.ok) { const t = await invRes.text(); return res.status(invRes.status).json({ error: t }); }
+        return res.status(200).json(await invRes.json());
+      }
+      case "invoice_send": {
+        if (!params.invoiceId) return badRequest(res, "Missing invoiceId");
+        const sendInvRes = await fetch(`${GHL_BASE}/invoices/${encodeURIComponent(params.invoiceId)}/send`, {
+          method: "POST", headers
+        });
+        if (!sendInvRes.ok) { const t = await sendInvRes.text(); return res.status(sendInvRes.status).json({ error: t }); }
+        return res.status(200).json(await sendInvRes.json());
       }
       default:
         return badRequest(res, `Unknown action: ${action}`);

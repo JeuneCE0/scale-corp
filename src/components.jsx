@@ -1001,10 +1001,10 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
    const existingForClient=(invoices||[]).filter(i=>i.clientId===cl.id);
    if(isNew||existingForClient.length===0){
     const newInvs=generateInvoices(cl,soc.nom);
-    const apiKey=soc.ghlKey;
-    if(apiKey){
+    const loc=soc.ghlLocationId;
+    if(loc){
     newInvs.forEach(async(inv)=>{
-    const ghlId=await ghlCreateInvoice(apiKey,inv,cl);
+    const ghlId=await ghlCreateInvoice(loc,inv,cl);
     if(ghlId)inv.ghlInvoiceId=ghlId;
     });
     }
@@ -1026,9 +1026,9 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
  };
  const sendInvoice=async(inv)=>{
   setSending(inv.id);
-  const apiKey=soc.ghlKey;
+  const loc2=soc.ghlLocationId;
   let ghlOk=false;
-  if(apiKey&&inv.ghlInvoiceId){ghlOk=await ghlSendInvoice(apiKey,inv.ghlInvoiceId);}
+  if(loc2&&inv.ghlInvoiceId){ghlOk=await ghlSendInvoice(loc2,inv.ghlInvoiceId);}
   const updated=(invoices||[]).map(i=>i.id===inv.id?{...i,status:"sent",sentAt:new Date().toISOString()}:i);
   saveInvoices(updated);
   setSending(null);
@@ -1121,8 +1121,8 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
     <div style={{display:"flex",alignItems:"center",gap:6}}>
     <span style={{fontSize:14}}>🧾</span>
     <span style={{fontWeight:800,fontSize:12}}>Facturation</span>
-    {!soc.ghlLocationId&&!soc.ghlKey&&<span style={{fontSize:7,color:C.o,background:C.oD,padding:"1px 5px",borderRadius:4}}>Mode local</span>}
-    {(soc.ghlLocationId||soc.ghlKey)&&<span style={{fontSize:7,color:C.g,background:C.gD,padding:"1px 5px",borderRadius:4}}>GHL connecté</span>}
+    {!soc.ghlLocationId&&<span style={{fontSize:7,color:C.o,background:C.oD,padding:"1px 5px",borderRadius:4}}>Mode local</span>}
+    {soc.ghlLocationId&&<span style={{fontSize:7,color:C.g,background:C.gD,padding:"1px 5px",borderRadius:4}}>GHL connecté</span>}
     </div>
     <button onClick={()=>setInvView(invView?"":"all")} style={{background:"none",border:"none",color:C.acc,fontSize:9,cursor:"pointer",fontFamily:FONT,fontWeight:600}}>{invView?"Masquer":"Voir toutes"}</button>
    </div>
@@ -1507,7 +1507,7 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
     </div>
     {b.amount>0&&b.commitment>0&&<div style={{padding:"8px 10px",background:C.accD,borderRadius:6,fontSize:10,color:C.acc,fontWeight:600,marginTop:4}}>
     Valeur contrat : {fmt(b.amount*b.commitment)}€ sur {b.commitment} mois{commitmentRemaining(editCl)!==null?` · ${commitmentRemaining(editCl)} mois restants`:""}
-    <div style={{fontSize:8,color:C.td,fontWeight:400,marginTop:2}}>🧾 {b.commitment} factures brouillon seront créées automatiquement, une par mois{soc.ghlKey?" (envoi vers GHL)":""}</div>
+    <div style={{fontSize:8,color:C.td,fontWeight:400,marginTop:2}}>🧾 {b.commitment} factures brouillon seront créées automatiquement, une par mois{soc.ghlLocationId?" (envoi vers GHL)":""}</div>
     </div>}
     {b.amount>0&&!b.commitment&&<div style={{padding:"6px 8px",background:C.oD,borderRadius:6,fontSize:10,color:C.o,marginTop:4}}>Sans engagement — résiliable à tout moment</div>}
     </>}

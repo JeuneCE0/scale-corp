@@ -92,19 +92,19 @@ button:focus-visible{outline:2px solid ${C.acc}44;outline-offset:2px}
 .glass-btn-ghost{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .glass-btn-ghost:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12)}`;
 export const DS=[
- {id:"leadx",nom:"LEADX",porteur:"Dayyaan",act:"Media Buying",pT:"benefices",pP:30,stat:"active",color:"#FFAA00",pin:"1001",rec:true,obj:10000,objQ:28000,ghlKey:"",ghlLocationId:"BjQ4DxmWrLl3nCNcjmhE",revToken:"",revEnv:"sandbox",revolutCompany:"leadx",incub:"2025-06-01",slackId:""},
- {id:"copy",nom:"Copywriting",porteur:"Sol",act:"Copywriting",pT:"benefices",pP:20,stat:"active",color:"#60a5fa",pin:"1002",rec:false,obj:15000,objQ:42000,ghlKey:"",ghlLocationId:"2lB0paK192CFU1cLz5eT",revToken:"",revEnv:"sandbox",revolutCompany:"bcs",incub:"2025-03-15",slackId:""},
- {id:"bbp",nom:"BourbonBonsPlans",porteur:"Siméon",act:"Vidéo",pT:"benefices",pP:20,stat:"active",color:"#34d399",pin:"1003",rec:true,obj:8000,objQ:22000,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2025-08-01",slackId:""},
- {id:"studio",nom:"Studio Branding",porteur:"Pablo",act:"Design",pT:"benefices",pP:20,stat:"active",color:"#fb923c",pin:"1004",rec:false,obj:5000,objQ:14000,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2025-09-01",slackId:""},
- {id:"eco",nom:"L'Écosystème",porteur:"Scale Corp",act:"Consulting",pT:"ca",pP:100,stat:"active",color:"#a78bfa",pin:"admin",rec:false,obj:7000,objQ:20000,ghlKey:"",ghlLocationId:"NsV7HI2MbE6qHtRp410y",revToken:"",revEnv:"sandbox",revolutCompany:"eco",incub:"2024-01-01",slackId:""},
- {id:"padel",nom:"Padel Académie",porteur:"Louis",act:"Formation",pT:"benefices",pP:20,stat:"lancement",color:"#14b8a6",pin:"1005",rec:false,obj:3000,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2026-01-15",slackId:""},
- {id:"iphone",nom:"Formation iPhone",porteur:"À définir",act:"Contenu",pT:"benefices",pP:20,stat:"lancement",color:"#8b5cf6",pin:"1006",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2026-02-01",slackId:""},
- {id:"import",nom:"Import Auto",porteur:"À définir",act:"Import",pT:"benefices",pP:20,stat:"lancement",color:"#ec4899",pin:"1007",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
- {id:"tennis",nom:"Formation Tennis",porteur:"À définir",act:"Tennis",pT:"benefices",pP:20,stat:"signature",color:"#06b6d4",pin:"1008",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
- {id:"virale",nom:"Vidéo Virale",porteur:"À définir",act:"Vidéo",pT:"benefices",pP:20,stat:"signature",color:"#f43f5e",pin:"1009",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
- {id:"mindset",nom:"Coaching Mindset",porteur:"À définir",act:"Mindset",pT:"benefices",pP:20,stat:"signature",color:"#eab308",pin:"1010",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
+ {id:"leadx",nom:"LEADX",porteur:"Dayyaan",act:"Media Buying",pT:"benefices",pP:30,stat:"active",color:"#FFAA00",pin:"1001",rec:true,obj:10000,objQ:28000,ghlLocationId:"BjQ4DxmWrLl3nCNcjmhE",revolutCompany:"leadx",incub:"2025-06-01",slackId:""},
+ {id:"copy",nom:"Copywriting",porteur:"Sol",act:"Copywriting",pT:"benefices",pP:20,stat:"active",color:"#60a5fa",pin:"1002",rec:false,obj:15000,objQ:42000,ghlLocationId:"2lB0paK192CFU1cLz5eT",revolutCompany:"bcs",incub:"2025-03-15",slackId:""},
+ {id:"bbp",nom:"BourbonBonsPlans",porteur:"Siméon",act:"Vidéo",pT:"benefices",pP:20,stat:"active",color:"#34d399",pin:"1003",rec:true,obj:8000,objQ:22000,incub:"2025-08-01",slackId:""},
+ {id:"studio",nom:"Studio Branding",porteur:"Pablo",act:"Design",pT:"benefices",pP:20,stat:"active",color:"#fb923c",pin:"1004",rec:false,obj:5000,objQ:14000,incub:"2025-09-01",slackId:""},
+ {id:"eco",nom:"L'Écosystème",porteur:"Scale Corp",act:"Consulting",pT:"ca",pP:100,stat:"active",color:"#a78bfa",pin:"admin",rec:false,obj:7000,objQ:20000,ghlLocationId:"NsV7HI2MbE6qHtRp410y",revolutCompany:"eco",incub:"2024-01-01",slackId:""},
+ {id:"padel",nom:"Padel Académie",porteur:"Louis",act:"Formation",pT:"benefices",pP:20,stat:"lancement",color:"#14b8a6",pin:"1005",rec:false,obj:3000,objQ:0,incub:"2026-01-15",slackId:""},
+ {id:"iphone",nom:"Formation iPhone",porteur:"À définir",act:"Contenu",pT:"benefices",pP:20,stat:"lancement",color:"#8b5cf6",pin:"1006",rec:false,obj:0,objQ:0,incub:"2026-02-01",slackId:""},
+ {id:"import",nom:"Import Auto",porteur:"À définir",act:"Import",pT:"benefices",pP:20,stat:"lancement",color:"#ec4899",pin:"1007",rec:false,obj:0,objQ:0,incub:"",slackId:""},
+ {id:"tennis",nom:"Formation Tennis",porteur:"À définir",act:"Tennis",pT:"benefices",pP:20,stat:"signature",color:"#06b6d4",pin:"1008",rec:false,obj:0,objQ:0,incub:"",slackId:""},
+ {id:"virale",nom:"Vidéo Virale",porteur:"À définir",act:"Vidéo",pT:"benefices",pP:20,stat:"signature",color:"#f43f5e",pin:"1009",rec:false,obj:0,objQ:0,incub:"",slackId:""},
+ {id:"mindset",nom:"Coaching Mindset",porteur:"À définir",act:"Mindset",pT:"benefices",pP:20,stat:"signature",color:"#eab308",pin:"1010",rec:false,obj:0,objQ:0,incub:"",slackId:""},
 ];
-export const DH={logiciels:1200,equipe:300,service:500,cabinet:280,remun:3000,reservePct:30,crm:150,treso:2000,revolutToken:"",revolutEnv:"sandbox",slack:{enabled:false,mode:"bob",webhookUrl:"",botToken:"",channel:"",bobWebhook:"",notifyPulse:true,notifyReport:true,notifyValidation:true,notifyReminders:true},brand:{name:"L'INCUBATEUR ECS",sub:"Plateforme de pilotage",logoUrl:"/logo-ecs.png",logoLetter:"E",accentColor:"#FFAA00",gradientFrom:"#FFBF00",gradientTo:"#FF9D00"}};
+export const DH={logiciels:1200,equipe:300,service:500,cabinet:280,remun:3000,reservePct:30,crm:150,treso:2000,slack:{enabled:false,mode:"bob",webhookUrl:"",botToken:"",channel:"",bobWebhook:"",notifyPulse:true,notifyReport:true,notifyValidation:true,notifyReminders:true},brand:{name:"L'INCUBATEUR ECS",sub:"Plateforme de pilotage",logoUrl:"/logo-ecs.png",logoLetter:"E",accentColor:"#FFAA00",gradientFrom:"#FFBF00",gradientTo:"#FF9D00"}};
 export const DEAL_STAGES=["Idée","Contact","Négociation","Due Diligence","Signature"];
 export function mkPrefill(){ return {}; }
 
@@ -293,10 +293,10 @@ export function refreshInvoiceStatuses(invoices){
   return inv;
  });
 }
-export async function ghlCreateInvoice(apiKey,invoice,client){
- if(!apiKey)return null;
+export async function ghlCreateInvoice(locationId,invoice,client){
+ if(!locationId)return null;
  try{
-  const body={
+  const invoiceData={
    name:invoice.description,
    contactId:client.ghlId||"",
    dueDate:invoice.dueDate,
@@ -306,24 +306,16 @@ export async function ghlCreateInvoice(apiKey,invoice,client){
    businessDetails:{name:client.socId},
    invoiceNumber:invoice.number,
   };
-  const r=await fetch(`${GHL_BASE}/invoices/`,{
-   method:"POST",
-   headers:{"Authorization":`Bearer ${apiKey}`,"Content-Type":"application/json"},
-   body:JSON.stringify(body)
-  });
-  if(!r.ok)throw new Error(`GHL ${r.status}`);
-  const data=await r.json();
+  const data=await fetchGHL("invoice_create",locationId,{invoiceData});
+  if(!data)return null;
   return data.id||data.invoiceId||null;
  }catch(e){console.warn("GHL create invoice failed:",e.message);return null;}
 }
-export async function ghlSendInvoice(apiKey,ghlInvoiceId){
- if(!apiKey||!ghlInvoiceId)return false;
+export async function ghlSendInvoice(locationId,ghlInvoiceId){
+ if(!locationId||!ghlInvoiceId)return false;
  try{
-  const r=await fetch(`${GHL_BASE}/invoices/${ghlInvoiceId}/send`,{
-   method:"POST",
-   headers:{"Authorization":`Bearer ${apiKey}`,"Content-Type":"application/json"},
-  });
-  return r.ok;
+  const data=await fetchGHL("invoice_send",locationId,{invoiceId:ghlInvoiceId});
+  return !!data;
  }catch(e){console.warn("GHL send invoice failed:",e.message);return false;}
 }
 export function mkDemoInvoices(){ return []; }
