@@ -22,6 +22,7 @@ const Settings = lazy(() => import('./pages/Settings.jsx'));
 const Onboarding = lazy(() => import('./pages/Onboarding.jsx'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
 const Legal = lazy(() => import('./pages/Legal.jsx'));
+const Admin = lazy(() => import('./pages/Admin.jsx'));
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: '📊', color: '#f97316' },
@@ -673,7 +674,7 @@ function ShortcutsHelp({ open, onClose }) {
 }
 
 // --- User Menu (avatar + dropdown) ---
-function UserMenu({ user, onLogout }) {
+function UserMenu({ user, onLogout, onAdmin }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -720,6 +721,21 @@ function UserMenu({ user, onLogout }) {
             <div style={{ fontSize: 11, color: T.textMuted, wordBreak: 'break-all' }}>{user.email}</div>
           </div>
           <div style={{ padding: 6 }}>
+            {user.role === 'super_admin' && onAdmin && (
+              <button
+                onClick={() => { setOpen(false); onAdmin(); }}
+                className="hoverable"
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 10px', borderRadius: 8, background: 'none',
+                  border: 'none', cursor: 'pointer', fontFamily: FONT,
+                  fontSize: 12, color: T.orange, fontWeight: 600, textAlign: 'left',
+                }}
+              >
+                <span style={{ fontSize: 14 }}>{'⚙️'}</span>
+                Panel Admin
+              </button>
+            )}
             <button
               onClick={() => { setOpen(false); onLogout(); }}
               className="hoverable"
@@ -1002,6 +1018,17 @@ export default function App() {
     );
   }
 
+  // Admin Panel (super_admin only)
+  if (view === 'admin' && user?.role === 'super_admin') {
+    return (
+      <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
+        <Suspense fallback={<LoadingFallback page="Admin" />}>
+          <Admin user={user} onBack={() => setView('app')} />
+        </Suspense>
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
       {/* Skip nav (a11y) */}
@@ -1054,7 +1081,7 @@ export default function App() {
               />
             </div>
             {!load('tourDone') && <button onClick={() => setTourOpen(true)} aria-label="Visite guidée" style={{ background: T.orangeBg, border: `1px solid ${T.orange}33`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: T.orange, fontFamily: FONT }}>Tour</button>}
-            <UserMenu user={user} onLogout={handleLogout} />
+            <UserMenu user={user} onLogout={handleLogout} onAdmin={() => setView('admin')} />
           </div>
         </div>
 

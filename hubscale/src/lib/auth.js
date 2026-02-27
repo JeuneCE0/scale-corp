@@ -50,7 +50,7 @@ async function supabaseSignup({ name, email, password }) {
     body: JSON.stringify({ action: 'welcome', name, email }),
   }).catch(() => {});
 
-  const profile = { id: user.id, name, email, avatar: null, createdAt: user.created_at, orgId: org.id };
+  const profile = { id: user.id, name, email, avatar: null, createdAt: user.created_at, orgId: org.id, role: 'owner' };
   _emit('signin', profile);
   return { ok: true, user: profile };
 }
@@ -72,7 +72,7 @@ async function supabaseLogin(email, password) {
 
   const u = {
     id: user.id, name: profile.full_name, email: profile.email,
-    avatar: profile.avatar_url, createdAt: user.created_at, orgId: profile.org_id,
+    avatar: profile.avatar_url, createdAt: user.created_at, orgId: profile.org_id, role: profile.role,
   };
   _emit('signin', u);
   return { ok: true, user: u };
@@ -97,7 +97,7 @@ async function supabaseGetUser() {
 
   return {
     id: session.user.id, name: profile.full_name, email: profile.email,
-    avatar: profile.avatar_url, createdAt: session.user.created_at, orgId: profile.org_id,
+    avatar: profile.avatar_url, createdAt: session.user.created_at, orgId: profile.org_id, role: profile.role,
   };
 }
 
@@ -181,6 +181,7 @@ function localSignup({ name, email, password }) {
     passwordHash: hashPassword(password),
     createdAt: new Date().toISOString(),
     avatar: null,
+    role: 'owner',
   };
 
   users.push(user);
@@ -189,7 +190,7 @@ function localSignup({ name, email, password }) {
   const session = {
     token: generateToken(),
     userId: user.id,
-    user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar, createdAt: user.createdAt },
+    user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar, createdAt: user.createdAt, role: user.role || 'owner' },
     expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
   };
   saveSession(session);
@@ -209,7 +210,7 @@ function localLogin(email, password) {
   const session = {
     token: generateToken(),
     userId: user.id,
-    user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar, createdAt: user.createdAt },
+    user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar, createdAt: user.createdAt, role: user.role || 'owner' },
     expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
   };
   saveSession(session);
@@ -347,6 +348,7 @@ export function ensureDemoAccount() {
       passwordHash: hashPassword('demo123'),
       createdAt: new Date().toISOString(),
       avatar: null,
+      role: 'super_admin',
     };
     saveUsers([demo]);
   }
