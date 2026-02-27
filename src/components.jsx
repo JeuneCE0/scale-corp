@@ -27,14 +27,28 @@ export { AIWeeklyCoach, RapportsPanel, ReplayMensuel };
 export const Badge=React.memo(function Badge({s}){const m={active:[C.gD,C.g,"Active"],lancement:[C.oD,C.o,"Lancement"],signature:[C.bD,C.b,"Signature"],inactive:[C.rD,C.r,"Inactive"]};const[bg2,c2,l]=m[s]||m.inactive;return <span style={{background:bg2,color:c2,padding:"2px 8px",borderRadius:20,fontSize:9,fontWeight:700,letterSpacing:.5}}>{l}</span>;});
 export const IncubBadge=React.memo(function IncubBadge({incub}){if(!incub)return null;const lbl=sinceLbl(incub);return <span style={{background:C.vD,color:C.v,padding:"2px 7px",borderRadius:20,fontSize:9,fontWeight:600}}>📅 {lbl}</span>;});
 export const GradeBadge=React.memo(function GradeBadge({grade,color,size="sm"}){const s=size==="lg"?{w:32,h:32,fs:16,r:9,bw:2}:{w:22,h:22,fs:11,r:6,bw:1.5};return <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:s.w,height:s.h,borderRadius:s.r,background:color+"15",color,fontWeight:900,fontSize:s.fs,border:`${s.bw}px solid ${color}33`,flexShrink:0}}>{grade}</span>;});
-export const KPI=React.memo(function KPI({label,value,sub,accent,small,delay=0,icon}){
- return <div className={`fu d${delay} glass-card-static`} style={{padding:small?"10px 12px":"16px 18px",flex:"1 1 130px",minWidth:small?90:120,transition:"all .3s cubic-bezier(.4,0,.2,1)"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${accent||C.acc}33`;e.currentTarget.style.boxShadow=`0 0 20px ${(accent||C.acc)}15`;e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,.06)";e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,.3)";e.currentTarget.style.transform="translateY(0)";}}>
-  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}>{icon&&<span style={{fontSize:11}}>{icon}</span>}<span style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,textTransform:"uppercase",fontFamily:FONT_TITLE}}>{label}</span></div>
-  <div style={{fontSize:small?16:28,fontWeight:900,color:accent||C.t,lineHeight:1.1}}>{value}</div>
-  {sub&&<div style={{color:C.td,fontSize:9,marginTop:3}}>{sub}</div>}
+export const KPI=React.memo(function KPI({label,value,sub,accent,small,delay=0,icon,trend,sparkData}){
+ const ac=accent||C.acc;
+ return <div className={`fu d${delay} kpi-v2 glass-card-static`} style={{"--glow-color":`${ac}18`,padding:small?"10px 12px":"18px 20px",flex:"1 1 130px",minWidth:small?90:120,position:"relative",overflow:"hidden"}}>
+  <div className="kpi-v2-glow" style={{"--glow-color":`${ac}10`}}/>
+  <div style={{position:"relative",zIndex:1}}>
+   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+    <div style={{display:"flex",alignItems:"center",gap:5}}>
+     {icon&&<span style={{fontSize:small?12:14,filter:"drop-shadow(0 0 4px rgba(0,0,0,.3))"}}>{icon}</span>}
+     <span style={{color:C.td,fontSize:small?8:9,fontWeight:700,letterSpacing:1,textTransform:"uppercase",fontFamily:FONT_TITLE}}>{label}</span>
+    </div>
+    {trend!=null&&trend!==0&&<span style={{fontSize:9,fontWeight:800,color:trend>0?C.g:C.r,display:"flex",alignItems:"center",gap:2,padding:"1px 6px",borderRadius:8,background:trend>0?C.gD:C.rD}}>{trend>0?"▲":"▼"}{Math.abs(trend)}%</span>}
+   </div>
+   <div className="kpi-v2-value" style={{fontSize:small?18:30,fontWeight:900,color:ac,lineHeight:1.1,letterSpacing:"-0.02em"}}>{value}</div>
+   {(sub||sparkData)&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:6}}>
+    {sub&&<div style={{color:C.td,fontSize:9}}>{sub}</div>}
+    {sparkData&&sparkData.length>1&&<svg width="48" height="18" viewBox="0 0 48 18" style={{opacity:.6}}><polyline fill="none" stroke={ac} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" points={sparkData.map((v,i)=>{const max=Math.max(...sparkData);const min=Math.min(...sparkData);const range=max-min||1;const x=(i/(sparkData.length-1))*46+1;const y=17-((v-min)/range)*15;return`${x},${y}`;}).join(" ")} style={{animation:"sparkline .8s ease both"}}/></svg>}
+   </div>}
+  </div>
+  <div style={{position:"absolute",bottom:0,left:0,right:0,height:3,background:`linear-gradient(90deg,${ac}00,${ac}44,${ac}00)`,opacity:.5}}/>
  </div>;
 });
-export const PBar=React.memo(function PBar({value,max,color,h=5}){const w=clamp(pct(value,max),0,100);return <div style={{background:C.brd,borderRadius:h,height:h,overflow:"hidden"}}><div className="pg" style={{background:color||C.acc,height:"100%",width:`${w}%`,"--w":`${w}%`,borderRadius:h}}/></div>;});
+export const PBar=React.memo(function PBar({value,max,color,h=5}){const w=clamp(pct(value,max),0,100);const c=color||C.acc;return <div style={{background:C.brd,borderRadius:h,height:h,overflow:"hidden",position:"relative"}}><div className="pg" style={{background:`linear-gradient(90deg,${c}cc,${c})`,height:"100%",width:`${w}%`,"--w":`${w}%`,borderRadius:h,position:"relative"}}>{h>=4&&<div style={{position:"absolute",top:0,left:0,right:0,height:"50%",background:"linear-gradient(180deg,rgba(255,255,255,.15),transparent)",borderRadius:`${h}px ${h}px 0 0`}}/>}</div></div>;});
 export function Btn({children,onClick,v="primary",small,style:sx,disabled,full}){
  const t={primary:{background:`linear-gradient(135deg,#FFBF00,#FF9D00)`,color:"#0a0a0f",boxShadow:"0 0 20px rgba(255,170,0,.2)"},secondary:{background:"rgba(255,255,255,.03)",color:C.t,border:"1px solid rgba(255,255,255,.08)",backdropFilter:"blur(10px)"},ghost:{background:"transparent",color:C.td,border:"1px solid rgba(255,255,255,.04)"},danger:{background:"rgba(248,113,113,.1)",color:C.r,border:"1px solid rgba(248,113,113,.15)"},success:{background:"rgba(52,211,153,.1)",color:C.g,border:"1px solid rgba(52,211,153,.15)"},ai:{background:`linear-gradient(135deg,${C.v},${C.acc})`,color:"#0a0a0f",boxShadow:`0 0 20px rgba(167,139,250,.2)`}};
  return <button className="ba" disabled={disabled} onClick={onClick} style={{border:"none",borderRadius:10,fontWeight:600,cursor:disabled?"not-allowed":"pointer",fontFamily:FONT,opacity:disabled?0.35:1,padding:small?"5px 10px":"9px 18px",fontSize:small?10:12,width:full?"100%":"auto",letterSpacing:.3,...t[v],...sx}}>{children}</button>;
@@ -51,7 +65,16 @@ export function Inp({label,value,onChange,type="text",placeholder,suffix,textare
   </div>{note&&<div style={{color:C.tm,fontSize:9,marginTop:2}}>{note}</div>}</div>;
 }
 export function Sel({label,value,onChange,options}){const id=useMemo(()=>"sel-"+(_inpId++),[]);return <div style={{marginBottom:10}}>{label&&<label htmlFor={id} style={{display:"block",color:C.td,fontSize:10,fontWeight:600,marginBottom:3,letterSpacing:.3}}>{label}</label>}<select id={id} value={value} onChange={e=>onChange(e.target.value)} style={{width:"100%",background:C.bg,border:`1px solid ${C.brd}`,borderRadius:8,color:C.t,padding:"8px 10px",fontSize:12,fontFamily:FONT,outline:"none"}}>{options.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}</select></div>;}
-export function Sect({children,title,sub,right}){return <div className="fu" style={{marginTop:16}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:8,flexWrap:"wrap",gap:4}}><div>{title&&<h2 style={{color:C.t,fontSize:13,fontWeight:800,margin:0,letterSpacing:1,textTransform:"uppercase",fontFamily:FONT_TITLE}}>{title}</h2>}{sub&&<p style={{color:C.td,fontSize:10,margin:"1px 0 0"}}>{sub}</p>}</div>{right}</div>{children}</div>;}
+export function Sect({children,title,sub,right}){return <div className="fu" style={{marginTop:20}}>
+ <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:10,flexWrap:"wrap",gap:4}}>
+  <div style={{display:"flex",alignItems:"center",gap:10}}>
+   <div style={{width:3,height:20,borderRadius:2,background:`linear-gradient(180deg,${C.acc},${C.acc}44)`}}/>
+   <div>{title&&<h2 style={{color:C.t,fontSize:14,fontWeight:800,margin:0,letterSpacing:1,textTransform:"uppercase",fontFamily:FONT_TITLE}}>{title}</h2>}{sub&&<p style={{color:C.td,fontSize:10,margin:"2px 0 0"}}>{sub}</p>}</div>
+  </div>
+  {right}
+ </div>
+ {children}
+</div>;}
 export function Card({children,style:sx,onClick,accent,delay=0}){return <div className={`fu d${Math.min(delay,8)} ${onClick?"glass-card":"glass-card-static"}`} onClick={onClick} style={{padding:14,cursor:onClick?"pointer":"default",...(accent?{borderLeft:`3px solid ${accent}`}:{}),...sx}} >{children}</div>;}
 export function Modal({open,onClose,title,children,wide}){if(!open)return null;return <div className="fi" onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:TIMING.MODAL_Z,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"28px 14px",overflowY:"auto",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)"}}><div className="mi glass-modal" onClick={e=>e.stopPropagation()} style={{borderRadius:18,padding:22,width:wide?700:440,maxWidth:"100%"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t}}>{title}</h3><Btn v="ghost" small onClick={onClose} aria-label="Fermer">✕</Btn></div>{children}</div></div>;}
 export const CTip=React.memo(function CTip({active,payload,label}){if(!active||!payload)return null;return <div style={{background:"rgba(14,14,22,.85)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,.08)",borderRadius:12,padding:"8px 12px",boxShadow:"0 8px 32px rgba(0,0,0,.5)"}}><div style={{color:C.t,fontWeight:700,fontSize:9,marginBottom:3}}>{label}</div>{payload.map((p,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:4,marginBottom:1}}><span style={{width:4,height:4,borderRadius:2,background:p.color}}/><span style={{color:C.td,fontSize:9}}>{p.name}:</span><span style={{color:C.t,fontSize:9,fontWeight:600}}>{fmt(p.value)}€</span></div>)}</div>;});
@@ -2436,28 +2459,46 @@ export function LeaderboardCard({socs,reps,allM,actions,pulses,socBank}){
   return{soc:s,ca,trend,porteur:s.porteur};
  }).sort((a,b)=>b.ca-a.ca);
  const maxCA=ranked.length>0?ranked[0].ca:1;
- const medals=["🥇","🥈","🥉"];
- return <Card style={{padding:16}}>
-  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-   <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:18}}>🏆</span><span style={{fontWeight:800,fontSize:14,fontFamily:FONT_TITLE}}>Classement CA — {ml(cm)}</span></div>
+ const totalCA=ranked.reduce((a,r)=>a+r.ca,0);
+ return <Card style={{padding:20,position:"relative",overflow:"hidden"}}>
+  <div style={{position:"absolute",top:-40,right:-40,width:120,height:120,borderRadius:"50%",background:`radial-gradient(circle,${C.acc}08,transparent)`,pointerEvents:"none"}}/>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+   <div style={{display:"flex",alignItems:"center",gap:8}}>
+    <div className="trophy-anim" style={{width:36,height:36,borderRadius:10,background:`linear-gradient(135deg,${C.acc}22,${C.acc}08)`,border:`1px solid ${C.acc}33`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:20}}>🏆</span></div>
+    <div><div style={{fontWeight:800,fontSize:15,fontFamily:FONT_TITLE}}>Classement CA</div><div style={{fontSize:9,color:C.td}}>{ml(cm)} — Total: <strong style={{color:C.acc}}>{fmt(totalCA)}€</strong></div></div>
+   </div>
   </div>
+  {/* Podium for top 3 */}
+  {ranked.length>=3&&<div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:8,marginBottom:18,padding:"0 10px"}}>
+   {[1,0,2].map(pos=>{const r=ranked[pos];if(!r)return null;const heights=[120,90,70];const gradients=[`linear-gradient(180deg,${C.acc}44,${C.acc}11)`,`linear-gradient(180deg,#c0c0c044,#c0c0c011)`,`linear-gradient(180deg,#cd7f3244,#cd7f3211)`];const borders=[`${C.acc}44`,"#c0c0c044","#cd7f3244"];
+    return <div key={r.soc.id} className={`fu d${pos+1}`} style={{flex:1,maxWidth:120,textAlign:"center"}}>
+     <div style={{width:32,height:32,borderRadius:"50%",background:`${r.soc.color}22`,border:`2px solid ${r.soc.color}66`,margin:"0 auto 6px",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:11,color:r.soc.color,overflow:"hidden"}}>{r.soc.logoUrl?<img loading="lazy" src={r.soc.logoUrl} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:r.soc.nom[0]}</div>
+     <div style={{fontWeight:700,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.soc.nom}</div>
+     <div style={{fontWeight:900,fontSize:14,color:[C.acc,"#c0c0c0","#cd7f32"][pos],marginTop:2}}>{fmt(r.ca)}€</div>
+     {r.trend!==0&&<div style={{fontSize:8,fontWeight:700,color:r.trend>0?C.g:C.r,marginTop:1}}>{r.trend>0?"▲":"▼"}{Math.abs(r.trend)}%</div>}
+     <div style={{height:heights[pos],background:gradients[pos],border:`1px solid ${borders[pos]}`,borderRadius:"8px 8px 0 0",marginTop:6,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:8}}>
+      <span style={{fontSize:pos===0?28:20}}>{["🥇","🥈","🥉"][pos]}</span>
+     </div>
+    </div>;})}
+  </div>}
+  {/* Full list */}
   {ranked.map((r,i)=>{
    const w=maxCA>0?Math.max(5,Math.round(r.ca/maxCA*100)):0;
    const isTop3=i<3;
-   return <div key={r.soc.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",marginBottom:4,background:isTop3?C.accD:C.card2,border:`1px solid ${isTop3?C.acc+"33":C.brd}`,borderRadius:10}}>
-    <span style={{fontWeight:900,fontSize:isTop3?18:14,width:28,textAlign:"center"}}>{isTop3?medals[i]:i+1}</span>
-    <span style={{width:6,height:6,borderRadius:3,background:r.soc.color,flexShrink:0}}/>
+   return <div key={r.soc.id} className={`fu d${Math.min(i+1,8)} leaderboard-row`} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",marginBottom:3,background:isTop3?`${C.acc}06`:"transparent",border:`1px solid ${isTop3?C.acc+"22":"transparent"}`,borderRadius:10}}>
+    <span style={{fontWeight:900,fontSize:isTop3?16:13,width:24,textAlign:"center",color:isTop3?[C.acc,"#c0c0c0","#cd7f32"][i]:C.td}}>{isTop3?["🥇","🥈","🥉"][i]:i+1}</span>
+    <div style={{width:8,height:8,borderRadius:4,background:r.soc.color,flexShrink:0,boxShadow:`0 0 6px ${r.soc.color}44`}}/>
     <div style={{flex:1,minWidth:0}}>
      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
       <span style={{fontWeight:700,fontSize:12}}>{r.soc.nom}</span>
       <span style={{fontSize:9,color:C.td}}>{r.porteur}</span>
-      {r.trend!==0&&<span style={{fontSize:9,fontWeight:700,color:r.trend>0?C.g:C.r}}>{r.trend>0?"↑":"↓"}{Math.abs(r.trend)}%</span>}
+      {r.trend!==0&&<span style={{fontSize:8,fontWeight:800,color:r.trend>0?C.g:C.r,padding:"1px 5px",borderRadius:6,background:r.trend>0?C.gD:C.rD}}>{r.trend>0?"▲":"▼"}{Math.abs(r.trend)}%</span>}
      </div>
-     <div style={{height:6,background:C.brd,borderRadius:3,overflow:"hidden"}}>
-      <div className="pg" style={{height:"100%",width:`${w}%`,background:isTop3?`linear-gradient(90deg,${C.acc},#FF9D00)`:r.soc.color,borderRadius:3,"--w":`${w}%`}}/>
+     <div style={{height:5,background:C.brd,borderRadius:3,overflow:"hidden"}}>
+      <div className="pg" style={{height:"100%",width:`${w}%`,background:isTop3?`linear-gradient(90deg,${C.acc}cc,${C.acc})`:r.soc.color,borderRadius:3,"--w":`${w}%`,position:"relative"}}/>
      </div>
     </div>
-    <span style={{fontWeight:900,fontSize:14,color:isTop3?C.acc:C.t,minWidth:60,textAlign:"right"}}>{fmt(r.ca)}€</span>
+    <span style={{fontWeight:900,fontSize:isTop3?15:13,color:isTop3?C.acc:C.t,minWidth:60,textAlign:"right"}}>{fmt(r.ca)}€</span>
    </div>;
   })}
   {ranked.length===0&&<div style={{textAlign:"center",padding:20,color:C.td,fontSize:11}}>Aucune donnée ce mois</div>}
@@ -2623,117 +2664,171 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
   {sub&&<div style={{marginTop:4,fontSize:9,fontWeight:600,color:C.td}}>{sub}</div>}
  </div>;
  return <div className="fu">
-  {/* Conseil du jour IA — removed */}
-  {/* Prévisionnel */}
-  {prevu>0&&<div className="glass-card-static" style={{padding:20,marginBottom:16}}>
-    <div style={{fontSize:9,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:8,fontFamily:FONT_TITLE}}>📊 PRÉVISIONNEL</div>
-    <div style={{display:"flex",gap:16,marginBottom:8}}>
-     <div><div style={{fontSize:8,color:C.td}}>Prévu</div><div style={{fontWeight:900,fontSize:18,color:C.acc}}>{fmt(prevu)}€</div></div>
-     <div><div style={{fontSize:8,color:C.td}}>Réalisé</div><div style={{fontWeight:900,fontSize:18,color:prevuColor}}>{fmt(ca)}€</div></div>
-     <div><div style={{fontSize:8,color:C.td}}>%</div><div style={{fontWeight:900,fontSize:18,color:prevuColor}}>{prevuPct}%</div></div>
+  {/* Prévisionnel — Hero Banner */}
+  {prevu>0&&<div className="hero-gradient glass-card-static" style={{padding:24,marginBottom:20,borderRadius:20,position:"relative",overflow:"hidden"}}>
+    <div style={{position:"absolute",top:-30,right:-30,width:120,height:120,borderRadius:"50%",background:`radial-gradient(circle,${prevuColor}12,transparent 70%)`,pointerEvents:"none"}}/>
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+     <div style={{width:32,height:32,borderRadius:10,background:`${acc2}18`,border:`1px solid ${acc2}33`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:16}}>📊</span></div>
+     <div><div style={{fontSize:10,fontWeight:700,color:C.td,letterSpacing:1,fontFamily:FONT_TITLE}}>PRÉVISIONNEL DU MOIS</div></div>
     </div>
-    <div style={{height:6,background:C.brd,borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.min(prevuPct,100)}%`,background:prevuColor,borderRadius:3,transition:"width .5s ease"}}/></div>
+    <div style={{display:"flex",gap:24,marginBottom:14,alignItems:"flex-end",flexWrap:"wrap"}}>
+     <div><div style={{fontSize:9,color:C.td,fontWeight:600,marginBottom:2}}>Objectif</div><div style={{fontWeight:900,fontSize:26,color:C.acc,letterSpacing:"-0.02em"}}>{fmt(prevu)}€</div></div>
+     <div><div style={{fontSize:9,color:C.td,fontWeight:600,marginBottom:2}}>Réalisé</div><div style={{fontWeight:900,fontSize:26,color:prevuColor,letterSpacing:"-0.02em"}}>{fmt(ca)}€</div></div>
+     <div style={{display:"flex",alignItems:"center",gap:6}}>
+      <div style={{width:48,height:48,borderRadius:"50%",position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
+       <svg width="48" height="48" style={{position:"absolute",top:0,left:0}}><circle cx="24" cy="24" r="20" fill="none" stroke={C.brd} strokeWidth="4"/><circle cx="24" cy="24" r="20" fill="none" stroke={prevuColor} strokeWidth="4" strokeDasharray={`${Math.min(prevuPct,100)*1.257} 125.7`} strokeLinecap="round" transform="rotate(-90 24 24)" style={{transition:"stroke-dasharray .8s ease"}}/></svg>
+       <span style={{fontWeight:900,fontSize:12,color:prevuColor}}>{prevuPct}%</span>
+      </div>
+     </div>
+    </div>
+    <div style={{height:8,background:C.brd,borderRadius:4,overflow:"hidden",position:"relative"}}><div style={{height:"100%",width:`${Math.min(prevuPct,100)}%`,background:`linear-gradient(90deg,${prevuColor}aa,${prevuColor})`,borderRadius:4,transition:"width .8s cubic-bezier(.4,0,.2,1)",position:"relative"}}><div style={{position:"absolute",top:0,left:0,right:0,height:"50%",background:"linear-gradient(180deg,rgba(255,255,255,.2),transparent)",borderRadius:"4px 4px 0 0"}}/></div></div>
   </div>}
 
   {/* ===== BANDEAU 1 — FINANCES ===== */}
   <div style={{marginBottom:28}}>
-   <div style={secTitle}><span style={{color:acc2}}>💰</span><span style={{color:C.t}}>FINANCES</span></div>
+   <div style={{...secTitle,gap:10}}><div style={{width:3,height:22,borderRadius:2,background:`linear-gradient(180deg,${acc2},${acc2}44)`}}/><span style={{color:acc2,fontSize:18}}>💰</span><span style={{color:C.t}}>FINANCES</span></div>
    <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:16}}>
-    <div className="glass-card-static" style={kpiCard}>
-     <div style={{color:C.td,fontSize:8,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:FONT_TITLE}}>CA du mois</div>
-     <div style={{fontSize:22,fontWeight:900,color:acc2,lineHeight:1,cursor:"pointer"}} onClick={()=>setShowIncome(!showIncome)}>{fmt(ca)}€</div>
-     <div style={{fontSize:8,color:C.acc,cursor:"pointer",marginTop:4}} onClick={()=>setShowIncome(!showIncome)}>{showIncome?"▲ masquer":"▼ détails"}</div>
-     {showIncome&&<div className="slide-down" style={{marginTop:8,textAlign:"left",maxHeight:140,overflow:"auto"}}>
-      {bankFinancials.incomeTxs.slice(0,5).map((tx,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:`1px solid ${C.brd}`,fontSize:9}}>
-       <span style={{color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"65%"}}>{tx.legs?.[0]?.description||tx.reference||"—"}</span>
-       <span style={{color:C.g,fontWeight:700}}>+{fmt(tx.legs?.[0]?.amount||0)}€</span>
-      </div>)}
-      {bankFinancials.incomeTxs.length===0&&<div style={{fontSize:9,color:C.td}}>Aucun encaissement</div>}
-     </div>}
+    <div className="kpi-v2 glass-card-static" style={{"--glow-color":`${acc2}18`,...kpiCard,position:"relative",overflow:"hidden"}}>
+     <div className="kpi-v2-glow" style={{"--glow-color":`${acc2}10`}}/>
+     <div style={{position:"relative",zIndex:1}}>
+      <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:6}}><span style={{fontSize:14}}>💵</span><span style={{color:C.td,fontSize:8,fontWeight:700,letterSpacing:1,textTransform:"uppercase",fontFamily:FONT_TITLE}}>CA du mois</span></div>
+      <div className="kpi-v2-value" style={{fontSize:24,fontWeight:900,color:acc2,lineHeight:1,cursor:"pointer",letterSpacing:"-0.02em"}} onClick={()=>setShowIncome(!showIncome)}>{fmt(ca)}€</div>
+      <div style={{fontSize:8,color:C.acc,cursor:"pointer",marginTop:6,fontWeight:600}} onClick={()=>setShowIncome(!showIncome)}>{showIncome?"▲ masquer":"▼ voir détails"}</div>
+      {showIncome&&<div className="slide-down" style={{marginTop:8,textAlign:"left",maxHeight:140,overflow:"auto"}}>
+       {bankFinancials.incomeTxs.slice(0,5).map((tx,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:`1px solid ${C.brd}`,fontSize:9}}>
+        <span style={{color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"65%"}}>{tx.legs?.[0]?.description||tx.reference||"—"}</span>
+        <span style={{color:C.g,fontWeight:700}}>+{fmt(tx.legs?.[0]?.amount||0)}€</span>
+       </div>)}
+       {bankFinancials.incomeTxs.length===0&&<div style={{fontSize:9,color:C.td}}>Aucun encaissement</div>}
+      </div>}
+     </div>
+     <div style={{position:"absolute",bottom:0,left:0,right:0,height:3,background:`linear-gradient(90deg,${acc2}00,${acc2}44,${acc2}00)`}}/>
     </div>
-    <div className="glass-card-static" style={kpiCard}>
-     <div style={{color:C.td,fontSize:8,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:FONT_TITLE}}>Charges</div>
-     <div style={{fontSize:22,fontWeight:900,color:C.r,lineHeight:1,cursor:"pointer"}} onClick={()=>setShowExpenses(!showExpenses)}>{fmt(charges)}€</div>
-     <div style={{fontSize:8,color:C.r,cursor:"pointer",marginTop:4}} onClick={()=>setShowExpenses(!showExpenses)}>{showExpenses?"▲ masquer":"▼ détails"}</div>
-     {showExpenses&&<div className="slide-down" style={{marginTop:8,textAlign:"left",maxHeight:140,overflow:"auto"}}>
-      {bankFinancials.expenseTxs.slice(0,5).map((tx,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:`1px solid ${C.brd}`,fontSize:9}}>
-       <span style={{color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"65%"}}>{tx.legs?.[0]?.description||tx.reference||"—"}</span>
-       <span style={{color:C.r,fontWeight:700}}>{fmt(tx.legs?.[0]?.amount||0)}€</span>
-      </div>)}
-      {bankFinancials.expenseTxs.length===0&&<div style={{fontSize:9,color:C.td}}>Aucune charge</div>}
-     </div>}
+    <div className="kpi-v2 glass-card-static" style={{"--glow-color":`${C.r}18`,...kpiCard,position:"relative",overflow:"hidden"}}>
+     <div className="kpi-v2-glow" style={{"--glow-color":`${C.r}10`}}/>
+     <div style={{position:"relative",zIndex:1}}>
+      <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:6}}><span style={{fontSize:14}}>📉</span><span style={{color:C.td,fontSize:8,fontWeight:700,letterSpacing:1,textTransform:"uppercase",fontFamily:FONT_TITLE}}>Charges</span></div>
+      <div className="kpi-v2-value" style={{fontSize:24,fontWeight:900,color:C.r,lineHeight:1,cursor:"pointer",letterSpacing:"-0.02em"}} onClick={()=>setShowExpenses(!showExpenses)}>{fmt(charges)}€</div>
+      <div style={{fontSize:8,color:C.r,cursor:"pointer",marginTop:6,fontWeight:600}} onClick={()=>setShowExpenses(!showExpenses)}>{showExpenses?"▲ masquer":"▼ voir détails"}</div>
+      {showExpenses&&<div className="slide-down" style={{marginTop:8,textAlign:"left",maxHeight:140,overflow:"auto"}}>
+       {bankFinancials.expenseTxs.slice(0,5).map((tx,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:`1px solid ${C.brd}`,fontSize:9}}>
+        <span style={{color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"65%"}}>{tx.legs?.[0]?.description||tx.reference||"—"}</span>
+        <span style={{color:C.r,fontWeight:700}}>{fmt(tx.legs?.[0]?.amount||0)}€</span>
+       </div>)}
+       {bankFinancials.expenseTxs.length===0&&<div style={{fontSize:9,color:C.td}}>Aucune charge</div>}
+      </div>}
+     </div>
+     <div style={{position:"absolute",bottom:0,left:0,right:0,height:3,background:`linear-gradient(90deg,${C.r}00,${C.r}44,${C.r}00)`}}/>
     </div>
-    <KPI label="Marge" value={`${fmt(marge)}€`} sub={`${margePct}% de marge`} accent={marge>=0?C.g:C.r}/>
-    <KPI label="Trésorerie" value={`${fmt(treso)}€`} accent={C.b}/>
+    <KPI label="Marge" value={`${fmt(marge)}€`} sub={`${margePct}% de marge`} accent={marge>=0?C.g:C.r} icon="📈"/>
+    <KPI label="Trésorerie" value={`${fmt(treso)}€`} accent={C.b} icon="🏦"/>
    </div>
    {/* Répartition des dépenses - donut */}
-   {pieData.length>0&&<div className="glass-card-static" style={{padding:18}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>📊 RÉPARTITION DES DÉPENSES</div>
-    <div style={{display:"flex",alignItems:"center",height:180}}>
-     <div style={{width:"45%",height:180}}><ResponsiveContainer><PieChart><Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={3} strokeWidth={0}>{pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip content={<CTip/>}/></PieChart></ResponsiveContainer></div>
-     <div style={{flex:1,paddingLeft:8}}>{(()=>{const total=pieData.reduce((a,d)=>a+d.value,0);return pieData.slice(0,6).map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/><span style={{flex:1,fontSize:10,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span><span style={{fontSize:9,color:C.tm,marginRight:4}}>{total>0?Math.round(d.value/total*100):0}%</span><span style={{fontWeight:700,fontSize:10,color:C.t}}>{fmt(d.value)}€</span></div>);})()}</div>
+   {pieData.length>0&&<div className="glass-card-static" style={{padding:20,position:"relative",overflow:"hidden"}}>
+    <div style={{position:"absolute",top:-40,right:-40,width:100,height:100,borderRadius:"50%",background:`radial-gradient(circle,${C.r}08,transparent)`,pointerEvents:"none"}}/>
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+     <div style={{width:28,height:28,borderRadius:8,background:`${C.r}15`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:14}}>📊</span></div>
+     <span style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:1,fontFamily:FONT_TITLE}}>RÉPARTITION DES DÉPENSES</span>
+    </div>
+    <div style={{display:"flex",alignItems:"center",height:200}}>
+     <div style={{width:"45%",height:200}}><ResponsiveContainer><PieChart><Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={72} paddingAngle={3} strokeWidth={0} cornerRadius={3}>{pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip content={<CTip/>}/></PieChart></ResponsiveContainer></div>
+     <div style={{flex:1,paddingLeft:12}}>{(()=>{const total=pieData.reduce((a,d)=>a+d.value,0);return pieData.slice(0,6).map((d,i)=>{const pctVal=total>0?Math.round(d.value/total*100):0;return <div key={i} className={`fu d${Math.min(i+1,6)}`} style={{display:"flex",alignItems:"center",gap:6,marginBottom:6,padding:"4px 0"}}>
+      <span style={{width:10,height:10,borderRadius:3,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0,boxShadow:`0 0 6px ${PIE_COLORS[i%PIE_COLORS.length]}33`}}/>
+      <div style={{flex:1,minWidth:0}}>
+       <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}><span style={{fontSize:10,color:C.t,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span><span style={{fontWeight:800,fontSize:10,color:C.t,flexShrink:0,marginLeft:6}}>{fmt(d.value)}€</span></div>
+       <div style={{height:3,background:C.brd,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${pctVal}%`,background:PIE_COLORS[i%PIE_COLORS.length],borderRadius:2,transition:"width .5s ease"}}/></div>
+      </div>
+      <span style={{fontSize:9,color:C.td,fontWeight:700,minWidth:28,textAlign:"right"}}>{pctVal}%</span>
+     </div>;});})()}</div>
     </div>
    </div>}
+   <div className="section-divider"/>
   </div>
 
   {/* ===== BANDEAU 2 — SALES ===== */}
   <div style={{marginBottom:28}}>
-   <div style={secTitle}><span style={{color:"#34d399"}}>📞</span><span style={{color:C.t}}>SALES</span></div>
-   <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:16}}>
-    <KPI label="Prospects total" value={String(ghlCl.length)} accent="#60a5fa" icon="👥"/>
-    <KPI label="Valorisation pipeline" value={`${fmt(pipelineValue)}€`} accent={C.acc} icon="🎯"/>
-    <KPI label="Clients actifs" value={String(myClients.length)} accent={C.g} icon="✅"/>
-    <KPI label="Clients perdus" value={String(churnedClients.length)} accent={C.r} icon="❌"/>
-    <KPI label="Nombre d'appels" value={String(totalEvts)} accent="#14b8a6" icon="📅"/>
-    <KPI label="Closing" value={String(wonOpps.length)} sub={wonValue>0?`${fmt(wonValue)}€`:null} accent={C.g} icon="🏆"/>
-    <KPI label="Taux de conversion" value={`${convRate}%`} sub={stratCalls>0?`${wonOpps.length}/${stratCalls}`:null} accent="#a78bfa" icon="📈"/>
-    <KPI label="Valeur moy. client" value={`${fmt(avgClientVal)}€`} accent={C.acc} icon="💎"/>
-    <KPI label="No-show" value={`${noShowPct}%`} sub={totalEvts>0?`${noShowEvts}/${totalEvts}`:null} accent={C.r} icon="🚫"/>
-    <KPI label="Jours avant conversion" value={avgDaysConv!==null?`${avgDaysConv}j`:"—"} accent={C.o} icon="⏱️"/>
+   <div style={{...secTitle,gap:10}}><div style={{width:3,height:22,borderRadius:2,background:`linear-gradient(180deg,#34d399,#34d39944)`}}/><span style={{color:"#34d399",fontSize:18}}>📞</span><span style={{color:C.t}}>SALES</span></div>
+   {/* Sales hero stats — top 3 big metrics */}
+   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:14}}>
+    {[{icon:"🎯",label:"Pipeline",value:`${fmt(pipelineValue)}€`,color:C.acc,sub:`${openOpps.length} opportunités`},{icon:"✅",label:"Clients actifs",value:String(myClients.length),color:C.g,sub:avgClientVal>0?`~${fmt(avgClientVal)}€/client`:null},{icon:"📈",label:"Conversion",value:`${convRate}%`,color:"#a78bfa",sub:stratCalls>0?`${wonOpps.length} closés / ${stratCalls} appels`:null}].map((s,i)=><div key={i} className={`fu d${i+1} kpi-v2 glass-card-static`} style={{"--glow-color":`${s.color}18`,padding:20,textAlign:"center",position:"relative",overflow:"hidden"}}>
+     <div className="kpi-v2-glow" style={{"--glow-color":`${s.color}10`}}/>
+     <div style={{position:"relative",zIndex:1}}>
+      <span style={{fontSize:20,filter:"drop-shadow(0 0 6px rgba(0,0,0,.3))"}}>{s.icon}</span>
+      <div style={{fontSize:10,color:C.td,fontWeight:700,letterSpacing:1,fontFamily:FONT_TITLE,margin:"6px 0 4px",textTransform:"uppercase"}}>{s.label}</div>
+      <div className="kpi-v2-value" style={{fontSize:28,fontWeight:900,color:s.color,letterSpacing:"-0.02em"}}>{s.value}</div>
+      {s.sub&&<div style={{fontSize:9,color:C.td,marginTop:4}}>{s.sub}</div>}
+     </div>
+     <div style={{position:"absolute",bottom:0,left:0,right:0,height:3,background:`linear-gradient(90deg,${s.color}00,${s.color}44,${s.color}00)`}}/>
+    </div>)}
    </div>
-   {/* Funnel de conversion — horizontal */}
-   <div className="glass-card-static" style={{padding:18,marginBottom:12}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:14,fontFamily:FONT_TITLE}}>🔄 FUNNEL DE CONVERSION</div>
-    <div style={{display:"flex",alignItems:"center",gap:0}}>
-     {funnelData.map((f,i)=>{const conv=i>0&&funnelData[i-1].count>0?Math.round(f.count/funnelData[i-1].count*100):null;
-      return <Fragment key={i}>
-       {i>0&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"0 4px",flexShrink:0}}>
-        <span style={{fontSize:14,color:C.td}}>→</span>
-        {conv!==null&&<span style={{fontSize:8,fontWeight:800,color:conv>=50?C.g:conv>=25?C.o:C.r}}>{conv}%</span>}
+   {/* Secondary KPIs */}
+   <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:16}}>
+    <KPI label="Prospects" value={String(ghlCl.length)} accent="#60a5fa" icon="👥" small/>
+    <KPI label="Closing" value={String(wonOpps.length)} sub={wonValue>0?`${fmt(wonValue)}€`:null} accent={C.g} icon="🏆" small/>
+    <KPI label="Appels" value={String(totalEvts)} accent="#14b8a6" icon="📅" small/>
+    <KPI label="Clients perdus" value={String(churnedClients.length)} accent={C.r} icon="❌" small/>
+    <KPI label="No-show" value={`${noShowPct}%`} sub={totalEvts>0?`${noShowEvts}/${totalEvts}`:null} accent={C.r} icon="🚫" small/>
+    <KPI label="Délai conversion" value={avgDaysConv!==null?`${avgDaysConv}j`:"—"} accent={C.o} icon="⏱️" small/>
+   </div>
+   {/* Funnel de conversion — visual trapezoid */}
+   <div className="glass-card-static" style={{padding:22,marginBottom:12,position:"relative",overflow:"hidden"}}>
+    <div style={{position:"absolute",top:-30,left:"50%",transform:"translateX(-50%)",width:200,height:200,borderRadius:"50%",background:`radial-gradient(circle,${C.acc}06,transparent)`,pointerEvents:"none"}}/>
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:18}}>
+     <div style={{width:28,height:28,borderRadius:8,background:`${C.acc}15`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:14}}>🔄</span></div>
+     <span style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:1,fontFamily:FONT_TITLE}}>FUNNEL DE CONVERSION</span>
+    </div>
+    <div style={{display:"flex",flexDirection:"column",gap:0,alignItems:"center"}}>
+     {funnelData.map((f,i)=>{
+      const conv=i>0&&funnelData[i-1].count>0?Math.round(f.count/funnelData[i-1].count*100):null;
+      const maxCount=Math.max(...funnelData.map(d=>d.count),1);
+      const barW=Math.max(35,Math.round((f.count/maxCount)*100));
+      return <div key={i} className={`funnel-stage`} style={{width:"100%",animationDelay:`${i*0.1}s`,marginBottom:i<funnelData.length-1?0:0}}>
+       {i>0&&<div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"4px 0"}}>
+        <div style={{width:1,height:12,background:`linear-gradient(180deg,${funnelData[i-1].color}44,${f.color}44)`}}/>
+        {conv!==null&&<span style={{fontSize:9,fontWeight:800,color:conv>=50?C.g:conv>=25?C.o:C.r,marginLeft:6,padding:"1px 6px",borderRadius:6,background:conv>=50?C.gD:conv>=25?C.oD:C.rD}}>▼ {conv}%</span>}
        </div>}
-       <div style={{flex:1,background:`linear-gradient(135deg,${f.color}18,${f.color}30)`,border:`1px solid ${f.color}55`,borderRadius:12,padding:"14px 10px",textAlign:"center"}}>
-        <div style={{fontSize:16,marginBottom:4}}>{f.icon}</div>
-        <div style={{fontWeight:900,fontSize:22,color:f.color}}>{f.count}</div>
-        <div style={{fontSize:9,color:C.td,fontWeight:600,marginTop:2}}>{f.stage}</div>
+       <div style={{width:`${barW}%`,margin:"0 auto",background:`linear-gradient(135deg,${f.color}20,${f.color}35)`,border:`1px solid ${f.color}55`,borderRadius:14,padding:"16px 18px",display:"flex",alignItems:"center",gap:12,transition:"all .3s ease"}} onMouseEnter={e=>{e.currentTarget.style.background=`linear-gradient(135deg,${f.color}30,${f.color}45)`;e.currentTarget.style.transform="scale(1.02)";}} onMouseLeave={e=>{e.currentTarget.style.background=`linear-gradient(135deg,${f.color}20,${f.color}35)`;e.currentTarget.style.transform="scale(1)";}}>
+        <span style={{fontSize:20}}>{f.icon}</span>
+        <div style={{flex:1}}>
+         <div style={{fontSize:10,color:C.td,fontWeight:600}}>{f.stage}</div>
+        </div>
+        <div style={{fontWeight:900,fontSize:24,color:f.color,letterSpacing:"-0.02em"}}>{f.count}</div>
        </div>
-      </Fragment>;
+      </div>;
      })}
     </div>
    </div>
    {/* Top 5 clients */}
-   {top5Clients.length>0&&<div className="glass-card-static" style={{padding:18}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:1,marginBottom:10,fontFamily:FONT_TITLE}}>🏅 TOP 5 CLIENTS</div>
-    {top5Clients.map((c,i)=><div key={c.id||i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<top5Clients.length-1?`1px solid ${C.brd}`:"none"}}>
-     <span style={{width:24,height:24,borderRadius:8,background:i===0?"linear-gradient(135deg,#FFBF00,#FF9D00)":i===1?"linear-gradient(135deg,#c0c0c0,#a0a0a0)":i===2?"linear-gradient(135deg,#cd7f32,#a0622e)":C.card2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:i<3?"#0a0a0f":C.td,flexShrink:0}}>{i+1}</span>
+   {top5Clients.length>0&&<div className="glass-card-static" style={{padding:20,position:"relative",overflow:"hidden"}}>
+    <div style={{position:"absolute",top:-30,right:-30,width:80,height:80,borderRadius:"50%",background:`radial-gradient(circle,${acc2}08,transparent)`,pointerEvents:"none"}}/>
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+     <div style={{width:28,height:28,borderRadius:8,background:`${acc2}15`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:14}}>🏅</span></div>
+     <span style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:1,fontFamily:FONT_TITLE}}>TOP 5 CLIENTS</span>
+     <span style={{marginLeft:"auto",fontSize:9,color:C.td,fontWeight:600}}>{myClients.length} actifs</span>
+    </div>
+    {top5Clients.map((c,i)=>{const maxCumul=top5Clients[0]?.cumul||1;const barW=Math.max(10,Math.round(c.cumul/maxCumul*100));return <div key={c.id||i} className={`fu d${Math.min(i+1,5)}`} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 8px",marginBottom:4,borderRadius:10,background:i===0?`linear-gradient(135deg,${C.acc}08,${C.acc}03)`:"transparent",border:i===0?`1px solid ${C.acc}18`:`1px solid transparent`,transition:"all .2s ease"}} onMouseEnter={e=>{if(i>0)e.currentTarget.style.background=`${acc2}06`;}} onMouseLeave={e=>{if(i>0)e.currentTarget.style.background="transparent";}}>
+     <span style={{width:28,height:28,borderRadius:10,background:i===0?"linear-gradient(135deg,#FFBF00,#FF9D00)":i===1?"linear-gradient(135deg,#c0c0c0,#a0a0a0)":i===2?"linear-gradient(135deg,#cd7f32,#a0622e)":`${C.card2}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:900,color:i<3?"#0a0a0f":C.td,flexShrink:0,boxShadow:i<3?`0 2px 8px ${i===0?"rgba(255,191,0,.3)":i===1?"rgba(192,192,192,.3)":"rgba(205,127,50,.3)"}`:"none"}}>{i<3?["🥇","🥈","🥉"][i]:i+1}</span>
      <div style={{flex:1,minWidth:0}}>
-      <div style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name||"—"}</div>
+      <div style={{fontWeight:700,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:3}}>{c.name||"—"}</div>
+      <div style={{height:4,background:C.brd,borderRadius:2,overflow:"hidden",marginBottom:3}}><div style={{height:"100%",width:`${barW}%`,background:`linear-gradient(90deg,${acc2}88,${acc2})`,borderRadius:2,transition:"width .6s ease"}}/></div>
       <div style={{fontSize:9,color:C.td,display:"flex",gap:6,flexWrap:"wrap"}}>
        {c.durationMonths!==null&&<span>📅 {c.durationMonths} mois</span>}
        {c.domain&&<span>🏢 {c.domain}</span>}
        <span>~{fmt(c.avgMonthly)}€/mois</span>
       </div>
      </div>
-     <div style={{textAlign:"right"}}>
-      <div style={{fontWeight:800,fontSize:13,color:acc2}}>{fmt(c.cumul)}€</div>
+     <div style={{textAlign:"right",flexShrink:0}}>
+      <div style={{fontWeight:900,fontSize:14,color:acc2}}>{fmt(c.cumul)}€</div>
       <div style={{fontSize:8,color:C.td}}>cumulé</div>
      </div>
-    </div>)}
+    </div>;})}
    </div>}
+   <div className="section-divider"/>
   </div>
 
   {/* ===== BANDEAU 3 — PUBLICITÉ ===== */}
   <div style={{marginBottom:20}}>
-   <div style={secTitle}><span style={{color:"#f472b6"}}>📣</span><span style={{color:C.t}}>PUBLICITÉ</span></div>
+   <div style={{...secTitle,gap:10}}><div style={{width:3,height:22,borderRadius:2,background:"linear-gradient(180deg,#f472b6,#f472b644)"}}/><span style={{color:"#f472b6",fontSize:18}}>📣</span><span style={{color:C.t}}>PUBLICITÉ</span></div>
    {metaAds?<>
     <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:16}}>
      <KPI label="Prospects Ads" value={String(metaAds.leads||0)} accent="#60a5fa" icon="🎯"/>

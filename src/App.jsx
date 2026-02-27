@@ -647,14 +647,29 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   <PageTransition tabKey={tab}>
   {tab===0&&<>
    {isOffline&&<OfflineBanner/>}
-   {smartAlerts.length>0&&<div data-tour="admin-alerts" style={{marginBottom:12}}>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-    <span style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8}}>🔔 ALERTES INTELLIGENTES</span>
-    <span style={{fontSize:8,color:smartAlerts.filter(a=>a.type==="danger").length>0?C.r:C.o}}>{smartAlerts.length} alerte{smartAlerts.length>1?"s":""}</span>
+   {/* Welcome Banner */}
+   <div className="welcome-banner fu" style={{marginBottom:16}}>
+    <div style={{position:"relative",zIndex:1}}>
+     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+      <div>
+       <div style={{fontSize:10,color:C.td,fontWeight:600,letterSpacing:1,fontFamily:FONT_TITLE,marginBottom:4}}>TABLEAU DE BORD</div>
+       <div style={{fontSize:22,fontWeight:900,fontFamily:FONT_TITLE,letterSpacing:"-0.02em"}}>{hold.brand?.name||"L'Incubateur ECS"}</div>
+       <div style={{fontSize:11,color:C.td,marginTop:2}}>{ml(cM2)} — {actS.filter(s=>s.id!=="eco").length} sociétés actives</div>
+      </div>
+      <div style={{display:"flex",gap:12,alignItems:"center"}}>
+       {(()=>{const totalCA=actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.ca),0);return <div style={{textAlign:"right"}}><div style={{fontSize:9,color:C.td,fontWeight:600}}>CA Groupe</div><div style={{fontSize:28,fontWeight:900,color:C.acc,letterSpacing:"-0.02em"}}>{fmt(totalCA)}€</div></div>;})()}
+      </div>
+     </div>
+    </div>
+   </div>
+   {smartAlerts.length>0&&<div data-tour="admin-alerts" style={{marginBottom:14}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+    <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:8,height:8,borderRadius:4,background:smartAlerts.filter(a=>a.type==="danger").length>0?C.r:C.o,animation:"pulse 2s ease infinite"}}/><span style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8}}>ALERTES INTELLIGENTES</span></div>
+    <span style={{fontSize:9,padding:"2px 8px",borderRadius:8,background:smartAlerts.filter(a=>a.type==="danger").length>0?C.rD:C.oD,color:smartAlerts.filter(a=>a.type==="danger").length>0?C.r:C.o,fontWeight:700}}>{smartAlerts.length} alerte{smartAlerts.length>1?"s":""}</span>
     </div>
     <SmartAlertsPanel alerts={smartAlerts.slice(0,5)}/>
    </div>}
-   <div className="rg-auto" data-tour="admin-kpis" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8}}>
+   <div className="rg-auto" data-tour="admin-kpis" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10}}>
     <KPI label="CA Groupe" value={`${fmt(actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.ca),0))}€`} accent={C.acc} icon="💰" delay={1}/>
     <KPI label="Marge nette" value={`${fmt(actS.reduce((a,s)=>a+pf(gr(reps,s.id,cM2)?.ca)-pf(gr(reps,s.id,cM2)?.charges),0))}€`} accent={C.g} icon="📊" delay={2}/>
     <KPI label="On se verse" value={`${fmt(hold.remun)}€`} accent={C.o} icon="👤" delay={3} sub={`${fmt(hold.remun/2)}€ chacun`}/>
@@ -664,10 +679,13 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </div>
    <div className="admin-responsive-grid rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:14}}>
     <div>
-    {feed.length>0&&<div data-tour="admin-feed"><Card style={{padding:12,marginBottom:10}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:6}}>ACTIVITÉ RÉCENTE</div>
-    {feed.slice(0,5).map((f2,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:4,fontSize:10}}>
-    <span style={{width:4,height:4,borderRadius:2,background:f2.color,flexShrink:0}}/>
+    {feed.length>0&&<div data-tour="admin-feed"><Card style={{padding:14,marginBottom:10}}>
+    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+     <div style={{width:24,height:24,borderRadius:7,background:`${C.acc}15`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:12}}>⚡</span></div>
+     <span style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8}}>ACTIVITÉ RÉCENTE</span>
+    </div>
+    {feed.slice(0,5).map((f2,i)=><div key={i} className={`fu d${Math.min(i+1,5)}`} style={{display:"flex",alignItems:"center",gap:8,marginBottom:2,fontSize:10,padding:"6px 8px",borderRadius:8,transition:"background .2s ease"}} onMouseEnter={e=>{e.currentTarget.style.background=`${f2.color}08`;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
+    <span style={{width:6,height:6,borderRadius:3,background:f2.color,flexShrink:0,boxShadow:`0 0 6px ${f2.color}44`}}/>
     <span style={{color:C.t,flex:1,lineHeight:1.3}}>{f2.m}</span>
     <span style={{color:C.tm,fontSize:8,whiteSpace:"nowrap"}}>{ago(f2.date)}</span>
     </div>)}
@@ -676,34 +694,42 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </div>
     <div data-tour="admin-leaderboard">
     <Suspense fallback={<LazyFallback/>}><BankingPanel revData={revData} onSync={syncRev} compact clients={clients}/></Suspense>
-    <Card style={{padding:12,marginTop:10}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8,marginBottom:6}}>🏆 CLASSEMENT</div>
-    {leaderboard.slice(0,5).map((lb,i)=>{const ms=calcMilestones(lb.soc,reps,actions,pulses,allM);const msN=ms.filter(m=>m.unlocked).length;return <div key={lb.soc.id} className={`fu d${Math.min(i+1,5)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:i<Math.min(leaderboard.length,5)-1?`1px solid ${C.brd}08`:"none"}}>
-    <span style={{fontWeight:800,fontSize:12,color:i===0?C.acc:i===1?"#C0C0C0":i===2?"#CD7F32":C.td,width:16}}>{i+1}</span>
-    <span style={{width:4,height:4,borderRadius:2,background:lb.soc.color}}/>
+    <Card style={{padding:14,marginTop:10,position:"relative",overflow:"hidden"}}>
+    <div style={{position:"absolute",top:-20,right:-20,width:60,height:60,borderRadius:"50%",background:`radial-gradient(circle,${C.acc}08,transparent)`,pointerEvents:"none"}}/>
+    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+     <div className="trophy-anim" style={{width:24,height:24,borderRadius:7,background:`${C.acc}15`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:13}}>🏆</span></div>
+     <span style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8}}>CLASSEMENT</span>
+    </div>
+    {leaderboard.slice(0,5).map((lb,i)=>{const ms=calcMilestones(lb.soc,reps,actions,pulses,allM);const msN=ms.filter(m=>m.unlocked).length;return <div key={lb.soc.id} className={`fu d${Math.min(i+1,5)} leaderboard-row`} style={{display:"flex",alignItems:"center",gap:7,padding:"6px 8px",borderRadius:8,marginBottom:2,background:i===0?`${C.acc}06`:"transparent"}}>
+    <span style={{fontWeight:900,fontSize:i<3?14:12,color:i===0?C.acc:i===1?"#C0C0C0":i===2?"#CD7F32":C.td,width:20,textAlign:"center"}}>{i<3?["🥇","🥈","🥉"][i]:i+1}</span>
+    <div style={{width:6,height:6,borderRadius:3,background:lb.soc.color,boxShadow:`0 0 5px ${lb.soc.color}44`}}/>
     <span style={{flex:1,fontWeight:600,fontSize:11}}>{lb.soc.nom}</span>
-    {msN>0&&<span style={{fontSize:7,color:C.acc,background:C.accD,padding:"1px 4px",borderRadius:6,fontWeight:700}}>🏆{msN}</span>}
+    {msN>0&&<span style={{fontSize:7,color:C.acc,background:C.accD,padding:"1px 5px",borderRadius:6,fontWeight:700}}>🏆{msN}</span>}
     <GradeBadge grade={lb.hs.grade} color={lb.hs.color}/>
-    <span style={{fontWeight:800,fontSize:12,color:C.acc,minWidth:28,textAlign:"right"}}>{lb.score}</span>
+    <span style={{fontWeight:800,fontSize:12,color:i<3?C.acc:C.t,minWidth:28,textAlign:"right"}}>{lb.score}</span>
     </div>;})}
     </Card>
     </div>
    </div>
    <div data-tour="admin-okr-actions" style={{display:"grid",gridTemplateColumns:"1fr",gap:12,marginTop:14}}>
-    <Card style={{padding:12}}>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-    <div style={{color:C.td,fontSize:9,fontWeight:700,letterSpacing:.8}}>⚡ ACTIONS PRIORITAIRES</div>
-    <span style={{fontSize:9,color:C.td}}>{actions.filter(a=>!a.done).length} ouvertes</span>
+    <Card style={{padding:14,position:"relative",overflow:"hidden"}}>
+    <div style={{position:"absolute",top:-20,right:-20,width:60,height:60,borderRadius:"50%",background:`radial-gradient(circle,${C.o}06,transparent)`,pointerEvents:"none"}}/>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+    <div style={{display:"flex",alignItems:"center",gap:6}}>
+     <div style={{width:24,height:24,borderRadius:7,background:`${C.o}15`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:12}}>⚡</span></div>
+     <span style={{color:C.td,fontSize:10,fontWeight:700,letterSpacing:.8}}>ACTIONS PRIORITAIRES</span>
+    </div>
+    <span style={{fontSize:9,padding:"2px 8px",borderRadius:8,background:C.oD,color:C.o,fontWeight:700}}>{actions.filter(a=>!a.done).length} ouvertes</span>
     </div>
     {(()=>{
     const open=actions.filter(a=>!a.done).sort((a,b)=>a.deadline>b.deadline?1:-1);
-    if(open.length===0)return <div style={{color:C.td,fontSize:11,padding:10,textAlign:"center"}}>Tout est fait 🎉</div>;
+    if(open.length===0)return <div style={{color:C.td,fontSize:11,padding:16,textAlign:"center"}}><span style={{fontSize:28,display:"block",marginBottom:4}}>🎉</span>Tout est fait !</div>;
     return open.slice(0,5).map((a,i)=>{
     const s=socs.find(x=>x.id===a.socId);const isLate=a.deadline<cM2;
-    return <div key={a.id} className={`fu d${Math.min(i+1,5)}`} style={{display:"flex",alignItems:"center",gap:5,padding:"4px 0",borderBottom:i<Math.min(open.length,5)-1?`1px solid ${C.brd}08`:"none"}}>
-    <span style={{width:4,height:4,borderRadius:2,background:s?.color||C.td,flexShrink:0}}/>
-    <span style={{flex:1,fontSize:10,lineHeight:1.3,color:isLate?C.r:C.t}}>{a.text}</span>
-    {isLate&&<span style={{fontSize:7,color:C.r,background:C.rD,padding:"1px 4px",borderRadius:4,fontWeight:700}}>RETARD</span>}
+    return <div key={a.id} className={`fu d${Math.min(i+1,5)}`} style={{display:"flex",alignItems:"center",gap:7,padding:"7px 8px",borderRadius:8,marginBottom:2,transition:"background .2s ease",background:isLate?`${C.r}06`:"transparent"}} onMouseEnter={e=>{e.currentTarget.style.background=isLate?`${C.r}0a`:`${C.acc}06`;}} onMouseLeave={e=>{e.currentTarget.style.background=isLate?`${C.r}06`:"transparent";}}>
+    <div style={{width:6,height:6,borderRadius:3,background:s?.color||C.td,flexShrink:0,boxShadow:`0 0 4px ${(s?.color||C.td)}44`}}/>
+    <span style={{flex:1,fontSize:10,lineHeight:1.3,color:isLate?C.r:C.t,fontWeight:isLate?600:400}}>{a.text}</span>
+    {isLate&&<span style={{fontSize:7,color:C.r,background:C.rD,padding:"2px 6px",borderRadius:6,fontWeight:700,animation:"pulse 2s ease infinite"}}>RETARD</span>}
     <span style={{fontSize:8,color:C.td,whiteSpace:"nowrap"}}>{ml(a.deadline)}</span>
     </div>;
     });
@@ -717,89 +743,106 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    <InboxUnifiee socs={actS} ghlData={ghlData}/>
    <div style={{marginTop:14}}><LeaderboardCard socs={socs} reps={reps} allM={allM} actions={actions} pulses={pulses} socBank={socBank}/></div>
    <Sect title="Portfolio" sub={`${actS.filter(s=>s.id!=="eco").length} sociétés actives`}>
-    <div className="rg-auto" data-tour="admin-portfolio" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:8}}>
+    <div className="rg-auto" data-tour="admin-portfolio" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10}}>
     {actS.filter(s=>s.id!=="eco").map((s,i)=>{
     const r=gr(reps,s.id,cM2);const hs2=healthScore(s,reps);const rw2=runway(reps,s.id,allM);const sb=socBank[s.id];
     const ca2=r?pf(r.ca):0;const ms=calcMilestones(s,reps,actions,pulses,allM);const msUnlocked=ms.filter(m=>m.unlocked);
-    return <Card key={s.id} accent={s.color} style={{padding:12}} delay={Math.min(i+1,8)}>
-    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-    <div style={{width:24,height:24,borderRadius:6,background:s.color+"22",border:`1.5px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:10,color:s.color,overflow:"hidden"}}>{s.logoUrl?<img loading="lazy" src={s.logoUrl} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:s.nom[0]}</div>
+    return <div key={s.id} className={`fu d${Math.min(i+1,8)} portfolio-card-v2 glass-card`} style={{"--card-accent":s.color,padding:14,cursor:"pointer",borderLeft:`3px solid ${s.color}`}}>
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+    <div style={{width:32,height:32,borderRadius:8,background:s.color+"18",border:`2px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,color:s.color,overflow:"hidden",boxShadow:`0 2px 8px ${s.color}22`}}>{s.logoUrl?<img loading="lazy" src={s.logoUrl} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:s.nom[0]}</div>
     <div style={{flex:1,minWidth:0}}>
-    <div style={{fontWeight:700,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.nom}</div>
-    <div style={{color:C.td,fontSize:9}}>{s.porteur}</div>
+    <div style={{fontWeight:800,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.nom}</div>
+    <div style={{color:C.td,fontSize:9}}>{s.porteur} · {s.act||""}</div>
     </div>
     <GradeBadge grade={hs2.grade} color={hs2.color}/>
-    {(s.obj||0)>0&&(()=>{const pctO=Math.min(100,Math.round(ca2/(s.obj)*100));const r2=16;const circ=2*Math.PI*r2;const off=circ-(pctO/100)*circ;return <svg width="38" height="38" style={{flexShrink:0}}><circle cx="19" cy="19" r={r2} fill="none" stroke={C.brd} strokeWidth="3"/><circle cx="19" cy="19" r={r2} fill="none" stroke={pctO>=100?C.g:C.acc} strokeWidth="3" strokeDasharray={circ} strokeDashoffset={off} strokeLinecap="round" transform="rotate(-90 19 19)"/><text x="19" y="21" textAnchor="middle" fontSize="9" fontWeight="800" fill={pctO>=100?C.g:C.acc}>{pctO}%</text></svg>;})()}
     </div>
-    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,marginBottom:6}}>
-    <div style={{background:C.bg,borderRadius:6,padding:"5px 7px"}}><div style={{color:C.td,fontSize:8,fontWeight:600}}>CA</div><div style={{fontWeight:800,fontSize:12,color:C.t}}>{ca2>0?`${fmt(ca2)}€`:"—"}</div></div>
-    <div style={{background:C.bg,borderRadius:6,padding:"5px 7px"}}><div style={{color:C.td,fontSize:8,fontWeight:600}}>{sb?"SOLDE":"TRÉSO"}</div><div style={{fontWeight:800,fontSize:12,color:C.g}}>{sb?`${fmt(sb.balance)}€`:r?`${fmt(pf(r.tresoSoc))}€`:"—"}</div></div>
+    {/* CA + Objective ring */}
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+     <div style={{flex:1}}>
+      <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+       <div style={{background:`linear-gradient(135deg,${s.color}10,${s.color}05)`,borderRadius:8,padding:"8px 10px",border:`1px solid ${s.color}15`}}><div style={{color:C.td,fontSize:8,fontWeight:600}}>CA</div><div style={{fontWeight:900,fontSize:14,color:C.t}}>{ca2>0?`${fmt(ca2)}€`:"—"}</div></div>
+       <div style={{background:`linear-gradient(135deg,${C.g}10,${C.g}05)`,borderRadius:8,padding:"8px 10px",border:`1px solid ${C.g}15`}}><div style={{color:C.td,fontSize:8,fontWeight:600}}>{sb?"SOLDE":"TRÉSO"}</div><div style={{fontWeight:900,fontSize:14,color:C.g}}>{sb?`${fmt(sb.balance)}€`:r?`${fmt(pf(r.tresoSoc))}€`:"—"}</div></div>
+      </div>
+     </div>
+     {(s.obj||0)>0&&(()=>{const pctO=Math.min(100,Math.round(ca2/(s.obj)*100));const r2=18;const circ=2*Math.PI*r2;const off=circ-(pctO/100)*circ;const col=pctO>=100?C.g:pctO>=60?C.acc:C.o;return <svg width="44" height="44" style={{flexShrink:0}}><circle cx="22" cy="22" r={r2} fill="none" stroke={C.brd} strokeWidth="3"/><circle cx="22" cy="22" r={r2} fill="none" stroke={col} strokeWidth="3.5" strokeDasharray={circ} strokeDashoffset={off} strokeLinecap="round" transform="rotate(-90 22 22)" style={{transition:"stroke-dashoffset .8s ease",filter:`drop-shadow(0 0 3px ${col}44)`}}/><text x="22" y="24" textAnchor="middle" fontSize="10" fontWeight="900" fill={col}>{pctO}%</text></svg>;})()}
     </div>
-    {msUnlocked.length>0&&<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:5,padding:"3px 6px",background:C.accD,borderRadius:6}}>
+    {/* Milestones */}
+    {msUnlocked.length>0&&<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:6,padding:"4px 8px",background:`${C.acc}08`,borderRadius:8,border:`1px solid ${C.acc}12`}}>
     <MilestonesCompact milestones={ms} max={4}/>
     <span style={{fontSize:7,color:C.acc,fontWeight:700,marginLeft:"auto"}}>{msUnlocked.length}/{ms.length}</span>
     </div>}
+    {/* Bottom badges */}
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:4}}>
     <div style={{display:"flex",gap:3}}>
-    {s.incub&&<span style={{fontSize:8,color:C.v,background:C.vD,padding:"1px 6px",borderRadius:8,fontWeight:600}}>📅 {sinceLbl(s.incub)}</span>}
+    {s.incub&&<span style={{fontSize:8,color:C.v,background:C.vD,padding:"2px 7px",borderRadius:8,fontWeight:600}}>📅 {sinceLbl(s.incub)}</span>}
     <SubsTeamBadge subs={subs} team={team} socId={s.id} reps={reps}/>
     </div>
     <div style={{display:"flex",gap:3}}>
-    {rw2&&<span style={{fontSize:8,fontWeight:700,color:rw2.months<3?C.r:rw2.months<6?C.o:C.g,background:rw2.months<3?C.rD:rw2.months<6?C.oD:C.gD,padding:"1px 5px",borderRadius:8}}>{rw2.months===99?"∞":rw2.months+"m"}</span>}
+    {rw2&&<span style={{fontSize:8,fontWeight:700,color:rw2.months<3?C.r:rw2.months<6?C.o:C.g,background:rw2.months<3?C.rD:rw2.months<6?C.oD:C.gD,padding:"2px 6px",borderRadius:8}}>{rw2.months===99?"∞":rw2.months+"m"}</span>}
     <Badge s={s.stat}/>
     </div>
     </div>
-    </Card>;
+    </div>;
     })}
     </div>
    </Sect>
    <div data-tour="admin-milestones"><Sect title="🏆 Milestones" sub="Progression de chaque société">
-    <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:6}}>
+    <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:8}}>
     {actS.filter(s=>s.id!=="eco").map((s,i)=>{
     const ms=calcMilestones(s,reps,actions,pulses,allM);const un=ms.filter(m=>m.unlocked);const pctMs=Math.round(un.length/ms.length*100);
     const topTier=un.sort((a2,b2)=>b2.tier-a2.tier).slice(0,5);
     const next=ms.filter(m=>!m.unlocked).sort((a2,b2)=>a2.tier-b2.tier)[0];
-    return <div key={s.id} className={`fu d${Math.min(i+1,8)}`} style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:10,padding:"10px 12px"}}>
-    <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:6}}>
-    <span style={{width:4,height:4,borderRadius:2,background:s.color,flexShrink:0}}/>
-    <span style={{flex:1,fontWeight:700,fontSize:11}}>{s.nom}</span>
-    <span style={{fontWeight:800,fontSize:12,color:C.acc}}>{un.length}<span style={{color:C.td,fontWeight:400,fontSize:9}}>/{ms.length}</span></span>
+    const barColor=pctMs>=70?C.g:pctMs>=40?C.acc:C.b;
+    return <div key={s.id} className={`fu d${Math.min(i+1,8)}`} style={{background:C.card,border:`1px solid ${C.brd}`,borderRadius:12,padding:"12px 14px",position:"relative",overflow:"hidden",borderTop:`3px solid ${s.color}44`}}>
+    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+    <div style={{width:8,height:8,borderRadius:4,background:s.color,boxShadow:`0 0 6px ${s.color}44`}}/>
+    <span style={{flex:1,fontWeight:700,fontSize:12}}>{s.nom}</span>
+    <span style={{fontWeight:900,fontSize:13,color:barColor}}>{un.length}<span style={{color:C.td,fontWeight:400,fontSize:9}}>/{ms.length}</span></span>
     </div>
-    <PBar value={un.length} max={ms.length} color={pctMs>=70?C.g:pctMs>=40?C.acc:C.b} h={3}/>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:5}}>
-    <div style={{display:"flex",gap:2}}>
-    {topTier.map(m=><span key={m.id} title={m.label} style={{fontSize:10}}>{m.icon}</span>)}
+    <PBar value={un.length} max={ms.length} color={barColor} h={5}/>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:7}}>
+    <div style={{display:"flex",gap:3}}>
+    {topTier.map(m=><span key={m.id} title={m.label} style={{fontSize:12,filter:"drop-shadow(0 0 2px rgba(0,0,0,.3))"}}>{m.icon}</span>)}
     </div>
-    {next&&<span style={{fontSize:7,color:C.td}} title={next.desc}>🔜 {next.label}</span>}
+    {next&&<span style={{fontSize:8,color:C.td,background:C.card2,padding:"2px 6px",borderRadius:6}} title={next.desc}>🔜 {next.label}</span>}
     </div>
     </div>;
     })}
     </div>
    </Sect></div>
    <div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:14}}>
-    <Card style={{padding:12,cursor:"pointer"}} onClick={()=>setTab(10)}>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-    <span style={{fontSize:11,fontWeight:700}}>🤝 Synergies</span>
-    <span style={{fontSize:8,color:C.acc}}>Voir →</span>
+    <Card style={{padding:14,cursor:"pointer",position:"relative",overflow:"hidden"}} onClick={()=>setTab(10)}>
+    <div style={{position:"absolute",top:-20,right:-20,width:60,height:60,borderRadius:"50%",background:`radial-gradient(circle,${C.g}06,transparent)`,pointerEvents:"none"}}/>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+    <div style={{display:"flex",alignItems:"center",gap:6}}>
+     <div style={{width:24,height:24,borderRadius:7,background:`${C.g}15`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:12}}>🤝</span></div>
+     <span style={{fontSize:12,fontWeight:700}}>Synergies</span>
     </div>
-    <div style={{display:"flex",gap:10,alignItems:"baseline"}}>
-    <div><div style={{fontWeight:800,fontSize:18,color:C.g}}>{fmt(synergies.filter(s=>s.status==="won").reduce((a,s)=>a+pf(s.value),0))}€</div><div style={{fontSize:8,color:C.td}}>générés</div></div>
-    <div><div style={{fontWeight:800,fontSize:14,color:C.b}}>{synergies.filter(s=>s.status==="active").length}</div><div style={{fontSize:8,color:C.td}}>en cours</div></div>
-    <div><div style={{fontWeight:800,fontSize:14,color:C.td}}>{synergies.length}</div><div style={{fontSize:8,color:C.td}}>total</div></div>
+    <span style={{fontSize:9,color:C.acc,fontWeight:600}}>Voir →</span>
+    </div>
+    <div style={{display:"flex",gap:12,alignItems:"baseline"}}>
+    <div><div style={{fontWeight:900,fontSize:20,color:C.g}}>{fmt(synergies.filter(s=>s.status==="won").reduce((a,s)=>a+pf(s.value),0))}€</div><div style={{fontSize:8,color:C.td}}>générés</div></div>
+    <div style={{textAlign:"center"}}><div style={{fontWeight:800,fontSize:16,color:C.b}}>{synergies.filter(s=>s.status==="active").length}</div><div style={{fontSize:8,color:C.td}}>en cours</div></div>
+    <div style={{textAlign:"center"}}><div style={{fontWeight:800,fontSize:16,color:C.td}}>{synergies.length}</div><div style={{fontSize:8,color:C.td}}>total</div></div>
     </div>
     </Card>
    </div>
    {pending.length>0&&<Sect title={`Rapports — ${ml(cM2)}`} sub={`${pending.length} en attente`}>{socs.map((s,i)=>{const r=gr(reps,s.id,cM2);if(!r)return null;return <ValRow key={s.id} s={s} r={r} reps={reps} save={save} hs={healthScore(s,reps)} delay={Math.min(i+1,8)} onAction={(sid,txt)=>addAction(sid,txt)} hold={hold}/>;})}</Sect>}
    {lateActions.length>0&&<Sect title={`⚠ Actions en retard (${lateActions.length})`}>{lateActions.map(a=><ActionItem key={a.id} a={a} socs={socs} onToggle={toggleAction} onDelete={deleteAction}/>)}</Sect>}
-   <Sect title="Trésorerie & Runway" right={<Btn small v="secondary" onClick={syncAllSocBanks}>↻ Sync</Btn>}>{actS.filter(s=>s.id!=="eco").map((s,i)=>{const rw=runway(reps,s.id,allM);const sb=socBank[s.id];const bf=revFinancials(sb,cM2);
-    return <div key={s.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 10px",background:C.card,borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:2}}>
-    <span style={{width:4,height:4,borderRadius:2,background:s.color}}/><span style={{flex:1,fontSize:11,fontWeight:600}}>{s.nom}</span>
-    {sb&&<><span style={{fontSize:9,color:C.g,fontWeight:700}}>🏦 {fmt(sb.balance)}€</span>{bf&&<span style={{fontSize:8,color:C.td}}>↓{fmt(bf.ca)}€ ↑{fmt(bf.charges)}€</span>}</>}
+   <Sect title="🏦 Trésorerie & Runway" right={<Btn small v="secondary" onClick={syncAllSocBanks}>↻ Sync</Btn>}>{actS.filter(s=>s.id!=="eco").map((s,i)=>{const rw=runway(reps,s.id,allM);const sb=socBank[s.id];const bf=revFinancials(sb,cM2);
+    const rwColor=rw?(rw.months<3?C.r:rw.months<6?C.o:C.g):C.td;
+    return <div key={s.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:C.card,borderRadius:10,border:`1px solid ${C.brd}`,borderLeft:`3px solid ${s.color}`,marginBottom:3,transition:"all .2s ease"}} onMouseEnter={e=>{e.currentTarget.style.background=`${s.color}06`;e.currentTarget.style.transform="translateX(2px)";}} onMouseLeave={e=>{e.currentTarget.style.background=C.card;e.currentTarget.style.transform="translateX(0)";}}>
+    <div style={{width:8,height:8,borderRadius:4,background:s.color,boxShadow:`0 0 5px ${s.color}44`}}/><span style={{flex:1,fontSize:11,fontWeight:700}}>{s.nom}</span>
+    {sb&&<><span style={{fontSize:10,color:C.g,fontWeight:800}}>🏦 {fmt(sb.balance)}€</span>{bf&&<span style={{fontSize:8,color:C.td}}>↓{fmt(bf.ca)}€ ↑{fmt(bf.charges)}€</span>}</>}
     {!sb&&rw&&<span style={{fontSize:10,color:C.td}}>Tréso: {fmt(rw.treso)}€</span>}
-    {rw&&<span style={{fontWeight:700,fontSize:9,color:rw.months<3?C.r:rw.months<6?C.o:C.g,padding:"1px 6px",background:rw.months<3?C.rD:rw.months<6?C.oD:C.gD,borderRadius:8}}>{rw.months===99?"∞":rw.months+"m"}</span>}
+    {rw&&<span style={{fontWeight:700,fontSize:9,color:rwColor,padding:"2px 8px",background:rw.months<3?C.rD:rw.months<6?C.oD:C.gD,borderRadius:8}}>{rw.months===99?"∞":rw.months+"m"} runway</span>}
     </div>;})}
    </Sect>
-   <Sect title="Projection T+3">{actS.map((s,i)=>{const proj=project(reps,s.id,allM);if(!proj)return null;const n=[nextM(cM2),nextM(nextM(cM2)),nextM(nextM(nextM(cM2)))];return <div key={s.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",background:C.card,borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:2}}><span style={{width:4,height:4,borderRadius:2,background:s.color}}/><span style={{flex:1,fontSize:11,fontWeight:600}}>{s.nom}</span>{proj.map((v,j)=><span key={j} style={{fontSize:9,color:C.td}}>{ml(n[j]).split(" ")[0]}: <strong style={{color:C.t}}>{fmt(v)}€</strong></span>)}</div>;})}
+   <Sect title="📈 Projection T+3">{actS.map((s,i)=>{const proj=project(reps,s.id,allM);if(!proj)return null;const n=[nextM(cM2),nextM(nextM(cM2)),nextM(nextM(nextM(cM2)))];return <div key={s.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:C.card,borderRadius:10,border:`1px solid ${C.brd}`,borderLeft:`3px solid ${s.color}`,marginBottom:3,transition:"all .2s ease"}} onMouseEnter={e=>{e.currentTarget.style.background=`${s.color}06`;}} onMouseLeave={e=>{e.currentTarget.style.background=C.card;}}>
+    <div style={{width:8,height:8,borderRadius:4,background:s.color,boxShadow:`0 0 5px ${s.color}44`}}/><span style={{flex:1,fontSize:11,fontWeight:700}}>{s.nom}</span>
+    {proj.map((v,j)=><span key={j} style={{fontSize:9,padding:"2px 8px",borderRadius:6,background:j===2?`${C.g}10`:"transparent",border:j===2?`1px solid ${C.g}20`:"none"}}>
+     <span style={{color:C.td}}>{ml(n[j]).split(" ")[0]}</span> <strong style={{color:j===2?C.g:C.t}}>{fmt(v)}€</strong>
+    </span>)}</div>;})}
    </Sect>
    <RiskMatrix socs={socs} reps={reps} allM={allM}/>
   </>}
