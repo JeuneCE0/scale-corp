@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/middleware.test.js",
+    "test:hubscale": "cd hubscale && npm test",
+    "test:all": "npm test && npm run test:hubscale"
   },
   "dependencies": {
     "react": "^18.2.0",

@@ -10,7 +10,7 @@ export default defineConfig({
     exclude: ['tests/e2e/**', 'node_modules/**'],
   },
   build: {
-    chunkSizeWarningLimit: 600,
+    chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
         manualChunks: {

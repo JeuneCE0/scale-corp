@@ -3,6 +3,16 @@ dist/
 .env
 .env.local
 .env.production
+.env.*.local
 *.log
 tokens.json
 *.bak
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+test-results/
+playwright-report/
+hubscale/dist/
+hubscale/node_modules/
