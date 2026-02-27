@@ -129,7 +129,7 @@ export function Card({ children, style: sx, onClick, accent, delay = 0 }) {
 }
 
 // --- Modal ---
-export function Modal({ open, onClose, title, children, wide }) {
+export function Modal({ open, onClose, title, children, wide, footer }) {
   const modalRef = useRef(null);
   const previousFocusRef = useRef(null);
 
@@ -175,9 +175,14 @@ export function Modal({ open, onClose, title, children, wide }) {
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{title}</h3>
           <Btn v="ghost" small onClick={onClose} aria-label="Fermer">✕</Btn>
         </div>
-        <div style={{ padding: '16px 24px 24px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
+        <div style={{ padding: '16px 24px' + (footer ? '' : ' 24px'), overflowY: 'auto', flex: 1, minHeight: 0 }}>
           {children}
         </div>
+        {footer && (
+          <div style={{ padding: '12px 24px 20px', flexShrink: 0, borderTop: `1px solid ${T.border}` }}>
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
