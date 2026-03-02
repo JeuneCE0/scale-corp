@@ -102,3 +102,30 @@ export async function requestAccountDeletion() {
     body: JSON.stringify({ action: 'delete' }),
   });
 }
+
+// ─── Notifications ───
+
+export async function listNotifications(page = 1) {
+  return apiCall(`/notifications?page=${page}`);
+}
+
+export async function markNotificationRead(id) {
+  return apiCall('/notifications', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'mark_read', id }),
+  });
+}
+
+export async function markAllNotificationsRead() {
+  return apiCall('/notifications', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'mark_all_read' }),
+  });
+}
+
+export async function deleteNotification(id) {
+  return apiCall('/notifications', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'delete', id }),
+  });
+}

@@ -2,6 +2,7 @@
 // Handles OAuth flows for third-party integrations
 
 import { createClient } from '@supabase/supabase-js';
+import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -41,6 +42,34 @@ const OAUTH_CONFIGS = {
 
 function getSupabaseAdmin() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+}
+
+const ENCRYPTION_KEY = process.env.OAUTH_ENCRYPTION_KEY;
+
+function encrypt(plaintext) {
+  if (!plaintext || !ENCRYPTION_KEY) return plaintext;
+  const key = Buffer.from(ENCRYPTION_KEY, 'hex');
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return Buffer.concat([iv, authTag, encrypted]).toString('base64');
+}
+
+function decrypt(encoded) {
+  if (!encoded || !ENCRYPTION_KEY) return encoded;
+  try {
+    const key = Buffer.from(ENCRYPTION_KEY, 'hex');
+    const buf = Buffer.from(encoded, 'base64');
+    const iv = buf.subarray(0, 12);
+    const authTag = buf.subarray(12, 28);
+    const ciphertext = buf.subarray(28);
+    const decipher = createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(authTag);
+    return decipher.update(ciphertext, undefined, 'utf8') + decipher.final('utf8');
+  } catch {
+    return encoded; // Fallback for unencrypted legacy tokens
+  }
 }
 
 async function verifyAuth(req) {
@@ -137,8 +166,8 @@ async function handleCallback(res, profile, name, code) {
     org_id: profile.org_id,
     name,
     connected: true,
-    access_token_enc: tokens.access_token, // TODO: encrypt with AES-256 using a server key
-    refresh_token_enc: tokens.refresh_token || null,
+    access_token_enc: encrypt(tokens.access_token),
+    refresh_token_enc: encrypt(tokens.refresh_token || ''),
     token_expires_at: tokens.expires_in
       ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
       : null,
@@ -191,3 +220,5 @@ async function handleDisconnect(res, profile, name) {
 
   return res.status(200).json({ ok: true });
 }
+
+export { decrypt as decryptToken };

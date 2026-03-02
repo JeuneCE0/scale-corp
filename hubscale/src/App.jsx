@@ -8,7 +8,9 @@ import { daysSince, daysUntil, ago, forecastCA, businessHealth, fmt } from './li
 import { NOTIFICATION_TYPES, AUTOMATION_RULES } from './lib/constants.js';
 import { isInvoiceOverdue } from './lib/utils.js';
 import { getIntegrationMeta } from './lib/integrationData.js';
-import { isAuthenticated, getCurrentUser, logout as authLogout, initAuth } from './lib/auth.js';
+import { isAuthenticated, getCurrentUser, logout as authLogout, initAuth, onAuthChange } from './lib/auth.js';
+import { listNotifications as fetchServerNotifications, markNotificationRead, markAllNotificationsRead } from './lib/api.js';
+import { isSupabaseConfigured } from './lib/supabase.js';
 
 const Landing = lazy(() => import('./pages/Landing.jsx'));
 const Login = lazy(() => import('./pages/Login.jsx'));
@@ -340,9 +342,37 @@ function NotificationCenter({ onNavigate }) {
   const panelRef = useRef(null);
   const btnRef = useRef(null);
   const computeNotifs = useNotifications();
+  const [serverNotifs, setServerNotifs] = useState([]);
 
-  const allNotifs = computeNotifs();
-  const unread = allNotifs.filter((n) => !dismissed.includes(n.id));
+  // Fetch server-side notifications when Supabase is configured
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    let mounted = true;
+    const fetchServer = async () => {
+      try {
+        const data = await fetchServerNotifications(1);
+        if (mounted) {
+          setServerNotifs((data.notifications || []).map(n => ({
+            id: `srv-${n.id}`,
+            serverId: n.id,
+            type: n.type || 'tip',
+            message: n.message,
+            time: n.created_at,
+            tab: n.data?.tab || 'overview',
+            read: n.read,
+            isServer: true,
+          })));
+        }
+      } catch {}
+    };
+    fetchServer();
+    const interval = setInterval(fetchServer, 60000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, []);
+
+  const localNotifs = computeNotifs();
+  const allNotifs = [...serverNotifs, ...localNotifs];
+  const unread = allNotifs.filter((n) => n.isServer ? !n.read : !dismissed.includes(n.id));
   const unreadCount = unread.length;
 
   // Bell shake when count changes (increases)
@@ -383,11 +413,23 @@ function NotificationCenter({ onNavigate }) {
     const allIds = allNotifs.map((n) => n.id);
     setDismissed(allIds);
     store('notifDismissed', allIds);
-  }, [allNotifs]);
+    // Mark server notifications as read
+    if (serverNotifs.some(n => !n.read)) {
+      markAllNotificationsRead().then(() => {
+        setServerNotifs(prev => prev.map(n => ({ ...n, read: true })));
+      }).catch(() => {});
+    }
+  }, [allNotifs, serverNotifs]);
 
   const handleNotifClick = useCallback((notif) => {
     onNavigate(notif.tab);
     setOpen(false);
+    // Mark server notification as read on click
+    if (notif.isServer && !notif.read) {
+      markNotificationRead(notif.serverId).then(() => {
+        setServerNotifs(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
+      }).catch(() => {});
+    }
   }, [onNavigate]);
 
   return (
@@ -436,7 +478,7 @@ function NotificationCenter({ onNavigate }) {
             <div style={{ padding: 6 }}>
               {allNotifs.map((notif) => {
                 const typeInfo = NOTIFICATION_TYPES[notif.type] || NOTIFICATION_TYPES.alert;
-                const isRead = dismissed.includes(notif.id);
+                const isRead = notif.isServer ? notif.read : dismissed.includes(notif.id);
                 return (
                   <div
                     key={notif.id}
@@ -806,6 +848,16 @@ export default function App() {
     }).catch(() => setAuthLoading(false));
   }, []);
 
+  // Listen for password recovery events from Supabase
+  useEffect(() => {
+    const unsub = onAuthChange((event) => {
+      if (event === 'password_recovery') {
+        setView('reset-password');
+      }
+    });
+    return unsub;
+  }, []);
+
   // Listen for integration sync events and show toasts
   useEffect(() => {
     const handleSync = (e) => {
@@ -985,12 +1037,12 @@ export default function App() {
     );
   }
 
-  // Password reset
-  if (view === 'reset-password' && !authed) {
+  // Password reset (renders even when authed, since recovery session makes user "authenticated")
+  if (view === 'reset-password') {
     return (
       <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
         <Suspense fallback={<LoadingFallback />}>
-          <ResetPassword onBack={() => setView('login')} />
+          <ResetPassword onBack={() => setView(authed ? 'overview' : 'login')} />
         </Suspense>
       </div>
     );

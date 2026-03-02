@@ -4,18 +4,40 @@ import { getSupabase, isSupabaseConfigured } from '../lib/supabase.js';
 import { Btn, Inp } from '../components/ui.jsx';
 
 export default function ResetPassword({ onBack }) {
+  const [mode, setMode] = useState('request'); // 'request' | 'reset'
   const [email, setEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const emailRef = useRef(null);
+  const passwordRef = useRef(null);
 
-  // Autofocus email field
+  // Detect recovery session
   useEffect(() => {
-    setTimeout(() => emailRef.current?.querySelector('input')?.focus(), 200);
+    if (!isSupabaseConfigured()) return;
+    const sb = getSupabase();
+    sb.auth.getSession().then(({ data: { session } }) => {
+      if (session) setMode('reset');
+    });
+    const { data: { subscription } } = sb.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setMode('reset');
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
+  // Autofocus appropriate field
+  useEffect(() => {
+    if (mode === 'request') {
+      setTimeout(() => emailRef.current?.querySelector('input')?.focus(), 200);
+    } else {
+      setTimeout(() => passwordRef.current?.querySelector('input')?.focus(), 200);
+    }
+  }, [mode]);
+
+  // Handle request mode: send reset link
   const handleSubmit = useCallback(async (e) => {
     e?.preventDefault?.();
     setError('');
@@ -54,6 +76,41 @@ export default function ResetPassword({ onBack }) {
     }
   }, [email]);
 
+  // Handle reset mode: update password
+  const handleReset = useCallback(async (e) => {
+    e?.preventDefault?.();
+    setError('');
+    setInfo('');
+
+    if (!newPassword || newPassword.length < 6) {
+      setError('Le mot de passe doit faire au moins 6 caract\u00e8res');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('Les mots de passe ne correspondent pas');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const sb = getSupabase();
+      const { error: updateError } = await sb.auth.updateUser({ password: newPassword });
+
+      if (updateError) {
+        setError(updateError.message || 'Une erreur est survenue');
+        return;
+      }
+
+      setSuccess(true);
+    } catch (err) {
+      setError(err.message || 'Une erreur est survenue');
+    } finally {
+      setLoading(false);
+    }
+  }, [newPassword, confirmPassword]);
+
   const showDemoWarning = !isSupabaseConfigured();
 
   return (
@@ -86,7 +143,7 @@ export default function ResetPassword({ onBack }) {
             HubScale
           </h1>
           <p style={{ fontSize: 12, color: T.textSecondary, margin: 0 }}>
-            Espace client B2B — Pilotez votre activit&eacute;
+            Espace client B2B &mdash; Pilotez votre activit&eacute;
           </p>
         </div>
 
@@ -96,102 +153,187 @@ export default function ResetPassword({ onBack }) {
           borderRadius: 16, padding: '28px 24px',
           boxShadow: '0 16px 48px rgba(0,0,0,.25)',
         }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, margin: '0 0 4px', textAlign: 'center' }}>
-            Mot de passe oubli&eacute;
-          </h2>
-          <p style={{ fontSize: 11, color: T.textSecondary, textAlign: 'center', margin: '0 0 20px' }}>
-            Entrez votre email pour recevoir un lien de r&eacute;initialisation
-          </p>
-
-          {success ? (
-            /* Success state */
-            <div>
-              <div style={{
-                padding: '14px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600,
-                background: T.greenBg, color: T.green, border: `1px solid ${T.green}22`,
-                textAlign: 'center', lineHeight: 1.5,
-              }}>
-                Si un compte existe avec cet email, vous recevrez un lien de r&eacute;initialisation.
-              </div>
-              <p style={{
-                fontSize: 11, color: T.textMuted, textAlign: 'center', marginTop: 14, marginBottom: 0,
-              }}>
-                V&eacute;rifiez votre bo&icirc;te de r&eacute;ception ainsi que vos spams.
+          {mode === 'reset' ? (
+            /* ─── Reset mode: new password form ─── */
+            <>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, margin: '0 0 4px', textAlign: 'center' }}>
+                Nouveau mot de passe
+              </h2>
+              <p style={{ fontSize: 11, color: T.textSecondary, textAlign: 'center', margin: '0 0 20px' }}>
+                Choisissez un nouveau mot de passe pour votre compte
               </p>
-            </div>
+
+              {success ? (
+                <div>
+                  <div style={{
+                    padding: '14px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+                    background: T.greenBg, color: T.green, border: `1px solid ${T.green}22`,
+                    textAlign: 'center', lineHeight: 1.5,
+                  }}>
+                    Mot de passe mis &agrave; jour avec succ&egrave;s. Vous pouvez vous connecter.
+                  </div>
+                  <div style={{ textAlign: 'center', marginTop: 16 }}>
+                    <button
+                      onClick={onBack}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: 12, fontWeight: 700, color: T.accent, fontFamily: FONT,
+                        textDecoration: 'underline', textUnderlineOffset: 2,
+                      }}
+                    >
+                      {'\u2190'} Retour &agrave; la connexion
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleReset} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div ref={passwordRef}>
+                    <Inp
+                      label="Nouveau mot de passe"
+                      type="password"
+                      value={newPassword}
+                      onChange={setNewPassword}
+                      placeholder="Min. 6 caract\u00e8res"
+                      autoComplete="new-password"
+                    />
+                  </div>
+
+                  <Inp
+                    label="Confirmer le mot de passe"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={setConfirmPassword}
+                    placeholder="Retapez le mot de passe"
+                    autoComplete="new-password"
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleReset(); }}
+                  />
+
+                  {error && (
+                    <div style={{
+                      padding: '8px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                      background: T.redBg, color: T.red, border: `1px solid ${T.red}22`,
+                    }}>
+                      {error}
+                    </div>
+                  )}
+
+                  <Btn
+                    type="submit"
+                    disabled={loading}
+                    full
+                    style={{
+                      marginTop: 4,
+                      background: 'linear-gradient(135deg, #f97316, #f59e0b)',
+                      boxShadow: '0 2px 12px rgba(249,115,22,.3)',
+                      opacity: loading ? 0.7 : 1,
+                    }}
+                  >
+                    {loading ? 'Mise \u00e0 jour...' : 'Mettre \u00e0 jour le mot de passe'}
+                  </Btn>
+                </form>
+              )}
+            </>
           ) : (
-            /* Form state */
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {/* Demo mode warning */}
-              {showDemoWarning && (
-                <div style={{
-                  padding: '10px 14px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-                  background: T.orangeBg, color: T.orange, border: `1px solid ${T.orange}22`,
-                  textAlign: 'center',
-                }}>
-                  Reset de mot de passe indisponible en mode d&eacute;mo
+            /* ─── Request mode: email form ─── */
+            <>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, margin: '0 0 4px', textAlign: 'center' }}>
+                Mot de passe oubli&eacute;
+              </h2>
+              <p style={{ fontSize: 11, color: T.textSecondary, textAlign: 'center', margin: '0 0 20px' }}>
+                Entrez votre email pour recevoir un lien de r&eacute;initialisation
+              </p>
+
+              {success ? (
+                <div>
+                  <div style={{
+                    padding: '14px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+                    background: T.greenBg, color: T.green, border: `1px solid ${T.green}22`,
+                    textAlign: 'center', lineHeight: 1.5,
+                  }}>
+                    Si un compte existe avec cet email, vous recevrez un lien de r&eacute;initialisation.
+                  </div>
+                  <p style={{
+                    fontSize: 11, color: T.textMuted, textAlign: 'center', marginTop: 14, marginBottom: 0,
+                  }}>
+                    V&eacute;rifiez votre bo&icirc;te de r&eacute;ception ainsi que vos spams.
+                  </p>
                 </div>
+              ) : (
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {/* Demo mode warning */}
+                  {showDemoWarning && (
+                    <div style={{
+                      padding: '10px 14px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                      background: T.orangeBg, color: T.orange, border: `1px solid ${T.orange}22`,
+                      textAlign: 'center',
+                    }}>
+                      Reset de mot de passe indisponible en mode d&eacute;mo
+                    </div>
+                  )}
+
+                  <div ref={emailRef}>
+                    <Inp
+                      label="Email"
+                      type="email"
+                      value={email}
+                      onChange={setEmail}
+                      placeholder="vous@entreprise.fr"
+                      autoComplete="email"
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
+                    />
+                  </div>
+
+                  {error && (
+                    <div style={{
+                      padding: '8px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                      background: T.redBg, color: T.red, border: `1px solid ${T.red}22`,
+                    }}>
+                      {error}
+                    </div>
+                  )}
+
+                  {info && (
+                    <div style={{
+                      padding: '8px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                      background: T.orangeBg, color: T.orange, border: `1px solid ${T.orange}22`,
+                    }}>
+                      {info}
+                    </div>
+                  )}
+
+                  <Btn
+                    type="submit"
+                    disabled={loading || showDemoWarning}
+                    full
+                    style={{
+                      marginTop: 4,
+                      background: 'linear-gradient(135deg, #f97316, #f59e0b)',
+                      boxShadow: '0 2px 12px rgba(249,115,22,.3)',
+                      opacity: (loading || showDemoWarning) ? 0.7 : 1,
+                    }}
+                  >
+                    {loading ? 'Envoi en cours...' : 'Envoyer le lien de r\u00e9initialisation'}
+                  </Btn>
+                </form>
               )}
-
-              <div ref={emailRef}>
-                <Inp
-                  label="Email"
-                  type="email"
-                  value={email}
-                  onChange={setEmail}
-                  placeholder="vous@entreprise.fr"
-                  autoComplete="email"
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
-                />
-              </div>
-
-              {error && (
-                <div style={{
-                  padding: '8px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-                  background: T.redBg, color: T.red, border: `1px solid ${T.red}22`,
-                }}>
-                  {error}
-                </div>
-              )}
-
-              {info && (
-                <div style={{
-                  padding: '8px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-                  background: T.orangeBg, color: T.orange, border: `1px solid ${T.orange}22`,
-                }}>
-                  {info}
-                </div>
-              )}
-
-              <Btn
-                type="submit"
-                disabled={loading || showDemoWarning}
-                full
-                style={{
-                  marginTop: 4,
-                  background: 'linear-gradient(135deg, #f97316, #f59e0b)',
-                  boxShadow: '0 2px 12px rgba(249,115,22,.3)',
-                  opacity: (loading || showDemoWarning) ? 0.7 : 1,
-                }}
-              >
-                {loading ? 'Envoi en cours...' : 'Envoyer le lien de r\u00e9initialisation'}
-              </Btn>
-            </form>
+            </>
           )}
 
           {/* Back to login link */}
-          <div style={{ textAlign: 'center', marginTop: 16 }}>
-            <button
-              onClick={onBack}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontSize: 12, fontWeight: 700, color: T.accent, fontFamily: FONT,
-                textDecoration: 'underline', textUnderlineOffset: 2,
-              }}
-            >
-              {'\u2190'} Retour &agrave; la connexion
-            </button>
-          </div>
+          {!(mode === 'reset' && success) && (
+            <div style={{ textAlign: 'center', marginTop: 16 }}>
+              <button
+                onClick={onBack}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 12, fontWeight: 700, color: T.accent, fontFamily: FONT,
+                  textDecoration: 'underline', textUnderlineOffset: 2,
+                }}
+              >
+                {'\u2190'} Retour &agrave; la connexion
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

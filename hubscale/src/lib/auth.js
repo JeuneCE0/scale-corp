@@ -31,6 +31,11 @@ async function supabaseSignup({ name, email, password }) {
   const user = data.user;
   if (!user) return { ok: false, error: 'Vérifiez votre email pour confirmer votre compte' };
 
+  // If Supabase requires email confirmation, session will be null
+  if (!data.session) {
+    return { ok: false, error: 'Un email de vérification a été envoyé à votre adresse. Vérifiez votre boîte de réception pour confirmer votre compte.' };
+  }
+
   // Create organization + profile on first signup
   const orgName = name.split(' ')[0] + "'s Organization";
   const { data: org, error: orgErr } = await sb.from('organizations').insert({ name: orgName }).select().single();
@@ -59,6 +64,7 @@ async function supabaseLogin(email, password) {
   const sb = getSupabase();
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) {
+    if (error.message.includes('Email not confirmed')) return { ok: false, error: 'Votre email n\'a pas encore été confirmé. Vérifiez votre boîte de réception.' };
     if (error.message.includes('Invalid login')) return { ok: false, error: 'Email ou mot de passe incorrect' };
     return { ok: false, error: error.message };
   }
@@ -372,6 +378,8 @@ export async function initAuth() {
       } else if (event === 'SIGNED_OUT') {
         setOrgId(null);
         _emit('signout', null);
+      } else if (event === 'PASSWORD_RECOVERY' && session) {
+        _emit('password_recovery', { session });
       } else if (event === 'TOKEN_REFRESHED') {
         // Token auto-refreshed, nothing to do
       }
