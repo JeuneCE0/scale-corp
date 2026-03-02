@@ -327,10 +327,11 @@ export function TabBar({ items, active, onChange, counts, compact, style: sx }) 
 }
 
 // --- Toast ---
+let _toastSeq = 0;
 export function useToast() {
   const [toasts, setToasts] = useState([]);
   const add = useCallback((msg, type = 'success', duration = 3000) => {
-    const id = Date.now();
+    const id = `${Date.now()}-${++_toastSeq}`;
     setToasts((prev) => [...prev, { id, msg, type }]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), duration);
   }, []);
