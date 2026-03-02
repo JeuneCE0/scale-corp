@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect, lazy, Suspense } from
 import { T, FONT } from '../lib/theme.js';
 import { fK, fmt, ago, businessHealth, businessWeather, getStreak, forecastCA, daysSince, daysUntil, leadScore } from '../lib/utils.js';
 import { load, store } from '../lib/store.js';
-import { KPI, Card, Badge, ProgressBar, Spinner, Btn, Inp, HelpTip, ScoreRing, StreakBadge, WeatherWidget, ChecklistItem, AnimatedNumber, Sparkline, PremiumGate, UpgradeBanner, ErrorBoundary } from '../components/ui.jsx';
+import { KPI, Card, Badge, ProgressBar, Spinner, Btn, Inp, HelpTip, ScoreRing, StreakBadge, WeatherWidget, ChecklistItem, AnimatedNumber, Sparkline, PremiumGate, UpgradeBanner, ErrorBoundary, EmptyState } from '../components/ui.jsx';
 import { ONBOARDING_CHECKLIST, CRM_STATUSES, NOTIFICATION_TYPES, INTEGRATIONS, EXPENSE_CATEGORIES, INVOICE_STATUSES } from '../lib/constants.js';
 import { getIntegrationMeta } from '../lib/integrationData.js';
 
@@ -795,6 +795,27 @@ export default function Dashboard({ onNavigate }) {
           </div>
         </div>
       </div>
+
+      {/* ============================================================ */}
+      {/*  ONBOARDING EMPTY STATE (no data at all)                      */}
+      {/* ============================================================ */}
+      {contacts.length === 0 && finHistory.length === 0 && (
+        <div className="fade-up d1" style={{ marginBottom: 20 }}>
+          <Card>
+            <EmptyState
+              icon={'🚀'}
+              title="Bienvenue sur HubScale"
+              sub="Commencez par ajouter des contacts ou saisir vos données financières pour voir votre tableau de bord prendre vie."
+              action={
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <Btn onClick={() => onNavigate?.('crm')} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Ajouter un contact</Btn>
+                  <Btn v="secondary" onClick={() => onNavigate?.('data')}>Saisir des données</Btn>
+                </div>
+              }
+            />
+          </Card>
+        </div>
+      )}
 
       {/* ============================================================ */}
       {/*  DAILY ACTIONS ("Actions du jour")                            */}

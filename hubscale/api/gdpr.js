@@ -47,24 +47,54 @@ export default async function handler(req, res) {
   }
 }
 
+async function safeQuery(promise) {
+  try {
+    const result = await promise;
+    return result.data || [];
+  } catch {
+    return [];
+  }
+}
+
+async function safeQuerySingle(promise) {
+  try {
+    const result = await promise;
+    return result.data || null;
+  } catch {
+    return null;
+  }
+}
+
 async function handleExport(res, profile) {
   const sb = getSupabaseAdmin();
   const orgId = profile.org_id;
 
-  // Collect all user/org data
-  const [contacts, finances, events, integrations, prefs] = await Promise.all([
-    sb.from('contacts').select('*').eq('org_id', orgId),
-    sb.from('financial_history').select('*').eq('org_id', orgId),
-    sb.from('events').select('*').eq('org_id', orgId),
-    sb.from('integrations').select('name, connected, last_synced_at, created_at').eq('org_id', orgId),
-    sb.from('user_preferences').select('*').eq('user_id', profile.id),
+  // Collect all user/org data with graceful error handling per table
+  const [
+    profileData,
+    org,
+    contacts,
+    finances,
+    events,
+    invoices,
+    integrations,
+    prefs,
+    settings,
+  ] = await Promise.all([
+    safeQuerySingle(sb.from('profiles').select('*').eq('id', profile.id).single()),
+    safeQuerySingle(sb.from('organizations').select('*').eq('id', orgId).single()),
+    safeQuery(sb.from('contacts').select('*').eq('org_id', orgId)),
+    safeQuery(sb.from('financial_history').select('*').eq('org_id', orgId)),
+    safeQuery(sb.from('events').select('*').eq('org_id', orgId)),
+    safeQuery(sb.from('invoices').select('*').eq('org_id', orgId)),
+    safeQuery(sb.from('integrations').select('name, connected, last_synced_at, created_at').eq('org_id', orgId)),
+    safeQuery(sb.from('user_preferences').select('*').eq('user_id', profile.id)),
+    safeQuery(sb.from('settings').select('*').eq('user_id', profile.id)),
   ]);
-
-  const { data: org } = await sb.from('organizations').select('*').eq('id', orgId).single();
 
   const exportData = {
     exported_at: new Date().toISOString(),
-    user: {
+    profile: profileData || {
       id: profile.id,
       name: profile.full_name,
       email: profile.email,
@@ -72,11 +102,13 @@ async function handleExport(res, profile) {
       created_at: profile.created_at,
     },
     organization: org,
-    contacts: contacts.data || [],
-    financial_history: finances.data || [],
-    events: events.data || [],
-    integrations: integrations.data || [],
-    preferences: prefs.data?.[0] || null,
+    contacts,
+    financial_history: finances,
+    events,
+    invoices,
+    integrations,
+    preferences: prefs.length > 0 ? prefs[0] : null,
+    settings: settings.length > 0 ? settings[0] : null,
   };
 
   // Log audit
@@ -86,7 +118,7 @@ async function handleExport(res, profile) {
     action: 'gdpr_data_export',
     entity_type: 'user',
     entity_id: profile.id,
-  });
+  }).catch(() => {});
 
   return res.status(200).json(exportData);
 }

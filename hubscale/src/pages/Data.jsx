@@ -1571,6 +1571,17 @@ export default function Data() {
       {/* ===================== FINANCES TAB ===================== */}
       {subTab === 'Finances' && (
         <>
+          {history.length === 0 ? (
+            <Card>
+              <EmptyState
+                icon={'📊'}
+                title="Aucune donnée financière"
+                sub="Saisissez vos premières données pour visualiser vos finances"
+                action={<Btn onClick={() => document.querySelector('[data-section="saisie"]')?.scrollIntoView({ behavior: 'smooth' })} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Commencer la saisie</Btn>}
+              />
+            </Card>
+          ) : (
+          <>
           {/* KPIs */}
           <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 20 }}>
             <KPI label="CA MENSUEL" value={`${fK(lastRow.ca || 0)}€`} sub="Ce mois-ci" accent={T.green} icon={'💰'} delay={1} sparkData={sparkCA} helpTip="Chiffre d'affaires total du mois" />
@@ -1829,6 +1840,8 @@ export default function Data() {
               </Card>
             )}
           </Section>
+          </>
+          )}
         </>
       )}
 

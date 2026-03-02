@@ -16,8 +16,8 @@ const AUTH_LIMIT = 10;         // stricter limit for auth endpoints
 const WINDOW_MS = 60 * 1000;   // 1 minute window
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // purge expired entries every 5 min
 
-// Auth-related path prefixes that receive the stricter limit.
-const AUTH_PATHS = ['/api/auth'];
+// Sensitive path prefixes that receive the stricter limit.
+const STRICT_PATHS = ['/api/auth', '/api/billing', '/api/email', '/api/gdpr'];
 
 // --- Periodic cleanup --------------------------------------------------------
 let lastCleanup = Date.now();
@@ -42,7 +42,7 @@ function cleanupExpiredEntries() {
  * @returns {number}
  */
 function getLimitForPath(pathname) {
-  for (const prefix of AUTH_PATHS) {
+  for (const prefix of STRICT_PATHS) {
     if (pathname.startsWith(prefix)) {
       return AUTH_LIMIT;
     }

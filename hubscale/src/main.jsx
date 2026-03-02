@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
+import { ErrorBoundary } from './components/ui.jsx';
 import { initMonitoring } from './lib/monitoring.js';
 
 // Initialize error monitoring
@@ -8,7 +9,9 @@ initMonitoring();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary fallbackTitle="Erreur application">
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>
 );
 

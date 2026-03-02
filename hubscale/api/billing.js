@@ -25,6 +25,19 @@ function getSupabaseAdmin() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 }
 
+// Read raw body from request stream (needed for Stripe webhook signature)
+function getRawBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
+// Disable Vercel auto body-parsing so we can read the raw body for webhooks
+export const config = { api: { bodyParser: false } };
+
 async function verifyAuth(req) {
   const auth = req.headers.authorization;
   if (!auth?.startsWith('Bearer ')) return null;
@@ -46,9 +59,18 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    // Stripe Webhook (no auth required)
+    // Stripe Webhook — use raw body for signature verification
     if (req.method === 'POST' && req.headers['stripe-signature']) {
-      return handleWebhook(req, res);
+      const rawBody = await getRawBody(req);
+      return handleWebhook(req, res, rawBody);
+    }
+
+    // For non-webhook requests, parse JSON body manually (bodyParser is disabled)
+    if (req.method === 'POST' && !req.body) {
+      try {
+        const rawBody = await getRawBody(req);
+        req.body = JSON.parse(rawBody.toString());
+      } catch { req.body = {}; }
     }
 
     const profile = await verifyAuth(req);
@@ -146,13 +168,13 @@ async function createPortal(req, res, profile) {
   return res.status(200).json({ url: session.url });
 }
 
-async function handleWebhook(req, res) {
+async function handleWebhook(req, res, rawBody) {
   const stripe = await getStripe();
   const sig = req.headers['stripe-signature'];
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(rawBody, sig, STRIPE_WEBHOOK_SECRET);
   } catch (err) {
     console.error('[webhook] Signature verification failed:', err.message);
     return res.status(400).json({ error: 'Signature invalide' });

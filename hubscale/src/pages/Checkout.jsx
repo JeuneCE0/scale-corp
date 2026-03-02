@@ -85,6 +85,7 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
 
   const cardRef = useRef(null);
 
@@ -137,13 +138,19 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
         return;
       }
 
-      // Create Stripe Checkout session and redirect
-      const result = await createCheckoutSession(selectedPlan);
+      // Create Stripe Checkout session with timeout protection (10s)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Le serveur de paiement ne répond pas. Veuillez réessayer.')), 10000)
+      );
+      const result = await Promise.race([
+        createCheckoutSession(selectedPlan),
+        timeoutPromise,
+      ]);
       window.location.href = result.url;
     } catch (err) {
       setLoading(false);
       setProcessing(false);
-      setError(err.message || 'Erreur lors de la création de la session de paiement');
+      setError(err.message || 'Erreur lors de la création de la session de paiement. Veuillez réessayer.');
     }
   }, [name, email, password, selectedPlan]);
 
@@ -167,9 +174,8 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
     setLoading(true);
     setProcessing(true);
 
-    // Simulate payment processing
-    setTimeout(async () => {
-      // Create account
+    try {
+      // Step 1: Create account first — abort if this fails
       const result = await signup({ name, email, password });
       if (!result.ok) {
         setLoading(false);
@@ -177,6 +183,9 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
         setError(result.error);
         return;
       }
+
+      // Step 2: Simulate payment processing (only after successful account creation)
+      await new Promise((resolve) => setTimeout(resolve, 1800));
 
       // Store plan & payment info
       store('plan', selectedPlan);
@@ -195,11 +204,17 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
       });
 
       setLoading(false);
+      setSuccessMsg('Paiement réussi ! Redirection...');
       setTimeout(() => {
         setProcessing(false);
+        setSuccessMsg('');
         onAuth(result.user);
-      }, 600);
-    }, 1800);
+      }, 1200);
+    } catch (err) {
+      setLoading(false);
+      setProcessing(false);
+      setError(err.message || 'Une erreur est survenue. Veuillez réessayer.');
+    }
   }, [cardName, cardNumber, cardExpiry, cardCvc, name, email, password, selectedPlan, annual, cardBrand, onAuth]);
 
   return (
@@ -241,14 +256,29 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             backdropFilter: 'blur(8px)',
           }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: '50%', border: `3px solid ${T.border}`,
-              borderTopColor: '#f97316', animation: 'spin 0.8s linear infinite', marginBottom: 16,
-            }} />
-            <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>Traitement en cours...</div>
-            <div style={{ fontSize: 12, color: T.textSecondary, marginTop: 4 }}>
-              Vérification et activation de votre compte
-            </div>
+            {successMsg ? (
+              <>
+                <div style={{
+                  width: 48, height: 48, borderRadius: '50%', background: T.greenBg,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  marginBottom: 16, border: `2px solid ${T.green}`,
+                }}>
+                  <span style={{ fontSize: 22, color: T.green }}>{'\u2713'}</span>
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: T.green }}>{successMsg}</div>
+              </>
+            ) : (
+              <>
+                <div style={{
+                  width: 48, height: 48, borderRadius: '50%', border: `3px solid ${T.border}`,
+                  borderTopColor: '#f97316', animation: 'spin 0.8s linear infinite', marginBottom: 16,
+                }} />
+                <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>Traitement en cours...</div>
+                <div style={{ fontSize: 12, color: T.textSecondary, marginTop: 4 }}>
+                  Vérification et activation de votre compte
+                </div>
+              </>
+            )}
           </div>
         )}
 

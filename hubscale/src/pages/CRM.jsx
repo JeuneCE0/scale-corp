@@ -750,8 +750,20 @@ export default function CRM() {
         </div>
       )}
 
+      {/* ---- GLOBAL EMPTY STATE (no contacts at all) ---- */}
+      {contacts.length === 0 && (
+        <Card>
+          <EmptyState
+            icon={'👥'}
+            title="Aucun contact"
+            sub="Ajoutez votre premier contact pour démarrer votre CRM"
+            action={<Btn onClick={openNew} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Ajouter un contact</Btn>}
+          />
+        </Card>
+      )}
+
       {/* ---- TABLE VIEW ---- */}
-      {viewMode === 'table' && view === 'list' && (
+      {viewMode === 'table' && view === 'list' && contacts.length > 0 && (
         <>
           {filtered.length === 0 ? (
             <Card>
@@ -846,7 +858,7 @@ export default function CRM() {
       )}
 
       {/* ---- KANBAN VIEW ---- */}
-      {viewMode === 'kanban' && view === 'list' && (
+      {viewMode === 'kanban' && view === 'list' && contacts.length > 0 && (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12 }}>
           {STATUSES.map((status) => {
             const colContacts = contacts.filter((c) => c.status === status.id);
@@ -912,7 +924,7 @@ export default function CRM() {
       )}
 
       {/* ---- PIPELINE VIEW (Kanban) ---- */}
-      {view === 'pipeline' && (() => {
+      {view === 'pipeline' && contacts.length > 0 && (() => {
         // Contacts filtered by search (reuse the existing filtered array which respects search + status + score filters)
         // For pipeline, we show all statuses as columns, but only show contacts matching the text search
         const pipelineContacts = contacts.filter((c) => {

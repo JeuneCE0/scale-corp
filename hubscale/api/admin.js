@@ -10,6 +10,14 @@ const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
 
 const PLAN_MONTHLY = { starter: 49, professional: 149, enterprise: 349 };
 
+function validateString(val, maxLen = 255) {
+  if (typeof val !== 'string') return false;
+  if (val.length > maxLen) return false;
+  return true;
+}
+const VALID_ROLES = ['owner', 'admin', 'member', 'viewer'];
+const VALID_PLANS = ['starter', 'professional', 'enterprise'];
+
 const PLAN_PRICES = {
   starter: process.env.STRIPE_PRICE_STARTER,
   professional: process.env.STRIPE_PRICE_PROFESSIONAL,
@@ -213,6 +221,10 @@ async function updateOrganization(sb, req, res, admin) {
   const { org_id, name, sector, website } = req.body;
   if (!org_id) return res.status(400).json({ error: 'org_id requis' });
 
+  if (name !== undefined && !validateString(name)) return res.status(400).json({ error: 'name must be a string with max length 255' });
+  if (sector !== undefined && !validateString(sector)) return res.status(400).json({ error: 'sector must be a string with max length 255' });
+  if (website !== undefined && !validateString(website)) return res.status(400).json({ error: 'website must be a string with max length 255' });
+
   const updates = {};
   if (name !== undefined) updates.name = name;
   if (sector !== undefined) updates.sector = sector;
@@ -263,6 +275,9 @@ async function updateUser(sb, req, res, admin) {
   const { user_id, full_name, role } = req.body;
   if (!user_id) return res.status(400).json({ error: 'user_id requis' });
 
+  if (role !== undefined && !VALID_ROLES.includes(role)) return res.status(400).json({ error: 'role must be one of: ' + VALID_ROLES.join(', ') });
+  if (full_name !== undefined && !validateString(full_name, 100)) return res.status(400).json({ error: 'full_name must be a string with max length 100' });
+
   const updates = {};
   if (full_name !== undefined) updates.full_name = full_name;
   if (role !== undefined) updates.role = role;
@@ -298,7 +313,7 @@ async function resetPassword(sb, req, res, admin) {
 async function changePlan(sb, req, res, admin) {
   const { org_id, plan } = req.body;
   if (!org_id || !plan) return res.status(400).json({ error: 'org_id et plan requis' });
-  if (!PLAN_MONTHLY[plan]) return res.status(400).json({ error: 'Plan invalide' });
+  if (!VALID_PLANS.includes(plan)) return res.status(400).json({ error: 'plan must be one of: ' + VALID_PLANS.join(', ') });
 
   const { data: org } = await sb.from('organizations').select('*').eq('id', org_id).single();
   if (!org) return res.status(404).json({ error: 'Organisation introuvable' });
