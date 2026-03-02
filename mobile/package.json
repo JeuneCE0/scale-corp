@@ -1,0 +1,17 @@
+{
+  "name": "adopteunartistev2ia-mobile",
+  "version": "1.0.0",
+  "main": "src/App.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios"
+  },
+  "dependencies": {
+    "expo": "~51.0.0",
+    "react": "18.3.1",
+    "react-native": "0.75.0",
+    "@react-navigation/native": "^6.1.0",
+    "@react-navigation/stack": "^6.3.0"
+  }
+}
