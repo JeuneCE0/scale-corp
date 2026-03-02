@@ -830,10 +830,12 @@ export default function App() {
     }
   }, []);
 
-  // Activate enterprise plan for demo — full access to all features
+  // Activate enterprise plan ONLY in demo mode (no Supabase) — full access to all features
   useEffect(() => {
-    store('plan', 'enterprise');
-    store('payment_method', true);
+    if (!isSupabaseConfigured()) {
+      store('plan', 'enterprise');
+      store('payment_method', true);
+    }
   }, []);
 
   // Initialize auth (async — restores session, fetches profile)

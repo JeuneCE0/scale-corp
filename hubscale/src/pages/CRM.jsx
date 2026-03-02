@@ -31,6 +31,12 @@ function generateInvoice(contact) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const invoiceNum = `HS-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  const org = load('organization') || {};
+  const orgName = org.name || 'Votre Entreprise';
+  const orgIBAN = org.iban || 'Non renseigné';
+  const orgBIC = org.bic || 'Non renseigné';
+  const orgSIRET = org.siret || 'Non renseigné';
+  const orgTVA = org.tva_number || 'Non renseigné';
 
   const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -123,8 +129,8 @@ function generateInvoice(contact) {
   <div class="footer">
     <p>
       <strong>Conditions de paiement :</strong> Paiement à 30 jours à compter de la date de facturation.<br>
-      <strong>Coordonnées bancaires :</strong> IBAN FR76 XXXX XXXX XXXX XXXX XXXX XXX &bull; BIC XXXXXXXX<br>
-      <strong>HubScale SAS</strong> &mdash; SIRET 000 000 000 00000 &mdash; TVA FR00 000000000<br>
+      <strong>Coordonnées bancaires :</strong> IBAN ${orgIBAN} &bull; BIC ${orgBIC}<br>
+      <strong>${orgName}</strong> &mdash; SIRET ${orgSIRET} &mdash; TVA ${orgTVA}<br>
       Merci pour votre confiance.
     </p>
   </div>

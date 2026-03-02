@@ -3,6 +3,7 @@
 
 import { getSupabase, isSupabaseConfigured } from './supabase.js';
 import { setOrgId, restoreOrgId } from './db.js';
+import { store } from './store.js';
 
 const AUTH_KEY = 'hs_auth_session';
 const USERS_KEY = 'hs_auth_users';
@@ -18,6 +19,21 @@ function _emit(event, user) {
 }
 
 // ─── Supabase Auth ───
+
+/** Fetch org plan/subscription from Supabase and sync to localStorage */
+async function syncOrgPlan(sb, orgId) {
+  try {
+    const { data: org } = await sb.from('organizations').select('plan, stripe_subscription_id, trial_ends_at').eq('id', orgId).single();
+    if (!org) return;
+    store('plan', org.plan || 'starter');
+    store('payment_method', !!org.stripe_subscription_id);
+    if (org.trial_ends_at) {
+      store('trial', { endsAt: org.trial_ends_at });
+    }
+  } catch (err) {
+    console.warn('[auth] syncOrgPlan error:', err.message);
+  }
+}
 
 async function supabaseSignup({ name, email, password }) {
   const sb = getSupabase();
@@ -47,6 +63,8 @@ async function supabaseSignup({ name, email, password }) {
   await sb.from('user_preferences').insert({ user_id: user.id });
 
   setOrgId(org.id);
+  store('plan', org.plan || 'starter');
+  store('payment_method', false);
 
   // Send welcome email (fire-and-forget)
   fetch('/api/email', {
@@ -75,6 +93,7 @@ async function supabaseLogin(email, password) {
   if (!profile) return { ok: false, error: 'Profil introuvable' };
 
   setOrgId(profile.org_id);
+  await syncOrgPlan(sb, profile.org_id);
 
   const u = {
     id: user.id, name: profile.full_name, email: profile.email,
@@ -88,6 +107,9 @@ async function supabaseLogout() {
   const sb = getSupabase();
   await sb.auth.signOut();
   setOrgId(null);
+  store('plan', null);
+  store('payment_method', null);
+  store('trial', null);
   _emit('signout', null);
 }
 
@@ -100,6 +122,7 @@ async function supabaseGetUser() {
   if (!profile) return null;
 
   setOrgId(profile.org_id);
+  await syncOrgPlan(sb, profile.org_id);
 
   return {
     id: session.user.id, name: profile.full_name, email: profile.email,

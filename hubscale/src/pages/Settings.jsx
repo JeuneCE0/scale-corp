@@ -3,7 +3,7 @@ import { T, getTheme, applyTheme } from '../lib/theme.js';
 import { store, load } from '../lib/store.js';
 import { isValidEmail } from '../lib/utils.js';
 import { Card, Section, Btn, Inp, Sel, TabBar, Toggle, ConfirmDialog, Badge, ProgressBar, PremiumGate } from '../components/ui.jsx';
-import { canAccessPro } from '../lib/plan.js';
+import { canAccessPro, getPlan, isPaid, getTrialInfo } from '../lib/plan.js';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { SECTORS, PLANS, INTEGRATIONS, AUTOMATION_RULES } from '../lib/constants.js';
 import { onIntegrationConnect, getIntegrationMeta } from '../lib/integrationData.js';
@@ -73,15 +73,11 @@ export default function Settings() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   // Logo upload state
-  const [logo, setLogo] = useState(() => {
-    try { return localStorage.getItem('settings_logo') || null; } catch { return null; }
-  });
+  const [logo, setLogo] = useState(() => load('settings_logo'));
   const logoInputRef = useRef(null);
 
   // Accent color state
-  const [accentColor, setAccentColor] = useState(() => {
-    try { return localStorage.getItem('settings_accentColor') || '#f97316'; } catch { return '#f97316'; }
-  });
+  const [accentColor, setAccentColor] = useState(() => load('settings_accentColor') || '#f97316');
 
   // Integration connection timestamps
   const [integrationTimestamps, setIntegrationTimestamps] = useState(() => load('integrationTimestamps') || {});
@@ -259,16 +255,14 @@ export default function Settings() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const base64 = ev.target.result;
-      try {
-        localStorage.setItem('settings_logo', base64);
-        setLogo(base64);
-      } catch {}
+      store('settings_logo', base64);
+      setLogo(base64);
     };
     reader.readAsDataURL(file);
   }, []);
 
   const removeLogo = useCallback(() => {
-    try { localStorage.removeItem('settings_logo'); } catch {}
+    store('settings_logo', null);
     setLogo(null);
     if (logoInputRef.current) logoInputRef.current.value = '';
   }, []);
@@ -276,7 +270,7 @@ export default function Settings() {
   // Accent color handler
   const selectAccentColor = useCallback((color) => {
     setAccentColor(color);
-    try { localStorage.setItem('settings_accentColor', color); } catch {}
+    store('settings_accentColor', color);
   }, []);
 
   // Usage stats
@@ -907,6 +901,34 @@ export default function Settings() {
       {/* -------- FACTURATION -------- */}
       {subTab === 'Facturation' && (
         <>
+          {/* Subscription status */}
+          <Card className="fade-up" style={{ marginBottom: 20, padding: '16px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 4 }}>Votre abonnement</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16, fontWeight: 800, color: T.text, textTransform: 'capitalize' }}>{getPlan()}</span>
+                  <Badge color={isPaid() ? T.green : T.orange}>{isPaid() ? 'Actif' : 'Essai'}</Badge>
+                </div>
+                {!isPaid() && getTrialInfo() && (
+                  <div style={{ fontSize: 11, color: getTrialInfo().daysLeft <= 3 ? T.red : T.textSecondary, marginTop: 4 }}>
+                    {getTrialInfo().expired
+                      ? 'Votre essai est terminé. Souscrivez pour continuer.'
+                      : `${getTrialInfo().daysLeft} jours restants dans votre essai gratuit`}
+                  </div>
+                )}
+              </div>
+              {isSupabaseConfigured() && (
+                <Btn v="secondary" small onClick={async () => {
+                  try {
+                    const { url } = await createBillingPortalSession();
+                    if (url) window.location.href = url;
+                  } catch (err) { alert('Erreur : ' + err.message); }
+                }}>Gérer mon abonnement</Btn>
+              )}
+            </div>
+          </Card>
+
           <div className="fade-up" style={{ textAlign: 'center', marginBottom: 24 }}>
             <p style={{ color: T.textSecondary, fontSize: 12 }}>Paiement sécurisé via Stripe. Annulez à tout moment.</p>
             {isSupabaseConfigured() && (
