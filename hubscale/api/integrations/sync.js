@@ -58,7 +58,7 @@ async function syncStripe(sb, orgId, accessToken) {
   }));
 
   if (rows.length > 0) {
-    await sb.from('financial_history').upsert(rows, { onConflict: 'org_id,source,external_id' });
+    await sb.from('transactions').upsert(rows, { onConflict: 'org_id,source,external_id' });
   }
 
   return { synced: rows.length };
@@ -91,17 +91,21 @@ async function syncGoogleCalendar(sb, orgId, accessToken) {
   const data = await calRes.json();
   const items = data.items || [];
 
-  const rows = items.map((ev) => ({
-    org_id: orgId,
-    source: 'google_calendar',
-    external_id: ev.id,
-    title: ev.summary || '',
-    description: ev.description || '',
-    start_at: ev.start?.dateTime || ev.start?.date || null,
-    end_at: ev.end?.dateTime || ev.end?.date || null,
-    location: ev.location || '',
-    metadata: { htmlLink: ev.htmlLink, status: ev.status },
-  }));
+  const rows = items.map((ev) => {
+    const startRaw = ev.start?.dateTime || ev.start?.date || null;
+    return {
+      org_id: orgId,
+      source: 'google_calendar',
+      external_id: ev.id,
+      title: ev.summary || '',
+      description: ev.description || '',
+      date: startRaw ? new Date(startRaw).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      start_at: startRaw,
+      end_at: ev.end?.dateTime || ev.end?.date || null,
+      location: ev.location || '',
+      metadata: { htmlLink: ev.htmlLink, status: ev.status },
+    };
+  });
 
   if (rows.length > 0) {
     await sb.from('events').upsert(rows, { onConflict: 'org_id,source,external_id' });
@@ -126,17 +130,22 @@ async function syncHubSpot(sb, orgId, accessToken) {
   const data = await hsRes.json();
   const results = data.results || [];
 
-  const rows = results.map((c) => ({
-    org_id: orgId,
-    source: 'hubspot',
-    external_id: c.id,
-    first_name: c.properties?.firstname || '',
-    last_name: c.properties?.lastname || '',
-    email: c.properties?.email || '',
-    phone: c.properties?.phone || '',
-    company: c.properties?.company || '',
-    metadata: { hs_created_at: c.createdAt, hs_updated_at: c.updatedAt },
-  }));
+  const rows = results.map((c) => {
+    const firstName = c.properties?.firstname || '';
+    const lastName = c.properties?.lastname || '';
+    return {
+      org_id: orgId,
+      source: 'hubspot',
+      external_id: c.id,
+      name: `${firstName} ${lastName}`.trim() || c.properties?.email || 'Sans nom',
+      first_name: firstName,
+      last_name: lastName,
+      email: c.properties?.email || '',
+      phone: c.properties?.phone || '',
+      company: c.properties?.company || '',
+      metadata: { hs_created_at: c.createdAt, hs_updated_at: c.updatedAt },
+    };
+  });
 
   if (rows.length > 0) {
     await sb.from('contacts').upsert(rows, { onConflict: 'org_id,source,external_id' });

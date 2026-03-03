@@ -1,11 +1,14 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
+import { initMonitoring, reportError } from './monitoring.js'
+
+initMonitoring();
 
 class RootErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(error) { return { error }; }
-  componentDidCatch(error, info) { console.error('ROOT CRASH:', error, info); }
+  componentDidCatch(error, info) { reportError(error, { component: 'RootErrorBoundary', componentStack: info?.componentStack }); }
   render() {
     if (this.state.error) {
       return (

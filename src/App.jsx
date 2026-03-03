@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Fragment, Suspense, lazy } from "react";
+import { trackEvent, reportError } from "./monitoring.js";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Area, AreaChart, Legend, Line, LineChart, ComposedChart, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
 import {
   AUTO_CAT_MAP, BF, BILL_TYPES, C, CLIENT_STATUS, CSS, CURR_SYMBOLS, C_DARK, C_LIGHT, DEAL_STAGES, DEMO_ACTIONS,
@@ -367,7 +368,7 @@ function AppInner(){
    })();},[]);
  const scChannel=useRef(null);
  useEffect(()=>{try{scChannel.current=new BroadcastChannel("scale-corp-sync");scChannel.current.onmessage=async(e)=>{if(e.data?.type==="socs-updated"){try{const sbSocs=await fetchSocietiesFromSB();if(sbSocs&&sbSocs.length>0)setSocs(prev=>{const sbMap=Object.fromEntries(sbSocs.map(x=>[x.id,x]));return prev.map(sc=>sbMap[sc.id]?{...sc,...sbMap[sc.id]}:sc);});}catch{}}if(e.data?.type==="hold-updated"){try{const sbHold=await fetchHoldingFromSB();if(sbHold)setHold(sbHold);}catch{}}};}catch{}return()=>{try{scChannel.current?.close();}catch{}};},[]);
- const save=useCallback(async(ns,nr,nh)=>{setSaving(true);try{if(ns!=null){setSocs(ns);await sSet("scAs",ns);await Promise.all((ns||[]).map(s=>sbUpsert('societies',{id:s.id,...s})));try{scChannel.current?.postMessage({type:"socs-updated"});}catch{}}if(nr!=null){setReps(nr);await sSet("scAr",nr);}if(nh!=null){setHold(nh);await sSet("scAh",nh);await sbUpsert('holding',{id:'main',config:nh});try{scChannel.current?.postMessage({type:"hold-updated"});}catch{}}}catch(e){console.warn("save():",e);}setSaving(false);},[]);
+ const save=useCallback(async(ns,nr,nh)=>{setSaving(true);trackEvent("save",{hasSocs:!!ns,hasReps:!!nr,hasHold:!!nh});try{if(ns!=null){setSocs(ns);await sSet("scAs",ns);await Promise.all((ns||[]).map(s=>sbUpsert('societies',{id:s.id,...s})));try{scChannel.current?.postMessage({type:"socs-updated"});}catch{}}if(nr!=null){setReps(nr);await sSet("scAr",nr);}if(nh!=null){setHold(nh);await sSet("scAh",nh);await sbUpsert('holding',{id:'main',config:nh});try{scChannel.current?.postMessage({type:"hold-updated"});}catch{}}}catch(e){console.warn("save():",e);}setSaving(false);},[]);
  // Periodic refresh from Supabase (every 15s) to sync changes across different browsers/devices
  useEffect(()=>{if(!loaded)return;const iv=setInterval(async()=>{try{const sbSocs=await fetchSocietiesFromSB();if(sbSocs&&sbSocs.length>0){setSocs(prev=>{const sbMap=Object.fromEntries(sbSocs.map(x=>[x.id,x]));const next=prev.map(sc=>sbMap[sc.id]?{...sc,...sbMap[sc.id]}:sc);if(JSON.stringify(next)===JSON.stringify(prev))return prev;return next;});}const sbHold=await fetchHoldingFromSB();if(sbHold)setHold(h=>JSON.stringify(h)===JSON.stringify(sbHold)?h:sbHold);}catch{}},15000);return()=>clearInterval(iv);},[loaded]);
  // Fetch OAuth tokens for ad attribution dashboard
@@ -396,7 +397,7 @@ function AppInner(){
   socs.filter(s=>s.stat==="active"&&s.id!=="eco").forEach(s=>{
    if(!newData[s.id])newData[s.id]=demo[s.id];
   });
-  setGhlData(newData);await sSet("scAg",newData);
+  setGhlData(newData);await sSet("scAg",newData);trackEvent("sync_ghl",{count:Object.keys(newData).length});
   // Merge GHL contacts into clients state
   const ghlSocIds=Object.keys(newData).filter(sid=>newData[sid].ghlClients?.length>0);
   if(ghlSocIds.length>0){
@@ -491,9 +492,9 @@ function AppInner(){
   const absentLabel=hrs>=24?`${Math.round(hrs/24)}j`:hrs>=1?`${hrs}h`:`${mins}min`;
   if(events.length>0)setMissedRecap({events:events.slice(0,20),total:events.length,absent:absentLabel});
  },[role]);
- const loginEmail2=useCallback(async()=>{if(!loginEmail.trim()||!loginPass.trim()){setLErr("Email et mot de passe requis");return;}setAuthLoading(true);setLErr("");try{const r=await fetch("/api/auth?action=login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:loginEmail.trim(),password:loginPass})});const d=await r.json();if(!r.ok){setLErr(d.error_description||d.msg||d.error||"Identifiants incorrects");setShake(true);setTimeout(()=>setShake(false),500);return;}localStorage.setItem("sc_auth_token",d.access_token);if(d.refresh_token)localStorage.setItem("sc_auth_refresh",d.refresh_token);setAuthUser(d.user);const meta=d.user?.user_metadata||{};const rid=meta.role==="admin"?"admin":(meta.society_id||"admin");setRole(rid);setLErr("");setStoreToken("auth");setCurrentSocId(rid);localStorage.setItem("sc_store_token","auth");syncFromSupabase(rid).then(()=>{}).catch(()=>{});}catch(e){setLErr("Erreur de connexion");setShake(true);setTimeout(()=>setShake(false),500);}finally{setAuthLoading(false);}},[loginEmail,loginPass]);
+ const loginEmail2=useCallback(async()=>{if(!loginEmail.trim()||!loginPass.trim()){setLErr("Email et mot de passe requis");return;}setAuthLoading(true);setLErr("");try{const r=await fetch("/api/auth?action=login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:loginEmail.trim(),password:loginPass})});const d=await r.json();if(!r.ok){setLErr(d.error_description||d.msg||d.error||"Identifiants incorrects");setShake(true);setTimeout(()=>setShake(false),500);return;}localStorage.setItem("sc_auth_token",d.access_token);if(d.refresh_token)localStorage.setItem("sc_auth_refresh",d.refresh_token);setAuthUser(d.user);const meta=d.user?.user_metadata||{};const rid=meta.role==="admin"?"admin":(meta.society_id||"admin");setRole(rid);setLErr("");setStoreToken("auth");setCurrentSocId(rid);localStorage.setItem("sc_store_token","auth");trackEvent("login",{method:"email",role:rid});syncFromSupabase(rid).then(()=>{}).catch(()=>{});}catch(e){setLErr("Erreur de connexion");setShake(true);setTimeout(()=>setShake(false),500);}finally{setAuthLoading(false);}},[loginEmail,loginPass]);
  const login=useCallback(async()=>{async function hashPin(p){const e=new TextEncoder().encode(p);const h=await crypto.subtle.digest('SHA-256',e);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');}
-const doLogin=(rid)=>{setRole(rid);setLErr("");setStoreToken(pin);setCurrentSocId(rid);localStorage.setItem("sc_store_token",pin);syncFromSupabase(rid).then(()=>{}).catch(()=>{});};
+const doLogin=(rid)=>{setRole(rid);setLErr("");setStoreToken(pin);setCurrentSocId(rid);localStorage.setItem("sc_store_token",pin);trackEvent("login",{method:"pin",role:rid});syncFromSupabase(rid).then(()=>{}).catch(()=>{});};
 // Admin check
 if(pin==="0000"||pin==="admin"){const hk="sc_pin_hash_admin";const stored=localStorage.getItem(hk);if(!stored){localStorage.setItem(hk,await hashPin(pin));}doLogin("admin");return;}
 // Check stored hashes first
@@ -620,7 +621,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    <button onClick={toggleTheme} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",padding:4,color:C.td}}>{getTheme()==="light"?"🌙":"☀️"}</button>
   </div>
   {adminMobileMenu&&<div className="fi" onClick={()=>setAdminMobileMenu(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:150}}><div onClick={e=>e.stopPropagation()} style={{width:240,height:"100vh",background:C.card,borderRight:`1px solid ${C.brd}`,overflowY:"auto"}}>
-   <Sidebar items={SB_ADMIN} activeTab={tab} setTab={t=>{setTab(t);setAdminMobileMenu(false);}} brandTitle={hold.brand?.name||"L'INCUBATEUR ECS"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>{setRole(null);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");}} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand}/>
+   <Sidebar items={SB_ADMIN} activeTab={tab} setTab={t=>{setTab(t);setAdminMobileMenu(false);trackEvent("tab_change",{tab:t});}} brandTitle={hold.brand?.name||"L'INCUBATEUR ECS"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>{setRole(null);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");}} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand}/>
   </div></div>}
   <nav className="sidebar-desktop" aria-label="Navigation principale"><Sidebar items={SB_ADMIN} activeTab={tab} setTab={setTab} brandTitle={hold.brand?.name||"L'INCUBATEUR ECS"} brandSub={`${actS.length} sociétés · Admin`} onLogout={()=>{setRole(null);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");}} onTour={()=>setShowTour(true)} onThemeToggle={toggleTheme} dataTourPrefix="admin" brand={hold.brand} extra={<div style={{display:"flex",flexDirection:"column",gap:2}}>
    {hold.slack?.enabled&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 4px"}}><span style={{width:5,height:5,borderRadius:3,background:C.g}}/>

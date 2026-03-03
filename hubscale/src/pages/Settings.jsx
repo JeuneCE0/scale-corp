@@ -1085,6 +1085,9 @@ export default function Settings() {
                           <div style={{ flex: 1, minWidth: 120 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{ig.name}</div>
+                              {ig.tier === 'demo' && !connected && (
+                                <Badge label="Demo" color={T.textSecondary} bg={T.bgSecondary || 'rgba(255,255,255,.06)'} />
+                              )}
                               {connected && !syncing && (
                                 <Badge label="Connecté" color={T.green} bg={T.greenBg} />
                               )}
