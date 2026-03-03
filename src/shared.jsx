@@ -529,7 +529,37 @@ export function calcAttribution(adData,ghlData,month){
 
 export const GHL_STAGES_COLORS=["#60a5fa","#FFAA00","#fb923c","#34d399","#a78bfa","#f43f5e","#14b8a6","#eab308"];
 export const GHL_BASE="/api/ghl";
-export function mkGHLDemo(){ return {}; }
+export function mkGHLDemo(socs){
+ const demo={};
+ const stages=["Nouveau lead","Premier contact","Qualification","Proposition","Négociation","Gagné","Perdu"];
+ const sources=["Facebook","Google","Référence","Direct","LinkedIn"];
+ const firstNames=["Sophie","Thomas","Julie","Marc","Léa","Lucas","Emma","Hugo","Chloé","Maxime"];
+ const lastNames=["Martin","Dupont","Bernard","Durand","Lefebvre","Moreau","Simon","Laurent","Michel","Garcia"];
+ (socs||[]).filter(s=>s.stat==="active"&&s.id!=="eco").forEach(s=>{
+  const opps=[];const contacts=[];const convos=[];
+  const numOpps=8+Math.floor(Math.random()*8);
+  for(let i=0;i<numOpps;i++){
+   const fn=firstNames[i%firstNames.length];const ln=lastNames[i%lastNames.length];
+   const stage=stages[Math.floor(Math.random()*stages.length)];
+   const status=stage==="Gagné"?"won":stage==="Perdu"?"lost":"open";
+   const value=Math.round((500+Math.random()*4500)/100)*100;
+   const id=`demo_opp_${s.id}_${i}`;const cid=`demo_ct_${s.id}_${i}`;
+   const daysAgo=Math.floor(Math.random()*60);
+   const created=new Date(Date.now()-daysAgo*86400000).toISOString();
+   opps.push({id,name:`${fn} ${ln}`,stage,value,email:`${fn.toLowerCase()}@example.com`,phone:"",createdAt:created,updatedAt:created,status,source:sources[Math.floor(Math.random()*sources.length)],pipelineId:"demo_pip",contact:{id:cid,name:`${fn} ${ln}`,email:`${fn.toLowerCase()}@example.com`}});
+   contacts.push({id:`ghl_${cid}`,socId:s.id,name:`${fn} ${ln}`,contact:`${fn} ${ln}`,email:`${fn.toLowerCase()}@example.com`,phone:"",company:"",billing:null,status:status==="won"?"active":"prospect",domain:"",source:sources[Math.floor(Math.random()*sources.length)],notes:"",ghlId:cid,stripeId:"",at:created});
+   if(i<5)convos.push({id:`demo_cv_${s.id}_${i}`,contactId:cid,contactName:`${fn} ${ln}`,lastMsg:"Bonjour, j'aimerais en savoir plus...",lastMsgDate:created,unread:Math.random()>.7?1:0,type:"sms",locationId:"demo"});
+  }
+  const won=opps.filter(o=>o.status==="won"),open=opps.filter(o=>o.status==="open");
+  demo[s.id]={
+   pipelines:[{id:"demo_pip",name:"Pipeline principal",stages}],
+   opportunities:opps,ghlClients:contacts,calendarEvents:[],conversations:convos,
+   stats:{totalLeads:opps.length,openDeals:open.length,wonDeals:won.length,lostDeals:opps.filter(o=>o.status==="lost").length,pipelineValue:open.reduce((a,o)=>a+o.value,0),wonValue:won.reduce((a,o)=>a+o.value,0),conversionRate:opps.length>0?Math.round(won.length/opps.length*100):0,avgDealSize:opps.length>0?Math.round(opps.reduce((a,o)=>a+o.value,0)/opps.length):0,totalCalls:0,callsByType:{},sourceBreakdown:[]},
+   lastSync:new Date().toISOString(),isDemo:true
+  };
+ });
+ return demo;
+}
 export async function ghlUpdateContact(locationId,contactId,data){return fetchGHL("contact_update",locationId,{contactId,data});}
 export async function ghlCreateContact(locationId,data){return fetchGHL("contact_create",locationId,{data});}
 export async function fetchGHL(action,locationId,params={}){
@@ -774,7 +804,29 @@ export function getStripeTotal(charges){
 }
 export const REV_ENVS={sandbox:"https://sandbox-b2b.revolut.com/api/1.0",production:"https://b2b.revolut.com/api/1.0"};
 export const CURR_SYMBOLS={EUR:"€",USD:"$",GBP:"£",CHF:"CHF",SEK:"kr",NOK:"kr",DKK:"kr",PLN:"zł",CZK:"Kč",HUF:"Ft",RON:"lei",BGN:"лв",HRK:"kn",AED:"AED",CAD:"CA$",AUD:"A$",JPY:"¥"};
-export function mkRevolutDemo(){ return null; }
+export function mkRevolutDemo(){
+ const now=new Date();const cm=curM();
+ const accounts=[
+  {id:"demo_main",name:"Compte principal",balance:24500,currency:"EUR",state:"active"},
+  {id:"demo_ops",name:"Opérations",balance:8200,currency:"EUR",state:"active"},
+  {id:"demo_usd",name:"Compte USD",balance:3100,currency:"USD",state:"active"},
+ ];
+ const txTypes=["Virement client","Abonnement SaaS","Prestataire","Paiement fournisseur","Frais bancaires"];
+ const transactions=[];
+ for(let i=0;i<20;i++){
+  const daysAgo=Math.floor(Math.random()*30);
+  const isIn=Math.random()>.45;
+  const amt=isIn?Math.round((200+Math.random()*3000)*100)/100:-Math.round((50+Math.random()*1500)*100)/100;
+  transactions.push({
+   id:`demo_tx_${i}`,type:isIn?"transfer":"card_payment",
+   created_at:new Date(Date.now()-daysAgo*86400000).toISOString(),
+   legs:[{amount:amt,currency:"EUR",description:txTypes[Math.floor(Math.random()*txTypes.length)],account_id:"demo_main"}],
+   reference:txTypes[Math.floor(Math.random()*txTypes.length)]
+  });
+ }
+ const totalEUR=accounts.reduce((s,a)=>s+(a.currency==="EUR"?a.balance:a.balance*0.92),0);
+ return{accounts,transactions:transactions.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)),totalEUR,lastSync:new Date().toISOString(),isDemo:true};
+}
 export async function fetchRevolut(company,endpoint){
  try{
   const action=endpoint.includes("/transactions")?"transactions":"accounts";
@@ -795,7 +847,33 @@ export async function syncRevolut(company){
  const result={accounts:accs,transactions:Array.isArray(txns)?txns:[],totalEUR,lastSync:new Date().toISOString(),isDemo:false};
  cacheSet(ck,result);return result;
 }
-export function mkSocRevDemo(){ return null; }
+export function mkSocRevDemo(soc){
+ const now=new Date();const cm=curM();const pm=prevM(cm);
+ const balance=5000+Math.round(Math.random()*15000);
+ const accounts=[
+  {id:`demo_${soc?.id||"x"}_main`,name:"Compte courant",balance,currency:"EUR",state:"active",excluded:false},
+  {id:`demo_${soc?.id||"x"}_pub`,name:"Budget Pub",balance:Math.round(1000+Math.random()*3000),currency:"EUR",state:"active",excluded:false},
+ ];
+ const txTypes=["Virement client","Abonnement SaaS","Pub Facebook","Prestataire","Salaire","Formation"];
+ const transactions=[];
+ for(let i=0;i<25;i++){
+  const daysAgo=Math.floor(Math.random()*45);
+  const isIn=Math.random()>.5;
+  const amt=isIn?Math.round((100+Math.random()*2500)*100)/100:-Math.round((30+Math.random()*1200)*100)/100;
+  const dt=new Date(Date.now()-daysAgo*86400000);
+  transactions.push({
+   id:`demo_stx_${soc?.id||"x"}_${i}`,type:isIn?"transfer":"card_payment",
+   created_at:dt.toISOString(),
+   month:`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`,
+   legs:[{amount:amt,currency:"EUR",description:txTypes[Math.floor(Math.random()*txTypes.length)],account_id:`demo_${soc?.id||"x"}_main`}],
+   reference:txTypes[Math.floor(Math.random()*txTypes.length)]
+  });
+ }
+ const monthly={};
+ transactions.forEach(tx=>{const m=tx.month;const leg=tx.legs?.[0];if(!leg)return;const amt=leg.amount;if(!monthly[m])monthly[m]={income:0,expense:0};if(amt>0)monthly[m].income+=amt;else monthly[m].expense+=Math.abs(amt);});
+ Object.keys(monthly).forEach(m=>{monthly[m].income=Math.round(monthly[m].income);monthly[m].expense=Math.round(monthly[m].expense);});
+ return{accounts,transactions:transactions.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)),balance,monthly,lastSync:new Date().toISOString(),isDemo:true};
+}
 // Accounts to exclude from treasury per company (personal pockets, dividend transit, etc.)
 // Check if a transaction involves any excluded pocket account (any leg)
 const EXCLUDED_DESCRIPTIONS=[/from mohammad dayyaan/i,/to mohammad dayyaan/i];

@@ -993,7 +993,7 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
   else base.billing={type:"oneoff",amount:0,product:"",deliveredDate:"",paidDate:"",installments:1};
   setEditCl(base);
  };
- const saveCl=(cl)=>{
+ const saveCl=async(cl)=>{
   const isNew=!clients.some(c=>c.id===cl.id);
   const idx=clients.findIndex(x=>x.id===cl.id);
   if(idx>=0){const nc=[...clients];nc[idx]=cl;saveClients(nc);}else saveClients([...clients,cl]);
@@ -1026,10 +1026,10 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
     const newInvs=generateInvoices(cl,soc.nom);
     const loc=soc.ghlLocationId;
     if(loc){
-    newInvs.forEach(async(inv)=>{
+    await Promise.all(newInvs.map(async(inv)=>{
     const ghlId=await ghlCreateInvoice(loc,inv,cl);
     if(ghlId)inv.ghlInvoiceId=ghlId;
-    });
+    }));
     }
     const allInvs=[...(invoices||[]).filter(i=>i.clientId!==cl.id),...newInvs];
     saveInvoices(allInvs);
@@ -1052,7 +1052,8 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
   const loc2=soc.ghlLocationId;
   let ghlOk=false;
   if(loc2&&inv.ghlInvoiceId){ghlOk=await ghlSendInvoice(loc2,inv.ghlInvoiceId);}
-  const updated=(invoices||[]).map(i=>i.id===inv.id?{...i,status:"sent",sentAt:new Date().toISOString()}:i);
+  const sentOk=!loc2||!inv.ghlInvoiceId||ghlOk;
+  const updated=(invoices||[]).map(i=>i.id===inv.id?{...i,status:sentOk?"sent":"draft",sentAt:sentOk?new Date().toISOString():i.sentAt,ghlSendError:sentOk?null:"Échec envoi GHL"}:i);
   saveInvoices(updated);
   setSending(null);
  };
@@ -2073,7 +2074,7 @@ export function SocSettingsPanel({soc,save,socs,clients}){
     const[metaForm,setMetaForm]=useState(()=>{try{return JSON.parse(localStorage.getItem(metaKey))||{spend:0,impressions:0,clicks:0,leads:0,revenue:0};}catch{return{spend:0,impressions:0,clicks:0,leads:0,revenue:0};}});
     const[metaSaved,setMetaSaved]=useState(false);
     const loadMeta=(mo)=>{setMetaMonth(mo);try{const raw=JSON.parse(localStorage.getItem(`metaAds_${soc.id}_${mo}`));setMetaForm(raw||{spend:0,impressions:0,clicks:0,leads:0,revenue:0});}catch{setMetaForm({spend:0,impressions:0,clicks:0,leads:0,revenue:0});}};
-    const saveMeta=()=>{try{localStorage.setItem(metaKey,JSON.stringify(metaForm));sSet(metaKey,metaForm);sbUpsert('meta_ads',{society_id:soc.id,month:metaMonth,...metaForm});}catch(e){console.warn("saveMeta:",e);}setMetaSaved(true);setTimeout(()=>setMetaSaved(false),2000);};
+    const saveMeta=async()=>{try{localStorage.setItem(metaKey,JSON.stringify(metaForm));await sSet(metaKey,metaForm);await sbUpsert('meta_ads',{society_id:soc.id,month:metaMonth,...metaForm});}catch(e){console.warn("saveMeta:",e);}setMetaSaved(true);setTimeout(()=>setMetaSaved(false),2000);};
     return <>
      <Sel label="Mois" value={metaMonth} onChange={loadMeta} options={monthOpts}/>
      <div className="rg2k" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
