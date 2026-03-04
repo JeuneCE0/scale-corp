@@ -20,6 +20,7 @@ import {
   syncGHLForSoc, syncRevolut, syncSocRevolut, syncStripeData, teamMonthly, uid, gr, TIMING,
   fetchOAuthStatus, oauthConnect, oauthDisconnect, OAUTH_PROVIDERS,
   fetchMetaAds, fetchGoogleAds, fetchTikTokAds, syncAdData, roasColor, roasLabel, calcAttribution,
+  captureReferral, findReferrerByCode, saveReferralRecord, convertReferral, buildRefCode, getReferralRecords,
 } from "./shared.jsx";
 
 /* UI COMPONENTS */
@@ -513,6 +514,27 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  if(hash==="#pulse")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>{window.location.hash="";window.location.reload();}}/></Suspense></>;
  if(hash.startsWith("#portal/")){const parts=hash.replace("#portal/","").split("/");return <><style>{CSS}{POLISH_CSS}</style><ClientPortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients} ghlData={ghlData}/></>;}
  if(hash.startsWith("#affiliate/")){const parts=hash.replace("#affiliate/","").split("/");return <><style>{CSS}{POLISH_CSS}</style><AffiliatePortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients}/></>;}
+ if(hash.startsWith("#ref/")){
+  const ref=captureReferral();
+  if(ref){
+   const referrer=findReferrerByCode(clients,ref.socId,ref.refCode);
+   trackEvent("referral_click",{socId:ref.socId,refCode:ref.refCode,referrer:referrer?.name||"unknown"});
+  }
+  const socId=hash.replace("#ref/","").split("/")[0];
+  const soc=socs.find(s=>s.id===socId);
+  return <><style>{CSS}{POLISH_CSS}</style>
+   <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT,padding:16}}>
+    <div className="glass-card-static fu" style={{padding:32,textAlign:"center",maxWidth:420}}>
+     <div style={{fontSize:48,marginBottom:16}}>🤝</div>
+     <div style={{fontSize:20,fontWeight:900,color:C.t,marginBottom:8}}>Bienvenue !</div>
+     <div style={{fontSize:13,color:C.td,marginBottom:20,lineHeight:1.6}}>
+      Vous avez été recommandé par un membre de {soc?.nom||"notre réseau"}. Votre parrainage a été enregistré.
+     </div>
+     <a href={window.location.origin} onClick={()=>{window.location.hash="";}} style={{display:"inline-block",padding:"12px 24px",borderRadius:12,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,color:"#0a0a0f",fontSize:13,fontWeight:700,textDecoration:"none",cursor:"pointer",fontFamily:FONT}}>Accéder à la plateforme →</a>
+    </div>
+   </div>
+  </>;
+ }
  if(hash.startsWith("#board/")){const bPin=hash.replace("#board/","");return <><style>{CSS}{POLISH_CSS}</style><InvestorBoard socs={socs} reps={reps} allM={allM} hold={hold} pin={bPin}/></>;}
 
  /* Onboarding removed */;

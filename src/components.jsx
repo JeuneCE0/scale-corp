@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Area, AreaChart, Legend, Line, LineChart, ComposedChart, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
+import { trackEvent } from "./monitoring.js";
 import { showToast } from "./ui-polish.jsx";
 import {
   BF, BILL_TYPES, C, CLIENT_STATUS, CSS, CURR_SYMBOLS, DEAL_STAGES, EXCLUDED_ACCOUNTS, ErrorBoundary, FONT, FONT_TITLE, isExcludedTx,
@@ -10,6 +11,7 @@ import {
   ghlCreateInvoice, ghlSendInvoice, ghlUpdateContact, healthScore, matchSubsToRevolut, ml, nextM, normalizeStr, pct,
   pf, prevM, project, revFinancials, runway, sSet, sbUpsert, simH, sinceLbl, sinceMonths, slackSend, subMonthly, teamMonthly,
   uid, autoCategorize, TX_CATEGORIES, TIMING,
+  getActiveReferral, convertReferral, findReferrerByCode, saveReferralRecord, buildRefCode, getAffiliateReferrals, getReferralRecords, getReferralClicks, sGet,
 } from "./shared.jsx";
 
 
@@ -995,6 +997,19 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
  };
  const saveCl=async(cl)=>{
   const isNew=!clients.some(c=>c.id===cl.id);
+  // Referral attribution on new client
+  if(isNew){
+   const ref=getActiveReferral(soc.id);
+   if(ref){
+    const referrer=findReferrerByCode(clients,soc.id,ref.refCode);
+    if(referrer){
+     cl.referredBy=referrer.id;cl.refCode=ref.refCode;
+     convertReferral(soc.id,cl.id);
+     saveReferralRecord({id:uid(),socId:soc.id,referrerId:referrer.id,referredClientId:cl.id,refCode:ref.refCode,date:new Date().toISOString(),status:"active",revenue:0,commission:0});
+     trackEvent("referral_conversion",{socId:soc.id,refCode:ref.refCode,referrer:referrer.name,client:cl.name});
+    }
+   }
+  }
   const idx=clients.findIndex(x=>x.id===cl.id);
   if(idx>=0){const nc=[...clients];nc[idx]=cl;saveClients(nc);}else saveClients([...clients,cl]);
   // GHL bidirectional sync
@@ -4874,35 +4889,37 @@ export function AffiliatePortal({socId,clientId,socs,clients}){
  const[copied,setCopied]=useState(false);
  const[tab,setTab]=useState("overview");
 
- // Demo affiliate data
+ // Real affiliate data from persisted referral records
+ const[refRecords,setRefRecords]=useState([]);
+ const refClicks=useMemo(()=>getReferralClicks(socId),[socId]);
+ useEffect(()=>{getAffiliateReferrals(socId,clientId).then(setRefRecords);},[socId,clientId]);
  const affiliateData=useMemo(()=>{
-  const referrals=[
-   {id:1,name:"Marie Dupont",date:"2026-02-15",status:"active",revenue:1200,commission:120},
-   {id:2,name:"Thomas Martin",date:"2026-01-20",status:"active",revenue:800,commission:80},
-   {id:3,name:"Sophie Bernard",date:"2026-01-05",status:"pending",revenue:0,commission:0},
-   {id:4,name:"Lucas Petit",date:"2025-12-12",status:"active",revenue:2400,commission:240},
-   {id:5,name:"Emma Leroy",date:"2025-11-30",status:"inactive",revenue:600,commission:60},
-  ];
+  const COMMISSION_RATE=0.10;
+  const referrals=refRecords.map(r=>{
+   const referred=(clients||[]).find(c=>c.id===r.referredClientId);
+   const rev=referred?clientTotalValue(referred):0;
+   const comm=Math.round(rev*COMMISSION_RATE);
+   const st=referred?(referred.status==="active"?"active":referred.status==="churned"?"inactive":"pending"):"pending";
+   return{id:r.id,name:referred?.name||"Inconnu",date:r.date,status:st,revenue:rev,commission:comm};
+  });
   const totalCommissions=referrals.reduce((a,r)=>a+r.commission,0);
   const pendingPayout=referrals.filter(r=>r.status==="active").reduce((a,r)=>a+r.commission,0);
   const totalReferrals=referrals.length;
   const activeReferrals=referrals.filter(r=>r.status==="active").length;
-  const conversionRate=Math.round(activeReferrals/totalReferrals*100);
-  const monthlyData=[
-   {month:"Oct",referrals:1,commissions:60},
-   {month:"Nov",referrals:1,commissions:60},
-   {month:"Déc",referrals:1,commissions:240},
-   {month:"Jan",referrals:2,commissions:80},
-   {month:"Fév",referrals:1,commissions:120},
-   {month:"Mar",referrals:0,commissions:0},
-  ];
-  const payouts=[
-   {id:1,date:"2026-02-28",amount:200,status:"paid",method:"Virement"},
-   {id:2,date:"2026-01-31",amount:240,status:"paid",method:"Virement"},
-   {id:3,date:"2025-12-31",amount:60,status:"paid",method:"Virement"},
-  ];
-  return{referrals,totalCommissions,pendingPayout,totalReferrals,activeReferrals,conversionRate,monthlyData,payouts};
- },[]);
+  const conversionRate=totalReferrals>0?Math.round(activeReferrals/totalReferrals*100):0;
+  // Build monthly data from last 6 months
+  const now=new Date();const monthlyData=[];
+  const mNames=["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
+  for(let i=5;i>=0;i--){
+   const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+   const mKey=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+   const mRefs=referrals.filter(r=>r.date&&r.date.startsWith(mKey));
+   monthlyData.push({month:mNames[d.getMonth()],referrals:mRefs.length,commissions:mRefs.reduce((a,r)=>a+r.commission,0)});
+  }
+  // Payouts are manual — show click stats instead if no records
+  const payouts=[];
+  return{referrals,totalCommissions,pendingPayout,totalReferrals,activeReferrals,conversionRate,monthlyData,payouts,clicks:refClicks.length};
+ },[refRecords,clients,refClicks]);
 
  const copyLink=()=>{try{navigator.clipboard.writeText(refLink);setCopied(true);setTimeout(()=>setCopied(false),2000);}catch{}};
 
@@ -4933,7 +4950,10 @@ export function AffiliatePortal({socId,clientId,socs,clients}){
      <div style={{flex:1,background:C.bg,border:`1px solid ${C.brd}`,borderRadius:10,padding:"10px 12px",fontSize:11,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{refLink}</div>
      <button onClick={copyLink} className="ba" style={{border:"none",borderRadius:10,padding:"10px 16px",background:copied?C.gD:`linear-gradient(135deg,${accent},${accent}cc)`,color:copied?C.g:"#0a0a0f",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap",transition:"all .2s ease"}}>{copied?"✅ Copié":"📋 Copier"}</button>
     </div>
-    <div style={{fontSize:9,color:C.tm,marginTop:6}}>Code affilié : <span style={{fontWeight:700,color:C.td}}>{refCode}</span></div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}}>
+     <div style={{fontSize:9,color:C.tm}}>Code affilié : <span style={{fontWeight:700,color:C.td}}>{refCode}</span></div>
+     <div style={{fontSize:9,color:C.td,fontWeight:600}}>🖱️ {affiliateData.clicks||0} clic{(affiliateData.clicks||0)!==1?"s":""}</div>
+    </div>
    </div>
 
    {/* KPI Row */}
@@ -4979,8 +4999,9 @@ export function AffiliatePortal({socId,clientId,socs,clients}){
       <span style={{fontWeight:700,fontSize:12,color:C.t}}>👥 Derniers filleuls</span>
       <button onClick={()=>setTab("referrals")} style={{background:"none",border:"none",color:accent,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>Voir tout →</button>
      </div>
+     {affiliateData.referrals.length===0&&<div style={{textAlign:"center",padding:"16px 0",color:C.td,fontSize:11}}>Partagez votre lien pour commencer à parrainer !</div>}
      {affiliateData.referrals.slice(0,3).map(r=>{const st=statusColors[r.status];return <div key={r.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:`1px solid ${C.brd}08`}}>
-      <div style={{width:32,height:32,borderRadius:16,background:accent+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:accent}}>{r.name[0]}</div>
+      <div style={{width:32,height:32,borderRadius:16,background:accent+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:accent}}>{(r.name||"?")[0]}</div>
       <div style={{flex:1}}>
        <div style={{fontSize:12,fontWeight:700,color:C.t}}>{r.name}</div>
        <div style={{fontSize:9,color:C.td}}>{new Date(r.date).toLocaleDateString("fr-FR")}</div>
@@ -5042,6 +5063,7 @@ export function AffiliatePortal({socId,clientId,socs,clients}){
     {/* Payout History */}
     <div className="glass-card-static" style={{padding:18}}>
      <div style={{fontWeight:700,fontSize:12,color:C.t,marginBottom:12}}>📋 Historique des paiements</div>
+     {affiliateData.payouts.length===0&&<div style={{textAlign:"center",padding:"20px 0",color:C.td,fontSize:11}}>Aucun versement pour le moment. Les commissions seront versées à la fin de chaque mois.</div>}
      {affiliateData.payouts.map(p=><div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.brd}08`}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
        <div style={{width:32,height:32,borderRadius:10,background:C.gD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>✅</div>

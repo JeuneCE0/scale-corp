@@ -1239,3 +1239,86 @@ export function categorizeTransaction(tx){
  return findCat("autres");
 }
 
+/* ═══════════════ REFERRAL TRACKING ═══════════════ */
+const REF_STORAGE_KEY="scReferrals";
+const REF_CLICKS_KEY="scRefClicks";
+const REF_COOKIE_KEY="sc_ref";
+
+// Capture referral code from URL hash and persist it
+export function captureReferral(){
+ const hash=window.location.hash;
+ if(!hash.startsWith("#ref/"))return null;
+ const parts=hash.replace("#ref/","").split("/");
+ if(parts.length<2)return null;
+ const socId=parts[0];const refCode=parts[1];
+ const ref={socId,refCode,capturedAt:new Date().toISOString(),converted:false};
+ localStorage.setItem(REF_COOKIE_KEY,JSON.stringify(ref));
+ // Track click
+ const clicks=JSON.parse(localStorage.getItem(REF_CLICKS_KEY)||"[]");
+ clicks.push({socId,refCode,at:new Date().toISOString(),ua:navigator.userAgent});
+ localStorage.setItem(REF_CLICKS_KEY,JSON.stringify(clicks));
+ return ref;
+}
+
+// Get active (unconverted) referral for a society
+export function getActiveReferral(socId){
+ try{
+  const raw=localStorage.getItem(REF_COOKIE_KEY);
+  if(!raw)return null;
+  const ref=JSON.parse(raw);
+  if(ref.socId===socId&&!ref.converted)return ref;
+  return null;
+ }catch{return null;}
+}
+
+// Convert a referral when a client signs up — returns the referral data
+export function convertReferral(socId,clientId){
+ const ref=getActiveReferral(socId);
+ if(!ref)return null;
+ ref.converted=true;ref.clientId=clientId;ref.convertedAt=new Date().toISOString();
+ localStorage.setItem(REF_COOKIE_KEY,JSON.stringify(ref));
+ return ref;
+}
+
+// Save a referral record (called when a client is attributed to an affiliate)
+export async function saveReferralRecord(record){
+ const all=await getReferralRecords();
+ const idx=all.findIndex(r=>r.id===record.id);
+ if(idx>=0)all[idx]=record;else all.push(record);
+ await sSet(REF_STORAGE_KEY,all);
+ return all;
+}
+
+// Get all referral records
+export async function getReferralRecords(){
+ return(await sGet(REF_STORAGE_KEY))||[];
+}
+
+// Get referrals for a specific affiliate (by clientId of the referrer)
+export async function getAffiliateReferrals(socId,affiliateClientId){
+ const all=await getReferralRecords();
+ return all.filter(r=>r.socId===socId&&r.referrerId===affiliateClientId);
+}
+
+// Get referral clicks for a society
+export function getReferralClicks(socId){
+ try{
+  const all=JSON.parse(localStorage.getItem(REF_CLICKS_KEY)||"[]");
+  return socId?all.filter(c=>c.socId===socId):all;
+ }catch{return[];}
+}
+
+// Find which client owns a given refCode
+export function findReferrerByCode(clients,socId,refCode){
+ return clients.find(c=>{
+  if(c.socId!==socId)return false;
+  const expected=(c.name||"").replace(/[^a-zA-Z0-9]/g,"").slice(0,8).toUpperCase()+"-"+(c.id||"").slice(-4).toUpperCase();
+  return expected===refCode;
+ })||null;
+}
+
+// Build referral code for a client (same algo as AffiliatePortal)
+export function buildRefCode(client){
+ return(client.name||"").replace(/[^a-zA-Z0-9]/g,"").slice(0,8).toUpperCase()+"-"+(client.id||"").slice(-4).toUpperCase();
+}
+
