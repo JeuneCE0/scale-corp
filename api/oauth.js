@@ -97,11 +97,20 @@ function getProviderConfig(provider, baseUrl) {
       redirectUri: `${baseUrl}/api/oauth?provider=stripe&action=callback`,
       extraAuthParams: { stripe_landing: 'login' },
     },
+    slack: {
+      name: 'Slack',
+      clientId: process.env.SLACK_CLIENT_ID,
+      clientSecret: process.env.SLACK_CLIENT_SECRET,
+      authorizeUrl: 'https://slack.com/oauth/v2/authorize',
+      tokenUrl: 'https://slack.com/api/oauth.v2.access',
+      scopes: ['chat:write', 'channels:read', 'incoming-webhook'],
+      redirectUri: `${baseUrl}/api/oauth?provider=slack&action=callback`,
+    },
   };
   return configs[provider] || null;
 }
 
-const VALID_PROVIDERS = ['ghl', 'revolut', 'qonto', 'meta', 'google_ads', 'tiktok', 'stripe'];
+const VALID_PROVIDERS = ['ghl', 'revolut', 'qonto', 'meta', 'google_ads', 'tiktok', 'stripe', 'slack'];
 const VALID_ACTIONS = ['authorize', 'callback', 'disconnect', 'status'];
 
 // --- Supabase token storage ---
@@ -262,6 +271,7 @@ export default async function handler(req, res) {
         google_ads: !!process.env.GOOGLE_ADS_CLIENT_ID,
         tiktok: !!process.env.TIKTOK_APP_ID,
         stripe: !!process.env.STRIPE_CONNECT_CLIENT_ID,
+        slack: !!process.env.SLACK_CLIENT_ID,
       };
       return res.status(200).json({ tokens, configured });
     } catch (e) {
@@ -437,6 +447,18 @@ export default async function handler(req, res) {
         // Google Ads: store developer token if available
         if (provider === 'google_ads') {
           tokenData.developer_token = process.env.GOOGLE_ADS_DEVELOPER_TOKEN || null;
+        }
+
+        // Slack: extract bot token and webhook from response
+        if (provider === 'slack') {
+          tokenData.access_token = tokenData.access_token || tokenData.authed_user?.access_token;
+          tokenData.bot_token = tokenData.access_token;
+          tokenData.team_name = tokenData.team?.name || null;
+          tokenData.team_id = tokenData.team?.id || null;
+          if (tokenData.incoming_webhook) {
+            tokenData.webhook_url = tokenData.incoming_webhook.url;
+            tokenData.webhook_channel = tokenData.incoming_webhook.channel;
+          }
         }
       }
 

@@ -95,8 +95,10 @@ export default async function handler(req, res) {
   }
 }
 
+const TRIAL_DAYS = 14;
+
 async function createCheckout(req, res, profile) {
-  const { planId } = req.body;
+  const { planId, skipTrial } = req.body;
   const priceId = PLAN_PRICES[planId];
   if (!priceId) return res.status(400).json({ error: 'Plan invalide' });
 
@@ -117,14 +119,32 @@ async function createCheckout(req, res, profile) {
     await sb.from('organizations').update({ stripe_customer_id: customerId }).eq('id', profile.org_id);
   }
 
-  const session = await stripe.checkout.sessions.create({
+  // Check if org already had a subscription (no trial for returning customers)
+  const hadSubscription = !!org?.stripe_subscription_id;
+  const enableTrial = !skipTrial && !hadSubscription;
+
+  const sessionParams = {
     customer: customerId,
     mode: 'subscription',
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${APP_URL}?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${APP_URL}?checkout=cancel`,
     metadata: { org_id: profile.org_id },
-  });
+  };
+
+  if (enableTrial) {
+    sessionParams.subscription_data = {
+      trial_period_days: TRIAL_DAYS,
+    };
+  }
+
+  const session = await stripe.checkout.sessions.create(sessionParams);
+
+  // Store trial end date in org if trial is enabled
+  if (enableTrial) {
+    const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    await sb.from('organizations').update({ trial_ends_at: trialEndsAt }).eq('id', profile.org_id);
+  }
 
   return res.status(200).json({ url: session.url, sessionId: session.id });
 }
@@ -214,12 +234,55 @@ async function handleWebhook(req, res, rawBody) {
       const customerId = sub.customer;
 
       const { data: org } = await sb.from('organizations')
-        .select('id').eq('stripe_customer_id', customerId).single();
+        .select('id, plan').eq('stripe_customer_id', customerId).single();
 
       if (org) {
         const priceId = sub.items.data[0]?.price?.id;
-        const plan = Object.entries(PLAN_PRICES).find(([, id]) => id === priceId)?.[0] || 'starter';
-        await sb.from('organizations').update({ plan }).eq('id', org.id);
+        const newPlan = Object.entries(PLAN_PRICES).find(([, id]) => id === priceId)?.[0] || 'starter';
+        const oldPlan = org.plan;
+        await sb.from('organizations').update({ plan: newPlan }).eq('id', org.id);
+
+        // Send plan change email notification if plan actually changed
+        if (oldPlan && oldPlan !== newPlan) {
+          try {
+            // Find org owner to send email
+            const { data: owner } = await sb.from('profiles')
+              .select('email, full_name')
+              .eq('org_id', org.id)
+              .eq('role', 'owner')
+              .single();
+
+            if (owner?.email) {
+              const amount = sub.items.data[0]?.price?.unit_amount
+                ? sub.items.data[0].price.unit_amount / 100
+                : null;
+              await fetch(`${APP_URL}/api/email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  action: 'plan_change',
+                  email: owner.email,
+                  customerName: owner.full_name,
+                  oldPlan,
+                  newPlan,
+                  amount,
+                  nextBillingDate: sub.current_period_end,
+                }),
+              });
+            }
+          } catch (emailErr) {
+            console.error('[billing] Plan change email failed:', emailErr.message);
+          }
+        }
+
+        // Audit log
+        await sb.from('audit_log').insert({
+          org_id: org.id,
+          action: 'subscription_updated',
+          entity_type: 'organization',
+          entity_id: org.id,
+          details: { oldPlan, newPlan, subscription_id: sub.id },
+        });
       }
       break;
     }

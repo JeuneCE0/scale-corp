@@ -53,7 +53,7 @@ function OAuthConnectionsPanel({socs}){
  const[oauthData,setOauthData]=useState(null);const[loading,setLoading]=useState(true);const[connectSoc,setConnectSoc]=useState(null);
  useEffect(()=>{fetchOAuthStatus().then(d=>{setOauthData(d);setLoading(false);}).catch(()=>setLoading(false));},[]);
  const tokenMap=useMemo(()=>{const m={};(oauthData?.tokens||[]).forEach(t=>{m[`${t.provider}_${t.society_id}`]=t;});return m;},[oauthData]);
- const staticApis=[{name:"Slack",status:false,icon:"💬",color:"#4A154B"}];
+ const staticApis=[];
  const handleDisconnect=async(provider,socId)=>{const ok=await oauthDisconnect(provider,socId);if(ok){setOauthData(prev=>({...prev,tokens:(prev?.tokens||[]).filter(t=>t.id!==`${provider}_${socId}`)}));}};
  return <Card style={{padding:16}}>
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>

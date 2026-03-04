@@ -170,6 +170,40 @@ function invoiceTemplate({ customerName, invoiceNumber, amount, currency, date, 
   `);
 }
 
+function planChangeTemplate({ customerName, oldPlan, newPlan, amount, nextBillingDate }) {
+  const planLabels = { starter: 'Starter', professional: 'Professional', enterprise: 'Enterprise' };
+  const displayOld = planLabels[oldPlan] || oldPlan || 'Gratuit';
+  const displayNew = planLabels[newPlan] || newPlan || 'Starter';
+  const formattedAmount = amount
+    ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount)
+    : null;
+  const formattedDate = nextBillingDate
+    ? new Date(nextBillingDate * 1000).toLocaleDateString('fr-FR')
+    : null;
+
+  return baseLayout(`
+    <h2>Changement de plan</h2>
+    <p>Bonjour <span class="highlight">${customerName || 'Client'}</span>,</p>
+    <p>Votre abonnement HubScale a &eacute;t&eacute; mis &agrave; jour avec succ&egrave;s.</p>
+    <div class="info-box">
+      <div class="label">D&eacute;tails du changement</div>
+      <p>
+        <strong>Ancien plan&nbsp;:</strong> ${displayOld}<br />
+        <strong>Nouveau plan&nbsp;:</strong> <span class="highlight">${displayNew}</span>
+        ${formattedAmount ? `<br /><strong>Montant&nbsp;:</strong> ${formattedAmount}/mois` : ''}
+        ${formattedDate ? `<br /><strong>Prochaine facturation&nbsp;:</strong> ${formattedDate}` : ''}
+      </p>
+    </div>
+    <div class="btn-wrap">
+      <a href="${APP_URL}" class="btn">Acc&eacute;der &agrave; mon espace</a>
+    </div>
+    <div class="divider"></div>
+    <p style="font-size:12px; color:#52525b;">
+      Si vous n'avez pas effectu&eacute; ce changement, contactez imm&eacute;diatement notre support.
+    </p>
+  `);
+}
+
 // ---------------------------------------------------------------------------
 // Resend helper
 // ---------------------------------------------------------------------------
@@ -297,6 +331,36 @@ async function handleInvoice(req, res, profile) {
   return res.status(200).json({ ok: true, id: result.id });
 }
 
+async function handlePlanChange(req, res, profile) {
+  const { email, customerName, oldPlan, newPlan, amount, nextBillingDate } = req.body;
+  const to = email || profile.email;
+
+  const result = await sendEmail({
+    to,
+    subject: `Votre plan a été mis à jour — HubScale`,
+    html: planChangeTemplate({
+      customerName: customerName || profile.full_name,
+      oldPlan,
+      newPlan,
+      amount,
+      nextBillingDate,
+    }),
+  });
+
+  // Audit log
+  const sb = getSupabaseAdmin();
+  await sb.from('audit_log').insert({
+    org_id: profile.org_id,
+    user_id: profile.id,
+    action: 'email_plan_change_sent',
+    entity_type: 'subscription',
+    entity_id: profile.org_id,
+    details: { to, oldPlan, newPlan, resend_id: result.id },
+  });
+
+  return res.status(200).json({ ok: true, id: result.id });
+}
+
 // ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
@@ -325,6 +389,8 @@ export default async function handler(req, res) {
       return handleWelcome(req, res, profile);
     } else if (action === 'invoice') {
       return handleInvoice(req, res, profile);
+    } else if (action === 'plan_change') {
+      return handlePlanChange(req, res, profile);
     }
 
     return res.status(400).json({ error: 'Action invalide' });

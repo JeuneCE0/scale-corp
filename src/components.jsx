@@ -172,7 +172,7 @@ export function MeetingMode({socs,reps,hold,actions,pulses,allM,clients=[],onExi
     {rw&&<KPI label="Runway" value={`${rw.months} mois`} accent={rw.months<3?C.r:rw.months<6?C.o:C.g} small/>}
     </div>
     {pw&&<Card style={{marginTop:12,padding:12}} accent={s.color}><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:22}}>{MOODS[pw[1].mood]}</span><div><div style={{fontSize:12,fontWeight:600}}>Pulse: {pw[1].win}</div>{pw[1].blocker&&<div style={{fontSize:11,color:C.r}}>Blocage: {pw[1].blocker}</div>}</div></div></Card>}
-    {/* Milestones disabled */}
+    {(()=>{const sMs=calcMilestones(s,reps,[],[],allM);return sMs.filter(m=>m.unlocked).length>0?<Card style={{marginTop:10,padding:12}} accent={s.color}><div style={{color:C.td,fontSize:9,fontWeight:700,marginBottom:4}}>TROPHÉES</div><MilestonesCompact milestones={sMs} max={6}/></Card>:null;})()}
     {proj&&<Card style={{marginTop:10,padding:12}}><div style={{color:C.td,fontSize:10,fontWeight:700,marginBottom:4}}>PROJECTION T+3</div><div style={{display:"flex",gap:12}}>{proj.map((v,i)=><span key={i} style={{fontSize:12}}>{ml(nextM(i===0?cM2:nextM(i===1?cM2:nextM(cM2))))}: <strong style={{color:C.acc}}>{fmt(v)}€</strong></span>)}</div></Card>}
     {sActs.length>0&&<Sect title="Actions ouvertes">{sActs.map(a=><ActionItem key={a.id} a={a} socs={socs} onToggle={()=>{}} onDelete={()=>{}}/>)}</Sect>}
     </div>;
@@ -1983,7 +1983,14 @@ export function MeetingPrepView({soc,evo,myActions,myJournal,pulses,hs,rw,milest
    </div>)}
    </div>
   </Sect>}
-  {/* Milestones disabled */}
+  {/* Milestones */}
+  {newMilestones.length>0&&<Sect title={`Trophées récents (${milestones.filter(m=>m.unlocked).length} débloqués)`}>
+   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+   {newMilestones.map(m=><div key={m.id} style={{display:"flex",alignItems:"center",gap:5,padding:"5px 10px",background:C.card2,borderRadius:8,border:`1px solid ${C.acc}22`}}>
+    <span style={{fontSize:14}}>{m.icon}</span><span style={{fontSize:9,fontWeight:600,color:C.t}}>{m.label}</span>
+   </div>)}
+   </div>
+  </Sect>}
   {/* Questions à préparer */}
   <Sect title="Questions à poser">
    <div style={{padding:"10px 12px",background:C.card2,borderRadius:8,color:C.td,fontSize:10,lineHeight:1.7}}>
@@ -4141,7 +4148,8 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
  const[goals,setGoals]=useState({});
  /* NEW: Celebration */
  const[celebMs,setCelebMs]=useState(null);
- /* Milestones celebration disabled */
+ const prevMsRef=useRef(null);
+ useEffect(()=>{const unlocked=milestones.filter(m=>m.unlocked);if(prevMsRef.current!==null){const newlyUnlocked=unlocked.filter(m=>!prevMsRef.current.includes(m.id));if(newlyUnlocked.length>0)setCelebMs(newlyUnlocked[newlyUnlocked.length-1]);}prevMsRef.current=unlocked.map(m=>m.id);},[milestones]);
  /* NEW: Computed insights, benchmark, playbooks */
  const insights=useMemo(()=>genInsights(evo,hs,rw,myActions,soc,reps,allM),[evo,hs,rw,myActions]);
  const benchmark=useMemo(()=>calcBenchmark(soc,reps,socs,cM2),[soc,reps,socs,cM2]);

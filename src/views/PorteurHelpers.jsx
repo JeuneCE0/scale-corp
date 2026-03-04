@@ -112,7 +112,14 @@ export function MeetingPrepView({soc,evo,myActions,myJournal,pulses,hs,rw,milest
    </div>)}
    </div>
   </Sect>}
-  {/* Milestones disabled */}
+  {/* Milestones */}
+  {newMilestones.length>0&&<Sect title={`Trophées récents (${milestones.filter(m=>m.unlocked).length} débloqués)`}>
+   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+   {newMilestones.map(m=><div key={m.id} style={{display:"flex",alignItems:"center",gap:5,padding:"5px 10px",background:C.card2,borderRadius:8,border:`1px solid ${C.acc}22`}}>
+    <span style={{fontSize:14}}>{m.icon}</span><span style={{fontSize:9,fontWeight:600,color:C.t}}>{m.label}</span>
+   </div>)}
+   </div>
+  </Sect>}
   {/* Questions à préparer */}
   <Sect title="Questions à poser">
    <div style={{padding:"10px 12px",background:C.card2,borderRadius:8,color:C.td,fontSize:10,lineHeight:1.7}}>

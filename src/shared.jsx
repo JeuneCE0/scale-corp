@@ -419,6 +419,7 @@ export const OAUTH_PROVIDERS=[
  {id:"google_ads",name:"Google Ads",icon:"🔍",color:"#4285F4",desc:"Campagnes Search & Display, conversions"},
  {id:"tiktok",name:"TikTok Ads",icon:"🎵",color:"#010101",desc:"Campagnes TikTok, reach, conversions"},
  {id:"stripe",name:"Stripe",icon:"💳",color:"#635BFF",desc:"Paiements, abonnements, revenus"},
+ {id:"slack",name:"Slack",icon:"💬",color:"#4A154B",desc:"Notifications, alertes, rapports automatiques"},
 ];
 /* --- Ad Platform API Proxies --- */
 export const META_ADS_PROXY="/api/meta-ads";
