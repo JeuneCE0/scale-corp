@@ -4861,6 +4861,216 @@ export function WidgetRenderer({socId,socs,clients}){
 }
 
 /* ═══════════════════════════ PULSE — Live Monitoring Dashboard ═══════════════════════════ */
+
+/* ============ AFFILIATE PORTAL ============ */
+export function AffiliatePortal({socId,clientId,socs,clients}){
+ const soc=socs.find(s=>s.id===socId);
+ const client=(clients||[]).find(c=>c.id===clientId&&c.socId===socId);
+ if(!soc||!client)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#06060b",fontFamily:FONT,color:"#71717a"}}>Portail affilié introuvable</div>;
+
+ const accent=soc.brandColor||soc.color||C.acc;
+ const refCode=useMemo(()=>(client.name||"").replace(/[^a-zA-Z0-9]/g,"").slice(0,8).toUpperCase()+"-"+clientId.slice(-4).toUpperCase(),[client.name,clientId]);
+ const refLink=`${window.location.origin}/#ref/${socId}/${refCode}`;
+ const[copied,setCopied]=useState(false);
+ const[tab,setTab]=useState("overview");
+
+ // Demo affiliate data
+ const affiliateData=useMemo(()=>{
+  const referrals=[
+   {id:1,name:"Marie Dupont",date:"2026-02-15",status:"active",revenue:1200,commission:120},
+   {id:2,name:"Thomas Martin",date:"2026-01-20",status:"active",revenue:800,commission:80},
+   {id:3,name:"Sophie Bernard",date:"2026-01-05",status:"pending",revenue:0,commission:0},
+   {id:4,name:"Lucas Petit",date:"2025-12-12",status:"active",revenue:2400,commission:240},
+   {id:5,name:"Emma Leroy",date:"2025-11-30",status:"inactive",revenue:600,commission:60},
+  ];
+  const totalCommissions=referrals.reduce((a,r)=>a+r.commission,0);
+  const pendingPayout=referrals.filter(r=>r.status==="active").reduce((a,r)=>a+r.commission,0);
+  const totalReferrals=referrals.length;
+  const activeReferrals=referrals.filter(r=>r.status==="active").length;
+  const conversionRate=Math.round(activeReferrals/totalReferrals*100);
+  const monthlyData=[
+   {month:"Oct",referrals:1,commissions:60},
+   {month:"Nov",referrals:1,commissions:60},
+   {month:"Déc",referrals:1,commissions:240},
+   {month:"Jan",referrals:2,commissions:80},
+   {month:"Fév",referrals:1,commissions:120},
+   {month:"Mar",referrals:0,commissions:0},
+  ];
+  const payouts=[
+   {id:1,date:"2026-02-28",amount:200,status:"paid",method:"Virement"},
+   {id:2,date:"2026-01-31",amount:240,status:"paid",method:"Virement"},
+   {id:3,date:"2025-12-31",amount:60,status:"paid",method:"Virement"},
+  ];
+  return{referrals,totalCommissions,pendingPayout,totalReferrals,activeReferrals,conversionRate,monthlyData,payouts};
+ },[]);
+
+ const copyLink=()=>{try{navigator.clipboard.writeText(refLink);setCopied(true);setTimeout(()=>setCopied(false),2000);}catch{}};
+
+ const statusColors={active:{bg:C.gD,c:C.g,l:"Actif",icon:"✅"},pending:{bg:C.oD,c:C.o,l:"En attente",icon:"⏳"},inactive:{bg:C.rD,c:C.r,l:"Inactif",icon:"❌"}};
+
+ const tabs=[{id:"overview",icon:"📊",l:"Aperçu"},{id:"referrals",icon:"👥",l:"Filleuls"},{id:"payouts",icon:"💰",l:"Paiements"}];
+
+ return <div className="glass-bg" style={{minHeight:"100vh",fontFamily:FONT,padding:"24px 16px",display:"flex",justifyContent:"center"}}>
+  <style>{CSS}</style>
+  <div style={{width:"100%",maxWidth:640}}>
+
+   {/* Header */}
+   <div className="glass-card-static fu" style={{padding:24,textAlign:"center",marginBottom:16,position:"relative",overflow:"hidden"}}>
+    <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,${accent},${accent}cc)`}}/>
+    <div style={{width:56,height:56,borderRadius:28,background:accent+"22",border:`2px solid ${accent}44`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:24,fontWeight:900,color:accent,marginBottom:10}}>{(soc.nom||"?")[0]}</div>
+    <div style={{fontSize:18,fontWeight:900,color:C.t}}>{client.name}</div>
+    <div style={{fontSize:11,color:C.td,marginTop:2}}>Programme Affilié · {soc.nom}</div>
+    <div style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:8,padding:"4px 12px",borderRadius:20,background:accent+"18",color:accent,fontSize:10,fontWeight:700}}>🤝 Affilié actif</div>
+   </div>
+
+   {/* Referral Link Card */}
+   <div className="glass-card-static fu d1" style={{padding:18,marginBottom:16}}>
+    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+     <span style={{fontSize:14}}>🔗</span>
+     <span style={{fontWeight:700,fontSize:12,color:C.t}}>Votre lien de parrainage</span>
+    </div>
+    <div style={{display:"flex",gap:8,alignItems:"center"}}>
+     <div style={{flex:1,background:C.bg,border:`1px solid ${C.brd}`,borderRadius:10,padding:"10px 12px",fontSize:11,color:C.td,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{refLink}</div>
+     <button onClick={copyLink} className="ba" style={{border:"none",borderRadius:10,padding:"10px 16px",background:copied?C.gD:`linear-gradient(135deg,${accent},${accent}cc)`,color:copied?C.g:"#0a0a0f",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap",transition:"all .2s ease"}}>{copied?"✅ Copié":"📋 Copier"}</button>
+    </div>
+    <div style={{fontSize:9,color:C.tm,marginTop:6}}>Code affilié : <span style={{fontWeight:700,color:C.td}}>{refCode}</span></div>
+   </div>
+
+   {/* KPI Row */}
+   <div className="fu d2" style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:16}}>
+    {[
+     {icon:"💰",label:"Commissions",value:`${fmt(affiliateData.totalCommissions)}€`,color:C.g},
+     {icon:"👥",label:"Filleuls",value:affiliateData.totalReferrals,color:C.b},
+     {icon:"📈",label:"Conversion",value:`${affiliateData.conversionRate}%`,color:C.v},
+     {icon:"⏳",label:"À percevoir",value:`${fmt(affiliateData.pendingPayout)}€`,color:C.o},
+    ].map((k,i)=><div key={i} className={`glass-card-static fu d${i+2}`} style={{padding:14,textAlign:"center",position:"relative",overflow:"hidden"}}>
+     <div style={{fontSize:16,marginBottom:4}}>{k.icon}</div>
+     <div style={{fontSize:22,fontWeight:900,color:k.color,lineHeight:1.1}}>{k.value}</div>
+     <div style={{fontSize:9,color:C.td,marginTop:4,fontWeight:600,letterSpacing:.5,textTransform:"uppercase"}}>{k.label}</div>
+     <div style={{position:"absolute",bottom:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${k.color}44,transparent)`}}/>
+    </div>)}
+   </div>
+
+   {/* Tab Navigation */}
+   <div className="fu d3" style={{display:"flex",gap:4,marginBottom:16,background:C.card,borderRadius:12,padding:4,border:`1px solid ${C.brd}`}}>
+    {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} className="ba" style={{flex:1,padding:"8px 0",borderRadius:9,border:"none",background:tab===t.id?`linear-gradient(135deg,${accent}22,${accent}11)`:C.card,color:tab===t.id?accent:C.td,fontSize:10,fontWeight:tab===t.id?700:500,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",justifyContent:"center",gap:4,transition:"all .2s ease"}}>{t.icon} {t.l}</button>)}
+   </div>
+
+   {/* Tab Content */}
+   {tab==="overview"&&<div className="fu">
+    {/* Commission Chart */}
+    <div className="glass-card-static" style={{padding:18,marginBottom:16}}>
+     <div style={{fontWeight:700,fontSize:12,color:C.t,marginBottom:12}}>📊 Évolution des commissions</div>
+     <ResponsiveContainer width="100%" height={180}>
+      <AreaChart data={affiliateData.monthlyData}>
+       <defs><linearGradient id="affGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={accent} stopOpacity={0.3}/><stop offset="100%" stopColor={accent} stopOpacity={0}/></linearGradient></defs>
+       <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false}/>
+       <XAxis dataKey="month" tick={{fill:C.td,fontSize:10}} axisLine={false} tickLine={false}/>
+       <YAxis tick={{fill:C.td,fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}€`}/>
+       <Tooltip content={<CTip/>}/>
+       <Area type="monotone" dataKey="commissions" name="Commissions" stroke={accent} fill="url(#affGrad)" strokeWidth={2}/>
+      </AreaChart>
+     </ResponsiveContainer>
+    </div>
+
+    {/* Recent Referrals */}
+    <div className="glass-card-static" style={{padding:18}}>
+     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+      <span style={{fontWeight:700,fontSize:12,color:C.t}}>👥 Derniers filleuls</span>
+      <button onClick={()=>setTab("referrals")} style={{background:"none",border:"none",color:accent,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>Voir tout →</button>
+     </div>
+     {affiliateData.referrals.slice(0,3).map(r=>{const st=statusColors[r.status];return <div key={r.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:`1px solid ${C.brd}08`}}>
+      <div style={{width:32,height:32,borderRadius:16,background:accent+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:accent}}>{r.name[0]}</div>
+      <div style={{flex:1}}>
+       <div style={{fontSize:12,fontWeight:700,color:C.t}}>{r.name}</div>
+       <div style={{fontSize:9,color:C.td}}>{new Date(r.date).toLocaleDateString("fr-FR")}</div>
+      </div>
+      <div style={{textAlign:"right"}}>
+       <span style={{padding:"2px 8px",borderRadius:12,background:st.bg,color:st.c,fontSize:9,fontWeight:600}}>{st.icon} {st.l}</span>
+       {r.commission>0&&<div style={{fontSize:10,fontWeight:700,color:C.g,marginTop:2}}>+{fmt(r.commission)}€</div>}
+      </div>
+     </div>;})}
+    </div>
+   </div>}
+
+   {tab==="referrals"&&<div className="fu">
+    <div className="glass-card-static" style={{padding:18}}>
+     <div style={{fontWeight:700,fontSize:12,color:C.t,marginBottom:12}}>👥 Tous vos filleuls</div>
+     <div style={{overflowX:"auto"}}>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+       <thead><tr style={{borderBottom:`1px solid ${C.brd}`}}>
+        {["Nom","Date","Statut","Revenu","Commission"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:C.td,fontWeight:600,fontSize:9,textTransform:"uppercase",letterSpacing:.5}}>{h}</th>)}
+       </tr></thead>
+       <tbody>{affiliateData.referrals.map(r=>{const st=statusColors[r.status];return <tr key={r.id} className="leaderboard-row" style={{borderBottom:`1px solid ${C.brd}08`}}>
+        <td style={{padding:"8px",color:C.t,fontWeight:600}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:24,height:24,borderRadius:12,background:accent+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:accent}}>{r.name[0]}</div>{r.name}</div></td>
+        <td style={{padding:"8px",color:C.td}}>{new Date(r.date).toLocaleDateString("fr-FR")}</td>
+        <td style={{padding:"8px"}}><span style={{padding:"2px 8px",borderRadius:12,background:st.bg,color:st.c,fontSize:9,fontWeight:600}}>{st.l}</span></td>
+        <td style={{padding:"8px",color:C.t,fontWeight:600}}>{r.revenue>0?`${fmt(r.revenue)}€`:"—"}</td>
+        <td style={{padding:"8px",color:C.g,fontWeight:700}}>{r.commission>0?`+${fmt(r.commission)}€`:"—"}</td>
+       </tr>;})}</tbody>
+      </table>
+     </div>
+    </div>
+
+    {/* Referral Stats */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:16}}>
+     <div className="glass-card-static" style={{padding:14,textAlign:"center"}}>
+      <div style={{fontSize:9,color:C.td,fontWeight:600,textTransform:"uppercase",marginBottom:4}}>Taux de commission</div>
+      <div style={{fontSize:20,fontWeight:900,color:accent}}>10%</div>
+      <div style={{fontSize:9,color:C.tm}}>sur le CA généré</div>
+     </div>
+     <div className="glass-card-static" style={{padding:14,textAlign:"center"}}>
+      <div style={{fontSize:9,color:C.td,fontWeight:600,textTransform:"uppercase",marginBottom:4}}>Durée attribution</div>
+      <div style={{fontSize:20,fontWeight:900,color:C.b}}>12 mois</div>
+      <div style={{fontSize:9,color:C.tm}}>par filleul</div>
+     </div>
+    </div>
+   </div>}
+
+   {tab==="payouts"&&<div className="fu">
+    {/* Pending Payout Banner */}
+    <div className="glass-card-static" style={{padding:18,marginBottom:16,background:`linear-gradient(135deg,${C.oD},transparent)`,borderLeft:`3px solid ${C.o}`}}>
+     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div>
+       <div style={{fontSize:11,fontWeight:700,color:C.t}}>💰 Prochain versement</div>
+       <div style={{fontSize:9,color:C.td,marginTop:2}}>Estimé le 31 mars 2026</div>
+      </div>
+      <div style={{fontSize:22,fontWeight:900,color:C.o}}>{fmt(affiliateData.pendingPayout)}€</div>
+     </div>
+    </div>
+
+    {/* Payout History */}
+    <div className="glass-card-static" style={{padding:18}}>
+     <div style={{fontWeight:700,fontSize:12,color:C.t,marginBottom:12}}>📋 Historique des paiements</div>
+     {affiliateData.payouts.map(p=><div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.brd}08`}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+       <div style={{width:32,height:32,borderRadius:10,background:C.gD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>✅</div>
+       <div>
+        <div style={{fontSize:12,fontWeight:700,color:C.t}}>{fmt(p.amount)}€</div>
+        <div style={{fontSize:9,color:C.td}}>{new Date(p.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</div>
+       </div>
+      </div>
+      <div style={{textAlign:"right"}}>
+       <span style={{padding:"2px 8px",borderRadius:12,background:C.gD,color:C.g,fontSize:9,fontWeight:600}}>Payé</span>
+       <div style={{fontSize:9,color:C.td,marginTop:2}}>{p.method}</div>
+      </div>
+     </div>)}
+    </div>
+
+    {/* Total Earned */}
+    <div className="glass-card-static" style={{padding:18,marginTop:16,textAlign:"center"}}>
+     <div style={{fontSize:9,color:C.td,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>Total perçu à ce jour</div>
+     <div style={{fontSize:28,fontWeight:900,color:C.g,marginTop:4}}>{fmt(affiliateData.payouts.reduce((a,p)=>a+p.amount,0))}€</div>
+     <div style={{fontSize:9,color:C.tm,marginTop:2}}>{affiliateData.payouts.length} versement{affiliateData.payouts.length>1?"s":""} effectué{affiliateData.payouts.length>1?"s":""}</div>
+    </div>
+   </div>}
+
+   {/* Footer */}
+   <div style={{textAlign:"center",marginTop:24,fontSize:10,color:C.tm}}>Propulsé par {soc.nom}</div>
+  </div>
+ </div>;
+}
+
 /* ============ CLIENT PORTAL ============ */
 export function ClientPortal({socId,clientId,socs,clients,ghlData}){
  const soc=socs.find(s=>s.id===socId);

@@ -24,7 +24,7 @@ import {
 
 /* UI COMPONENTS */
 import {
-  ActionItem, AdminClientsTab, Badge, BenchmarkRadar, Btn, CTip, Card, ClientPortal,
+  ActionItem, AdminClientsTab, AffiliatePortal, Badge, BenchmarkRadar, Btn, CTip, Card, ClientPortal,
   CohortAnalysis, DealFlow, GradeBadge, InboxUnifiee, Inp, InvestorBoard, KPI, KnowledgeBase, LeaderboardCard, MeetingMode,
   MilestonesCompact, Modal, PBar, PulseOverview, RiskMatrix, Sect, Sel, Sidebar, SmartAlertsPanel,
   SocieteView, SubsTeamBadge, SubsTeamPanel, SynergiesAutoPanel, SynergiesPanel, Toggle, TutorialOverlay, ValRow,
@@ -512,6 +512,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  if(hash.startsWith("#widget/")){const wSocId=hash.replace("#widget/","");return <><style>{CSS}{POLISH_CSS}</style><WidgetRenderer socId={wSocId} socs={socs} clients={clients}/></>;}
  if(hash==="#pulse")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>{window.location.hash="";window.location.reload();}}/></Suspense></>;
  if(hash.startsWith("#portal/")){const parts=hash.replace("#portal/","").split("/");return <><style>{CSS}{POLISH_CSS}</style><ClientPortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients} ghlData={ghlData}/></>;}
+ if(hash.startsWith("#affiliate/")){const parts=hash.replace("#affiliate/","").split("/");return <><style>{CSS}{POLISH_CSS}</style><AffiliatePortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients}/></>;}
  if(hash.startsWith("#board/")){const bPin=hash.replace("#board/","");return <><style>{CSS}{POLISH_CSS}</style><InvestorBoard socs={socs} reps={reps} allM={allM} hold={hold} pin={bPin}/></>;}
 
  /* Onboarding removed */;
