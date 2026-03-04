@@ -64,6 +64,10 @@ vi.mock('recharts', () => {
 import Dashboard from '../src/pages/Dashboard.jsx';
 import CRM from '../src/pages/CRM.jsx';
 import Data from '../src/pages/Data.jsx';
+import Documents from '../src/pages/Documents.jsx';
+import Tasks from '../src/pages/Tasks.jsx';
+import HelpCenter from '../src/pages/HelpCenter.jsx';
+import Reports from '../src/pages/Reports.jsx';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -197,5 +201,137 @@ describe('Data page', () => {
     seedTestData();
     const { container } = renderPage(Data);
     expect(container.querySelector('div')).toBeTruthy();
+  });
+});
+
+// =========================================================================
+//  Documents Page Tests
+// =========================================================================
+describe('Documents page', () => {
+  beforeEach(() => { clearTestData(); });
+
+  it('renders without crashing when no documents', () => {
+    const { container } = renderPage(Documents);
+    expect(container).toBeTruthy();
+  });
+
+  it('shows empty state when no documents', () => {
+    renderPage(Documents);
+    expect(screen.getByText(/Aucun document/)).toBeTruthy();
+  });
+
+  it('displays document stats', () => {
+    mockStoreData.documents = [
+      { id: 'd1', type: 'invoice', status: 'paid', number: 'F-202603-001', clientName: 'Alice', items: [{ id: 'i1', description: 'Service', qty: 1, unitPrice: 1000, tva: 20 }], createdAt: '2026-03-01' },
+      { id: 'd2', type: 'quote', status: 'sent', number: 'D-202603-001', clientName: 'Bob', items: [{ id: 'i2', description: 'Conseil', qty: 2, unitPrice: 500, tva: 20 }], createdAt: '2026-03-02', dueDate: '2026-04-01' },
+    ];
+    const { container } = renderPage(Documents);
+    expect(container.textContent).toMatch(/Documents/);
+    expect(container.textContent).toMatch(/Payés/);
+  });
+
+  it('renders filter tabs', () => {
+    renderPage(Documents);
+    expect(screen.getByText('Tous')).toBeTruthy();
+    expect(screen.getByText('Factures')).toBeTruthy();
+    expect(screen.getByText('Devis')).toBeTruthy();
+  });
+});
+
+// =========================================================================
+//  Tasks Page Tests
+// =========================================================================
+describe('Tasks page', () => {
+  beforeEach(() => { clearTestData(); });
+
+  it('renders without crashing when no tasks', () => {
+    const { container } = renderPage(Tasks);
+    expect(container).toBeTruthy();
+  });
+
+  it('shows kanban columns', () => {
+    renderPage(Tasks);
+    expect(screen.getByText('Backlog')).toBeTruthy();
+    expect(screen.getByText('À faire')).toBeTruthy();
+    expect(screen.getAllByText('En cours').length).toBeGreaterThan(0);
+    expect(screen.getByText('En revue')).toBeTruthy();
+    expect(screen.getByText('Terminé')).toBeTruthy();
+  });
+
+  it('displays task stats', () => {
+    mockStoreData.tasks = [
+      { id: 't1', title: 'Tâche 1', status: 'todo', priority: 'high', subtasks: [], createdAt: '2026-03-01' },
+      { id: 't2', title: 'Tâche 2', status: 'done', priority: 'medium', subtasks: [], createdAt: '2026-03-01', completedAt: '2026-03-02' },
+    ];
+    const { container } = renderPage(Tasks);
+    expect(container.textContent).toMatch(/Total/);
+    expect(container.textContent).toMatch(/Terminées/);
+  });
+
+  it('renders view tabs', () => {
+    renderPage(Tasks);
+    expect(screen.getByText('Kanban')).toBeTruthy();
+    expect(screen.getByText('Liste')).toBeTruthy();
+    expect(screen.getByText('Calendrier')).toBeTruthy();
+  });
+});
+
+// =========================================================================
+//  HelpCenter Page Tests
+// =========================================================================
+describe('HelpCenter page', () => {
+  beforeEach(() => { clearTestData(); });
+
+  it('renders without crashing', () => {
+    const { container } = renderPage(HelpCenter);
+    expect(container).toBeTruthy();
+  });
+
+  it('shows help center title', () => {
+    renderPage(HelpCenter);
+    expect(screen.getByText("Centre d'aide")).toBeTruthy();
+  });
+
+  it('renders navigation tabs', () => {
+    renderPage(HelpCenter);
+    expect(screen.getByText('FAQ')).toBeTruthy();
+    expect(screen.getByText('Tickets')).toBeTruthy();
+    expect(screen.getByText('Base de connaissances')).toBeTruthy();
+  });
+
+  it('shows FAQ questions', () => {
+    renderPage(HelpCenter);
+    expect(screen.getByText(/Comment connecter mon compte Stripe/)).toBeTruthy();
+  });
+});
+
+// =========================================================================
+//  Reports Page Tests
+// =========================================================================
+describe('Reports page', () => {
+  beforeEach(() => { clearTestData(); });
+
+  it('renders without crashing when no data', () => {
+    const { container } = renderPage(Reports);
+    expect(container).toBeTruthy();
+  });
+
+  it('shows report type buttons', () => {
+    renderPage(Reports);
+    expect(screen.getByText(/Rapport financier/)).toBeTruthy();
+    expect(screen.getByText(/Rapport CRM/)).toBeTruthy();
+    expect(screen.getByText(/Performance globale/)).toBeTruthy();
+  });
+
+  it('renders financial KPIs with data', () => {
+    seedTestData();
+    const { container } = renderPage(Reports);
+    expect(container.textContent).toMatch(/CA total/);
+    expect(container.textContent).toMatch(/Marge nette/);
+  });
+
+  it('shows export button', () => {
+    renderPage(Reports);
+    expect(screen.getByText(/Exporter PDF/)).toBeTruthy();
   });
 });

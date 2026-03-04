@@ -550,6 +550,62 @@ export default function CRM() {
     setTimeout(() => setUndoMsg(''), 3000);
   }, [selected, undo]);
 
+  // ---- Email templates ----
+  const [showEmailTemplate, setShowEmailTemplate] = useState(false);
+  const [emailTemplates] = useState(() => [
+    { id: 'relance', name: 'Relance prospect', subject: 'Suivi de notre échange — {{company}}', body: 'Bonjour {{name}},\n\nJe me permets de revenir vers vous suite à notre dernier échange.\n\nJe serais ravi(e) de convenir d\'un créneau pour avancer ensemble.\n\nBien cordialement,\n{{sender}}' },
+    { id: 'bienvenue', name: 'Bienvenue client', subject: 'Bienvenue chez {{company}} !', body: 'Bonjour {{name}},\n\nNous sommes ravis de vous compter parmi nos clients !\n\nVotre espace est prêt et notre équipe est à votre disposition pour vous accompagner.\n\nBien cordialement,\n{{sender}}' },
+    { id: 'facture', name: 'Envoi de facture', subject: 'Facture {{invoiceNum}} — {{company}}', body: 'Bonjour {{name}},\n\nVeuillez trouver ci-joint la facture correspondant à nos prestations.\n\nMontant : {{amount}}€ TTC\nÉchéance : {{dueDate}}\n\nN\'hésitez pas à revenir vers nous pour toute question.\n\nCordialement,\n{{sender}}' },
+    { id: 'proposition', name: 'Proposition commerciale', subject: 'Proposition commerciale — {{company}}', body: 'Bonjour {{name}},\n\nSuite à notre échange, je vous transmets notre proposition commerciale adaptée à vos besoins.\n\nJe reste disponible pour en discuter et répondre à vos questions.\n\nBien cordialement,\n{{sender}}' },
+    { id: 'suivi', name: 'Suivi post-vente', subject: 'Comment se passe votre expérience ?', body: 'Bonjour {{name}},\n\nCela fait maintenant quelques semaines que nous travaillons ensemble et je souhaitais prendre de vos nouvelles.\n\nComment se passe votre expérience ? Avez-vous des retours ou suggestions ?\n\nBien cordialement,\n{{sender}}' },
+  ]);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [emailPreview, setEmailPreview] = useState({ subject: '', body: '' });
+
+  const applyTemplate = useCallback((template, contact) => {
+    const org = load('organization') || {};
+    const vars = {
+      '{{name}}': contact?.name || 'Client',
+      '{{company}}': org.name || 'Notre société',
+      '{{email}}': contact?.email || '',
+      '{{sender}}': org.name || 'L\'équipe',
+      '{{invoiceNum}}': '',
+      '{{amount}}': '',
+      '{{dueDate}}': '',
+    };
+    let subject = template.subject;
+    let body = template.body;
+    Object.entries(vars).forEach(([k, v]) => { subject = subject.replaceAll(k, v); body = body.replaceAll(k, v); });
+    return { subject, body };
+  }, []);
+
+  const bulkEmail = useCallback((template) => {
+    const selectedContacts = contacts.filter(c => selected.has(c.id) && c.email);
+    if (selectedContacts.length === 0) return;
+    const firstContact = selectedContacts[0];
+    const { subject, body } = applyTemplate(template, firstContact);
+    const bcc = selectedContacts.slice(1).map(c => c.email).join(',');
+    const mailtoUrl = `mailto:${firstContact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}${bcc ? '&bcc=' + encodeURIComponent(bcc) : ''}`;
+    window.open(mailtoUrl, '_blank');
+    setShowEmailTemplate(false);
+  }, [contacts, selected, applyTemplate]);
+
+  const bulkExportCSV = useCallback(() => {
+    const selectedContacts = contacts.filter(c => selected.has(c.id));
+    if (selectedContacts.length === 0) return;
+    const headers = ['Nom', 'Email', 'Téléphone', 'Société', 'Statut', 'Score', 'Notes', 'Créé le'];
+    const rows = selectedContacts.map(c => [
+      c.name || '', c.email || '', c.phone || '', c.company || '', c.status || '',
+      String(leadScore(c)), c.notes || '', c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR') : '',
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `contacts-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  }, [contacts, selected]);
+
   // ---- Currently edited contact ----
   const editContact = editId ? contacts.find((c) => c.id === editId) : null;
   const editComments = editContact?.commentaires || [];
@@ -1153,8 +1209,58 @@ export default function CRM() {
           </div>
           <div style={{ width: 1, height: 20, background: T.border }} />
           <Btn v="danger" small onClick={bulkDelete}>Supprimer ({selected.size})</Btn>
+          <div style={{ width: 1, height: 20, background: T.border }} />
+          <Btn v="secondary" small onClick={() => setShowEmailTemplate(true)}>📧 Email</Btn>
+          <Btn v="ghost" small onClick={bulkExportCSV}>📥 Export CSV</Btn>
           <Btn v="ghost" small onClick={() => setSelected(new Set())}>{'✕'}</Btn>
         </div>
+      )}
+
+      {/* ---- EMAIL TEMPLATE MODAL ---- */}
+      {showEmailTemplate && (
+        <Modal open onClose={() => setShowEmailTemplate(false)} title={`Envoyer un email (${selected.size} contact${selected.size > 1 ? 's' : ''})`} wide>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ fontSize: 12, color: T.textSecondary, marginBottom: 4 }}>
+              {contacts.filter(c => selected.has(c.id) && c.email).length} contact(s) avec email
+              {contacts.filter(c => selected.has(c.id) && !c.email).length > 0 &&
+                <span style={{ color: T.orange }}> — {contacts.filter(c => selected.has(c.id) && !c.email).length} sans email (ignoré{contacts.filter(c => selected.has(c.id) && !c.email).length > 1 ? 's' : ''})</span>}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>Choisir un template</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {emailTemplates.map(tpl => (
+                <div key={tpl.id} className={`pressable ${selectedTemplate?.id === tpl.id ? '' : ''}`}
+                  onClick={() => {
+                    setSelectedTemplate(tpl);
+                    const firstContact = contacts.find(c => selected.has(c.id));
+                    setEmailPreview(applyTemplate(tpl, firstContact));
+                  }}
+                  style={{
+                    padding: '12px 16px', borderRadius: 10, cursor: 'pointer',
+                    background: selectedTemplate?.id === tpl.id ? T.accentBg : T.surface2,
+                    border: `1px solid ${selectedTemplate?.id === tpl.id ? T.accent + '44' : T.border}`,
+                  }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{tpl.name}</div>
+                  <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>Objet : {tpl.subject}</div>
+                </div>
+              ))}
+            </div>
+
+            {selectedTemplate && (
+              <div style={{ padding: 16, background: T.surface2, borderRadius: 10, border: `1px solid ${T.border}` }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8 }}>Aperçu</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: T.text, marginBottom: 8 }}>Objet : {emailPreview.subject}</div>
+                <div style={{ fontSize: 12, color: T.textSecondary, whiteSpace: 'pre-line', lineHeight: 1.6 }}>{emailPreview.body}</div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Btn v="ghost" small onClick={() => setShowEmailTemplate(false)}>Annuler</Btn>
+              <Btn small disabled={!selectedTemplate} onClick={() => selectedTemplate && bulkEmail(selectedTemplate)}>
+                Ouvrir dans messagerie
+              </Btn>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* ---- CONTACT MODAL ---- */}

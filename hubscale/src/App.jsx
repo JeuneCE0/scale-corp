@@ -25,17 +25,25 @@ const Onboarding = lazy(() => import('./pages/Onboarding.jsx'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
 const Legal = lazy(() => import('./pages/Legal.jsx'));
 const Admin = lazy(() => import('./pages/Admin.jsx'));
+const Documents = lazy(() => import('./pages/Documents.jsx'));
+const Tasks = lazy(() => import('./pages/Tasks.jsx'));
+const HelpCenter = lazy(() => import('./pages/HelpCenter.jsx'));
+const Reports = lazy(() => import('./pages/Reports.jsx'));
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: '📊', color: '#f97316' },
   { id: 'crm', label: 'CRM', icon: '👥', color: '#3b82f6' },
   { id: 'data', label: 'Data', icon: '💰', color: '#22c55e' },
+  { id: 'documents', label: 'Documents', icon: '🧾', color: '#06b6d4' },
+  { id: 'tasks', label: 'Tâches', icon: '📋', color: '#eab308' },
   { id: 'agenda', label: 'Agenda', icon: '📅', color: '#a855f7' },
   { id: 'analytics', label: 'Analytics', icon: '📈', color: '#6366f1' },
+  { id: 'reports', label: 'Rapports', icon: '📑', color: '#f43f5e' },
+  { id: 'help', label: 'Aide', icon: '💡', color: '#14b8a6' },
   { id: 'settings', label: 'Paramètres', icon: '⚙️', color: '#71717a' },
 ];
 
-const TAB_LABELS = { overview: 'Dashboard', crm: 'CRM', data: 'Data', agenda: 'Agenda', analytics: 'Analytics', settings: 'Paramètres' };
+const TAB_LABELS = { overview: 'Dashboard', crm: 'CRM', data: 'Data', documents: 'Documents', tasks: 'Tâches', agenda: 'Agenda', analytics: 'Analytics', reports: 'Rapports', help: 'Aide', settings: 'Paramètres' };
 
 // --- Session Greeting ---
 function getGreeting() {
@@ -559,9 +567,17 @@ function GlobalSearch({ open, onClose, onNavigate }) {
     const invoicesSearch = load('invoices') || [];
     invoicesSearch.filter((inv) => (inv.number || '').toLowerCase().includes(q) || (inv.contactName || '').toLowerCase().includes(q))
       .slice(0, 3).forEach((inv) => items.push({ type: 'facture', label: inv.number, sub: `${inv.contactName || ''} — ${inv.totalTTC || 0}€`, tab: 'data', icon: '📋' }));
+    const documentsSearch = load('documents') || [];
+    documentsSearch.filter((d) => (d.number || '').toLowerCase().includes(q) || (d.clientName || '').toLowerCase().includes(q))
+      .slice(0, 3).forEach((d) => items.push({ type: 'document', label: d.number || 'Document', sub: `${d.clientName || ''} — ${d.type || ''}`, tab: 'documents', icon: '🧾' }));
+    const tasksSearch = load('tasks') || [];
+    tasksSearch.filter((t) => (t.title || '').toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q))
+      .slice(0, 3).forEach((t) => items.push({ type: 'task', label: t.title || 'Tâche', sub: t.status || '', tab: 'tasks', icon: '📋' }));
     [{ label: 'Dashboard', tab: 'overview', icon: '📊' }, { label: 'CRM', tab: 'crm', icon: '👥' },
-     { label: 'Data', tab: 'data', icon: '💰' }, { label: 'Agenda', tab: 'agenda', icon: '📅' },
-     { label: 'Analytics', tab: 'analytics', icon: '📈' }, { label: 'Paramètres', tab: 'settings', icon: '⚙️' }]
+     { label: 'Data', tab: 'data', icon: '💰' }, { label: 'Documents', tab: 'documents', icon: '🧾' },
+     { label: 'Tâches', tab: 'tasks', icon: '📋' }, { label: 'Agenda', tab: 'agenda', icon: '📅' },
+     { label: 'Analytics', tab: 'analytics', icon: '📈' }, { label: 'Rapports', tab: 'reports', icon: '📑' },
+     { label: 'Aide', tab: 'help', icon: '💡' }, { label: 'Paramètres', tab: 'settings', icon: '⚙️' }]
       .filter((p) => p.label.toLowerCase().includes(q))
       .forEach((p) => items.push({ type: 'page', label: p.label, sub: 'Naviguer', tab: p.tab, icon: p.icon }));
     return items;
@@ -1205,8 +1221,12 @@ export default function App() {
               {tab === 'overview' && <Dashboard onNavigate={navigate} greeting={greeting} />}
               {tab === 'crm' && <CRM />}
               {tab === 'data' && <Data />}
+              {tab === 'documents' && <Documents />}
+              {tab === 'tasks' && <Tasks />}
               {tab === 'agenda' && <Agenda />}
               {tab === 'analytics' && <Analytics onNavigate={navigate} />}
+              {tab === 'reports' && <Reports />}
+              {tab === 'help' && <HelpCenter />}
               {tab === 'settings' && <Settings />}
             </div>
           </Suspense>
