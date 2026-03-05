@@ -1214,7 +1214,7 @@ export default function App() {
         </div>
       )}
 
-      <main id="main-content" ref={mainRef} className="page-pad" style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px 40px' }}>
+      <main id="main-content" ref={mainRef} className="page-pad" style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px 60px' }}>
         <ErrorBoundary fallbackTitle={`Erreur dans ${TAB_LABELS[tab] || 'la page'}`}>
           <Suspense fallback={<LoadingFallback page={TAB_LABELS[tab]} />}>
             <div key={pageKey} className="page-transition" style={transitionStyle}>

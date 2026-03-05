@@ -3,7 +3,8 @@ import { T, FONT } from './theme.js';
 
 export const GLOBAL_CSS = `
 *{box-sizing:border-box;margin:0;padding:0}
-body{margin:0;overflow-x:hidden;font-family:${FONT};background:${T.bg};color:${T.text};background-image:radial-gradient(ellipse at 15% -5%,rgba(249,115,22,.07) 0%,transparent 50%),radial-gradient(ellipse at 85% -5%,rgba(99,102,241,.05) 0%,transparent 50%)}
+html{overflow-x:clip}
+body{margin:0;font-family:${FONT};background:${T.bg};color:${T.text};background-image:radial-gradient(ellipse at 15% -5%,rgba(249,115,22,.07) 0%,transparent 50%),radial-gradient(ellipse at 85% -5%,rgba(99,102,241,.05) 0%,transparent 50%)}
 
 /* Animations */
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -145,7 +146,7 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover{opacity:1}
   .grid-desktop-15-1{grid-template-columns:1fr !important}
   .nav-tabs-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   .nav-tabs-scroll::-webkit-scrollbar{display:none}
-  .page-pad{padding:12px 14px 30px !important}
+  .page-pad{padding:12px 14px 60px !important}
   .modal-inner{width:100% !important;max-width:100% !important;margin:8px !important;max-height:calc(100vh - 16px) !important}
   .notif-panel{width:calc(100vw - 32px);right:-8px}
   .cal-cell{min-height:50px}

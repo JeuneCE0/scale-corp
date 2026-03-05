@@ -1,7 +1,7 @@
 // HubScale — Internationalization (i18n)
 
 const FR = {
-  'nav.overview': 'Overview', 'nav.crm': 'CRM', 'nav.data': 'Data', 'nav.agenda': 'Agenda', 'nav.analytics': 'Analytics', 'nav.settings': 'Paramètres',
+  'nav.overview': 'Overview', 'nav.crm': 'CRM', 'nav.data': 'Data', 'nav.documents': 'Facturation', 'nav.tasks': 'Tâches', 'nav.agenda': 'Agenda', 'nav.analytics': 'Analytics', 'nav.reports': 'Rapports', 'nav.help': 'Support', 'nav.settings': 'Paramètres',
   'dash.welcome': 'Bienvenue sur votre Dashboard',
   'dash.subtitle': "Vue d'ensemble de votre activité et performances",
   'crm.title': 'CRM', 'crm.subtitle': 'Gestion des contacts et pipeline commercial',
@@ -21,7 +21,7 @@ const FR = {
 };
 
 const EN = {
-  'nav.overview': 'Overview', 'nav.crm': 'CRM', 'nav.data': 'Data', 'nav.agenda': 'Agenda', 'nav.analytics': 'Analytics', 'nav.settings': 'Settings',
+  'nav.overview': 'Overview', 'nav.crm': 'CRM', 'nav.data': 'Data', 'nav.documents': 'Billing', 'nav.tasks': 'Tasks', 'nav.agenda': 'Agenda', 'nav.analytics': 'Analytics', 'nav.reports': 'Reports', 'nav.help': 'Support', 'nav.settings': 'Settings',
   'dash.welcome': 'Welcome to your Dashboard',
   'dash.subtitle': 'Overview of your activity and performance',
   'crm.title': 'CRM', 'crm.subtitle': 'Contact management and sales pipeline',
