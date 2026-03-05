@@ -210,7 +210,7 @@ ${org.iban ? 'IBAN: ' + org.iban + (org.bic ? ' — BIC: ' + org.bic : '') : 'Co
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
       {/* Header Stats */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {[
@@ -220,7 +220,7 @@ ${org.iban ? 'IBAN: ' + org.iban + (org.bic ? ' — BIC: ' + org.bic : '') : 'Co
           { label: 'CA encaissé', value: fmt(stats.totalRevenue) + '€', icon: '💰', color: T.green },
           { label: 'En attente', value: fmt(stats.pendingAmount) + '€', icon: '⏳', color: T.orange },
         ].map((s, i) => (
-          <div key={i} className="glass-static fade-up" style={{ flex: '1 1 140px', padding: '14px 16px', minWidth: 120 }}>
+          <div key={i} className="glass-static fade-up" style={{ flex: '1 1 140px', padding: '14px 16px', minWidth: 0 }}>
             <div style={{ fontSize: 10, color: T.textSecondary, fontWeight: 600, letterSpacing: .5, textTransform: 'uppercase', marginBottom: 4 }}>
               <span style={{ marginRight: 4 }}>{s.icon}</span>{s.label}
             </div>
@@ -366,9 +366,9 @@ function DocumentEditor({ doc, onSave, onClose, onDelete, onDuplicate, onMarkPai
         {/* Line items */}
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: .5 }}>Lignes</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowX: 'auto' }}>
             {form.items.map((item, idx) => (
-              <div key={item.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-end', padding: '8px 10px', background: T.surface2, borderRadius: 8 }}>
+              <div key={item.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-end', padding: '8px 10px', background: T.surface2, borderRadius: 8, minWidth: 520 }}>
                 <div style={{ flex: '3 1 200px' }}><Inp small label={idx === 0 ? 'Description' : ''} value={item.description} onChange={(v) => updateItem(item.id, 'description', v)} placeholder="Description..." /></div>
                 <div style={{ flex: '0 0 70px' }}><Inp small label={idx === 0 ? 'Qté' : ''} type="number" value={item.qty} onChange={(v) => updateItem(item.id, 'qty', parseFloat(v) || 0)} /></div>
                 <div style={{ flex: '0 0 100px' }}><Inp small label={idx === 0 ? 'PU HT' : ''} type="number" value={item.unitPrice} onChange={(v) => updateItem(item.id, 'unitPrice', parseFloat(v) || 0)} suffix="€" /></div>

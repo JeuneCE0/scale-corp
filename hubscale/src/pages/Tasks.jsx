@@ -140,7 +140,7 @@ export default function Tasks() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
       {/* Stats */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {[
@@ -150,7 +150,7 @@ export default function Tasks() {
           { label: 'En retard', value: stats.overdue, icon: '⚠️', color: T.red },
           { label: 'Complétion', value: stats.completion + '%', icon: '📊', color: T.accent },
         ].map((s, i) => (
-          <div key={i} className="glass-static fade-up" style={{ flex: '1 1 130px', padding: '14px 16px', minWidth: 110 }}>
+          <div key={i} className="glass-static fade-up" style={{ flex: '1 1 130px', padding: '14px 16px', minWidth: 0 }}>
             <div style={{ fontSize: 10, color: T.textSecondary, fontWeight: 600, letterSpacing: .5, textTransform: 'uppercase', marginBottom: 4 }}>
               <span style={{ marginRight: 4 }}>{s.icon}</span>{s.label}
             </div>
