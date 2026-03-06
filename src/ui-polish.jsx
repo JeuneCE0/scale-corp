@@ -278,7 +278,8 @@ const TAB_NAMES_ADMIN = {
 };
 
 const TAB_NAMES_PORTEUR = {
-  0: "Dashboard", 1: "Activité", 2: "Sales", 3: "Publicité", 5: "Banque",
+  0: "Dashboard", 1: "Activité", 2: "Sales", 3: "Publicité", 4: "CRM",
+  5: "Banque", 6: "Facturation", 7: "Tâches", 8: "Analytics",
   9: "Clients", 11: "Agenda", 12: "Paramètres", 13: "Rapports", 14: "Conversations",
 };
 

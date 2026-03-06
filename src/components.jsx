@@ -2659,18 +2659,15 @@ export function PorteurDashboard({soc,reps,allM,socBank,ghlData,setPTab,pulses,s
  },[myClients,churnedClients,wonOpps,bankData,soc.id]);
  // Funnel data — 4 fixed stages
  const funnelData=useMemo(()=>{
-  const allStages=gd?.pipelines?.[0]?.stages||[];
   const totalLeads=ghlCl.length;
-  const stratCalls2=calEvts.filter(e=>!/int[eé]g/i.test(e.title||"")&&!/int[eé]g/i.test(e.calendarName||"")).length;
-  const integCalls2=calEvts.filter(e=>/int[eé]g/i.test(e.title||"")||/int[eé]g/i.test(e.calendarName||"")).length;
+  const totalCalls=calEvts.length;
   const clientsActifs=myClients.length;
   return[
    {stage:"Prospect",count:totalLeads,color:"#60a5fa",icon:"👤"},
-   {stage:"Appel Découverte",count:stratCalls2,color:C.acc,icon:"📞"},
-   {stage:"Appel Intégration",count:integCalls2,color:C.v,icon:"🤝"},
+   {stage:"Appels",count:totalCalls,color:C.acc,icon:"📞"},
    {stage:"Client",count:clientsActifs,color:C.g,icon:"✅"}
   ];
- },[gd,ghlCl,calEvts,myClients]);
+ },[ghlCl,calEvts,myClients]);
  // Meta Ads data
  const metaAds=useMemo(()=>{try{return JSON.parse(localStorage.getItem(`metaAds_${soc.id}_${cm}`));}catch{return null;}},[soc.id,cm]);
  // Conseil du jour IA — removed
@@ -3434,6 +3431,352 @@ export function ActivitePanel({soc,ghlData,socBankData,clients}){
  </Sect>;
 }
 
+/* ===== CRM PANEL (pTab 4) ===== */
+export function CRMPanel({soc,clients,saveClients,ghlData,socBankData}){
+ const[showAdd,setShowAdd]=useState(false);
+ const[form,setForm]=useState({name:"",email:"",phone:"",company:"",notes:"",status:"prospect"});
+ const[search,setSearch]=useState("");
+ const[filter,setFilter]=useState("all");
+ const gd=ghlData?.[soc.id];const rawGhl=gd?.ghlClients||[];
+ const manualClients=(clients||[]).filter(c=>c.socId===soc.id);
+ const manualGhlIds=new Set(manualClients.map(c=>c.ghlId).filter(Boolean));
+ const ghlClients=rawGhl.filter(gc=>!manualGhlIds.has(gc.ghlId||gc.id)).map(gc=>({...gc,socId:soc.id,_fromGHL:true}));
+ const myClients=[...manualClients,...ghlClients];
+ const filtered=useMemo(()=>{
+  let list=filter==="all"?myClients:myClients.filter(c=>c.status===filter);
+  if(search.trim()){const q=search.toLowerCase();list=list.filter(c=>(c.name||"").toLowerCase().includes(q)||(c.email||"").toLowerCase().includes(q)||(c.phone||"").includes(q)||(c.company||"").toLowerCase().includes(q));}
+  return list.sort((a,b)=>new Date(b.at||b.createdAt||0)-new Date(a.at||a.createdAt||0));
+ },[myClients,filter,search]);
+ const addContact=()=>{
+  if(!form.name.trim())return;
+  const cl={id:uid(),socId:soc.id,...form,at:new Date().toISOString(),billing:{type:"fixed",amount:0,freq:"monthly"}};
+  saveClients([...(clients||[]),cl]);
+  setForm({name:"",email:"",phone:"",company:"",notes:"",status:"prospect"});setShowAdd(false);
+ };
+ const active=myClients.filter(c=>c.status==="active").length;
+ const prospects=myClients.filter(c=>c.status==="prospect").length;
+ const churned=myClients.filter(c=>c.status==="churned").length;
+ return <Sect title="📇 CRM" sub="Gestion des contacts" right={<Btn small onClick={()=>setShowAdd(true)}>+ Contact</Btn>}>
+  {showAdd&&<Modal title="Nouveau contact" onClose={()=>setShowAdd(false)}>
+   <div style={{display:"flex",flexDirection:"column",gap:10,padding:4}}>
+    <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Nom *</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Nom complet" style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/></div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+     <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Email</label><input value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="email@exemple.com" style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/></div>
+     <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Téléphone</label><input value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="+33 6..." style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/></div>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+     <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Entreprise</label><input value={form.company} onChange={e=>setForm({...form,company:e.target.value})} placeholder="Entreprise" style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/></div>
+     <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Statut</label><select value={form.status} onChange={e=>setForm({...form,status:e.target.value})} style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}><option value="prospect">Prospect</option><option value="active">Client actif</option><option value="churned">Perdu</option></select></div>
+    </div>
+    <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Notes</label><textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Notes sur le contact..." rows={3} style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none",resize:"vertical"}}/></div>
+    <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:4}}>
+     <Btn small v="secondary" onClick={()=>setShowAdd(false)}>Annuler</Btn>
+     <Btn small onClick={addContact}>Créer le contact</Btn>
+    </div>
+   </div>
+  </Modal>}
+  <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:8,marginBottom:12}}>
+   <Card style={{padding:"10px 12px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:20,color:C.b}}>{myClients.length}</div><div style={{fontSize:8,color:C.td,fontWeight:600}}>TOTAL</div></Card>
+   <Card style={{padding:"10px 12px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:20,color:C.g}}>{active}</div><div style={{fontSize:8,color:C.td,fontWeight:600}}>ACTIFS</div></Card>
+   <Card style={{padding:"10px 12px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:20,color:C.o}}>{prospects}</div><div style={{fontSize:8,color:C.td,fontWeight:600}}>PROSPECTS</div></Card>
+   <Card style={{padding:"10px 12px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:20,color:C.r}}>{churned}</div><div style={{fontSize:8,color:C.td,fontWeight:600}}>PERDUS</div></Card>
+  </div>
+  <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+   <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un contact..." style={{flex:"1 1 180px",padding:"7px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:11,fontFamily:FONT,outline:"none"}}/>
+   {["all","prospect","active","churned"].map(f2=><button key={f2} onClick={()=>setFilter(f2)} style={{padding:"5px 12px",borderRadius:8,fontSize:10,fontWeight:filter===f2?700:500,border:`1px solid ${filter===f2?C.acc:C.brd}`,background:filter===f2?C.accD:"transparent",color:filter===f2?C.acc:C.td,cursor:"pointer",fontFamily:FONT}}>{{all:"Tous",prospect:"Prospects",active:"Actifs",churned:"Perdus"}[f2]}</button>)}
+  </div>
+  {filtered.map((cl,i)=>{const cs=CLIENT_STATUS[cl.status]||CLIENT_STATUS.active;
+   return <Card key={cl.id} style={{padding:"12px 14px",marginBottom:4,cursor:"pointer",borderLeft:`3px solid ${cs.c}`}} delay={Math.min(i+1,8)}>
+    <div style={{display:"flex",alignItems:"center",gap:10}}>
+     <div style={{width:36,height:36,borderRadius:18,background:cs.c+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:cs.c,flexShrink:0}}>{(cl.name||"?")[0].toUpperCase()}</div>
+     <div style={{flex:1,minWidth:0}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+       <span style={{fontWeight:700,fontSize:12}}>{cl.name||"Sans nom"}</span>
+       <span style={{fontSize:7,color:cs.c,background:cs.c+"18",padding:"1px 5px",borderRadius:8,fontWeight:700}}>{cs.icon} {cs.l}</span>
+       {cl.company&&<span style={{fontSize:8,color:"#60a5fa",fontWeight:600}}>🏢 {cl.company}</span>}
+      </div>
+      <div style={{color:C.td,fontSize:9,marginTop:2}}>{[cl.email,cl.phone].filter(Boolean).join(" · ")||"Pas de coordonnées"}</div>
+      {cl.at&&<div style={{fontSize:8,color:C.td,marginTop:1}}>Ajouté {ago(cl.at)}</div>}
+     </div>
+    </div>
+   </Card>;
+  })}
+  {filtered.length===0&&<div style={{textAlign:"center",padding:30,color:C.td}}><div style={{fontSize:28,marginBottom:6}}>📇</div>{search?"Aucun résultat":"Aucun contact"}</div>}
+ </Sect>;
+}
+
+/* ===== FACTURATION PANEL (pTab 6) ===== */
+export function FacturationPanel({soc,clients,invoices,saveInvoices,socBankData}){
+ const[showAdd,setShowAdd]=useState(false);
+ const[form,setForm]=useState({clientId:"",amount:0,description:"",dueDate:new Date(Date.now()+30*864e5).toISOString().slice(0,10)});
+ const[filter,setFilter]=useState("all");
+ const myClients=(clients||[]).filter(c=>c.socId===soc.id);
+ const myInvoices=(invoices||[]).filter(inv=>inv.socId===soc.id).sort((a,b)=>(b.createdAt||b.dueDate||"").localeCompare(a.createdAt||a.dueDate||""));
+ const draft=myInvoices.filter(i=>i.status==="draft");
+ const sent=myInvoices.filter(i=>i.status==="sent");
+ const paid=myInvoices.filter(i=>i.status==="paid");
+ const overdue=myInvoices.filter(i=>i.status==="overdue");
+ const totalFacture=myInvoices.reduce((a,i)=>a+i.amount,0);
+ const totalEncaisse=paid.reduce((a,i)=>a+i.amount,0);
+ const totalAttente=sent.concat(draft).reduce((a,i)=>a+i.amount,0);
+ const addInvoice=()=>{
+  if(!form.clientId||!form.amount)return;
+  const cl=myClients.find(c=>c.id===form.clientId);
+  const inv={id:uid(),socId:soc.id,clientId:form.clientId,clientName:cl?.name||"",amount:Number(form.amount),description:form.description,dueDate:form.dueDate,status:"draft",createdAt:new Date().toISOString(),ref:`FAC-${String(myInvoices.length+1).padStart(3,"0")}`};
+  saveInvoices([...(invoices||[]),inv]);
+  setForm({clientId:"",amount:0,description:"",dueDate:new Date(Date.now()+30*864e5).toISOString().slice(0,10)});setShowAdd(false);
+ };
+ const markPaid=(inv)=>{saveInvoices((invoices||[]).map(i=>i.id===inv.id?{...i,status:"paid",paidAt:new Date().toISOString()}:i));};
+ const markSent=(inv)=>{saveInvoices((invoices||[]).map(i=>i.id===inv.id?{...i,status:"sent",sentAt:new Date().toISOString()}:i));};
+ const filtered=filter==="all"?myInvoices:myInvoices.filter(i=>i.status===filter);
+ const statusStyle={draft:{c:C.td,bg:C.card2,l:"Brouillon",icon:"📝"},sent:{c:C.b,bg:C.bD,l:"Envoyée",icon:"📤"},paid:{c:C.g,bg:C.gD,l:"Payée",icon:"✅"},overdue:{c:C.r,bg:C.rD,l:"En retard",icon:"⚠️"},cancelled:{c:C.td,bg:C.card2,l:"Annulée",icon:"🚫"}};
+ return <Sect title="🧾 Facturation" sub="Gestion des factures" right={<Btn small onClick={()=>setShowAdd(true)}>+ Facture</Btn>}>
+  {showAdd&&<Modal title="Nouvelle facture" onClose={()=>setShowAdd(false)}>
+   <div style={{display:"flex",flexDirection:"column",gap:10,padding:4}}>
+    <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Client *</label><select value={form.clientId} onChange={e=>setForm({...form,clientId:e.target.value})} style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}><option value="">Sélectionner un client...</option>{myClients.filter(c=>c.status==="active"||c.status==="prospect").map(c=><option key={c.id} value={c.id}>{c.name||c.email||"Sans nom"}</option>)}</select></div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+     <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Montant (€) *</label><input type="number" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder="0" style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/></div>
+     <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Échéance</label><input type="date" value={form.dueDate} onChange={e=>setForm({...form,dueDate:e.target.value})} style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/></div>
+    </div>
+    <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Description</label><input value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Description de la facture..." style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/></div>
+    <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:4}}>
+     <Btn small v="secondary" onClick={()=>setShowAdd(false)}>Annuler</Btn>
+     <Btn small onClick={addInvoice}>Créer la facture</Btn>
+    </div>
+   </div>
+  </Modal>}
+  <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:8,marginBottom:12}}>
+   <Card accent={C.g} style={{padding:"10px 12px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.g}}>{fmt(totalEncaisse)}€</div><div style={{fontSize:8,color:C.td,fontWeight:600}}>ENCAISSÉ</div></Card>
+   <Card style={{padding:"10px 12px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.b}}>{fmt(totalAttente)}€</div><div style={{fontSize:8,color:C.td,fontWeight:600}}>EN ATTENTE</div></Card>
+   <Card style={{padding:"10px 12px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:C.t}}>{fmt(totalFacture)}€</div><div style={{fontSize:8,color:C.td,fontWeight:600}}>TOTAL FACTURÉ</div></Card>
+   <Card style={{padding:"10px 12px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:18,color:overdue.length>0?C.r:C.g}}>{overdue.length}</div><div style={{fontSize:8,color:C.td,fontWeight:600}}>EN RETARD</div></Card>
+  </div>
+  <div style={{display:"flex",gap:4,marginBottom:10,flexWrap:"wrap"}}>
+   {[{v:"all",l:`Toutes (${myInvoices.length})`},{v:"draft",l:`Brouillons (${draft.length})`},{v:"sent",l:`Envoyées (${sent.length})`},{v:"paid",l:`Payées (${paid.length})`},{v:"overdue",l:`En retard (${overdue.length})`}].map(f2=><button key={f2.v} onClick={()=>setFilter(f2.v)} style={{padding:"5px 12px",borderRadius:8,fontSize:10,fontWeight:filter===f2.v?700:500,border:`1px solid ${filter===f2.v?C.acc:C.brd}`,background:filter===f2.v?C.accD:"transparent",color:filter===f2.v?C.acc:C.td,cursor:"pointer",fontFamily:FONT}}>{f2.l}</button>)}
+  </div>
+  {filtered.map((inv,i)=>{const st=statusStyle[inv.status]||statusStyle.draft;const isOverdue=inv.status==="sent"&&inv.dueDate&&new Date(inv.dueDate)<new Date();
+   return <Card key={inv.id} style={{padding:"12px 14px",marginBottom:4,borderLeft:`3px solid ${isOverdue?C.r:st.c}`}} delay={Math.min(i+1,8)}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+     <div style={{flex:1,minWidth:0}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+       <span style={{fontWeight:700,fontSize:12}}>{inv.ref||"—"}</span>
+       <span style={{fontWeight:600,fontSize:11,color:C.t}}>{inv.clientName||"Client"}</span>
+       <span style={{fontSize:7,color:st.c,background:st.bg,padding:"2px 6px",borderRadius:6,fontWeight:700}}>{st.icon} {st.l}</span>
+       {isOverdue&&<span style={{fontSize:7,color:C.r,background:C.rD,padding:"2px 6px",borderRadius:6,fontWeight:700}}>⚠️ En retard</span>}
+      </div>
+      {inv.description&&<div style={{fontSize:10,color:C.td,marginTop:2}}>{inv.description}</div>}
+      <div style={{fontSize:9,color:C.td,marginTop:2}}>Échéance: {inv.dueDate?new Date(inv.dueDate).toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric"}):"—"}</div>
+     </div>
+     <div style={{textAlign:"right",flexShrink:0}}>
+      <div style={{fontWeight:900,fontSize:18,color:st.c}}>{fmt(inv.amount)}€</div>
+      <div style={{display:"flex",gap:4,marginTop:4}}>
+       {inv.status==="draft"&&<button onClick={()=>markSent(inv)} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${C.b}`,background:C.bD,color:C.b,fontSize:8,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>📤 Envoyer</button>}
+       {(inv.status==="sent"||inv.status==="overdue")&&<button onClick={()=>markPaid(inv)} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${C.g}`,background:C.gD,color:C.g,fontSize:8,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>✅ Payée</button>}
+      </div>
+     </div>
+    </div>
+   </Card>;
+  })}
+  {filtered.length===0&&<div style={{textAlign:"center",padding:30,color:C.td}}><div style={{fontSize:28,marginBottom:6}}>🧾</div>Aucune facture</div>}
+ </Sect>;
+}
+
+/* ===== TÂCHES PANEL (pTab 7) ===== */
+export function TachesPanel({soc,ghlData,socBankData,clients}){
+ const[showAdd,setShowAdd]=useState(false);
+ const[form,setForm]=useState({text:"",priority:"normal",deadline:""});
+ const[manualTasks,setManualTasks]=useState(()=>{try{return JSON.parse(localStorage.getItem(`todo_${soc.id}`)||"[]");}catch{return[];}});
+ const[doneIds,setDoneIds]=useState(()=>{try{return JSON.parse(localStorage.getItem(`todo_done_${soc.id}`)||"[]");}catch{return[];}});
+ const[filter,setFilter]=useState("all");
+ const saveManual=(tasks)=>{setManualTasks(tasks);try{localStorage.setItem(`todo_${soc.id}`,JSON.stringify(tasks));}catch{}};
+ const saveDone=(ids)=>{setDoneIds(ids);try{localStorage.setItem(`todo_done_${soc.id}`,JSON.stringify(ids));}catch{}};
+ const toggleDone=(id)=>{const n=doneIds.includes(id)?doneIds.filter(x=>x!==id):[...doneIds,id];saveDone(n);};
+ const deadlineLabel=(dl)=>{if(!dl)return null;const diff=new Date(dl).getTime()-Date.now();if(diff<0)return{text:"Expiré",color:C.r};const mins=Math.floor(diff/60000);if(mins<60)return{text:`${mins}min`,color:C.o};const hrs=Math.floor(mins/60);if(hrs<24)return{text:`${hrs}h`,color:hrs<2?C.o:C.g};const days=Math.floor(hrs/24);return{text:`${days}j`,color:C.g};};
+ const autoTasks=useMemo(()=>{
+  const tasks=[];const now=new Date();const todayStr=now.toISOString().slice(0,10);
+  (ghlData?.[soc.id]?.calendarEvents||[]).filter(e=>(e.startTime||"").startsWith(todayStr)).forEach(e=>{const t=new Date(e.startTime).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});tasks.push({id:"cal_"+e.id,text:`📞 Appel avec ${e.contactName||e.title||"client"} à ${t}`,priority:"urgent",auto:true});});
+  const myCl=(clients||[]).filter(c=>c.socId===soc.id&&c.status==="active");
+  const txs=socBankData?.transactions||[];const now45=Date.now()-45*864e5;
+  myCl.forEach(cl=>{if(!cl.billing||cl.billing.type==="oneoff")return;const cn=(cl.name||"").toLowerCase().trim();const hasRecent=txs.some(tx=>{const leg=tx.legs?.[0];if(!leg||leg.amount<=0)return false;return new Date(tx.created_at||tx.date||0).getTime()>now45&&(leg.description||tx.reference||"").toLowerCase().includes(cn);});if(!hasRecent)tasks.push({id:"unpaid_"+cl.id,text:`💸 Relancer ${cl.name} — facture impayée`,priority:"urgent",auto:true});});
+  const h48=Date.now()-48*36e5;
+  (ghlData?.[soc.id]?.ghlClients||[]).filter(c=>new Date(c.at||c.dateAdded||0).getTime()>h48).forEach(c=>{tasks.push({id:"newlead_"+c.id,text:`🟢 Nouveau lead: ${c.name||c.email||"—"} — à contacter`,priority:"important",auto:true});});
+  myCl.forEach(cl=>{const end=commitmentEnd(cl);if(end){const days=Math.round((end-now)/(864e5));if(days>0&&days<=30)tasks.push({id:"expiry_"+cl.id,text:`📋 Contrat ${cl.name} expire dans ${days} jours`,priority:days<=7?"urgent":"important",auto:true});}});
+  return tasks;
+ },[soc.id,ghlData,socBankData,clients]);
+ const allTasks=[...autoTasks,...manualTasks.map(t=>({...t,auto:false}))];
+ const priorityIcon={urgent:"🔴",important:"🟡",normal:"🟢"};
+ const priorityOrder={urgent:0,important:1,normal:2};
+ const sorted=[...allTasks].sort((a,b)=>(priorityOrder[a.priority]||2)-(priorityOrder[b.priority]||2));
+ const filteredTasks=filter==="all"?sorted:filter==="done"?sorted.filter(t=>doneIds.includes(t.id)):filter==="todo"?sorted.filter(t=>!doneIds.includes(t.id)):filter==="auto"?sorted.filter(t=>t.auto):sorted.filter(t=>!t.auto);
+ const addTask=()=>{
+  if(!form.text.trim())return;
+  saveManual([...manualTasks,{id:uid(),text:form.text.trim(),priority:form.priority,at:new Date().toISOString(),deadline:form.deadline?form.deadline+"T12:00":null}]);
+  setForm({text:"",priority:"normal",deadline:""});setShowAdd(false);
+ };
+ const deleteTask=(id)=>saveManual(manualTasks.filter(t=>t.id!==id));
+ const doneCount=sorted.filter(t=>doneIds.includes(t.id)).length;
+ const todoCount=sorted.filter(t=>!doneIds.includes(t.id)).length;
+ const pctDone=sorted.length>0?Math.round(doneCount/sorted.length*100):0;
+ return <Sect title="☑️ Tâches" sub="Gestion des tâches" right={<Btn small onClick={()=>setShowAdd(true)}>+ Tâche</Btn>}>
+  {showAdd&&<Modal title="Nouvelle tâche" onClose={()=>setShowAdd(false)}>
+   <div style={{display:"flex",flexDirection:"column",gap:10,padding:4}}>
+    <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Tâche *</label><input value={form.text} onChange={e=>setForm({...form,text:e.target.value})} onKeyDown={e=>{if(e.key==="Enter")addTask();}} placeholder="Décrire la tâche..." style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/></div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+     <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Priorité</label><select value={form.priority} onChange={e=>setForm({...form,priority:e.target.value})} style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}><option value="urgent">🔴 Urgent</option><option value="important">🟡 Important</option><option value="normal">🟢 Normal</option></select></div>
+     <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Deadline</label><input type="date" value={form.deadline} onChange={e=>setForm({...form,deadline:e.target.value})} style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/></div>
+    </div>
+    <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:4}}>
+     <Btn small v="secondary" onClick={()=>setShowAdd(false)}>Annuler</Btn>
+     <Btn small onClick={addTask}>Créer la tâche</Btn>
+    </div>
+   </div>
+  </Modal>}
+  <div className="glass-card-static" style={{padding:14,marginBottom:12,display:"flex",alignItems:"center",gap:12}}>
+   <span style={{fontSize:20}}>📊</span>
+   <div style={{flex:1}}>
+    <div style={{fontSize:11,fontWeight:700,color:C.t}}>{doneCount} complétées / {sorted.length} total ({pctDone}%)</div>
+    <div style={{height:6,background:C.brd,borderRadius:3,overflow:"hidden",marginTop:4}}><div style={{height:"100%",width:`${pctDone}%`,background:pctDone>=80?C.g:pctDone>=50?C.acc:C.o,borderRadius:3,transition:"width .5s ease"}}/></div>
+   </div>
+  </div>
+  <div style={{display:"flex",gap:4,marginBottom:10,flexWrap:"wrap"}}>
+   {[{v:"all",l:"Toutes"},{v:"todo",l:`À faire (${todoCount})`},{v:"done",l:`Faites (${doneCount})`},{v:"auto",l:"Auto"},{v:"manual",l:"Manuelles"}].map(f2=><button key={f2.v} onClick={()=>setFilter(f2.v)} style={{padding:"5px 12px",borderRadius:8,fontSize:10,fontWeight:filter===f2.v?700:500,border:`1px solid ${filter===f2.v?C.acc:C.brd}`,background:filter===f2.v?C.accD:"transparent",color:filter===f2.v?C.acc:C.td,cursor:"pointer",fontFamily:FONT}}>{f2.l}</button>)}
+  </div>
+  {filteredTasks.map(t=>{const done=doneIds.includes(t.id);return <div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:done?"transparent":"rgba(14,14,22,.6)",borderRadius:10,border:`1px solid ${C.brd}`,marginBottom:4,opacity:done?.6:1,transition:"all .2s"}}>
+   <div onClick={()=>toggleDone(t.id)} style={{width:20,height:20,borderRadius:6,border:`2px solid ${done?C.g:C.brd}`,background:done?C.gD:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{done&&<span style={{color:C.g,fontSize:11,fontWeight:900}}>✓</span>}</div>
+   <span style={{fontSize:13,flexShrink:0}}>{priorityIcon[t.priority]||"🟢"}</span>
+   <div style={{flex:1,fontSize:12,fontWeight:done?400:600,color:done?C.td:C.t,textDecoration:done?"line-through":"none"}}>{t.text}</div>
+   {(()=>{const dl=deadlineLabel(t.deadline);return dl?<span style={{fontSize:8,fontWeight:800,color:dl.color,background:dl.color+"18",padding:"2px 6px",borderRadius:6,flexShrink:0}}>⏱{dl.text}</span>:null;})()}
+   {t.auto&&<span style={{fontSize:8,color:C.td,background:C.card2,padding:"1px 5px",borderRadius:6}}>auto</span>}
+   {!t.auto&&<button onClick={()=>deleteTask(t.id)} style={{background:"none",border:"none",color:C.td,cursor:"pointer",fontSize:12}}>✕</button>}
+  </div>;})}
+  {filteredTasks.length===0&&<div style={{textAlign:"center",padding:30,color:C.td}}><div style={{fontSize:28,marginBottom:6}}>☑️</div>Aucune tâche</div>}
+ </Sect>;
+}
+
+/* ===== ANALYTICS PANEL (pTab 8) ===== */
+export function AnalyticsPanel({soc,reps,allM,ghlData,socBankData,clients}){
+ const cm=curM();const acc2=soc.brandColor||soc.color||C.acc;
+ const excluded=EXCLUDED_ACCOUNTS[soc.id]||[];
+ const myClients=(clients||[]).filter(c=>c.socId===soc.id&&c.status==="active");
+ const churnedClients=(clients||[]).filter(c=>c.socId===soc.id&&c.status==="churned");
+ const gd=ghlData?.[soc.id];const calEvts=gd?.calendarEvents||[];const opps=gd?.opportunities||[];const ghlCl=gd?.ghlClients||[];
+ const wonOpps=opps.filter(o=>o.status==="won");
+ const bankData=socBankData;
+ // Monthly evolution data
+ const evo=useMemo(()=>{
+  const now12=new Date();const months=[];for(let i=11;i>=0;i--){const d=new Date(now12.getFullYear(),now12.getMonth()-i,1);months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);}
+  return months.map(m=>{
+   const r=gr(reps,soc.id,m);const rca=r?pf(r.ca):0;const rch=r?pf(r.charges):0;
+   const moTxs=(bankData?.transactions||[]).filter(t=>(t.created_at||"").startsWith(m)&&!isExcludedTx(t,excluded));
+   const bankIncome=moTxs.filter(t=>(t.legs?.[0]?.amount||0)>0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0);
+   const bankExpense=Math.abs(moTxs.filter(t=>(t.legs?.[0]?.amount||0)<0).reduce((a,t)=>a+(t.legs?.[0]?.amount||0),0));
+   const ca=bankIncome||rca;const charges=bankExpense||rch;
+   const leads=(gd?.ghlClients||[]).filter(c=>(c.at||c.dateAdded||"").startsWith(m)).length;
+   const calls=calEvts.filter(e=>(e.startTime||"").startsWith(m)).length;
+   const closings=wonOpps.filter(o=>(o.updatedAt||o.createdAt||"").startsWith(m)).length;
+   return{month:ml(m).split(" ")[0],m,ca:Math.round(ca),charges:Math.round(charges),marge:Math.round(ca-charges),leads,calls,closings};
+  });
+ },[soc.id,reps,bankData,gd,calEvts,wonOpps,excluded]);
+ const last6=evo.slice(-6);
+ // Growth calc
+ const curCA=last6[last6.length-1]?.ca||0;const prevCA=last6[last6.length-2]?.ca||0;
+ const growth=prevCA>0?Math.round((curCA-prevCA)/prevCA*100):0;
+ // Avg values
+ const avgCA=evo.length>0?Math.round(evo.reduce((a,d)=>a+d.ca,0)/evo.length):0;
+ const avgCharges=evo.length>0?Math.round(evo.reduce((a,d)=>a+d.charges,0)/evo.length):0;
+ const totalLeads=ghlCl.length;const totalCalls=calEvts.length;
+ const closingRate=totalCalls>0?Math.round(wonOpps.length/totalCalls*100):0;
+ const avgDealValue=wonOpps.length>0?Math.round(wonOpps.reduce((a,o)=>a+(o.value||0),0)/wonOpps.length):0;
+ // Client retention
+ const retentionRate=myClients.length+churnedClients.length>0?Math.round(myClients.length/(myClients.length+churnedClients.length)*100):100;
+ // LTV estimate
+ const avgMonthlyRev=myClients.length>0?Math.round(myClients.reduce((a,c)=>a+clientMonthlyRevenue(c),0)/myClients.length):0;
+ const avgLifetime=12;// assume
+ const ltv=avgMonthlyRev*avgLifetime;
+ // Revenue by source
+ const revByType=useMemo(()=>{
+  const fixed=myClients.filter(c=>c.billing?.type==="fixed").reduce((a,c)=>a+clientMonthlyRevenue(c),0);
+  const percent=myClients.filter(c=>c.billing?.type==="percent").reduce((a,c)=>a+clientMonthlyRevenue(c),0);
+  const hybrid=myClients.filter(c=>c.billing?.type==="hybrid").reduce((a,c)=>a+clientMonthlyRevenue(c),0);
+  const oneoff=myClients.filter(c=>c.billing?.type==="oneoff").reduce((a,c)=>a+clientMonthlyRevenue(c),0);
+  return[{name:"Forfaits",value:Math.round(fixed),color:C.acc},{name:"% CA",value:Math.round(percent),color:C.v},{name:"Hybride",value:Math.round(hybrid),color:"#ec4899"},{name:"One-off",value:Math.round(oneoff),color:C.b}].filter(d=>d.value>0);
+ },[myClients]);
+ const PIE_COLORS=[C.acc,C.v,"#ec4899",C.b,C.g,C.o];
+ return <div>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+   <div><h2 style={{color:C.t,fontSize:14,fontWeight:800,margin:0,fontFamily:FONT_TITLE}}>📈 ANALYTICS</h2><p style={{color:C.td,fontSize:10,margin:"2px 0 0"}}>Tendances & performance</p></div>
+  </div>
+  {/* KPIs principaux */}
+  <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:16}}>
+   <Card style={{padding:"10px 12px",textAlign:"center"}}><div style={{fontSize:9,color:C.td,fontWeight:700}}>CA MOYEN</div><div style={{fontWeight:900,fontSize:18,color:C.acc}}>{fmt(avgCA)}€</div><div style={{fontSize:8,color:C.td}}>par mois</div></Card>
+   <Card style={{padding:"10px 12px",textAlign:"center"}}><div style={{fontSize:9,color:C.td,fontWeight:700}}>CROISSANCE</div><div style={{fontWeight:900,fontSize:18,color:growth>=0?C.g:C.r}}>{growth>=0?"+":""}{growth}%</div><div style={{fontSize:8,color:C.td}}>vs mois préc.</div></Card>
+   <Card style={{padding:"10px 12px",textAlign:"center"}}><div style={{fontSize:9,color:C.td,fontWeight:700}}>RÉTENTION</div><div style={{fontWeight:900,fontSize:18,color:retentionRate>=80?C.g:C.o}}>{retentionRate}%</div><div style={{fontSize:8,color:C.td}}>{myClients.length} actifs / {churnedClients.length} perdus</div></Card>
+   <Card style={{padding:"10px 12px",textAlign:"center"}}><div style={{fontSize:9,color:C.td,fontWeight:700}}>LTV ESTIMÉE</div><div style={{fontWeight:900,fontSize:18,color:"#a78bfa"}}>{fmt(ltv)}€</div><div style={{fontSize:8,color:C.td}}>~{avgMonthlyRev}€/m × 12m</div></Card>
+   <Card style={{padding:"10px 12px",textAlign:"center"}}><div style={{fontSize:9,color:C.td,fontWeight:700}}>CLOSING</div><div style={{fontWeight:900,fontSize:18,color:closingRate>=20?C.g:C.o}}>{closingRate}%</div><div style={{fontSize:8,color:C.td}}>{wonOpps.length} closés / {totalCalls} appels</div></Card>
+   <Card style={{padding:"10px 12px",textAlign:"center"}}><div style={{fontSize:9,color:C.td,fontWeight:700}}>PANIER MOY.</div><div style={{fontWeight:900,fontSize:18,color:C.t}}>{fmt(avgDealValue)}€</div><div style={{fontSize:8,color:C.td}}>par deal</div></Card>
+  </div>
+  {/* Évolution CA / Charges / Marge */}
+  <Card style={{padding:18,marginBottom:14}}>
+   <div style={{fontSize:10,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>ÉVOLUTION CA / CHARGES / MARGE</div>
+   <div style={{height:220}}>
+    <ResponsiveContainer><ComposedChart data={last6}><CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis dataKey="month" tick={{fontSize:9,fill:C.td}}/><YAxis tick={{fontSize:9,fill:C.td}}/><Tooltip content={<CTip/>}/><Bar dataKey="ca" name="CA" fill={C.g} radius={[4,4,0,0]}/><Bar dataKey="charges" name="Charges" fill={C.r} radius={[4,4,0,0]}/><Line type="monotone" dataKey="marge" name="Marge" stroke={C.acc} strokeWidth={2} dot={{fill:C.acc,r:3}}/></ComposedChart></ResponsiveContainer>
+   </div>
+  </Card>
+  {/* Évolution Leads / Appels / Closings */}
+  <Card style={{padding:18,marginBottom:14}}>
+   <div style={{fontSize:10,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>ÉVOLUTION SALES</div>
+   <div style={{height:180}}>
+    <ResponsiveContainer><BarChart data={last6}><CartesianGrid strokeDasharray="3 3" stroke={C.brd}/><XAxis dataKey="month" tick={{fontSize:9,fill:C.td}}/><YAxis tick={{fontSize:9,fill:C.td}}/><Tooltip content={<CTip/>}/><Bar dataKey="leads" name="Leads" fill="#60a5fa" radius={[4,4,0,0]}/><Bar dataKey="calls" name="Appels" fill="#14b8a6" radius={[4,4,0,0]}/><Bar dataKey="closings" name="Closings" fill={C.g} radius={[4,4,0,0]}/></BarChart></ResponsiveContainer>
+   </div>
+  </Card>
+  {/* Revenue par type */}
+  {revByType.length>0&&<Card style={{padding:18,marginBottom:14}}>
+   <div style={{fontSize:10,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>RÉPARTITION DES REVENUS PAR TYPE</div>
+   <div style={{display:"flex",alignItems:"center",gap:20}}>
+    <div style={{width:"40%",height:160}}><ResponsiveContainer><PieChart><Pie data={revByType} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={3} strokeWidth={0}>{revByType.map((d,i)=><Cell key={i} fill={d.color||PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip content={<CTip/>}/></PieChart></ResponsiveContainer></div>
+    <div style={{flex:1}}>
+     {revByType.map((d,i)=>{const total=revByType.reduce((a,x)=>a+x.value,0);const p=total>0?Math.round(d.value/total*100):0;return <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+      <span style={{width:10,height:10,borderRadius:3,background:d.color||PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/>
+      <div style={{flex:1}}><div style={{fontSize:11,fontWeight:600,color:C.t}}>{d.name}</div></div>
+      <span style={{fontWeight:800,fontSize:12,color:C.t}}>{fmt(d.value)}€</span>
+      <span style={{fontSize:9,color:C.td,fontWeight:600}}>{p}%</span>
+     </div>;})}
+    </div>
+   </div>
+  </Card>}
+  {/* Métriques avancées */}
+  <Card style={{padding:18}}>
+   <div style={{fontSize:10,fontWeight:700,color:C.td,letterSpacing:1,marginBottom:12,fontFamily:FONT_TITLE}}>MÉTRIQUES AVANCÉES</div>
+   <div className="rg-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10}}>
+    <div style={{padding:12,background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`}}>
+     <div style={{fontSize:9,color:C.td,fontWeight:600}}>Charges moyennes</div>
+     <div style={{fontWeight:800,fontSize:16,color:C.r}}>{fmt(avgCharges)}€<span style={{fontSize:9,color:C.td,fontWeight:400}}>/mois</span></div>
+    </div>
+    <div style={{padding:12,background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`}}>
+     <div style={{fontSize:9,color:C.td,fontWeight:600}}>Marge moyenne</div>
+     <div style={{fontWeight:800,fontSize:16,color:avgCA-avgCharges>=0?C.g:C.r}}>{fmt(avgCA-avgCharges)}€<span style={{fontSize:9,color:C.td,fontWeight:400}}>/mois</span></div>
+    </div>
+    <div style={{padding:12,background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`}}>
+     <div style={{fontSize:9,color:C.td,fontWeight:600}}>Ratio charges/CA</div>
+     <div style={{fontWeight:800,fontSize:16,color:avgCA>0&&avgCharges/avgCA>0.7?C.r:C.g}}>{avgCA>0?Math.round(avgCharges/avgCA*100):0}%</div>
+    </div>
+    <div style={{padding:12,background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`}}>
+     <div style={{fontSize:9,color:C.td,fontWeight:600}}>Leads totaux</div>
+     <div style={{fontWeight:800,fontSize:16,color:"#60a5fa"}}>{totalLeads}</div>
+    </div>
+    <div style={{padding:12,background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`}}>
+     <div style={{fontSize:9,color:C.td,fontWeight:600}}>MRR actuel</div>
+     <div style={{fontWeight:800,fontSize:16,color:C.acc}}>{fmt(myClients.reduce((a,c)=>a+clientMonthlyRevenue(c),0))}€</div>
+    </div>
+    <div style={{padding:12,background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`}}>
+     <div style={{fontSize:9,color:C.td,fontWeight:600}}>Taux de churn</div>
+     <div style={{fontWeight:800,fontSize:16,color:churnedClients.length>0?C.o:C.g}}>{myClients.length+churnedClients.length>0?Math.round(churnedClients.length/(myClients.length+churnedClients.length)*100):0}%</div>
+    </div>
+   </div>
+  </Card>
+ </div>;
+}
+
 /* ===== CLIENTS UNIFIED PANEL (Clients + Conversations + Pipeline toggle) ===== */
 /* ===== CLIENTS UNIFIED PANEL (Clients + Conversations + Pipeline toggle) ===== */
 export function ClientsUnifiedPanel({soc,clients,saveClients,ghlData,socBankData,invoices,saveInvoices,stripeData}){
@@ -4195,6 +4538,10 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
   {pTab===1&&<ErrorBoundary label="Activité"><ActivitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
   {pTab===2&&<ErrorBoundary label="Sales"><SalesPanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
   {pTab===3&&<ErrorBoundary label="Publicité"><PublicitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
+  {pTab===4&&<ErrorBoundary label="CRM"><CRMPanel soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData}/></ErrorBoundary>}
+  {pTab===6&&<ErrorBoundary label="Facturation"><FacturationPanel soc={soc} clients={clients} invoices={invoices} saveInvoices={saveInvoices} socBankData={socBankData}/></ErrorBoundary>}
+  {pTab===7&&<ErrorBoundary label="Tâches"><TachesPanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
+  {pTab===8&&<ErrorBoundary label="Analytics"><AnalyticsPanel soc={soc} reps={reps} allM={allM} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
   </div>
   </div>
  </div>;
@@ -4667,11 +5014,13 @@ export const SB_ADMIN=[
 
 export const SB_PORTEUR=[
  {id:"dashboard",icon:"📊",label:"Dashboard",tab:0,accent:C.acc},
- {id:"activite",icon:"⚡",label:"Activité",tab:1,accent:C.b},
+ {id:"crm",icon:"📇",label:"CRM",tab:4,accent:C.b},
+ {id:"facturation",icon:"🧾",label:"Facturation",tab:6,accent:C.g},
+ {id:"taches",icon:"☑️",label:"Tâches",tab:7,accent:C.o},
+ {id:"analytics",icon:"📈",label:"Analytics",tab:8,accent:"#a78bfa"},
  {id:"sales",icon:"📞",label:"Sales",tab:2,accent:"#34d399"},
  {id:"publicite",icon:"📣",label:"Publicité",tab:3,accent:"#f472b6"},
  {id:"clients",icon:"👥",label:"Clients",tab:9,accent:C.o},
- {id:"conversations",icon:"💬",label:"Conversations",tab:14,accent:C.b},
  {id:"bank",icon:"🏦",label:"Banque",tab:5,accent:C.g},
  {id:"rapports",icon:"📋",label:"Rapports",tab:13,accent:C.v},
  {id:"agenda",icon:"📅",label:"Agenda",tab:11,accent:"#14b8a6"},

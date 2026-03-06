@@ -98,13 +98,12 @@ function computeReportData(soc, month, socBankData, ghlData, clients, reps) {
   const stages = pipelines.flatMap(p => p.stages || []);
   const stageMap = {};
   stages.forEach(st => { stageMap[st.id] = st.name; });
-  const funnelLabels = ["Prospect", "Appel Découverte", "Appel Intégration", "Client"];
+  const funnelLabels = ["Prospect", "Appel Découverte", "Client"];
   const funnel = {};
   openOpps.forEach(o => {
     const sName = (stageMap[o.pipelineStageId] || o.stageName || "").toLowerCase();
     if (sName.includes("prospect") || sName.includes("lead") || sName.includes("nouveau")) funnel["Prospect"] = (funnel["Prospect"] || 0) + 1;
-    else if (sName.includes("découverte") || sName.includes("discovery") || sName.includes("appel 1") || sName.includes("qualifying")) funnel["Appel Découverte"] = (funnel["Appel Découverte"] || 0) + 1;
-    else if (sName.includes("intégration") || sName.includes("closing") || sName.includes("appel 2") || sName.includes("négociation")) funnel["Appel Intégration"] = (funnel["Appel Intégration"] || 0) + 1;
+    else if (sName.includes("découverte") || sName.includes("discovery") || sName.includes("appel") || sName.includes("qualifying") || sName.includes("closing") || sName.includes("négociation")) funnel["Appel Découverte"] = (funnel["Appel Découverte"] || 0) + 1;
     else if (sName.includes("client") || sName.includes("won") || sName.includes("gagné")) funnel["Client"] = (funnel["Client"] || 0) + 1;
     else funnel["Prospect"] = (funnel["Prospect"] || 0) + 1;
   });
@@ -498,6 +497,162 @@ ${d.hasAds ? `<h2>📣 Publicité</h2>
         </table>
       </div>
     </div>}
+
+    {/* ═══ TENDANCES & INSIGHTS AVANCÉS ═══ */}
+    {(() => {
+      const allData = months.slice(0, 6).reverse().map(mo => computeReportData(soc, mo, socBankData, ghlData, clients, reps));
+      const withData = allData.filter(d => d.txCount > 0 || d.ca > 0);
+      if (withData.length < 2) return null;
+
+      // Growth trajectory
+      const growthData = withData.map((d, i) => ({
+        month: ml(months.slice(0, 6).reverse()[i]).split(" ")[0],
+        ca: d.ca, marge: d.marge, margePct: d.margePct,
+        charges: d.charges,
+      }));
+
+      // Meilleur et pire mois
+      const bestMonth = withData.reduce((best, d, i) => d.ca > best.ca ? { ...d, idx: i } : best, { ca: 0, idx: 0 });
+      const worstMonth = withData.reduce((worst, d, i) => (d.ca < worst.ca && d.ca > 0) ? { ...d, idx: i } : worst, { ca: Infinity, idx: 0 });
+
+      // Tendance charges
+      const firstCharges = withData[0]?.charges || 0;
+      const lastCharges = withData[withData.length - 1]?.charges || 0;
+      const chargesTrend = firstCharges > 0 ? Math.round((lastCharges - firstCharges) / firstCharges * 100) : 0;
+
+      // Ratio charges/CA moyen
+      const avgRatio = withData.length > 0 ? Math.round(withData.reduce((a, d) => a + (d.ca > 0 ? d.charges / d.ca * 100 : 0), 0) / withData.length) : 0;
+
+      // Volatilité CA (écart-type)
+      const avgCA2 = withData.reduce((a, d) => a + d.ca, 0) / withData.length;
+      const volatility = Math.round(Math.sqrt(withData.reduce((a, d) => a + Math.pow(d.ca - avgCA2, 2), 0) / withData.length));
+
+      // Concentration client (top client % du CA)
+      const curData = computeReportData(soc, months[0], socBankData, ghlData, clients, reps);
+      const topClientPct = curData.top5Clients.length > 0 && curData.ca > 0 ? Math.round(curData.top5Clients[0].avgMois / curData.ca * 100) : 0;
+
+      // Jours médian de paiement
+      const allActiveCl2 = (clients || []).filter(c => c.socId === soc?.id && c.status === "active");
+      const daysActive = allActiveCl2.map(c => { const start = new Date(c.at || c.startDate || c.createdAt || 0); return Math.max(1, Math.floor((Date.now() - start.getTime()) / 864e5)); });
+      const medianDays = daysActive.length > 0 ? daysActive.sort((a, b) => a - b)[Math.floor(daysActive.length / 2)] : 0;
+
+      // Score santé business
+      const healthScore2 = (() => {
+        let s = 0;
+        const lastD = withData[withData.length - 1];
+        if (lastD.margePct > 30) s += 25; else if (lastD.margePct > 10) s += 15;
+        if (lastD.ca > avgCA2) s += 20;
+        if (chargesTrend < 10) s += 15;
+        if (topClientPct < 40) s += 15; else if (topClientPct < 60) s += 8;
+        if (volatility < avgCA2 * 0.3) s += 15;
+        if (allActiveCl2.length >= 3) s += 10;
+        return Math.min(100, s);
+      })();
+      const healthColor2 = healthScore2 >= 70 ? C.g : healthScore2 >= 40 ? C.o : C.r;
+      const healthLabel2 = healthScore2 >= 70 ? "Excellent" : healthScore2 >= 40 ? "Correct" : "Attention requise";
+
+      return <div className="glass-card-static" style={{ padding: 20, marginTop: 16 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, color: "#a78bfa", letterSpacing: 1, marginBottom: 14, fontFamily: FONT_TITLE }}>🔍 INSIGHTS AVANCÉS</div>
+
+        {/* Score santé business */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: 14, background: `${healthColor2}08`, borderRadius: 12, border: `1px solid ${healthColor2}22`, marginBottom: 14 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 26, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+            <svg width="52" height="52"><circle cx="26" cy="26" r="22" fill="none" stroke={C.brd} strokeWidth="4" /><circle cx="26" cy="26" r="22" fill="none" stroke={healthColor2} strokeWidth="4" strokeDasharray={`${healthScore2 * 1.38} 138`} strokeLinecap="round" transform="rotate(-90 26 26)" /></svg>
+            <span style={{ position: "absolute", fontWeight: 900, fontSize: 14, color: healthColor2 }}>{healthScore2}</span>
+          </div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 13, color: healthColor2 }}>Santé Business : {healthLabel2}</div>
+            <div style={{ fontSize: 9, color: C.td, marginTop: 2 }}>Basé sur la marge, croissance, diversification clients et stabilité</div>
+          </div>
+        </div>
+
+        {/* Métriques clés */}
+        <div className="rg-auto" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 8, marginBottom: 14 }}>
+          <div style={{ padding: "10px 12px", background: C.bg, borderRadius: 8, border: `1px solid ${C.brd}` }}>
+            <div style={{ fontSize: 8, color: C.td, fontWeight: 600 }}>Volatilité CA</div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: volatility < avgCA2 * 0.2 ? C.g : C.o }}>{fmt(volatility)}€</div>
+            <div style={{ fontSize: 8, color: C.td }}>{volatility < avgCA2 * 0.2 ? "Stable" : volatility < avgCA2 * 0.4 ? "Modéré" : "Instable"}</div>
+          </div>
+          <div style={{ padding: "10px 12px", background: C.bg, borderRadius: 8, border: `1px solid ${C.brd}` }}>
+            <div style={{ fontSize: 8, color: C.td, fontWeight: 600 }}>Concentration client</div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: topClientPct > 50 ? C.r : topClientPct > 30 ? C.o : C.g }}>{topClientPct}%</div>
+            <div style={{ fontSize: 8, color: C.td }}>{topClientPct > 50 ? "Risque de dépendance" : topClientPct > 30 ? "Moyen" : "Bien diversifié"}</div>
+          </div>
+          <div style={{ padding: "10px 12px", background: C.bg, borderRadius: 8, border: `1px solid ${C.brd}` }}>
+            <div style={{ fontSize: 8, color: C.td, fontWeight: 600 }}>Tendance charges</div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: chargesTrend > 20 ? C.r : chargesTrend < -5 ? C.g : C.td }}>{chargesTrend >= 0 ? "+" : ""}{chargesTrend}%</div>
+            <div style={{ fontSize: 8, color: C.td }}>{chargesTrend > 20 ? "En hausse" : chargesTrend < -5 ? "En baisse" : "Stables"}</div>
+          </div>
+          <div style={{ padding: "10px 12px", background: C.bg, borderRadius: 8, border: `1px solid ${C.brd}` }}>
+            <div style={{ fontSize: 8, color: C.td, fontWeight: 600 }}>Ratio charges/CA</div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: avgRatio > 70 ? C.r : avgRatio > 50 ? C.o : C.g }}>{avgRatio}%</div>
+            <div style={{ fontSize: 8, color: C.td }}>Moyenne sur 6 mois</div>
+          </div>
+          <div style={{ padding: "10px 12px", background: C.bg, borderRadius: 8, border: `1px solid ${C.brd}` }}>
+            <div style={{ fontSize: 8, color: C.td, fontWeight: 600 }}>Ancienneté médiane</div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: medianDays > 90 ? C.g : C.o }}>{medianDays > 30 ? `${Math.round(medianDays / 30)}m` : `${medianDays}j`}</div>
+            <div style={{ fontSize: 8, color: C.td }}>de vos clients actifs</div>
+          </div>
+        </div>
+
+        {/* Graphique évolution marge */}
+        {growthData.length > 1 && <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: C.td, marginBottom: 8 }}>ÉVOLUTION MARGE (%)</div>
+          <div style={{ height: 120 }}>
+            <ResponsiveContainer>
+              <AreaChart data={growthData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.brd} />
+                <XAxis dataKey="month" tick={{ fontSize: 8, fill: C.td }} />
+                <YAxis tick={{ fontSize: 8, fill: C.td }} unit="%" />
+                <Tooltip content={<CTip />} />
+                <Area type="monotone" dataKey="margePct" name="Marge %" stroke="#a78bfa" fill="#a78bfa22" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>}
+
+        {/* Meilleur & pire mois */}
+        <div className="rg2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ padding: 12, background: C.gD, borderRadius: 10, border: `1px solid ${C.g}22` }}>
+            <div style={{ fontSize: 8, color: C.g, fontWeight: 700 }}>MEILLEUR MOIS</div>
+            <div style={{ fontWeight: 900, fontSize: 16, color: C.g }}>{fmt(bestMonth.ca)}€</div>
+            <div style={{ fontSize: 9, color: C.td }}>Marge: {bestMonth.margePct}%</div>
+          </div>
+          <div style={{ padding: 12, background: C.rD, borderRadius: 10, border: `1px solid ${C.r}22` }}>
+            <div style={{ fontSize: 8, color: C.r, fontWeight: 700 }}>MOIS LE PLUS BAS</div>
+            <div style={{ fontWeight: 900, fontSize: 16, color: C.r }}>{worstMonth.ca < Infinity ? fmt(worstMonth.ca) + "€" : "—"}</div>
+            <div style={{ fontSize: 9, color: C.td }}>{worstMonth.ca < Infinity ? `Marge: ${worstMonth.margePct}%` : ""}</div>
+          </div>
+        </div>
+      </div>;
+    })()}
+
+    {/* ═══ RECOMMANDATIONS AUTO ═══ */}
+    {(() => {
+      const curD = computeReportData(soc, months[0], socBankData, ghlData, clients, reps);
+      const prevD = months.length > 1 ? computeReportData(soc, months[1], socBankData, ghlData, clients, reps) : null;
+      const recs = [];
+      if (curD.margePct < 20) recs.push({ icon: "⚠️", text: "Votre marge est inférieure à 20%. Identifiez les charges réductibles.", color: C.r });
+      if (curD.churnedCl > 0) recs.push({ icon: "🔄", text: `${curD.churnedCl} client(s) perdu(s) ce mois. Mettez en place un suivi de satisfaction.`, color: C.o });
+      if (curD.noShowPct > 15) recs.push({ icon: "📞", text: `${curD.noShowPct}% de no-show. Envoyez des rappels SMS 1h avant chaque appel.`, color: C.o });
+      if (prevD && curD.ca < prevD.ca * 0.8) recs.push({ icon: "📉", text: "CA en baisse de plus de 20% vs mois précédent. Augmentez la prospection.", color: C.r });
+      if (curD.conversionRate < 10 && curD.prospectsMonth > 5) recs.push({ icon: "🎯", text: `Taux de conversion à ${curD.conversionRate}%. Qualifiez mieux vos leads avant l'appel.`, color: C.o });
+      if (curD.pipelineTotal > curD.ca * 3) recs.push({ icon: "💎", text: `Pipeline à ${fmt(curD.pipelineTotal)}€. Accélérez le closing des deals ouverts.`, color: C.b });
+      if (activeClients.length > 0 && mrrTheorique > 0) {
+        const collecte = mrrData.filter(d => d.payments[months[0]]).reduce((a, d) => a + d.billing, 0);
+        if (collecte < mrrTheorique * 0.8) recs.push({ icon: "💸", text: `Seulement ${fmt(collecte)}€ collectés sur ${fmt(mrrTheorique)}€ MRR théorique. Relancez les impayés.`, color: C.r });
+      }
+      if (curD.ca > 0 && curD.charges / curD.ca > 0.7) recs.push({ icon: "💰", text: "Vos charges dépassent 70% de votre CA. Optimisez vos coûts.", color: C.r });
+      if (recs.length === 0) recs.push({ icon: "✅", text: "Tout va bien ! Continuez sur cette lancée.", color: C.g });
+
+      return <div className="glass-card-static" style={{ padding: 20, marginTop: 16 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, color: C.o, letterSpacing: 1, marginBottom: 12, fontFamily: FONT_TITLE }}>💡 RECOMMANDATIONS</div>
+        {recs.map((r2, i) => <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", background: `${r2.color}06`, borderRadius: 10, border: `1px solid ${r2.color}15`, marginBottom: 6 }}>
+          <span style={{ fontSize: 16, flexShrink: 0 }}>{r2.icon}</span>
+          <div style={{ fontSize: 11, color: C.t, lineHeight: 1.4 }}>{r2.text}</div>
+        </div>)}
+      </div>;
+    })()}
   </div>;
 }
 
