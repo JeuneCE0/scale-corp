@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
+import { t } from '../lib/i18n.js';
 import { T, FONT } from '../lib/theme.js';
 import { fK, fmt, ago, businessHealth, businessWeather, getStreak, forecastCA, daysSince, daysUntil, leadScore } from '../lib/utils.js';
 import { load, store } from '../lib/store.js';
@@ -18,15 +19,15 @@ const LazyChart = lazy(() =>
       const forecast = forecastCA(history, 3);
       const CA_DATA = history.slice(-6).map((r) => {
         const [, m] = (r.key || '').split('-');
-        const months = ['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+        const months = ['', t('month.short.1'), t('month.short.2'), t('month.short.3'), t('month.short.4'), t('month.short.5'), t('month.short.6'), t('month.short.7'), t('month.short.8'), t('month.short.9'), t('month.short.10'), t('month.short.11'), t('month.short.12')];
         return { month: months[parseInt(m)] || r.key, ca: r.ca || 0, charges: r.charges || 0, type: 'actual' };
       });
       forecast.forEach((f) => {
         const [, m] = (f.key || '').split('-');
-        const months = ['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+        const months = ['', t('month.short.1'), t('month.short.2'), t('month.short.3'), t('month.short.4'), t('month.short.5'), t('month.short.6'), t('month.short.7'), t('month.short.8'), t('month.short.9'), t('month.short.10'), t('month.short.11'), t('month.short.12')];
         CA_DATA.push({ month: months[parseInt(m)] || f.key, ca: f.ca, charges: 0, forecast: f.ca, type: 'forecast' });
       });
-      if (CA_DATA.length === 0) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 11, color: T.textMuted }}>Aucune donnée financière</div>;
+      if (CA_DATA.length === 0) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 11, color: T.textMuted }}>{t('dash.noFinData')}</div>;
       const avgCharges = Math.round(CA_DATA.filter(d => d.charges > 0).reduce((s, d) => s + d.charges, 0) / (CA_DATA.filter(d => d.charges > 0).length || 1));
       return (
         <ResponsiveContainer width="100%" height="100%">
@@ -49,15 +50,15 @@ const LazyChart = lazy(() =>
               itemStyle={{ color: T.text }}
               cursor={{ fill: 'rgba(255,255,255,.05)' }}
               formatter={(v, name) => {
-                if (name === 'forecast') return [`${fmt(v)} €`, 'Prevision'];
-                return [`${fmt(v)} €`, name === 'ca' ? 'CA' : 'Charges'];
+                if (name === 'forecast') return [`${fmt(v)} €`, t('dash.forecast')];
+                return [`${fmt(v)} €`, name === 'ca' ? 'CA' : t('dash.projectedCharges')];
               }}
             />
             <Area type="monotone" dataKey="ca" stroke={T.green} strokeWidth={2} fill="url(#caGrad)" />
             <Area type="monotone" dataKey="charges" stroke={T.red} strokeWidth={1.5} fill="none" strokeDasharray="4 3" />
             <Area type="monotone" dataKey="forecast" stroke={T.blue} strokeWidth={2} fill="url(#forecastGrad)" strokeDasharray="6 3" />
-            {avgCharges > 0 && <ReferenceLine y={avgCharges} stroke={T.red} strokeDasharray="3 3" strokeWidth={1} label={{ value: `Seuil: ${fmt(avgCharges)} €`, fill: T.textMuted, fontSize: 8, position: 'left' }} />}
-            {caGoal > 0 && <ReferenceLine y={caGoal} stroke={T.orange} strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Objectif: ${fmt(caGoal)} €`, fill: T.orange, fontSize: 9, position: 'right' }} />}
+            {avgCharges > 0 && <ReferenceLine y={avgCharges} stroke={T.red} strokeDasharray="3 3" strokeWidth={1} label={{ value: t('dash.threshold', { value: fmt(avgCharges) }), fill: T.textMuted, fontSize: 8, position: 'left' }} />}
+            {caGoal > 0 && <ReferenceLine y={caGoal} stroke={T.orange} strokeDasharray="6 3" strokeWidth={1.5} label={{ value: t('dash.goal', { value: fmt(caGoal) }), fill: T.orange, fontSize: 9, position: 'right' }} />}
           </AreaChart>
         </ResponsiveContainer>
       );
@@ -73,9 +74,9 @@ const KEY_INTEGRATIONS = ['Stripe', 'Revolut', 'Google Calendar', 'GoHighLevel',
 
 const GREETING = () => {
   const h = new Date().getHours();
-  if (h < 12) return 'Bonjour';
-  if (h < 18) return 'Bon après-midi';
-  return 'Bonsoir';
+  if (h < 12) return t('greeting.morning');
+  if (h < 18) return t('greeting.afternoon');
+  return t('greeting.evening');
 };
 
 /* ================================================================== */
@@ -121,11 +122,11 @@ export default function Dashboard({ onNavigate }) {
       ? Math.round((finHistory[finHistory.length - 1]?.ca || 0) / clientCount)
       : 0;
     return [
-      { stage: 'Prospect', count: contacts.filter((c) => c.status === 'prospect').length, color: T.orange, status: 'prospect' },
-      { stage: 'Lead', count: contacts.filter((c) => c.status === 'lead').length, color: T.blue, status: 'lead' },
-      { stage: 'Client', count: contacts.filter((c) => c.status === 'client').length, color: T.green, status: 'client' },
-      { stage: 'Partenaire', count: contacts.filter((c) => c.status === 'partenaire').length, color: T.purple, status: 'partenaire' },
-      { stage: 'Perdu', count: contacts.filter((c) => c.status === 'perdu').length, color: T.red, status: 'perdu' },
+      { stage: t('dash.pipeline.prospect'), count: contacts.filter((c) => c.status === 'prospect').length, color: T.orange, status: 'prospect' },
+      { stage: t('dash.pipeline.lead'), count: contacts.filter((c) => c.status === 'lead').length, color: T.blue, status: 'lead' },
+      { stage: t('dash.pipeline.client'), count: contacts.filter((c) => c.status === 'client').length, color: T.green, status: 'client' },
+      { stage: t('dash.pipeline.partenaire'), count: contacts.filter((c) => c.status === 'partenaire').length, color: T.purple, status: 'partenaire' },
+      { stage: t('dash.pipeline.perdu'), count: contacts.filter((c) => c.status === 'perdu').length, color: T.red, status: 'perdu' },
     ].map((p) => ({
       ...p,
       value: p.count * avgCAPerClient,
@@ -162,9 +163,9 @@ export default function Dashboard({ onNavigate }) {
         icon: NOTIFICATION_TYPES.relance.icon,
         color: NOTIFICATION_TYPES.relance.color,
         bg: NOTIFICATION_TYPES.relance.bg,
-        text: `${followUpCount} contact${followUpCount > 1 ? 's' : ''} a relancer`,
-        detail: staleProspects.length > 0 ? `${staleProspects.length} prospect${staleProspects.length > 1 ? 's' : ''} > 14j` : '' +
-          (staleLeads.length > 0 ? `${staleProspects.length > 0 ? ', ' : ''}${staleLeads.length} lead${staleLeads.length > 1 ? 's' : ''} > 21j` : ''),
+        text: t('dash.contactsToFollowUp', { count: followUpCount, s: followUpCount > 1 ? 's' : '' }),
+        detail: staleProspects.length > 0 ? t('dash.prospectsOverdue', { count: staleProspects.length, s: staleProspects.length > 1 ? 's' : '' }) : '' +
+          (staleLeads.length > 0 ? `${staleProspects.length > 0 ? ', ' : ''}${t('dash.leadsOverdue', { count: staleLeads.length, s: staleLeads.length > 1 ? 's' : '' })}` : ''),
         tab: 'crm',
         priority: 1,
       });
@@ -178,7 +179,7 @@ export default function Dashboard({ onNavigate }) {
         icon: NOTIFICATION_TYPES.event.icon,
         color: NOTIFICATION_TYPES.event.color,
         bg: NOTIFICATION_TYPES.event.bg,
-        text: `${todayEvents.length} événement${todayEvents.length > 1 ? 's' : ''} aujourd'hui`,
+        text: t('dash.eventsToday', { count: todayEvents.length, s: todayEvents.length > 1 ? 's' : '' }),
         detail: todayEvents.map((e) => `${e.time || ''} ${e.title}`).join(', '),
         tab: 'agenda',
         priority: 2,
@@ -196,7 +197,7 @@ export default function Dashboard({ onNavigate }) {
         icon: '📋',
         color: T.blue,
         bg: T.blueBg,
-        text: `${upcomingEvents.length} événement${upcomingEvents.length > 1 ? 's' : ''} dans les 3 prochains jours`,
+        text: t('dash.eventsUpcoming', { count: upcomingEvents.length, s: upcomingEvents.length > 1 ? 's' : '' }),
         detail: upcomingEvents.map((e) => e.title).join(', '),
         tab: 'agenda',
         priority: 3,
@@ -212,8 +213,8 @@ export default function Dashboard({ onNavigate }) {
         icon: NOTIFICATION_TYPES.finance.icon,
         color: NOTIFICATION_TYPES.finance.color,
         bg: NOTIFICATION_TYPES.finance.bg,
-        text: 'Données financières manquantes ce mois',
-        detail: `Aucune saisie pour ${curMonthKey}`,
+        text: t('dash.missingFinData'),
+        detail: t('dash.noDataFor', { key: curMonthKey }),
         tab: 'data',
         priority: 2,
       });
@@ -228,7 +229,7 @@ export default function Dashboard({ onNavigate }) {
         icon: NOTIFICATION_TYPES.tip.icon,
         color: NOTIFICATION_TYPES.tip.color,
         bg: NOTIFICATION_TYPES.tip.bg,
-        text: `${incomplete.length} etape${incomplete.length > 1 ? 's' : ''} de configuration restante${incomplete.length > 1 ? 's' : ''}`,
+        text: t('dash.stepsRemaining', { count: incomplete.length, s: incomplete.length > 1 ? 's' : '' }),
         detail: incomplete.map((i) => i.label).slice(0, 2).join(', '),
         tab: incomplete[0].tab,
         priority: 4,
@@ -316,11 +317,11 @@ export default function Dashboard({ onNavigate }) {
   const activity = useMemo(() => {
     const items = [];
     contacts.filter((c) => c.createdAt).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3)
-      .forEach((c) => items.push({ text: `Nouveau contact : ${c.name}${c.company ? ` (${c.company})` : ''}`, time: ago(c.createdAt), icon: '👤', ts: new Date(c.createdAt) }));
+      .forEach((c) => items.push({ text: t('dash.newContact', { name: `${c.name}${c.company ? ` (${c.company})` : ''}` }), time: ago(c.createdAt), icon: '👤', ts: new Date(c.createdAt) }));
     events.sort((a, b) => (b.id || '').localeCompare(a.id || '')).slice(0, 3)
-      .forEach((e) => items.push({ text: `Événement : ${e.title}`, time: e.date ? `le ${new Date(e.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : '', icon: '📅', ts: new Date(e.date || 0) }));
+      .forEach((e) => items.push({ text: t('dash.eventLabel', { title: e.title }), time: e.date ? `le ${new Date(e.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : '', icon: '📅', ts: new Date(e.date || 0) }));
     const lastFin = finHistory[finHistory.length - 1];
-    if (lastFin) items.push({ text: `Données financières saisies - ${fmt(lastFin.ca || 0)} € CA`, time: '', icon: '💰', ts: new Date(0) });
+    if (lastFin) items.push({ text: t('dash.finDataEntered', { value: fmt(lastFin.ca || 0) }), time: '', icon: '💰', ts: new Date(0) });
     return items.sort((a, b) => b.ts - a.ts).slice(0, 5);
   }, [contacts, events, finHistory]);
 
@@ -328,9 +329,9 @@ export default function Dashboard({ onNavigate }) {
   /*  Tasks                                                            */
   /* ---------------------------------------------------------------- */
   const [tasks, setTasks] = useState(() => load('dashboard_tasks') || [
-    { text: 'Relancer les prospects', done: false },
-    { text: 'Vérifier les intégrations', done: false },
-    { text: 'Saisir les données du mois', done: false },
+    { text: t('dash.defaultTask1'), done: false },
+    { text: t('dash.defaultTask2'), done: false },
+    { text: t('dash.defaultTask3'), done: false },
   ]);
   const [newTask, setNewTask] = useState('');
 
@@ -430,7 +431,7 @@ export default function Dashboard({ onNavigate }) {
       const avgCA = last3.length > 0 ? Math.round(last3.reduce((s, r) => s + (r.ca || 0), 0) / last3.length) : 0;
       const prevCA = finHistory.length >= 4 ? finHistory[finHistory.length - 4]?.ca || 0 : 0;
       const trend = prevCA > 0 ? Math.round(((avgCA - prevCA) / prevCA) * 100) : 0;
-      kpis.push({ icon: '💳', label: 'MRR moyen', value: `${fmt(avgCA)} €`, trend, color: T.green, source: integrations['Stripe'] ? 'Stripe' : 'PayPal' });
+      kpis.push({ icon: '💳', label: t('dash.mrrAvg'), value: `${fmt(avgCA)} €`, trend, color: T.green, source: integrations['Stripe'] ? 'Stripe' : 'PayPal' });
     }
 
     // Email marketing: subscribers
@@ -439,7 +440,7 @@ export default function Dashboard({ onNavigate }) {
       if (integrations[tool]) {
         const meta = getIntegrationMeta(tool);
         if (meta?.subscribers) {
-          kpis.push({ icon: '📧', label: 'Abonnés email', value: fmt(meta.subscribers), trend: null, color: T.blue, source: tool });
+          kpis.push({ icon: '📧', label: t('dash.emailSubscribers'), value: fmt(meta.subscribers), trend: null, color: T.blue, source: tool });
         }
         break;
       }
@@ -451,7 +452,7 @@ export default function Dashboard({ onNavigate }) {
       if (integrations[tool]) {
         const meta = getIntegrationMeta(tool);
         if (meta?.openTickets != null) {
-          kpis.push({ icon: '🎧', label: 'Tickets ouverts', value: String(meta.openTickets), trend: null, color: meta.openTickets > 20 ? T.red : meta.openTickets > 10 ? T.orange : T.green, source: tool });
+          kpis.push({ icon: '🎧', label: t('dash.openTickets'), value: String(meta.openTickets), trend: null, color: meta.openTickets > 20 ? T.red : meta.openTickets > 10 ? T.orange : T.green, source: tool });
         }
         break;
       }
@@ -463,7 +464,7 @@ export default function Dashboard({ onNavigate }) {
       if (integrations[tool]) {
         const meta = getIntegrationMeta(tool);
         if (meta?.syncedContacts) {
-          kpis.push({ icon: '👥', label: 'Contacts CRM', value: fmt(contacts.length), trend: null, color: T.purple, source: tool });
+          kpis.push({ icon: '👥', label: t('dash.crmContacts'), value: fmt(contacts.length), trend: null, color: T.purple, source: tool });
         }
         break;
       }
@@ -475,7 +476,7 @@ export default function Dashboard({ onNavigate }) {
       if (integrations[tool]) {
         const meta = getIntegrationMeta(tool);
         if (meta?.ordersImported) {
-          kpis.push({ icon: '🛍️', label: 'Commandes', value: fmt(meta.ordersImported), trend: null, color: T.orange, source: tool });
+          kpis.push({ icon: '🛍️', label: t('dash.orders'), value: fmt(meta.ordersImported), trend: null, color: T.orange, source: tool });
         }
         break;
       }
@@ -487,7 +488,7 @@ export default function Dashboard({ onNavigate }) {
       if (integrations[tool]) {
         const lastTreso = finHistory.length > 0 ? finHistory[finHistory.length - 1]?.treso || 0 : 0;
         if (lastTreso > 0) {
-          kpis.push({ icon: '🏦', label: 'Trésorerie', value: `${fmt(lastTreso)} €`, trend: null, color: T.blue, source: tool });
+          kpis.push({ icon: '🏦', label: t('dash.treasury'), value: `${fmt(lastTreso)} €`, trend: null, color: T.blue, source: tool });
         }
         break;
       }
@@ -558,7 +559,7 @@ export default function Dashboard({ onNavigate }) {
       const costPerClient = Math.round(avgMonthlyCharges / clientCount);
       insights.push({
         icon: '💸',
-        label: 'Coût moyen / client',
+        label: t('dash.costPerClient'),
         value: `${fmt(costPerClient)} € /mois`,
         detail: `${fmt(avgMonthlyCharges)} € de charges / ${clientCount} clients`,
         color: T.orange,
@@ -571,7 +572,7 @@ export default function Dashboard({ onNavigate }) {
       const revenuePerClient = Math.round(lastCA / clientCount);
       insights.push({
         icon: '💰',
-        label: 'CA moyen / client',
+        label: t('dash.revenuePerClient'),
         value: `${fmt(revenuePerClient)} € /mois`,
         detail: `${fmt(lastCA)} € CA / ${clientCount} clients`,
         color: T.green,
@@ -596,10 +597,10 @@ export default function Dashboard({ onNavigate }) {
         .sort((a, b) => b.convRate - a.convRate);
       if (ranked.length > 0) {
         const best = ranked[0];
-        const srcLabels = { manual: 'Saisie manuelle', csv_import: 'Import CSV', gohighlevel: 'GoHighLevel', hubspot: 'HubSpot', salesforce: 'Salesforce', zoho: 'Zoho', pipedrive: 'Pipedrive', brevo: 'Brevo', axonaut: 'Axonaut' };
+        const srcLabels = { manual: t('dash.manualSource'), csv_import: t('dash.csvImport'), gohighlevel: 'GoHighLevel', hubspot: 'HubSpot', salesforce: 'Salesforce', zoho: 'Zoho', pipedrive: 'Pipedrive', brevo: 'Brevo', axonaut: 'Axonaut' };
         insights.push({
           icon: '🏆',
-          label: 'Meilleur canal',
+          label: t('dash.bestChannel'),
           value: srcLabels[best.src] || best.src,
           detail: `${best.convRate}% conversion (${best.clients}/${best.total} contacts)`,
           color: T.accent,
@@ -615,7 +616,7 @@ export default function Dashboard({ onNavigate }) {
       const ltv = clientCount > 0 ? Math.round(lastCA / clientCount * 6) : 0;
       insights.push({
         icon: '📢',
-        label: 'CPA vs LTV',
+        label: t('dash.cpaVsLtv'),
         value: `${fmt(adCostPerClient)} € → ${fmt(ltv)} €`,
         detail: `Coût acquisition ${fmt(adCostPerClient)} € | Valeur client 6 mois ~${fmt(ltv)} €`,
         color: ltv > adCostPerClient * 3 ? T.green : ltv > adCostPerClient ? T.orange : T.red,
@@ -630,7 +631,7 @@ export default function Dashboard({ onNavigate }) {
       const profitMargin = avgCA > 0 ? Math.round(((avgCA - avgCharges) / avgCA) * 100) : 0;
       insights.push({
         icon: profitMargin >= 30 ? '🟢' : profitMargin >= 15 ? '🟡' : '🔴',
-        label: 'Marge nette moyenne',
+        label: t('dash.avgNetMargin'),
         value: `${profitMargin}%`,
         detail: `CA moyen ${fmt(avgCA)} € — Charges moyennes ${fmt(avgCharges)} €`,
         color: profitMargin >= 30 ? T.green : profitMargin >= 15 ? T.orange : T.red,
@@ -714,10 +715,10 @@ export default function Dashboard({ onNavigate }) {
   /*  CRM stats                                                        */
   /* ---------------------------------------------------------------- */
   const crmStats = useMemo(() => [
-    { l: 'Prospects', n: contacts.filter((c) => c.status === 'prospect').length, c: T.orange },
-    { l: 'Leads', n: contacts.filter((c) => c.status === 'lead').length, c: T.blue },
-    { l: 'Clients', n: contacts.filter((c) => c.status === 'client').length, c: T.green },
-    { l: 'Perdus', n: contacts.filter((c) => c.status === 'perdu').length, c: T.red },
+    { l: t('dash.pipeline.prospect'), n: contacts.filter((c) => c.status === 'prospect').length, c: T.orange },
+    { l: t('dash.pipeline.lead'), n: contacts.filter((c) => c.status === 'lead').length, c: T.blue },
+    { l: t('dash.pipeline.client'), n: contacts.filter((c) => c.status === 'client').length, c: T.green },
+    { l: t('dash.pipeline.perdu'), n: contacts.filter((c) => c.status === 'perdu').length, c: T.red },
   ], [contacts]);
 
   const crmConversion = useMemo(() => {
@@ -748,10 +749,10 @@ export default function Dashboard({ onNavigate }) {
   /*  Quick Actions                                                    */
   /* ---------------------------------------------------------------- */
   const QUICK_ACTIONS = [
-    { label: 'Ajouter un contact', icon: '👤', target: 'crm' },
-    { label: 'Saisir des données', icon: '📊', target: 'data' },
-    { label: 'Créer un événement', icon: '📅', target: 'agenda' },
-    { label: 'Voir paramètres', icon: '⚙️', target: 'settings' },
+    { label: t('crm.addContact'), icon: '👤', target: 'crm' },
+    { label: t('dash.defaultTask3'), icon: '📊', target: 'data' },
+    { label: t('agenda.addEvent'), icon: '📅', target: 'agenda' },
+    { label: t('nav.settings'), icon: '⚙️', target: 'settings' },
   ];
 
   /* ================================================================ */
@@ -771,7 +772,7 @@ export default function Dashboard({ onNavigate }) {
               {GREETING()}{companyInfo.name ? `, ${companyInfo.name}` : ''} !
             </h1>
             <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>
-              Vue d'ensemble de votre activité et performances
+              {t('dash.subtitle')}
             </p>
           </div>
 
@@ -788,8 +789,8 @@ export default function Dashboard({ onNavigate }) {
                 <span style={{ fontSize: 11, fontWeight: 800, color: healthPct > 50 ? T.green : healthPct > 0 ? T.orange : T.red }}>{healthPct}%</span>
               </ScoreRing>
               <div className="hide-mobile">
-                <div style={{ fontSize: 11, fontWeight: 700, color: healthPct > 50 ? T.green : T.orange }}>Santé globale</div>
-                <div style={{ fontSize: 9, color: T.textMuted }}>{totalConnected}/{INTEGRATIONS.length} APIs connectées</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: healthPct > 50 ? T.green : T.orange }}>{t('dash.healthScore')}</div>
+                <div style={{ fontSize: 9, color: T.textMuted }}>{t('dash.connectedCount', { count: totalConnected, total: INTEGRATIONS.length })}</div>
               </div>
             </div>
           </div>
@@ -804,12 +805,12 @@ export default function Dashboard({ onNavigate }) {
           <Card>
             <EmptyState
               icon={'🚀'}
-              title="Bienvenue sur HubScale"
-              sub="Commencez par ajouter des contacts ou saisir vos données financières pour voir votre tableau de bord prendre vie."
+              title={t('dash.welcome')}
+              sub={t('dash.subtitle')}
               action={
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <Btn onClick={() => onNavigate?.('crm')} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Ajouter un contact</Btn>
-                  <Btn v="secondary" onClick={() => onNavigate?.('data')}>Saisir des données</Btn>
+                  <Btn onClick={() => onNavigate?.('crm')} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>{t('crm.addContact')}</Btn>
+                  <Btn v="secondary" onClick={() => onNavigate?.('data')}>{t('dash.defaultTask3')}</Btn>
                 </div>
               }
             />
@@ -825,8 +826,8 @@ export default function Dashboard({ onNavigate }) {
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <span style={{ fontSize: 16 }}>⚡</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Actions du jour</span>
-              <HelpTip text="Actions recommandées basées sur vos données en temps réel" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{t('dash.dailyActions')}</span>
+              <HelpTip text={t('dash.dailyActions')} />
               <Badge label={`${dailyActions.length}`} color={T.orange} bg={T.orangeBg} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
@@ -867,19 +868,19 @@ export default function Dashboard({ onNavigate }) {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                   <span style={{ fontSize: 16 }}>🚀</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Configuration de votre espace</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{t('dash.checklist')}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ flex: 1, minWidth: 120, maxWidth: 200 }}>
                     <ProgressBar value={checklistCompleted} max={checklistTotal} color={T.accent} h={6} />
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: T.accent }}>{checklistCompleted}/{checklistTotal} complétées</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: T.accent }}>{t('dash.connectedCount', { count: checklistCompleted, total: checklistTotal })}</span>
                 </div>
               </div>
               <span
                 onClick={dismissChecklist}
                 style={{ fontSize: 10, color: T.textMuted, cursor: 'pointer', padding: '4px 8px', borderRadius: 6, background: T.surface2 }}
-              >Masquer</span>
+              >{t('dash.dismissChecklist')}</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
               {ONBOARDING_CHECKLIST.map((item) => (
@@ -900,20 +901,20 @@ export default function Dashboard({ onNavigate }) {
       {/*  KPI Cards with sparklines                                    */}
       {/* ============================================================ */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <KPI label="CA MENSUEL" value={`${fmt(lastRow.ca || 0)} €`} sub={caEvo != null ? `${caEvo >= 0 ? '+' : ''}${caEvo}% vs mois dernier` : 'Aucune donnée précédente'} accent={T.green} icon="💰" delay={1} sparkData={sparkCA} helpTip="Chiffre d'affaires du dernier mois saisi" />
-        <KPI label="CHARGES" value={`${fmt(lastRow.charges || 0)} €`} sub="Fixes + Variables" accent={T.red} icon="📉" delay={2} sparkData={sparkCharges} helpTip="Total des charges fixes et variables" />
-        <KPI label="RÉSULTAT NET" value={`${fmt(lastRow.result || 0)} €`} sub={lastRow.ca ? `Marge: ${Math.round(((lastRow.result || 0) / lastRow.ca) * 100)}%` : '---'} accent={T.orange} icon="📊" delay={3} sparkData={sparkResult} helpTip="CA moins charges = bénéfice net" />
+        <KPI label={t('dash.kpiCA')} value={`${fmt(lastRow.ca || 0)} €`} sub={caEvo != null ? t('dash.kpiCASub', { pct: `${caEvo >= 0 ? '+' : ''}${caEvo}` }) : t('dash.kpiNoPrevData')} accent={T.green} icon="💰" delay={1} sparkData={sparkCA} helpTip={t('dash.kpiCATip')} />
+        <KPI label={t('dash.kpiCharges')} value={`${fmt(lastRow.charges || 0)} €`} sub={t('dash.kpiChargesSub')} accent={T.red} icon="📉" delay={2} sparkData={sparkCharges} helpTip={t('dash.kpiChargesTip')} />
+        <KPI label={t('dash.kpiResult')} value={`${fmt(lastRow.result || 0)} €`} sub={lastRow.ca ? t('dash.kpiMarginSub', { pct: Math.round(((lastRow.result || 0) / lastRow.ca) * 100) }) : '---'} accent={T.orange} icon="📊" delay={3} sparkData={sparkResult} helpTip={t('dash.kpiResultTip')} />
         {forecastLabel && (
-          <PremiumGate label="Prévisions IA" blur>
+          <PremiumGate label={t('dash.kpiForecast')} blur>
             <KPI
-              label="PRÉVISION 3 MOIS"
+              label={t('dash.kpiForecast')}
               value={`${forecastLabel.pct >= 0 ? '+' : ''}${forecastLabel.pct}%`}
-              sub={`Projection: ${fmt(forecastLabel.value)} €`}
+              sub={t('dash.kpiProjectionSub', { value: fmt(forecastLabel.value) })}
               accent={forecastLabel.pct >= 0 ? T.blue : T.red}
               icon="📈"
               delay={3}
               sparkData={forecast.map((f) => f.ca)}
-              helpTip="Prévision linéaire sur 3 mois basée sur la tendance récente"
+              helpTip={t('dash.kpiForecastTip')}
             />
           </PremiumGate>
         )}
@@ -927,8 +928,8 @@ export default function Dashboard({ onNavigate }) {
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5, whiteSpace: 'nowrap' }}>
-                🎯 Objectif CA
-                <HelpTip text="Progression vers votre objectif mensuel de CA" />
+                🎯 {t('dash.caGoalLabel')}
+                <HelpTip text={t('dash.caGoalTip')} />
               </div>
               <div style={{ flex: 1, minWidth: 120 }}>
                 <ProgressBar value={lastRow.ca || 0} max={caGoal} color={(lastRow.ca || 0) >= caGoal ? T.green : T.orange} h={8} />
@@ -949,18 +950,18 @@ export default function Dashboard({ onNavigate }) {
           {editingObjective ? (
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 12 }}>
-                🎯 Definir un objectif
+                🎯 {t('dash.editObjective')}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
-                <Inp label="Description" value={objDraft.text} onChange={(v) => setObjDraft((d) => ({ ...d, text: v }))} placeholder="Ex: Signer 5 nouveaux clients" small />
+                <Inp label={t('common.description')} value={objDraft.text} onChange={(v) => setObjDraft((d) => ({ ...d, text: v }))} placeholder="Ex: Signer 5 nouveaux clients" small />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <Inp label="Objectif (nombre)" value={objDraft.target} onChange={(v) => setObjDraft((d) => ({ ...d, target: v }))} type="number" placeholder="5" small />
-                  <Inp label="Progression actuelle" value={objDraft.current} onChange={(v) => setObjDraft((d) => ({ ...d, current: v }))} type="number" placeholder="0" small />
+                  <Inp label={t('dash.objTarget')} value={objDraft.target} onChange={(v) => setObjDraft((d) => ({ ...d, target: v }))} type="number" placeholder="5" small />
+                  <Inp label={t('dash.objCurrent')} value={objDraft.current} onChange={(v) => setObjDraft((d) => ({ ...d, current: v }))} type="number" placeholder="0" small />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                <Btn v="primary" small onClick={saveObjective}>Enregistrer</Btn>
-                <Btn v="ghost" small onClick={() => setEditingObjective(false)}>Annuler</Btn>
+                <Btn v="primary" small onClick={saveObjective}>{t('common.save')}</Btn>
+                <Btn v="ghost" small onClick={() => setEditingObjective(false)}>{t('common.cancel')}</Btn>
               </div>
             </div>
           ) : (
@@ -970,13 +971,13 @@ export default function Dashboard({ onNavigate }) {
                   <span style={{ fontSize: 16 }}>{objectiveReached ? '🏆' : '🎯'}</span>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
-                      Mon objectif
-                      <HelpTip text="Definissez un objectif hebdomadaire ou mensuel pour suivre votre progression" />
+                      {t('dash.objective')}
+                      <HelpTip text={t('dash.objTip')} />
                     </div>
                     {objective.text ? (
                       <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginTop: 2 }}>{objective.text}</div>
                     ) : (
-                      <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>Aucun objectif defini</div>
+                      <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{t('common.noData')}</div>
                     )}
                   </div>
                 </div>
@@ -988,7 +989,7 @@ export default function Dashboard({ onNavigate }) {
                     </>
                   )}
                   <Btn v="ghost" small onClick={startEditObjective}>
-                    {objective.text ? 'Modifier' : 'Definir'}
+                    {objective.text ? t('common.edit') : t('dash.objective')}
                   </Btn>
                 </div>
               </div>
@@ -997,12 +998,12 @@ export default function Dashboard({ onNavigate }) {
                   <ProgressBar value={objective.current} max={objective.target} color={objectiveReached ? T.green : T.accent} h={6} />
                   {objectiveReached && showCelebration && (
                     <div className="bounce-in" style={{ marginTop: 8, textAlign: 'center', fontSize: 12, fontWeight: 700, color: T.green }}>
-                      🎉 Objectif atteint ! Felicitations !
+                      🎉 {t('dash.objReached')}
                     </div>
                   )}
                   {objectiveReached && !showCelebration && (
                     <div style={{ marginTop: 6, textAlign: 'center', fontSize: 10, fontWeight: 600, color: T.green }}>
-                      ✓ Objectif atteint
+                      ✓ {t('dash.objReached')}
                     </div>
                   )}
                 </div>
@@ -1044,7 +1045,7 @@ export default function Dashboard({ onNavigate }) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 16 }}>{'📋'}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Récap de la semaine</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{t('dash.weeklyRecap')}</span>
                 </div>
                 <span style={{ fontSize: 10, color: T.textMuted, fontWeight: 600 }}>
                   {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -1052,12 +1053,12 @@ export default function Dashboard({ onNavigate }) {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
                 {[
-                  { icon: '👤', label: 'Nouveaux contacts', value: recap.newContacts, color: T.blue },
-                  { icon: '🤝', label: 'Nouveaux clients', value: recap.newClients, color: T.green },
-                  { icon: '📅', label: 'Événements', value: recap.weekEvents, color: T.orange, sub: recap.upcomingEvents > 0 ? `${recap.upcomingEvents} à venir` : '' },
-                  { icon: '📋', label: 'Factures créées', value: recap.invoicesCreated, color: T.accent, sub: recap.invoicedTTC > 0 ? `${fK(recap.invoicedTTC)}€` : '' },
-                  { icon: '✅', label: 'Encaissé', value: `${fK(recap.paidTTC)}€`, color: T.green },
-                  ...(recap.overdueCount > 0 ? [{ icon: '⚠️', label: 'Impayées', value: recap.overdueCount, color: T.red, sub: `${fK(recap.overdueAmount)}€ en retard` }] : []),
+                  { icon: '👤', label: t('dash.newContactsWeek'), value: recap.newContacts, color: T.blue },
+                  { icon: '🤝', label: t('dash.newClientsWeek'), value: recap.newClients, color: T.green },
+                  { icon: '📅', label: t('dash.weekEvents'), value: recap.weekEvents, color: T.orange, sub: recap.upcomingEvents > 0 ? `${recap.upcomingEvents} à venir` : '' },
+                  { icon: '📋', label: t('dash.invoicedWeek'), value: recap.invoicesCreated, color: T.accent, sub: recap.invoicedTTC > 0 ? `${fK(recap.invoicedTTC)}€` : '' },
+                  { icon: '✅', label: t('dash.paidWeek'), value: `${fK(recap.paidTTC)}€`, color: T.green },
+                  ...(recap.overdueCount > 0 ? [{ icon: '⚠️', label: t('dash.overdueWeek'), value: recap.overdueCount, color: T.red, sub: `${fK(recap.overdueAmount)}€ en retard` }] : []),
                 ].map((item) => (
                   <div key={item.label} style={{ padding: '10px 12px', borderRadius: 8, background: item.color + '08', border: `1px solid ${item.color}15` }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
@@ -1073,7 +1074,7 @@ export default function Dashboard({ onNavigate }) {
               {recap.caGoal > 0 && (
                 <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: T.surface2, border: `1px solid ${T.border}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: T.textMuted }}>Objectif CA du mois</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: T.textMuted }}>{t('dash.objective')} CA</span>
                     <span style={{ fontSize: 11, fontWeight: 700, color: recap.caProgress >= 100 ? T.green : T.accent }}>
                       {fmt(recap.currentCA)} / {fmt(recap.caGoal)} € ({recap.caProgress}%)
                     </span>
@@ -1091,13 +1092,13 @@ export default function Dashboard({ onNavigate }) {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
-                      Evolution CA — 6 derniers mois
+                      {t('dash.caEvolution')}
                     </span>
-                    <HelpTip text="Vert = CA, Rouge pointillé = Charges, Bleu = Prévision, Lignes = seuils" />
+                    <HelpTip text={t('dash.chartTip')} />
                   </div>
                   {forecastLabel && (
                     <Badge
-                      label={`Prévision: ${forecastLabel.pct >= 0 ? '+' : ''}${forecastLabel.pct}% sur 3 mois`}
+                      label={t('dash.forecastBadge', { pct: `${forecastLabel.pct >= 0 ? '+' : ''}${forecastLabel.pct}` })}
                       color={forecastLabel.pct >= 0 ? T.blue : T.red}
                       bg={forecastLabel.pct >= 0 ? T.blueBg : T.redBg}
                     />
@@ -1115,9 +1116,9 @@ export default function Dashboard({ onNavigate }) {
               <Card delay={4}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
-                    Pipeline commercial
+                    {t('dash.crmPipeline')}
                   </span>
-                  <HelpTip text="Nombre de contacts par étape et valeur estimée du pipeline" />
+                  <HelpTip text={t('dash.pipelineTip')} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {pipeline.map((p) => (
@@ -1137,7 +1138,7 @@ export default function Dashboard({ onNavigate }) {
                 </div>
                 {pipeline.some((p) => p.value > 0) && (
                   <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase' }}>Valeur totale pipeline</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase' }}>{t('dash.pipelineTotal')}</span>
                     <span style={{ fontSize: 13, fontWeight: 800, color: T.accent }}>{fmt(pipeline.reduce((s, p) => s + p.value, 0))} €</span>
                   </div>
                 )}
@@ -1151,10 +1152,10 @@ export default function Dashboard({ onNavigate }) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 16 }}>📡</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>KPIs Intégrations</span>
-                  <HelpTip text="Données en temps réel de vos outils connectés" />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{t('dash.integrationKpis')}</span>
+                  <HelpTip text={t('dash.kpiIntTip')} />
                 </div>
-                <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>Gérer →</Btn>
+                <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>{t('dash.manageBtn')}</Btn>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
                 {integrationKPIs.map((kpi) => (
@@ -1185,10 +1186,10 @@ export default function Dashboard({ onNavigate }) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 16 }}>{'📊'}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Répartition des charges</span>
-                  <HelpTip text="Moyenne mensuelle par catégorie sur les 3 derniers mois" />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{t('dash.expenseBreakdown')}</span>
+                  <HelpTip text={t('dash.expenseTip')} />
                 </div>
-                <Btn v="ghost" small onClick={() => onNavigate?.('data')}>Détails {'→'}</Btn>
+                <Btn v="ghost" small onClick={() => onNavigate?.('data')}>{t('dash.detailsBtn')}</Btn>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {expenseBreakdown.slice(0, 5).map((cat) => {
@@ -1208,11 +1209,11 @@ export default function Dashboard({ onNavigate }) {
                 })}
                 {expenseBreakdown.length > 5 && (
                   <div style={{ fontSize: 10, color: T.textMuted, textAlign: 'center', marginTop: 4 }}>
-                    + {expenseBreakdown.length - 5} autres catégories
+                    {t('dash.otherCategories', { count: expenseBreakdown.length - 5 })}
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid ${T.border}`, paddingTop: 8, marginTop: 4 }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: T.text }}>Total charges</span>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: T.text }}>{t('dash.totalChargesLabel')}</span>
                   <span style={{ fontSize: 10, fontWeight: 800, color: T.red }}>
                     {fmt(expenseBreakdown.reduce((s, c) => s + c.value, 0))} {'€'} /mois
                   </span>
@@ -1228,7 +1229,7 @@ export default function Dashboard({ onNavigate }) {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 16 }}>🏦</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Projection Trésorerie</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{t('dash.cashflowProjection')}</span>
                     <HelpTip text="Estimation sur 3 mois basée sur vos tendances de CA et charges" />
                   </div>
                   <Badge
@@ -1241,12 +1242,12 @@ export default function Dashboard({ onNavigate }) {
                 {/* Current treasury bar */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '12px 16px', borderRadius: 10, background: T.surface2, border: `1px solid ${T.border}` }}>
                   <div>
-                    <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 2 }}>Trésorerie actuelle</div>
+                    <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 2 }}>{t('dash.tresoActuelle')}</div>
                     <div style={{ fontSize: 22, fontWeight: 800, color: cashFlowData.currentTreso > cashFlowData.avgCharges * 2 ? T.green : T.orange }}>{fmt(cashFlowData.currentTreso)} €</div>
                   </div>
                   <div style={{ flex: 1 }} />
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 2 }}>Résultat moyen /mois</div>
+                    <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 2 }}>{t('dash.resultMoyenMois')}</div>
                     <div style={{ fontSize: 16, fontWeight: 800, color: cashFlowData.avgResult >= 0 ? T.green : T.red }}>
                       {cashFlowData.avgResult >= 0 ? '+' : ''}{fmt(cashFlowData.avgResult)} €
                     </div>
@@ -1256,7 +1257,7 @@ export default function Dashboard({ onNavigate }) {
                 {/* 3-month projection */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                   {cashFlowData.months.map((m, i) => {
-                    const MONTH_NAMES = ['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+                    const MONTH_NAMES = ['', t('month.short.1'), t('month.short.2'), t('month.short.3'), t('month.short.4'), t('month.short.5'), t('month.short.6'), t('month.short.7'), t('month.short.8'), t('month.short.9'), t('month.short.10'), t('month.short.11'), t('month.short.12')];
                     const [, mo] = (m.key || '').split('-');
                     const monthLabel = mo ? MONTH_NAMES[parseInt(mo)] : `M+${i + 1}`;
                     const tresoColor = m.treso > cashFlowData.avgCharges * 2 ? T.green : m.treso > cashFlowData.avgCharges ? T.orange : T.red;
@@ -1287,7 +1288,7 @@ export default function Dashboard({ onNavigate }) {
               <Card delay={5} style={{ marginBottom: 20 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                   <span style={{ fontSize: 16 }}>🔬</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Insights Business</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{t('dash.crossInsights')}</span>
                   <HelpTip text="Analyses croisées de vos données CRM, financières et marketing" />
                   <Badge label="Auto" color={T.accent} bg={T.accentBg} />
                 </div>
@@ -1315,11 +1316,11 @@ export default function Dashboard({ onNavigate }) {
             <div className="grid-desktop-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 20 }}>
               <Card delay={5}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-                  Activité récente
+                  {t('dash.recentActivity')}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {activity.length === 0 ? (
-                    <div style={{ fontSize: 11, color: T.textMuted, textAlign: 'center', padding: 12 }}>Aucune activité récente</div>
+                    <div style={{ fontSize: 11, color: T.textMuted, textAlign: 'center', padding: 12 }}>{t('dash.noActivity')}</div>
                   ) : activity.map((a, i) => (
                     <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                       <span style={{ fontSize: 14, flexShrink: 0 }}>{a.icon}</span>
@@ -1334,7 +1335,7 @@ export default function Dashboard({ onNavigate }) {
 
               <Card delay={6}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
-                  Taches
+                  {t('dash.quickTasks')}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {tasks.map((t, i) => (
@@ -1353,7 +1354,7 @@ export default function Dashboard({ onNavigate }) {
                     </div>
                   ))}
                   <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                    <input value={newTask} onChange={(e) => setNewTask(e.target.value)} placeholder="Nouvelle tache..."
+                    <input value={newTask} onChange={(e) => setNewTask(e.target.value)} placeholder={t('dash.addTask')}
                       onKeyDown={(e) => e.key === 'Enter' && addTask()}
                       style={{ flex: 1, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 6, color: T.text, padding: '5px 8px', fontSize: 10, fontFamily: 'inherit', outline: 'none' }} />
                     <Btn v="ghost" small onClick={addTask} disabled={!newTask.trim()}>+</Btn>
@@ -1369,10 +1370,10 @@ export default function Dashboard({ onNavigate }) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 16 }}>👥</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>CRM</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{t('dash.crmBanner')}</span>
                   <Badge label={`${contacts.length} contacts`} color={T.accent} bg={T.accent + '18'} />
                 </div>
-                <Btn v="ghost" small onClick={() => onNavigate?.('crm')}>Voir tout →</Btn>
+                <Btn v="ghost" small onClick={() => onNavigate?.('crm')}>{t('dash.seeAllBtn')}</Btn>
               </div>
 
               {/* Distribution bar */}
@@ -1398,28 +1399,28 @@ export default function Dashboard({ onNavigate }) {
               {/* KPI row */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
                 <div style={{ padding: '12px 14px', borderRadius: 10, background: T.green + '10', border: `1px solid ${T.green}22`, textAlign: 'center' }}>
-                  <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>Conversion</div>
+                  <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>{t('dash.conversionLabel')}</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: crmConversion >= 50 ? T.green : crmConversion >= 25 ? T.orange : T.red }}>
                     {crmConversion}%
                   </div>
-                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>Clients / Clos</div>
+                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>{t('dash.clientsClos')}</div>
                 </div>
                 <div style={{ padding: '12px 14px', borderRadius: 10, background: T.blue + '10', border: `1px solid ${T.blue}22`, textAlign: 'center' }}>
-                  <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>Pipeline</div>
+                  <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>{t('dash.pipelineBannerLabel')}</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: T.blue }}>
                     {fK(pipeline.reduce((s, p) => s + p.value, 0))}€
                   </div>
-                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>Valeur estimée</div>
+                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>{t('dash.valeurEstimee')}</div>
                 </div>
                 <div style={{ padding: '12px 14px', borderRadius: 10, background: T.orange + '10', border: `1px solid ${T.orange}22`, textAlign: 'center' }}>
-                  <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>A relancer</div>
+                  <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>{t('dash.aRelancer')}</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: T.orange }}>
                     {contacts.filter((c) => (c.status === 'prospect' && daysSince(c.createdAt) > 14) || (c.status === 'lead' && daysSince(c.createdAt) > 21)).length}
                   </div>
-                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>Contacts inactifs</div>
+                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>{t('dash.contactsInactifs')}</div>
                 </div>
                 <div style={{ padding: '12px 14px', borderRadius: 10, background: T.purple + '10', border: `1px solid ${T.purple}22`, textAlign: 'center' }}>
-                  <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>Entonnoir</div>
+                  <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>{t('dash.entonnoir')}</div>
                   <svg viewBox="0 0 80 40" style={{ width: 80, height: 40, margin: '0 auto', display: 'block' }}>
                     {(() => {
                       const total = contacts.length || 1;
@@ -1438,13 +1439,13 @@ export default function Dashboard({ onNavigate }) {
                       );
                     })()}
                   </svg>
-                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>Prospect → Client</div>
+                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>{t('dash.prospectToClient')}</div>
                 </div>
               </div>
 
               {contacts.length === 0 && (
                 <div style={{ textAlign: 'center', padding: 16, color: T.textMuted, fontSize: 11 }}>
-                  Ajoutez des contacts dans le CRM pour voir vos statistiques
+                  {t('dash.noCrmData')}
                 </div>
               )}
             </Card>
@@ -1456,22 +1457,22 @@ export default function Dashboard({ onNavigate }) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 16 }}>📢</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Publicité</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{t('dash.pubBanner')}</span>
                   {pubStats.platforms.map((p) => (
                     <Badge key={p} label={p} color={T.green} bg={T.greenBg} />
                   ))}
                 </div>
-                <Btn v="ghost" small onClick={() => onNavigate?.('data')}>Voir détails →</Btn>
+                <Btn v="ghost" small onClick={() => onNavigate?.('data')}>{t('dash.seeDetailsBtn')}</Btn>
               </div>
 
               {/* Funnel visuel: Budget → Impressions → Clicks → Conversions */}
               <div style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   {[
-                    { label: 'Budget', value: `${fK(pubStats.spend)}€`, pct: 100, color: T.orange },
-                    { label: 'Impressions', value: fK(pubStats.impressions), pct: 80, color: T.blue },
-                    { label: 'Clics', value: fmt(pubStats.clicks), pct: pubStats.impressions > 0 ? Math.round((pubStats.clicks / pubStats.impressions) * 100 * 10) : 0, color: T.purple },
-                    { label: 'Conversions', value: String(pubStats.conversions), pct: pubStats.clicks > 0 ? Math.round((pubStats.conversions / pubStats.clicks) * 100 * 5) : 0, color: T.green },
+                    { label: t('dash.budgetLabel'), value: `${fK(pubStats.spend)}€`, pct: 100, color: T.orange },
+                    { label: t('dash.impressionsLabel'), value: fK(pubStats.impressions), pct: 80, color: T.blue },
+                    { label: t('dash.clicsLabel'), value: fmt(pubStats.clicks), pct: pubStats.impressions > 0 ? Math.round((pubStats.clicks / pubStats.impressions) * 100 * 10) : 0, color: T.purple },
+                    { label: t('dash.conversionsLabel'), value: String(pubStats.conversions), pct: pubStats.clicks > 0 ? Math.round((pubStats.conversions / pubStats.clicks) * 100 * 5) : 0, color: T.green },
                   ].map((step, i) => (
                     <React.Fragment key={step.label}>
                       <div style={{ flex: 1, textAlign: 'center' }}>
@@ -1510,10 +1511,10 @@ export default function Dashboard({ onNavigate }) {
                 <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Publicité</span>
               </div>
               <div style={{ textAlign: 'center', padding: '16px 0', color: T.textMuted, fontSize: 11 }}>
-                Connectez une plateforme publicitaire dans les paramètres pour voir vos stats
+                {t('dash.noAds')}
               </div>
               <div style={{ textAlign: 'center' }}>
-                <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>Connecter une plateforme</Btn>
+                <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>{t('dash.connectPlatform')}</Btn>
               </div>
             </Card>
           ),
@@ -1524,10 +1525,10 @@ export default function Dashboard({ onNavigate }) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 16 }}>🔗</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Integrations</span>
-                  <Badge label={`${totalConnected} actives`} color={T.accent} bg={T.accent + '18'} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{t('dash.integrationsHub')}</span>
+                  <Badge label={t('dash.activeCount', { count: totalConnected })} color={T.accent} bg={T.accent + '18'} />
                 </div>
-                <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>Gerer →</Btn>
+                <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>{t('dash.manageIntBtn')}</Btn>
               </div>
 
               {/* Category breakdown */}
@@ -1535,7 +1536,7 @@ export default function Dashboard({ onNavigate }) {
                 {Object.entries(integrationSummary)
                   .filter(([, v]) => v.connected > 0)
                   .map(([cat, v]) => {
-                    const catLabels = { paiements: 'Paiements', banque: 'Banque', agenda: 'Agenda', crm: 'CRM', marketing: 'Marketing', projet: 'Projet', publicite: 'Pub', support: 'Support' };
+                    const catLabels = { paiements: t('analytics.catPayments'), banque: t('analytics.catBank'), agenda: t('analytics.catAgenda'), crm: t('analytics.catCRM'), marketing: t('analytics.catMarketing'), projet: t('analytics.catProject'), publicite: t('analytics.catAds'), support: t('analytics.catSupport') };
                     const catColors = { paiements: T.orange, banque: T.blue, agenda: T.green, crm: T.purple, marketing: T.accent, projet: T.blue, publicite: T.red, support: T.green };
                     const color = catColors[cat] || T.accent;
                     return (

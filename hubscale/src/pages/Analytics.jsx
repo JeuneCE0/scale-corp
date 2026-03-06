@@ -4,6 +4,7 @@ import { load } from '../lib/store.js';
 import { fmt, fK, pct, monthLabel, forecastCA, leadScore, daysSince, MONTHS_FR, curMonth, nextMonth, sameMonthLastYear } from '../lib/utils.js';
 import { Card, Section, Badge, Btn, ProgressBar, ScoreRing, Sparkline, KPI, Spinner, HelpTip, PremiumGate, ErrorBoundary } from '../components/ui.jsx';
 import { INTEGRATIONS, CRM_STATUSES, LEAD_SCORE_LABELS } from '../lib/constants.js';
+import { t } from '../lib/i18n.js';
 
 /* ------------------------------------------------------------------ */
 /*  Lazy-loaded Recharts — Revenue Trends                              */
@@ -15,7 +16,7 @@ const LazyRevenueTrendsChart = lazy(() =>
       if (!data || data.length === 0) {
         return (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 11, color: T.textMuted }}>
-            Aucune donnée financière
+            {t('analytics.noFinData')}
           </div>
         );
       }
@@ -46,7 +47,7 @@ const LazyRevenueTrendsChart = lazy(() =>
               itemStyle={{ color: T.text }}
               cursor={{ fill: 'rgba(255,255,255,.05)' }}
               formatter={(v, name) => {
-                const labels = { ca: 'CA', charges: 'Charges', avg3m: 'Moy. 3 mois', forecastCA: 'Prévision', yoy: 'N-1' };
+                const labels = { ca: t('analytics.ca'), charges: t('analytics.charges'), avg3m: t('analytics.avg3m'), forecastCA: t('analytics.forecastLabel'), yoy: t('analytics.yoy') };
                 return [`${fmt(v)} €`, labels[name] || name];
               }}
             />
@@ -75,7 +76,7 @@ const LazyForecastChart = lazy(() =>
       if (combined.length === 0) {
         return (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 11, color: T.textMuted }}>
-            Données insuffisantes pour la prévision
+            {t('analytics.insufficientData')}
           </div>
         );
       }
@@ -97,7 +98,7 @@ const LazyForecastChart = lazy(() =>
             <Tooltip
               contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 11, color: T.text }}
               labelStyle={{ color: T.text, fontWeight: 700 }}
-              formatter={(v, name) => [`${fmt(v)} €`, name === 'actual' ? 'CA Réel' : 'Prévision']}
+              formatter={(v, name) => [`${fmt(v)} €`, name === 'actual' ? t('analytics.caReal') : t('analytics.forecastLabel')]}
             />
             <Area type="monotone" dataKey="actual" stroke={T.green} strokeWidth={2} fill="url(#actualGradForecast)" />
             <Area type="monotone" dataKey="forecast" stroke={T.blue} strokeWidth={2} fill="url(#forecastGradPredict)" strokeDasharray="8 4" />
@@ -125,7 +126,7 @@ export default function Analytics({ onNavigate }) {
   /* ---------------------------------------------------------------- */
   const now = new Date();
   const dateRangeLabel = useMemo(() => {
-    const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    const monthNames = [t('month.1'), t('month.2'), t('month.3'), t('month.4'), t('month.5'), t('month.6'), t('month.7'), t('month.8'), t('month.9'), t('month.10'), t('month.11'), t('month.12')];
     return `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
   }, []);
 
@@ -265,7 +266,7 @@ export default function Analytics({ onNavigate }) {
   /* ================================================================ */
   const integrationCategories = useMemo(() => {
     const cats = {};
-    const catLabels = { paiements: 'Paiements', banque: 'Banque', agenda: 'Agenda', crm: 'CRM', marketing: 'Marketing', projet: 'Projet', publicite: 'Publicité', support: 'Support' };
+    const catLabels = { paiements: t('analytics.catPayments'), banque: t('analytics.catBank'), agenda: t('analytics.catAgenda'), crm: t('analytics.catCRM'), marketing: t('analytics.catMarketing'), projet: t('analytics.catProject'), publicite: t('analytics.catAds'), support: t('analytics.catSupport') };
     const catColors = { paiements: T.orange, banque: T.blue, agenda: T.green, crm: T.purple, marketing: T.accent, projet: T.blue, publicite: T.red, support: T.green };
 
     INTEGRATIONS.forEach((ig) => {
@@ -341,7 +342,7 @@ export default function Analytics({ onNavigate }) {
   /*  RENDER                                                           */
   /* ================================================================ */
   return (
-    <PremiumGate label="Rapports & Analytics" blur>
+    <PremiumGate label={t('analytics.title')} blur>
       {/* ============================================================ */}
       {/*  HEADER                                                       */}
       {/* ============================================================ */}
@@ -349,15 +350,15 @@ export default function Analytics({ onNavigate }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: T.text }}>
-              Rapports & Analytics
+              {t('analytics.title')}
             </h1>
             <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>
-              Analyse détaillée de votre activité -- {dateRangeLabel}
+              {t('analytics.subtitle', { date: dateRangeLabel })}
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Badge label={`${finHistory.length} mois de données`} color={T.accent} bg={T.accentBg} />
-            <Badge label={`${contacts.length} contacts`} color={T.green} bg={T.greenBg} />
+            <Badge label={t('analytics.monthsData', { count: finHistory.length })} color={T.accent} bg={T.accentBg} />
+            <Badge label={t('analytics.contactsCount', { count: contacts.length })} color={T.green} bg={T.greenBg} />
           </div>
         </div>
       </div>
@@ -367,60 +368,60 @@ export default function Analytics({ onNavigate }) {
       {/* ============================================================ */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
         <KPI
-          label="CA TOTAL"
+          label={t('analytics.totalCA')}
           value={`${fmt(totalCA)} €`}
-          sub={`Sur ${finHistory.length} mois`}
+          sub={t('analytics.overPeriod', { count: finHistory.length })}
           accent={T.green}
           icon="💰"
           delay={1}
           sparkData={sparkCA}
-          helpTip="Somme de tous les CA enregistrés"
+          helpTip={t('analytics.sumAllCA')}
         />
         <KPI
-          label="CA MOYEN MENSUEL"
+          label={t('analytics.avgMonthlyCA')}
           value={`${fmt(avgMonthlyCA)} €`}
-          sub="Moyenne sur la période"
+          sub={t('analytics.avgPeriod')}
           accent={T.blue}
           icon="📊"
           delay={2}
-          helpTip="CA total divisé par le nombre de mois"
+          helpTip={t('analytics.caDivMonths')}
         />
         <KPI
-          label="MARGE NETTE"
+          label={t('analytics.netMargin')}
           value={`${margeNette}%`}
-          sub={`Resultat: ${fmt(totalResult)} €`}
+          sub={t('analytics.result', { value: fmt(totalResult) })}
           accent={margeNette >= 20 ? T.green : margeNette >= 10 ? T.orange : T.red}
           icon="📈"
           delay={3}
-          helpTip="Resultat net / CA total x 100"
+          helpTip={t('analytics.marginFormula')}
         />
         <KPI
-          label="CLIENTS ACTIFS"
+          label={t('analytics.activeClients')}
           value={String(activeClients)}
-          sub={`Sur ${contacts.length} contacts`}
+          sub={t('analytics.onContacts', { count: contacts.length })}
           accent={T.purple}
           icon="👥"
           delay={4}
-          helpTip="Contacts avec le statut Client"
+          helpTip={t('analytics.clientStatus')}
         />
         <KPI
-          label="TAUX DE CONVERSION"
+          label={t('analytics.conversionRate')}
           value={`${crmConversion}%`}
-          sub="Clients / (Clients + Perdus)"
+          sub={t('analytics.clientsVsLost')}
           accent={crmConversion >= 50 ? T.green : crmConversion >= 25 ? T.orange : T.red}
           icon="🎯"
           delay={5}
-          helpTip="Ratio de clients gagnés vs total clos"
+          helpTip={t('analytics.conversionFormula')}
         />
         {avgROAS !== null && (
           <KPI
-            label="ROAS MOYEN"
+            label={t('analytics.avgROAS')}
             value={`${avgROAS}x`}
-            sub={`${adPlatforms.length} plateforme${adPlatforms.length > 1 ? 's' : ''} connectée${adPlatforms.length > 1 ? 's' : ''}`}
+            sub={t('analytics.platformsConnected', { count: adPlatforms.length, s: adPlatforms.length > 1 ? 's' : '' })}
             accent={avgROAS >= 3 ? T.green : avgROAS >= 1 ? T.orange : T.red}
             icon="💎"
             delay={6}
-            helpTip="Return On Ad Spend moyen"
+            helpTip={t('analytics.roasFormula')}
           />
         )}
       </div>
@@ -428,34 +429,34 @@ export default function Analytics({ onNavigate }) {
       {/* ============================================================ */}
       {/*  SECTION 2: Revenue Trends                                    */}
       {/* ============================================================ */}
-      <Section title="Tendances de revenus" sub="CA vs Charges sur les 12 derniers mois avec moyenne mobile et previsions">
+      <Section title={t('analytics.revenueTrends')} sub={t('analytics.revenueTrendsSub')}>
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <div style={{ width: 12, height: 3, background: T.green, borderRadius: 2 }} />
-                <span style={{ fontSize: 10, color: T.textMuted }}>CA</span>
+                <span style={{ fontSize: 10, color: T.textMuted }}>{t('analytics.ca')}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <div style={{ width: 12, height: 3, background: T.red, borderRadius: 2, borderTop: '1px dashed ' + T.red }} />
-                <span style={{ fontSize: 10, color: T.textMuted }}>Charges</span>
+                <span style={{ fontSize: 10, color: T.textMuted }}>{t('analytics.charges')}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <div style={{ width: 12, height: 3, background: T.orange, borderRadius: 2 }} />
-                <span style={{ fontSize: 10, color: T.textMuted }}>Moy. 3 mois</span>
+                <span style={{ fontSize: 10, color: T.textMuted }}>{t('analytics.avg3m')}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <div style={{ width: 12, height: 3, background: T.blue, borderRadius: 2 }} />
-                <span style={{ fontSize: 10, color: T.textMuted }}>Prévision</span>
+                <span style={{ fontSize: 10, color: T.textMuted }}>{t('analytics.forecastLabel')}</span>
               </div>
               {yoyDataExists && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <div style={{ width: 12, height: 3, background: T.purple, borderRadius: 2 }} />
-                  <span style={{ fontSize: 10, color: T.textMuted }}>N-1</span>
+                  <span style={{ fontSize: 10, color: T.textMuted }}>{t('analytics.yoy')}</span>
                 </div>
               )}
             </div>
-            <HelpTip text="Graphique combinant CA, charges, moyenne mobile 3 mois, prévision linéaire et comparaison année précédente" />
+            <HelpTip text={t('analytics.chartTooltip')} />
           </div>
           <div style={{ height: 280 }}>
             <ErrorBoundary fallbackTitle="Erreur du graphique">
@@ -474,7 +475,7 @@ export default function Analytics({ onNavigate }) {
           {monthlyGrowthRates.length > 0 && (
             <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${T.border}` }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                Croissance mensuelle
+                {t('analytics.monthlyGrowth')}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {monthlyGrowthRates.map((d, i) => (
@@ -498,16 +499,16 @@ export default function Analytics({ onNavigate }) {
       {/* ============================================================ */}
       {/*  SECTION 3: CRM Funnel Analysis                               */}
       {/* ============================================================ */}
-      <Section title="Analyse de l'entonnoir CRM" sub="Repartition, taux de conversion et scoring des contacts">
+      <Section title={t('analytics.funnelTitle')} sub={t('analytics.funnelSub')}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }} className="grid-desktop-2">
           {/* Funnel visual */}
           <Card>
             <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 }}>
-              Entonnoir de conversion
+              {t('analytics.conversionFunnel')}
             </div>
             {contacts.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 24, color: T.textMuted, fontSize: 11 }}>
-                Aucun contact dans le CRM
+                {t('analytics.noCRMContacts')}
               </div>
             ) : (
               <div>
@@ -539,7 +540,7 @@ export default function Analytics({ onNavigate }) {
                           </div>
                         </div>
                         <div style={{ marginLeft: 80, fontSize: 9, color: T.textMuted, marginTop: 2 }}>
-                          Moy. {stage.avgDays}j dans cette etape
+                          {t('analytics.avgDaysInStage', { days: stage.avgDays })}
                         </div>
                         {/* Conversion arrow between stages */}
                         {i < funnelStages.stages.length - 1 && (
@@ -563,12 +564,12 @@ export default function Analytics({ onNavigate }) {
           {/* Lead scoring distribution */}
           <Card>
             <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 }}>
-              Distribution Lead Scoring
-              <HelpTip text="Repartition des contacts par score: Hot (80+), Warm (60+), Tiede (40+), Froid (<40)" />
+              {t('analytics.leadScoring')}
+              <HelpTip text={t('analytics.leadScoringTip')} />
             </div>
             {contacts.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 24, color: T.textMuted, fontSize: 11 }}>
-                Aucun contact a scorer
+                {t('analytics.noContactsToScore')}
               </div>
             ) : (
               <div>
@@ -582,7 +583,7 @@ export default function Analytics({ onNavigate }) {
                       <div style={{ fontSize: 22, fontWeight: 800, color: group.color, marginTop: 4 }}>{group.count}</div>
                       <div style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginTop: 2 }}>{group.label}</div>
                       <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>
-                        {contacts.length > 0 ? pct(group.count, contacts.length) : 0}% du total
+                        {t('analytics.ofTotal', { pct: contacts.length > 0 ? pct(group.count, contacts.length) : 0 })}
                       </div>
                     </div>
                   ))}
@@ -605,12 +606,12 @@ export default function Analytics({ onNavigate }) {
       {/* ============================================================ */}
       {/*  SECTION 4: Integration Coverage                              */}
       {/* ============================================================ */}
-      <Section title="Couverture des intégrations" sub="État de connexion par catégorie et historique de synchronisation">
+      <Section title={t('analytics.integrationCoverage')} sub={t('analytics.integrationCoverageSub')}>
         <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 14 }} className="grid-desktop-15-1">
           {/* Integration categories grid */}
           <Card>
             <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 }}>
-              Couverture par catégorie
+              {t('analytics.coverageByCategory')}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
               {integrationCategories.map((cat) => (
@@ -625,7 +626,7 @@ export default function Analytics({ onNavigate }) {
                   </div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: cat.color }}>{cat.label}</div>
                   <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>
-                    {cat.connected}/{cat.total} connectées
+                    {t('analytics.connected', { n: cat.connected, total: cat.total })}
                   </div>
                   <div style={{ marginTop: 6 }}>
                     <ProgressBar value={cat.connected} max={cat.total} color={cat.color} h={4} />
@@ -638,16 +639,16 @@ export default function Analytics({ onNavigate }) {
           {/* Recent sync events */}
           <Card>
             <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 }}>
-              Historique de synchronisation
+              {t('analytics.syncHistory')}
             </div>
             {recentSyncEvents.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 24, color: T.textMuted, fontSize: 11 }}>
-                Aucun événement de synchronisation
+                {t('analytics.noSyncEvents')}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {recentSyncEvents.map((ev, i) => {
-                  const actionLabels = { connect: 'Connecte', disconnect: 'Deconnecte', resync: 'Resynchronise' };
+                  const actionLabels = { connect: t('analytics.syncConnect'), disconnect: t('analytics.syncDisconnect'), resync: t('analytics.syncResync') };
                   const actionColors = { connect: T.green, disconnect: T.red, resync: T.blue };
                   return (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: i < recentSyncEvents.length - 1 ? `1px solid ${T.border}` : 'none' }}>
@@ -672,7 +673,7 @@ export default function Analytics({ onNavigate }) {
               </div>
             )}
             <div style={{ marginTop: 12, textAlign: 'center' }}>
-              <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>Gérer les intégrations</Btn>
+              <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>{t('analytics.manageIntegrations')}</Btn>
             </div>
           </Card>
         </div>
@@ -682,7 +683,7 @@ export default function Analytics({ onNavigate }) {
       {/*  SECTION 6: Channel ROI (if ad platforms connected)           */}
       {/* ============================================================ */}
       {channelROI && (
-        <Section title="ROI par canal publicitaire" sub="Performance détaillée par plateforme connectée">
+        <Section title={t('analytics.channelROI')} sub={t('analytics.channelROISub')}>
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(channelROI.length, 4)}, 1fr)`, gap: 14 }}>
             {channelROI.map((platform) => (
               <Card key={platform.name}>
@@ -690,7 +691,7 @@ export default function Analytics({ onNavigate }) {
                   <span style={{ fontSize: 18 }}>{platform.icon}</span>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{platform.name}</div>
-                    <div style={{ fontSize: 9, color: T.textMuted }}>Budget: {fmt(platform.spend)} €</div>
+                    <div style={{ fontSize: 9, color: T.textMuted }}>{t('analytics.budget', { value: fmt(platform.spend) })}</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -709,7 +710,7 @@ export default function Analytics({ onNavigate }) {
                     </span>
                   </div>
                   <div style={{ marginTop: 4 }}>
-                    <div style={{ fontSize: 9, color: T.textMuted, marginBottom: 2 }}>Performance ROAS</div>
+                    <div style={{ fontSize: 9, color: T.textMuted, marginBottom: 2 }}>{t('analytics.roasPerformance')}</div>
                     <ProgressBar value={Math.min(platform.roas, 5)} max={5} color={platform.roas >= 3 ? T.green : platform.roas >= 1 ? T.orange : T.red} h={5} />
                   </div>
                 </div>
@@ -722,22 +723,22 @@ export default function Analytics({ onNavigate }) {
       {/* ============================================================ */}
       {/*  SECTION 7: Predictions                                       */}
       {/* ============================================================ */}
-      <Section title="Prévisions" sub="Projection du CA sur les 3 prochains mois basée sur la tendance récente">
+      <Section title={t('analytics.predictions')} sub={t('analytics.predictionsSub')}>
         <Card>
           {finHistory.length < 2 ? (
             <div style={{ textAlign: 'center', padding: 24, color: T.textMuted, fontSize: 11 }}>
-              Ajoutez au moins 2 mois de données financières pour générer des prévisions
+              {t('analytics.add2Months')}
             </div>
           ) : (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <div style={{ width: 12, height: 3, background: T.green, borderRadius: 2 }} />
-                  <span style={{ fontSize: 10, color: T.textMuted }}>CA Réel</span>
+                  <span style={{ fontSize: 10, color: T.textMuted }}>{t('analytics.caReal')}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <div style={{ width: 12, height: 3, background: T.blue, borderRadius: 2, borderTop: '2px dashed ' + T.blue }} />
-                  <span style={{ fontSize: 10, color: T.textMuted }}>Prévision (pointillé)</span>
+                  <span style={{ fontSize: 10, color: T.textMuted }}>{t('analytics.forecastDotted')}</span>
                 </div>
               </div>
               <div style={{ height: 220 }}>
@@ -755,7 +756,7 @@ export default function Analytics({ onNavigate }) {
               {forecast.length > 0 && (
                 <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${T.border}` }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                    Prévisions detaillees
+                    {t('analytics.detailedForecasts')}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: `repeat(${forecast.length}, 1fr)`, gap: 10 }}>
                     {forecast.map((f, i) => {
@@ -769,7 +770,7 @@ export default function Analytics({ onNavigate }) {
                           <div style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, marginBottom: 4 }}>{monthLabel(f.key)}</div>
                           <div style={{ fontSize: 18, fontWeight: 800, color: T.blue }}>{fmt(f.ca)} €</div>
                           <div style={{ fontSize: 10, fontWeight: 600, color: diff >= 0 ? T.green : T.red, marginTop: 2 }}>
-                            {diff >= 0 ? '+' : ''}{diff}% vs dernier mois
+                            {t('analytics.vsLastMonth', { pct: (diff >= 0 ? '+' : '') + diff })}
                           </div>
                         </div>
                       );

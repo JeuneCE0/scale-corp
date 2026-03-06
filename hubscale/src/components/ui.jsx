@@ -1,8 +1,9 @@
 // HubScale — Base UI Components
 import React, { useState, useEffect, useRef, useCallback, Component } from 'react';
-import { T, FONT } from '../lib/theme.js';
+import { T, FONT, getTheme } from '../lib/theme.js';
 import { clamp, pct } from '../lib/utils.js';
 import { isPaid, canAccessPro, getTrialInfo } from '../lib/plan.js';
+import { t } from '../lib/i18n.js';
 
 // --- Error Boundary ---
 export class ErrorBoundary extends Component {
@@ -19,10 +20,10 @@ export class ErrorBoundary extends Component {
         <div style={{ textAlign: 'center', padding: '40px 20px' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
           <div style={{ fontWeight: 700, fontSize: 15, color: T.text, marginBottom: 4 }}>
-            {this.props.fallbackTitle || 'Erreur de chargement'}
+            {this.props.fallbackTitle || t('ui.errorTitle')}
           </div>
           <div style={{ color: T.textSecondary, fontSize: 12, marginBottom: 16 }}>
-            Une erreur est survenue. Rechargez la page ou réessayez.
+            {t('ui.errorSub')}
           </div>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
@@ -31,7 +32,7 @@ export class ErrorBoundary extends Component {
               border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 13,
               fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
             }}
-          >Réessayer</button>
+          >{t('ui.retry')}</button>
         </div>
       );
     }
@@ -58,13 +59,16 @@ export function KPI({ label, value, sub, accent, icon, delay = 0, sparkData, hel
 }
 
 // --- Button ---
-const BTN_VARIANTS = {
-  primary: { background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#fff', boxShadow: '0 2px 12px rgba(99,102,241,.3)' },
-  secondary: { background: 'rgba(255,255,255,.04)', color: T.text, border: '1px solid rgba(255,255,255,.08)' },
-  ghost: { background: 'transparent', color: T.textSecondary, border: '1px solid rgba(255,255,255,.04)' },
-  danger: { background: 'rgba(239,68,68,.1)', color: T.red, border: '1px solid rgba(239,68,68,.15)' },
-  success: { background: 'rgba(34,197,94,.1)', color: T.green, border: '1px solid rgba(34,197,94,.15)' },
-};
+function getBtnVariants() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  return {
+    primary: { background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#fff', boxShadow: '0 2px 12px rgba(99,102,241,.3)' },
+    secondary: { background: isLight ? 'rgba(0,0,0,.04)' : 'rgba(255,255,255,.04)', color: T.text, border: `1px solid ${isLight ? 'rgba(0,0,0,.1)' : 'rgba(255,255,255,.08)'}` },
+    ghost: { background: 'transparent', color: T.textSecondary, border: `1px solid ${isLight ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.04)'}` },
+    danger: { background: isLight ? 'rgba(220,38,38,.08)' : 'rgba(239,68,68,.1)', color: T.red, border: `1px solid ${isLight ? 'rgba(220,38,38,.15)' : 'rgba(239,68,68,.15)'}` },
+    success: { background: isLight ? 'rgba(22,163,74,.08)' : 'rgba(34,197,94,.1)', color: T.green, border: `1px solid ${isLight ? 'rgba(22,163,74,.15)' : 'rgba(34,197,94,.15)'}` },
+  };
+}
 
 export function Btn({ children, onClick, v = 'primary', small, style: sx, disabled, full, 'aria-label': ariaLabel }) {
   return (
@@ -78,7 +82,7 @@ export function Btn({ children, onClick, v = 'primary', small, style: sx, disabl
         fontFamily: FONT, opacity: disabled ? .4 : 1,
         padding: small ? '5px 10px' : '9px 18px', fontSize: small ? 11 : 13,
         width: full ? '100%' : 'auto', letterSpacing: .2,
-        ...BTN_VARIANTS[v], ...sx,
+        ...getBtnVariants()[v], ...sx,
       }}
     >{children}</button>
   );
@@ -168,9 +172,9 @@ export function Modal({ open, onClose, title, children, wide, footer }) {
   if (!open) return null;
   return (
     <div className="fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={title}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1000, display: 'flex', overflowY: 'auto', padding: '24px 16px', backdropFilter: 'blur(8px)' }}>
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1000, display: 'grid', placeItems: 'center', overflowY: 'auto', padding: '24px 16px', backdropFilter: 'blur(8px)' }}>
       <div ref={modalRef} className="scale-in modal-inner" onClick={(e) => e.stopPropagation()}
-        style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, width: wide ? 700 : 480, maxWidth: '100%', maxHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,.4)', margin: 'auto', flexShrink: 0 }}>
+        style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, width: wide ? 700 : 480, maxWidth: '100%', maxHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,.4)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px 0 24px', flexShrink: 0 }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{title}</h3>
           <Btn v="ghost" small onClick={onClose} aria-label="Fermer">✕</Btn>
@@ -556,7 +560,7 @@ export function PremiumGate({ children, requiredPlan = 'professional', label, bl
           position: blur ? 'absolute' : 'relative', inset: 0,
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           zIndex: 10, padding: 24, textAlign: 'center',
-          background: blur ? 'rgba(9,9,11,.45)' : 'transparent',
+          background: blur ? (getTheme() === 'light' ? 'rgba(255,255,255,.65)' : 'rgba(9,9,11,.45)') : 'transparent',
           borderRadius: 15, minHeight: blur ? 200 : undefined,
         }}>
           <div style={{
@@ -569,12 +573,12 @@ export function PremiumGate({ children, requiredPlan = 'professional', label, bl
             <span style={{ fontSize: 20 }}>{'🔒'}</span>
           </div>
           <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>
-            {label || 'Fonctionnalité Premium'}
+            {label || t('ui.premiumTitle')}
           </div>
           <div style={{ fontSize: 12, color: T.textSecondary, marginBottom: 16, maxWidth: 280, lineHeight: 1.5 }}>
             {daysLeft != null
-              ? `Débloquez cette fonctionnalité — il vous reste ${daysLeft}j d'essai.`
-              : 'Passez au niveau supérieur pour débloquer.'}
+              ? t('ui.premiumTrial', { days: daysLeft })
+              : t('ui.premiumSub')}
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); goSettings(); }}
@@ -589,11 +593,11 @@ export function PremiumGate({ children, requiredPlan = 'professional', label, bl
             onMouseEnter={(e) => { e.target.style.transform = 'translateY(-1px)'; e.target.style.boxShadow = '0 6px 20px rgba(249,115,22,.35)'; }}
             onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 16px rgba(249,115,22,.25)'; }}
           >
-            Débloquer
+            {t('ui.premiumBtn')}
           </button>
           {requiredPlan === 'professional' && (
             <div style={{ fontSize: 10, color: T.textMuted, marginTop: 8 }}>
-              Forfait Professional et supérieur
+              {t('ui.premiumPro')}
             </div>
           )}
         </div>
@@ -622,10 +626,10 @@ export function UpgradeBanner() {
         <span style={{ fontSize: 18 }}>{'⚡'}</span>
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: T.orange }}>
-            {daysLeft != null ? `Plus que ${daysLeft} jours d'essai gratuit` : 'Essai gratuit'}
+            {daysLeft != null ? t('ui.trialDaysLeft', { days: daysLeft }) : t('ui.freeTrial')}
           </div>
           <div style={{ fontSize: 10, color: T.textSecondary }}>
-            Souscrivez maintenant pour débloquer toutes les fonctionnalités
+            {t('ui.upgradeSub')}
           </div>
         </div>
       </div>
@@ -640,7 +644,7 @@ export function UpgradeBanner() {
           cursor: 'pointer', fontFamily: FONT, whiteSpace: 'nowrap',
         }}
       >
-        Souscrire
+        {t('ui.subscribe')}
       </button>
     </div>
   );

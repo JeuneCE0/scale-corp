@@ -4,6 +4,7 @@ import { fmt, fK, pct, curMonth, prevMonth, monthLabel, MONTHS_FR, daysSince, le
 import { load } from '../lib/store.js';
 import { Card, Btn, Sel, KPI, Badge, Spinner, Section, ProgressBar } from '../components/ui.jsx';
 import { CRM_STATUSES, EXPENSE_CATEGORIES, PIPELINE_STAGES } from '../lib/constants.js';
+import { t } from '../lib/i18n.js';
 
 // ---------------------------------------------------------------------------
 // Lazy chart
@@ -69,17 +70,17 @@ const LazyReportChart = lazy(() =>
 // ---------------------------------------------------------------------------
 // Report periods
 // ---------------------------------------------------------------------------
-const PERIODS = [
-  { value: '3', label: '3 derniers mois' },
-  { value: '6', label: '6 derniers mois' },
-  { value: '12', label: '12 derniers mois' },
-  { value: 'ytd', label: 'Année en cours' },
+const getPERIODS = () => [
+  { value: '3', label: t('reports.period3') },
+  { value: '6', label: t('reports.period6') },
+  { value: '12', label: t('reports.period12') },
+  { value: 'ytd', label: t('reports.periodYTD') },
 ];
 
-const REPORT_TYPES = [
-  { id: 'financial', label: 'Rapport financier', icon: '💰' },
-  { id: 'crm', label: 'Rapport CRM', icon: '👥' },
-  { id: 'performance', label: 'Performance globale', icon: '📊' },
+const getREPORT_TYPES = () => [
+  { id: 'financial', label: t('reports.financial'), icon: '💰' },
+  { id: 'crm', label: t('reports.crm'), icon: '👥' },
+  { id: 'performance', label: t('reports.performance'), icon: '📊' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -106,16 +107,16 @@ export default function Reports() {
       <Card>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: 6 }}>
-            {REPORT_TYPES.map(rt => (
+            {getREPORT_TYPES().map(rt => (
               <Btn key={rt.id} small v={reportType === rt.id ? 'primary' : 'ghost'} onClick={() => setReportType(rt.id)}>
                 {rt.icon} {rt.label}
               </Btn>
             ))}
           </div>
           <div style={{ flex: 1 }} />
-          <Sel small value={period} onChange={setPeriod} options={PERIODS} />
+          <Sel small value={period} onChange={setPeriod} options={getPERIODS()} />
           <Btn small v="secondary" onClick={() => exportReport(reportType, period, finHistory, contacts, tasks, documents)}>
-            📥 Exporter PDF
+            {t('reports.exportPdf')}
           </Btn>
         </div>
       </Card>
@@ -165,16 +166,16 @@ function FinancialReport({ data, allData, contacts, documents }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KPI label="CA total" value={fmt(stats.totalCA) + '€'} icon="💰" accent={T.green} />
-        <KPI label="Charges totales" value={fmt(stats.totalCharges) + '€'} icon="📉" accent={T.red} />
-        <KPI label="Marge nette" value={stats.margin + '%'} icon="📊" accent={parseFloat(stats.margin) >= 20 ? T.green : T.orange} />
-        <KPI label="CA moyen/mois" value={fmt(stats.avgCA) + '€'} icon="📈" accent={T.blue} />
-        <KPI label="Croissance" value={(stats.growth >= 0 ? '+' : '') + stats.growth + '%'} icon={stats.growth >= 0 ? '📈' : '📉'} accent={stats.growth >= 0 ? T.green : T.red} />
+        <KPI label={t('reports.totalCA')} value={fmt(stats.totalCA) + '€'} icon="💰" accent={T.green} />
+        <KPI label={t('reports.totalCharges')} value={fmt(stats.totalCharges) + '€'} icon="📉" accent={T.red} />
+        <KPI label={t('reports.netMargin')} value={stats.margin + '%'} icon="📊" accent={parseFloat(stats.margin) >= 20 ? T.green : T.orange} />
+        <KPI label={t('reports.avgCAMonth')} value={fmt(stats.avgCA) + '€'} icon="📈" accent={T.blue} />
+        <KPI label={t('reports.growth')} value={(stats.growth >= 0 ? '+' : '') + stats.growth + '%'} icon={stats.growth >= 0 ? '📈' : '📉'} accent={stats.growth >= 0 ? T.green : T.red} />
       </div>
 
       {/* Revenue Chart */}
       <Card>
-        <Section title="Évolution CA / Charges / Marge" icon="📊">
+        <Section title={t('reports.caChargesMargin')} icon="📊">
           <Suspense fallback={<Spinner />}>
             <LazyReportChart data={chartData} type="bar" />
           </Suspense>
@@ -184,31 +185,31 @@ function FinancialReport({ data, allData, contacts, documents }) {
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
         {/* Best/Worst months */}
         <Card style={{ flex: '1 1 300px' }}>
-          <Section title="Points clés" icon="🎯">
+          <Section title={t('reports.keyPoints')} icon="🎯">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: T.textSecondary }}>Meilleur mois</span>
+                <span style={{ fontSize: 12, color: T.textSecondary }}>{t('reports.bestMonth')}</span>
                 <span style={{ fontSize: 14, fontWeight: 700, color: T.green }}>
                   {stats.bestMonth ? `${monthLabel(stats.bestMonth.key)} — ${fmt(stats.bestMonth.ca)}€` : '—'}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: T.textSecondary }}>Mois le plus faible</span>
+                <span style={{ fontSize: 12, color: T.textSecondary }}>{t('reports.worstMonth')}</span>
                 <span style={{ fontSize: 14, fontWeight: 700, color: T.red }}>
                   {stats.worstMonth ? `${monthLabel(stats.worstMonth.key)} — ${fmt(stats.worstMonth.ca)}€` : '—'}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: T.textSecondary }}>Factures payées</span>
+                <span style={{ fontSize: 12, color: T.textSecondary }}>{t('reports.paidInvoices')}</span>
                 <Badge label={String(stats.paidInvoices)} color={T.green} bg={T.greenBg} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: T.textSecondary }}>Factures en attente</span>
+                <span style={{ fontSize: 12, color: T.textSecondary }}>{t('reports.pendingInvoices')}</span>
                 <Badge label={String(stats.pendingInvoices)} color={T.orange} bg={T.orangeBg} />
               </div>
               {stats.forecast.length > 0 && (
                 <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 8, marginTop: 4 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>Prévisions</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>{t('reports.forecasts')}</span>
                   {stats.forecast.map((f, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
                       <span style={{ fontSize: 12, color: T.textMuted }}>{monthLabel(f.key)}</span>
@@ -224,7 +225,7 @@ function FinancialReport({ data, allData, contacts, documents }) {
         {/* Expense breakdown */}
         {expenseBreakdown.length > 0 && (
           <Card style={{ flex: '1 1 300px' }}>
-            <Section title="Répartition des charges" icon="🥧">
+            <Section title={t('reports.expenseBreakdown')} icon="🥧">
               <Suspense fallback={<Spinner />}>
                 <LazyReportChart data={expenseBreakdown} type="pie" />
               </Suspense>
@@ -272,17 +273,17 @@ function CRMReport({ contacts, tasks, period }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KPI label="Contacts" value={stats.total} icon="👥" accent={T.accent} />
-        <KPI label="Nouveaux" value={stats.recentContacts} icon="✨" accent={T.green} sub={`Sur ${period} mois`} />
-        <KPI label="Taux conversion" value={stats.conversionRate + '%'} icon="🎯" accent={T.green} />
-        <KPI label="Score moyen" value={stats.avgScore + '/100'} icon="⭐" accent={T.orange} />
-        <KPI label="Pipeline pondéré" value={fmt(stats.pipelineValue) + '€'} icon="💎" accent={T.purple} />
+        <KPI label={t('reports.contacts')} value={stats.total} icon="👥" accent={T.accent} />
+        <KPI label={t('reports.new')} value={stats.recentContacts} icon="✨" accent={T.green} sub={t('reports.overPeriod', { period })} />
+        <KPI label={t('reports.conversionRate')} value={stats.conversionRate + '%'} icon="🎯" accent={T.green} />
+        <KPI label={t('reports.avgScore')} value={stats.avgScore + '/100'} icon="⭐" accent={T.orange} />
+        <KPI label={t('reports.weightedPipeline')} value={fmt(stats.pipelineValue) + '€'} icon="💎" accent={T.purple} />
       </div>
 
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
         {/* Pipeline distribution */}
         <Card style={{ flex: '1 1 350px' }}>
-          <Section title="Répartition du pipeline" icon="📊">
+          <Section title={t('reports.pipelineDistribution')} icon="📊">
             <Suspense fallback={<Spinner />}>
               <LazyReportChart data={pipelineData} type="pie" />
             </Suspense>
@@ -291,7 +292,7 @@ function CRMReport({ contacts, tasks, period }) {
 
         {/* Top contacts */}
         <Card style={{ flex: '1 1 350px' }}>
-          <Section title="Top 5 contacts (score)" icon="🏆">
+          <Section title={t('reports.topContacts')} icon="🏆">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {stats.topContacts.map((c, i) => {
                 const score = leadScore(c);
@@ -299,7 +300,7 @@ function CRMReport({ contacts, tasks, period }) {
                   <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 14, fontWeight: 800, color: i < 3 ? T.accent : T.textMuted, width: 20 }}>#{i + 1}</span>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{c.name || 'Sans nom'}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{c.name || t('common.noName')}</div>
                       <div style={{ fontSize: 10, color: T.textMuted }}>{c.company || c.email || '—'}</div>
                     </div>
                     <Badge label={CRM_STATUSES.find(s => s.id === c.status)?.label || c.status} color={CRM_STATUSES.find(s => s.id === c.status)?.color || T.textMuted} bg={CRM_STATUSES.find(s => s.id === c.status)?.bg || T.surface2} />
@@ -310,7 +311,7 @@ function CRMReport({ contacts, tasks, period }) {
                 );
               })}
               {stats.topContacts.length === 0 && (
-                <div style={{ fontSize: 12, color: T.textMuted, textAlign: 'center', padding: 20 }}>Aucun contact</div>
+                <div style={{ fontSize: 12, color: T.textMuted, textAlign: 'center', padding: 20 }}>{t('reports.noContacts')}</div>
               )}
             </div>
           </Section>
@@ -319,7 +320,7 @@ function CRMReport({ contacts, tasks, period }) {
 
       {/* Pipeline funnel */}
       <Card>
-        <Section title="Funnel de conversion" icon="🔻">
+        <Section title={t('reports.conversionFunnel')} icon="🔻">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {PIPELINE_STAGES.filter(s => s.id !== 'perdu').map(stage => {
               const count = stats.byStatus[stage.id] || 0;
@@ -370,7 +371,7 @@ function PerformanceReport({ data, contacts, tasks, documents }) {
     [data]
   );
 
-  const healthLabel = health >= 80 ? 'Excellent' : health >= 60 ? 'Bon' : health >= 40 ? 'Moyen' : 'À surveiller';
+  const healthLabel = health >= 80 ? t('reports.excellent') : health >= 60 ? t('reports.good') : health >= 40 ? t('reports.average') : t('reports.toWatch');
   const healthColor = health >= 80 ? T.green : health >= 60 ? T.blue : health >= 40 ? T.orange : T.red;
 
   return (
@@ -379,21 +380,21 @@ function PerformanceReport({ data, contacts, tasks, documents }) {
       <div className="glass-static" style={{ padding: '24px 28px', textAlign: 'center' }}>
         <div style={{ fontSize: 48, fontWeight: 900, color: healthColor }}>{health}/100</div>
         <div style={{ fontSize: 16, fontWeight: 700, color: healthColor, marginBottom: 4 }}>{healthLabel}</div>
-        <div style={{ fontSize: 12, color: T.textSecondary }}>Score de santé global de l'entreprise</div>
+        <div style={{ fontSize: 12, color: T.textSecondary }}>{t('reports.healthScore')}</div>
       </div>
 
       {/* Overview KPIs */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KPI label="Contacts actifs" value={contacts.filter(c => c.status !== 'perdu').length} icon="👥" accent={T.blue} />
-        <KPI label="Tâches terminées" value={`${taskStats.done}/${taskStats.total}`} icon="✅" accent={T.green} sub={`${taskStats.completion}%`} />
-        <KPI label="Documents" value={docStats.total} icon="📄" accent={T.accent} />
-        <KPI label="Factures payées" value={docStats.paid} icon="💰" accent={T.green} />
-        <KPI label="Tâches en retard" value={taskStats.overdue} icon="⚠️" accent={taskStats.overdue > 0 ? T.red : T.green} />
+        <KPI label={t('reports.activeContacts')} value={contacts.filter(c => c.status !== 'perdu').length} icon="👥" accent={T.blue} />
+        <KPI label={t('reports.tasksCompleted')} value={`${taskStats.done}/${taskStats.total}`} icon="✅" accent={T.green} sub={`${taskStats.completion}%`} />
+        <KPI label={t('reports.documentsLabel')} value={docStats.total} icon="📄" accent={T.accent} />
+        <KPI label={t('reports.paidInvoicesLabel')} value={docStats.paid} icon="💰" accent={T.green} />
+        <KPI label={t('reports.overdueTasks')} value={taskStats.overdue} icon="⚠️" accent={taskStats.overdue > 0 ? T.red : T.green} />
       </div>
 
       {/* Trend */}
       <Card>
-        <Section title="Tendance CA & Marge" icon="📈">
+        <Section title={t('reports.caMargeTrend')} icon="📈">
           <Suspense fallback={<Spinner />}>
             <LazyReportChart data={trendData} type="line" />
           </Suspense>
@@ -402,15 +403,15 @@ function PerformanceReport({ data, contacts, tasks, documents }) {
 
       {/* Scorecard */}
       <Card>
-        <Section title="Tableau de bord" icon="📋">
+        <Section title={t('reports.dashboard')} icon="📋">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
             {[
-              { label: 'CA moyen mensuel', value: data.length > 0 ? fmt(data.reduce((s, r) => s + (r.ca || 0), 0) / data.length) + '€' : '—', icon: '💰' },
-              { label: 'Taux de conversion', value: contacts.length > 0 ? (contacts.filter(c => c.status === 'client').length / contacts.length * 100).toFixed(1) + '%' : '—', icon: '🎯' },
-              { label: 'Complétion tâches', value: taskStats.completion + '%', icon: '☑️' },
-              { label: 'Factures en retard', value: String(docStats.overdue), icon: '⚠️' },
-              { label: 'Pipeline pondéré', value: fmt(contacts.reduce((s, c) => s + parseFloat(c.dealValue || 0) * (PIPELINE_STAGES.find(p => p.id === c.status)?.proba || 0) / 100, 0)) + '€', icon: '💎' },
-              { label: 'Score lead moyen', value: contacts.length > 0 ? Math.round(contacts.reduce((s, c) => s + leadScore(c), 0) / contacts.length) + '/100' : '—', icon: '⭐' },
+              { label: t('reports.avgMonthlyCA'), value: data.length > 0 ? fmt(data.reduce((s, r) => s + (r.ca || 0), 0) / data.length) + '€' : '—', icon: '💰' },
+              { label: t('reports.conversionRate'), value: contacts.length > 0 ? (contacts.filter(c => c.status === 'client').length / contacts.length * 100).toFixed(1) + '%' : '—', icon: '🎯' },
+              { label: t('reports.taskCompletion'), value: taskStats.completion + '%', icon: '☑️' },
+              { label: t('reports.overdueInvoices'), value: String(docStats.overdue), icon: '⚠️' },
+              { label: t('reports.weightedPipelineLabel'), value: fmt(contacts.reduce((s, c) => s + parseFloat(c.dealValue || 0) * (PIPELINE_STAGES.find(p => p.id === c.status)?.proba || 0) / 100, 0)) + '€', icon: '💎' },
+              { label: t('reports.avgLeadScore'), value: contacts.length > 0 ? Math.round(contacts.reduce((s, c) => s + leadScore(c), 0) / contacts.length) + '/100' : '—', icon: '⭐' },
             ].map((item, i) => (
               <div key={i} style={{ padding: '14px 16px', background: T.surface2, borderRadius: 10 }}>
                 <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 6 }}>
@@ -437,7 +438,7 @@ function exportReport(type, period, finHistory, contacts, tasks, documents) {
   const totalCharges = data.reduce((s, r) => s + (r.charges || 0), 0);
   const margin = totalCA > 0 ? ((totalCA - totalCharges) / totalCA * 100).toFixed(1) : 0;
   const org = load('organization') || {};
-  const reportTitle = REPORT_TYPES.find(r => r.id === type)?.label || 'Rapport';
+  const reportTitle = getREPORT_TYPES().find(r => r.id === type)?.label || 'Rapport';
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>${reportTitle} — ${org.name || 'HubScale'}</title>
 <style>
@@ -454,25 +455,25 @@ td{padding:8px 12px;border-bottom:1px solid #eee;font-size:12px}
 .no-print{text-align:center;margin-bottom:20px}
 @media print{.no-print{display:none}}
 </style></head><body>
-<div class="no-print"><button onclick="window.print()" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Imprimer / PDF</button></div>
+<div class="no-print"><button onclick="window.print()" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">${t('common.print')}</button></div>
 <div class="header"><div><div class="brand">${org.name || 'HubScale'}</div><div style="font-size:11px;color:#666;margin-top:4px">${reportTitle}</div></div>
-<div style="text-align:right;font-size:12px;color:#666">Généré le ${new Date().toLocaleDateString('fr-FR')}<br>Période : ${monthsToShow} mois</div></div>
+<div style="text-align:right;font-size:12px;color:#666">${t('reports.generatedOn')} ${new Date().toLocaleDateString('fr-FR')}<br>${t('reports.periodLabel', { months: monthsToShow })}</div></div>
 <div class="kpis">
-<div class="kpi"><div class="kpi-label">CA Total</div><div class="kpi-value">${new Intl.NumberFormat('fr-FR').format(Math.round(totalCA))}€</div></div>
-<div class="kpi"><div class="kpi-label">Charges</div><div class="kpi-value">${new Intl.NumberFormat('fr-FR').format(Math.round(totalCharges))}€</div></div>
-<div class="kpi"><div class="kpi-label">Marge nette</div><div class="kpi-value">${margin}%</div></div>
+<div class="kpi"><div class="kpi-label">${t('reports.totalCA')}</div><div class="kpi-value">${new Intl.NumberFormat('fr-FR').format(Math.round(totalCA))}€</div></div>
+<div class="kpi"><div class="kpi-label">${t('reports.totalCharges')}</div><div class="kpi-value">${new Intl.NumberFormat('fr-FR').format(Math.round(totalCharges))}€</div></div>
+<div class="kpi"><div class="kpi-label">${t('reports.netMargin')}</div><div class="kpi-value">${margin}%</div></div>
 </div>
-${type !== 'crm' ? `<h2>Données mensuelles</h2>
-<table><thead><tr><th>Mois</th><th>CA</th><th>Charges</th><th>Marge</th></tr></thead><tbody>
+${type !== 'crm' ? `<h2>${t('reports.monthlyData')}</h2>
+<table><thead><tr><th>${t('common.date')}</th><th>${t('reports.totalCA')}</th><th>${t('reports.totalCharges')}</th><th>${t('reports.margin')}</th></tr></thead><tbody>
 ${data.map(r => `<tr><td>${monthLabel(r.key)}</td><td>${new Intl.NumberFormat('fr-FR').format(Math.round(r.ca || 0))}€</td><td>${new Intl.NumberFormat('fr-FR').format(Math.round(r.charges || 0))}€</td><td>${r.ca ? (((r.ca - (r.charges || 0)) / r.ca) * 100).toFixed(1) : 0}%</td></tr>`).join('')}
 </tbody></table>` : ''}
-${type === 'crm' || type === 'performance' ? `<h2>Contacts (${contacts.length})</h2>
+${type === 'crm' || type === 'performance' ? `<h2>${t('reports.contacts')} (${contacts.length})</h2>
 <div class="kpis">
 <div class="kpi"><div class="kpi-label">Prospects</div><div class="kpi-value">${contacts.filter(c => c.status === 'prospect').length}</div></div>
 <div class="kpi"><div class="kpi-label">Leads</div><div class="kpi-value">${contacts.filter(c => c.status === 'lead').length}</div></div>
 <div class="kpi"><div class="kpi-label">Clients</div><div class="kpi-value">${contacts.filter(c => c.status === 'client').length}</div></div>
 </div>` : ''}
-<div class="footer">Rapport généré par <strong>${org.name || 'HubScale'}</strong> — ${new Date().toLocaleDateString('fr-FR')}</div>
+<div class="footer">${t('reports.reportGenerated')} <strong>${org.name || 'HubScale'}</strong> — ${new Date().toLocaleDateString('fr-FR')}</div>
 </body></html>`;
   const w = window.open('', '_blank');
   if (w) { w.document.write(html); w.document.close(); }

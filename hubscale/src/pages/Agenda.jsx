@@ -10,14 +10,15 @@ import { EVENT_TYPES, EVENT_TYPE_COLORS as TYPE_COLORS, EVENT_TYPE_ICONS as TYPE
 import { startOAuthFlow } from '../lib/api.js';
 import { isSupabaseConfigured } from '../lib/supabase.js';
 import { onIntegrationConnect } from '../lib/integrationData.js';
+import { t } from '../lib/i18n.js';
 
 /* ── Reminder options ─────────────────────────────────────── */
-const REMINDER_OPTIONS = [
-  { value: 'none', label: 'Aucun' },
-  { value: '5min', label: '5 min avant' },
-  { value: '15min', label: '15 min avant' },
-  { value: '1h', label: '1 heure avant' },
-  { value: '1d', label: '1 jour avant' },
+const getReminderOptions = () => [
+  { value: 'none', label: t('agenda.reminderNone') },
+  { value: '5min', label: t('agenda.reminder5min') },
+  { value: '15min', label: t('agenda.reminder15min') },
+  { value: '1h', label: t('agenda.reminder1h') },
+  { value: '1d', label: t('agenda.reminder1d') },
 ];
 
 const REMINDER_MS = {
@@ -71,11 +72,11 @@ function isSameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+const getWeekdayLabels = () => [t('day.mon'), t('day.tue'), t('day.wed'), t('day.thu'), t('day.fri'), t('day.sat'), t('day.sun')];
 
-const MONTH_NAMES_FR = [
-  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+const getMonthNames = () => [
+  t('month.1'), t('month.2'), t('month.3'), t('month.4'), t('month.5'), t('month.6'),
+  t('month.7'), t('month.8'), t('month.9'), t('month.10'), t('month.11'), t('month.12'),
 ];
 
 /* ── Default form state ───────────────────────────────────── */
@@ -148,7 +149,7 @@ export default function Agenda() {
   /* ── Undo stack ─────────────────────────────────────────── */
   const undoRestore = useCallback((item) => {
     setEvents((prev) => [...prev, item]);
-    setUndoMsg(`"${item.title}" restaure`);
+    setUndoMsg(t('agenda.restored').replace('{title}', item.title));
     setTimeout(() => setUndoMsg(''), 3000);
   }, []);
   const undo = useUndoStack(undoRestore);
@@ -396,9 +397,9 @@ export default function Agenda() {
             {formatDate(e.date)}{e.time ? ` a ${e.time}` : ''}
             {!faded && e.date && (() => {
               const d = daysUntil(e.date);
-              if (d === 0) return <span style={{ marginLeft: 6, color: T.orange, fontWeight: 700 }}>Aujourd'hui</span>;
-              if (d === 1) return <span style={{ marginLeft: 6, color: T.blue, fontWeight: 600 }}>Demain</span>;
-              if (d > 1 && d <= 7) return <span style={{ marginLeft: 6, color: T.textMuted, fontWeight: 600 }}>dans {d}j</span>;
+              if (d === 0) return <span style={{ marginLeft: 6, color: T.orange, fontWeight: 700 }}>{t('common.today')}</span>;
+              if (d === 1) return <span style={{ marginLeft: 6, color: T.blue, fontWeight: 600 }}>{t('common.tomorrow')}</span>;
+              if (d > 1 && d <= 7) return <span style={{ marginLeft: 6, color: T.textMuted, fontWeight: 600 }}>{t('agenda.inDays').replace('{d}', d)}</span>;
               return null;
             })()}
           </div>
@@ -406,13 +407,13 @@ export default function Agenda() {
           {e.meetingLink && (
             <a href={e.meetingLink} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()}
               style={{ fontSize: 10, color: T.accent, fontWeight: 600, marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
-              {e.meetingLink.includes('meet.google') ? '📹 Google Meet' : e.meetingLink.includes('zoom') ? '📹 Zoom' : '🔗 Lien visio'}
+              {e.meetingLink.includes('meet.google') ? t('agenda.googleMeet') : e.meetingLink.includes('zoom') ? t('agenda.zoom') : t('agenda.videoLink')}
             </a>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           {e.recurrence && e.recurrence !== 'none' && (
-            <Badge label={e.recurrence === 'weekly' ? '🔁 Hebdo' : '🔁 Mensuel'} color={T.blue} bg={T.blueBg} />
+            <Badge label={e.recurrence === 'weekly' ? t('agenda.weeklyBadge') : t('agenda.monthlyBadge')} color={T.blue} bg={T.blueBg} />
           )}
           {!faded && (
             <Badge
@@ -421,7 +422,7 @@ export default function Agenda() {
               bg={typeColor + '20'}
             />
           )}
-          <Btn v="ghost" small aria-label={`Supprimer ${e.title}`} onClick={(ev) => del.request(e.id, ev)}>✕</Btn>
+          <Btn v="ghost" small aria-label={`${t('common.delete')} ${e.title}`} onClick={(ev) => del.request(e.id, ev)}>✕</Btn>
         </div>
       </Card>
     );
@@ -440,15 +441,15 @@ export default function Agenda() {
       background: T.surface2, border: `1px solid ${T.border}`,
     }}>
       <span style={{ fontSize: 12, fontWeight: 700, color: T.accent }}>
-        {upcoming.length} à venir
+        {upcoming.length} {t('agenda.upcoming')}
       </span>
       <span style={{ width: 1, height: 14, background: T.border }} />
       <span style={{ fontSize: 12, fontWeight: 700, color: T.orange }}>
-        {todayEvents.length} aujourd'hui
+        {todayEvents.length} {t('agenda.todayCount')}
       </span>
       <span style={{ width: 1, height: 14, background: T.border }} />
       <span style={{ fontSize: 12, fontWeight: 700, color: T.blue }}>
-        {weekEvents.length} cette semaine
+        {weekEvents.length} {t('agenda.thisWeek')}
       </span>
     </div>
   );
@@ -458,11 +459,11 @@ export default function Agenda() {
     <div className="fade-up" style={{ marginTop: 12 }}>
       {/* Month navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Btn v="ghost" small onClick={goToPrevMonth} aria-label="Mois précédent">← Mois précédent</Btn>
+        <Btn v="ghost" small onClick={goToPrevMonth} aria-label={t('agenda.prevMonth')}>{t('agenda.prevMonth')}</Btn>
         <span style={{ fontSize: 16, fontWeight: 800, color: T.text }}>
-          {MONTH_NAMES_FR[calMonth]} {calYear}
+          {getMonthNames()[calMonth]} {calYear}
         </span>
-        <Btn v="ghost" small onClick={goToNextMonth} aria-label="Mois suivant">Mois suivant →</Btn>
+        <Btn v="ghost" small onClick={goToNextMonth} aria-label={t('agenda.nextMonth')}>{t('agenda.nextMonth')}</Btn>
       </div>
 
       {/* Grid */}
@@ -472,7 +473,7 @@ export default function Agenda() {
         background: T.border,
       }}>
         {/* Header row */}
-        {WEEKDAY_LABELS.map((d) => (
+        {getWeekdayLabels().map((d) => (
           <div key={d} className="cal-header" style={{
             padding: '8px 4px', textAlign: 'center',
             fontSize: 10, fontWeight: 700, color: T.textSecondary,
@@ -546,16 +547,16 @@ export default function Agenda() {
                 {selectedDay.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </span>
               <span style={{ marginLeft: 8, fontSize: 11, color: T.textMuted }}>
-                {selectedDayEvents.length} événement{selectedDayEvents.length !== 1 ? 's' : ''}
+                {t('agenda.eventCount').replace('{count}', selectedDayEvents.length).replace('{s}', selectedDayEvents.length !== 1 ? 's' : '')}
               </span>
             </div>
-            <Btn v="secondary" small onClick={() => openNew(toISO(selectedDay))} aria-label="Créer un événement ce jour">
-              + Ajouter
+            <Btn v="secondary" small onClick={() => openNew(toISO(selectedDay))} aria-label={t('agenda.addToDay')}>
+              {t('agenda.addToDay')}
             </Btn>
           </div>
           {selectedDayEvents.length === 0 ? (
             <div style={{ color: T.textMuted, fontSize: 12, textAlign: 'center', padding: '12px 0' }}>
-              Aucun événement ce jour
+              {t('agenda.noEventDay')}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -581,7 +582,7 @@ export default function Agenda() {
                     color={TYPE_COLORS[e.type]}
                     bg={(TYPE_COLORS[e.type] || T.accent) + '20'}
                   />
-                  <Btn v="ghost" small aria-label={`Supprimer ${e.title}`} onClick={(ev) => del.request(e.id, ev)}>✕</Btn>
+                  <Btn v="ghost" small aria-label={`${t('common.delete')} ${e.title}`} onClick={(ev) => del.request(e.id, ev)}>✕</Btn>
                 </div>
               ))}
             </div>
@@ -594,17 +595,17 @@ export default function Agenda() {
   /* ── List view ──────────────────────────────────────────── */
   const renderList = () => (
     <>
-      <Section title="A VENIR" sub={`${upcoming.length} événement${upcoming.length !== 1 ? 's' : ''}`}>
+      <Section title={t('agenda.upcomingSection')} sub={t('agenda.eventCount').replace('{count}', upcoming.length).replace('{s}', upcoming.length !== 1 ? 's' : '')}>
         {upcoming.length === 0 ? (
-          <Card><EmptyState icon="📅" title="Aucun événement à venir" sub="Planifiez vos réunions, deadlines et événements"
-            action={<Btn onClick={() => openNew()} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Créer un événement</Btn>} /></Card>
+          <Card><EmptyState icon="📅" title={t('agenda.noUpcoming')} sub={t('agenda.noUpcomingSub')}
+            action={<Btn onClick={() => openNew()} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>{t('agenda.createEvent')}</Btn>} /></Card>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{upcoming.map((e) => renderEvent(e, false))}</div>
         )}
       </Section>
 
       {past.length > 0 && (
-        <Section title="PASSÉS" sub={`${past.length} événement${past.length !== 1 ? 's' : ''}`}>
+        <Section title={t('agenda.pastSection')} sub={t('agenda.eventCount').replace('{count}', past.length).replace('{s}', past.length !== 1 ? 's' : '')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{past.map((e) => renderEvent(e, true))}</div>
         </Section>
       )}
@@ -617,17 +618,17 @@ export default function Agenda() {
       {/* Header */}
       <div className="fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Agenda</h1>
-          <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Réunions, deadlines et événements</p>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{t('agenda.title')}</h1>
+          <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>{t('agenda.subtitle')}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {notifPermission !== 'granted' && 'Notification' in window && (
-            <Btn v="secondary" small onClick={requestNotifPermission} aria-label="Activer les notifications">🔔 Notifications</Btn>
+            <Btn v="secondary" small onClick={requestNotifPermission} aria-label={t('agenda.notifications')}>🔔 {t('agenda.notifications')}</Btn>
           )}
           {notifPermission === 'granted' && (
-            <span style={{ fontSize: 10, color: T.green, fontWeight: 600 }}>🔔 Rappels activés</span>
+            <span style={{ fontSize: 10, color: T.green, fontWeight: 600 }}>🔔 {t('agenda.remindersActive')}</span>
           )}
-          <Btn onClick={() => openNew()} aria-label="Créer un événement" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: '0 2px 12px rgba(249,115,22,.3)' }}>+ Événement</Btn>
+          <Btn onClick={() => openNew()} aria-label={t('agenda.addEvent')} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: '0 2px 12px rgba(249,115,22,.3)' }}>{t('agenda.addEvent')}</Btn>
         </div>
       </div>
 
@@ -650,21 +651,21 @@ export default function Agenda() {
           }}>{'📅'}</div>
           <div style={{ flex: 1, minWidth: 180 }}>
             <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 2 }}>
-              Connecter Google Calendar
+              {t('agenda.connectGCal')}
             </div>
             <div style={{ fontSize: 11, color: T.textSecondary, lineHeight: 1.4 }}>
-              Synchronisez vos événements et rendez-vous directement dans votre agenda HubScale.
+              {t('agenda.connectGCalSub')}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Btn v="ghost" small onClick={() => setGcalDismissed(true)} style={{ color: T.textMuted }}>Plus tard</Btn>
+            <Btn v="ghost" small onClick={() => setGcalDismissed(true)} style={{ color: T.textMuted }}>{t('agenda.later')}</Btn>
             <Btn onClick={connectGoogleCalendar} small
               disabled={gcalConnecting}
               style={{
                 background: gcalConnecting ? T.surface2 : 'linear-gradient(135deg, #4285f4, #34a853)',
                 boxShadow: gcalConnecting ? 'none' : '0 2px 12px rgba(66,133,244,.3)',
               }}>
-              {gcalConnecting ? '⟳ Connexion...' : 'Connecter'}
+              {gcalConnecting ? t('agenda.connecting') : t('agenda.connect')}
             </Btn>
           </div>
         </div>
@@ -686,7 +687,7 @@ export default function Agenda() {
               color: view === 'list' ? T.accent : T.textMuted,
               transition: 'all .15s',
             }}
-          >Liste</button>
+          >{t('agenda.listView')}</button>
           <button
             onClick={() => setView('calendar')}
             style={{
@@ -696,14 +697,14 @@ export default function Agenda() {
               color: view === 'calendar' ? T.accent : T.textMuted,
               transition: 'all .15s',
             }}
-          >Mois</button>
+          >{t('agenda.monthView')}</button>
         </div>
 
         {/* Aujourd'hui button */}
-        <Btn v="secondary" small onClick={goToToday} aria-label="Aller a aujourd'hui" style={{
+        <Btn v="secondary" small onClick={goToToday} aria-label={t('common.today')} style={{
           borderColor: T.orange + '44', color: T.orange, fontWeight: 700,
         }}>
-          Aujourd'hui ({todayEvents.length})
+          {t('agenda.todayBtn').replace('{count}', todayEvents.length)}
         </Btn>
       </div>
 
@@ -715,8 +716,8 @@ export default function Agenda() {
       )}
       {undo.canUndo && !undoMsg && (
         <div style={{ marginBottom: 12, fontSize: 11, color: T.textMuted, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Btn v="ghost" small onClick={undo.undo}>↩ Annuler ({undo.stackSize})</Btn>
-          <span>Ctrl+Z pour annuler la dernière suppression</span>
+          <Btn v="ghost" small onClick={undo.undo}>{t('agenda.undoLabel').replace('{count}', undo.stackSize)}</Btn>
+          <span>{t('agenda.undoHint')}</span>
         </div>
       )}
 
@@ -724,36 +725,36 @@ export default function Agenda() {
       {view === 'list' ? renderList() : renderCalendar()}
 
       {/* Create/Edit modal */}
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={editId ? "Modifier l'événement" : 'Nouvel événement'}>
-        <Inp label="Titre *" value={form.title} onChange={(v) => setForm({ ...form, title: v })} placeholder="Titre de l'événement" />
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={editId ? t('agenda.editEvent') : t('agenda.newEvent')}>
+        <Inp label={t('agenda.titleRequired')} value={form.title} onChange={(v) => setForm({ ...form, title: v })} placeholder={t('agenda.titlePlaceholder')} />
         <div className="grid-2-mobile-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Inp label="Date *" type="date" value={form.date} onChange={(v) => setForm({ ...form, date: v })} />
-          <Inp label="Heure" type="time" value={form.time} onChange={(v) => setForm({ ...form, time: v })} />
+          <Inp label={t('agenda.dateRequired')} type="date" value={form.date} onChange={(v) => setForm({ ...form, date: v })} />
+          <Inp label={t('agenda.time')} type="time" value={form.time} onChange={(v) => setForm({ ...form, time: v })} />
         </div>
         <div className="grid-2-mobile-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Sel label="Type" value={form.type} onChange={(v) => setForm({ ...form, type: v })} options={EVENT_TYPES} />
-          <Sel label="Rappel" value={form.reminder} onChange={(v) => setForm({ ...form, reminder: v })} options={REMINDER_OPTIONS} />
+          <Sel label={t('agenda.typeLabel')} value={form.type} onChange={(v) => setForm({ ...form, type: v })} options={EVENT_TYPES} />
+          <Sel label={t('agenda.reminderLabel')} value={form.reminder} onChange={(v) => setForm({ ...form, reminder: v })} options={getReminderOptions()} />
         </div>
-        <Sel label="Recurrence" value={form.recurrence} onChange={(v) => setForm({ ...form, recurrence: v })} options={[
-          { value: 'none', label: 'Aucune' }, { value: 'weekly', label: 'Hebdomadaire' }, { value: 'monthly', label: 'Mensuelle' },
+        <Sel label={t('agenda.recurrence')} value={form.recurrence} onChange={(v) => setForm({ ...form, recurrence: v })} options={[
+          { value: 'none', label: t('agenda.recurrenceNone') }, { value: 'weekly', label: t('agenda.recurrenceWeekly') }, { value: 'monthly', label: t('agenda.recurrenceMonthly') },
         ]} />
-        <Inp label="Lien visio (Meet, Zoom...)" value={form.meetingLink} onChange={(v) => setForm({ ...form, meetingLink: v })} placeholder="https://meet.google.com/xxx ou https://zoom.us/j/xxx" />
-        <Inp label="Description" value={form.description} onChange={(v) => setForm({ ...form, description: v })} textarea placeholder="Details..." />
+        <Inp label={t('agenda.meetingLink')} value={form.meetingLink} onChange={(v) => setForm({ ...form, meetingLink: v })} placeholder={t('agenda.meetingLinkPlaceholder')} />
+        <Inp label={t('common.description')} value={form.description} onChange={(v) => setForm({ ...form, description: v })} textarea placeholder={t('agenda.descPlaceholder')} />
 
         {/* Conflict warning */}
         {conflict && (
           <div style={{ fontSize: 11, color: T.orange, padding: '8px 10px', borderRadius: 6, background: T.orangeBg, marginBottom: 8 }}>
-            Conflit horaire avec "{conflict.title}" le {conflict.date} à {conflict.time}
+            {t('agenda.conflict').replace('{title}', conflict.title).replace('{date}', conflict.date).replace('{time}', conflict.time)}
             <div style={{ marginTop: 4 }}>
-              <Btn v="ghost" small onClick={() => { setConflict(null); forceSave(); }}>Créer quand même</Btn>
+              <Btn v="ghost" small onClick={() => { setConflict(null); forceSave(); }}>{t('agenda.createAnyway')}</Btn>
             </div>
           </div>
         )}
 
         <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Btn v="ghost" onClick={() => setShowModal(false)}>Annuler</Btn>
+          <Btn v="ghost" onClick={() => setShowModal(false)}>{t('common.cancel')}</Btn>
           <Btn onClick={saveEvent} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>
-            {editId ? 'Enregistrer' : 'Créer'}
+            {editId ? t('common.save') : t('agenda.create')}
           </Btn>
         </div>
       </Modal>
@@ -761,8 +762,8 @@ export default function Agenda() {
       {/* Delete confirmation */}
       <ConfirmDialog
         open={del.isOpen}
-        title="Supprimer cet événement ?"
-        message="L'événement sera définitivement supprimé. Cette action est irréversible."
+        title={t('agenda.deleteConfirm')}
+        message={t('agenda.deleteMessage')}
         onConfirm={del.execute}
         onCancel={del.cancel}
       />

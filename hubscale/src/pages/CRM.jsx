@@ -8,6 +8,7 @@ import { isPaid, canAccessPro } from '../lib/plan.js';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { useUndoStack } from '../hooks/useUndoStack.js';
 import { CRM_STATUSES as STATUSES, CRM_FILTER_TABS as FILTER_TABS, LEAD_SCORE_LABELS, PIPELINE_STAGES } from '../lib/constants.js';
+import { t } from '../lib/i18n.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -189,7 +190,7 @@ export default function CRM() {
   // ---- Undo stack for deletions ----
   const undoRestore = useCallback((item) => {
     setContacts((prev) => [...prev, item]);
-    setUndoMsg(`"${item.name}" restauré`);
+    setUndoMsg(t('crm.restored', { name: item.name }));
     setTimeout(() => setUndoMsg(''), 3000);
   }, []);
   const undo = useUndoStack(undoRestore);
@@ -546,7 +547,7 @@ export default function CRM() {
       return prev.filter((c) => !selected.has(c.id));
     });
     setSelected(new Set());
-    setUndoMsg(`${selected.size} contact(s) supprimé(s)`);
+    setUndoMsg(`${selected.size} contact(s) ${t('common.delete').toLowerCase()}`);
     setTimeout(() => setUndoMsg(''), 3000);
   }, [selected, undo]);
 
@@ -620,7 +621,7 @@ export default function CRM() {
       events.push({
         type: 'created',
         date: editContact.createdAt,
-        label: 'Contact créé',
+        label: t('crm.newContact'),
         icon: '➕',
       });
     }
@@ -678,8 +679,8 @@ export default function CRM() {
     <div>
       {/* Page header */}
       <div className="fade-up" style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>CRM</h1>
-        <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Gestion des contacts et pipeline commercial</p>
+        <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{t('crm.title')}</h1>
+        <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>{t('crm.subtitle')}</p>
       </div>
 
       {/* KPI Grid */}
@@ -693,7 +694,7 @@ export default function CRM() {
         {/* Pipeline Value KPI — weighted */}
         <div className="glass-static" style={{ padding: '12px 14px', textAlign: 'center', borderLeft: `3px solid ${T.accent}` }}>
           <div style={{ fontSize: 24, fontWeight: 800, color: T.accent }}>{fK(pipelineValue)}€</div>
-          <div style={{ fontSize: 9, fontWeight: 700, color: T.accent, letterSpacing: .8, marginTop: 2 }}>PIPELINE PONDÉRÉ</div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: T.accent, letterSpacing: .8, marginTop: 2 }}>{t('crm.pipeline').toUpperCase()}</div>
         </div>
       </div>
 
@@ -703,8 +704,8 @@ export default function CRM() {
         <div style={{ flex: 1, minWidth: 140 }}>
           <div className="glass-input" style={{ display: 'flex', alignItems: 'center' }}>
             <span style={{ padding: '0 8px 0 12px', color: T.textMuted, fontSize: 13 }}>{'🔍'}</span>
-            <input value={search} onChange={(e) => handleSearch(e.target.value)} placeholder="Rechercher..."
-              aria-label="Rechercher un contact"
+            <input value={search} onChange={(e) => handleSearch(e.target.value)} placeholder={t('common.search')}
+              aria-label={t('common.search')}
               style={{ flex: 1, background: 'transparent', border: 'none', color: T.text, padding: '8px 12px 8px 0', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
           </div>
         </div>
@@ -722,7 +723,7 @@ export default function CRM() {
               fontSize: 11, fontWeight: 600, cursor: 'pointer',
               fontFamily: 'inherit', transition: 'all .15s',
             }}
-          >Liste</button>
+          >{t('crm.listView')}</button>
           <button
             onClick={() => setView('pipeline')}
             style={{
@@ -732,9 +733,9 @@ export default function CRM() {
               fontSize: 11, fontWeight: 600, cursor: 'pointer',
               fontFamily: 'inherit', transition: 'all .15s',
             }}
-          >Pipeline</button>
+          >{t('crm.pipeline')}</button>
         </div>
-        <Btn v="secondary" small onClick={() => csvInputRef.current?.click()} aria-label="Importer CSV">{'↑'} Import CSV</Btn>
+        <Btn v="secondary" small onClick={() => csvInputRef.current?.click()} aria-label={t('crm.importCsv')}>{'↑'} {t('crm.importCsv')}</Btn>
         <input ref={csvInputRef} type="file" accept=".csv" onChange={handleCSVImport} style={{ display: 'none' }} />
         {editableLimit < Infinity && (
           <span style={{ fontSize: 10, color: atContactLimit ? T.red : T.textMuted, fontWeight: 600 }}>
@@ -742,13 +743,13 @@ export default function CRM() {
           </span>
         )}
         <Btn onClick={openNew} aria-label="Ajouter un contact" style={{ background: atContactLimit ? T.surface2 : 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: atContactLimit ? 'none' : '0 2px 12px rgba(249,115,22,.3)', opacity: atContactLimit ? .7 : 1 }}>
-          {atContactLimit ? '🔒 Limite atteinte' : '+ Contact'}
+          {atContactLimit ? `🔒 ${t('crm.contactLimit')}` : t('crm.addContact')}
         </Btn>
       </div>
 
       {/* Score filter chips */}
       <div className="fade-up d2" style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, marginRight: 4 }}>Score :</span>
+        <span style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, marginRight: 4 }}>{t('crm.score')} :</span>
         {LEAD_SCORE_LABELS.map((sl) => {
           const isActive = scoreFilter === sl.label;
           return (
@@ -799,7 +800,7 @@ export default function CRM() {
               border: `1px solid ${T.green}44`,
               boxShadow: `0 4px 16px ${T.green}22`,
             }}>
-              {'🎉'} Nouveau client : {conversionToast} !
+              {'🎉'} {t('crm.convertedToClient', { name: conversionToast })}
             </div>
           )}
         </div>
@@ -807,8 +808,8 @@ export default function CRM() {
 
       {undo.canUndo && !undoMsg && (
         <div style={{ marginBottom: 12, fontSize: 11, color: T.textMuted, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Btn v="ghost" small onClick={undo.undo}>{'↩'} Annuler ({undo.stackSize})</Btn>
-          <span>Ctrl+Z pour annuler la dernière suppression</span>
+          <Btn v="ghost" small onClick={undo.undo}>{'↩'} {t('common.cancel')} ({undo.stackSize})</Btn>
+          <span>Ctrl+Z</span>
         </div>
       )}
 
@@ -817,9 +818,9 @@ export default function CRM() {
         <Card>
           <EmptyState
             icon={'👥'}
-            title="Aucun contact"
-            sub="Ajoutez votre premier contact pour démarrer votre CRM"
-            action={<Btn onClick={openNew} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Ajouter un contact</Btn>}
+            title={t('crm.noContacts')}
+            sub={t('crm.noContactSub')}
+            action={<Btn onClick={openNew} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>{t('crm.addContact')}</Btn>}
           />
         </Card>
       )}
@@ -829,8 +830,8 @@ export default function CRM() {
         <>
           {filtered.length === 0 ? (
             <Card>
-              <EmptyState icon={'👥'} title="Aucun contact" sub="Ajoutez votre premier contact pour commencer"
-                action={<Btn onClick={openNew} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Ajouter un contact</Btn>} />
+              <EmptyState icon={'👥'} title={t('crm.noContacts')} sub={t('crm.noContactSub')}
+                action={<Btn onClick={openNew} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>{t('crm.addContact')}</Btn>} />
             </Card>
           ) : (
             <Card style={{ padding: 0, overflow: 'hidden' }}>
@@ -844,17 +845,17 @@ export default function CRM() {
                           type="checkbox"
                           checked={allPageSelected}
                           onChange={toggleSelectAll}
-                          aria-label="Sélectionner tout"
+                          aria-label={t('crm.selectAll')}
                           style={{ cursor: 'pointer', accentColor: T.accent }}
                         />
                       </th>
                       {[
-                        { label: 'Nom', key: 'name' },
-                        { label: 'Score', key: 'score' },
-                        { label: 'Email', key: 'email' },
-                        { label: 'Société', key: 'company' },
-                        { label: 'Téléphone', key: null },
-                        { label: 'Statut', key: 'status' },
+                        { label: t('common.name'), key: 'name' },
+                        { label: t('crm.score'), key: 'score' },
+                        { label: t('common.email'), key: 'email' },
+                        { label: t('crm.company'), key: 'company' },
+                        { label: t('common.phone'), key: null },
+                        { label: t('common.status'), key: 'status' },
                         { label: '', key: null },
                       ].map((h, i) => (
                         <th key={h.label + i} scope="col" onClick={h.key ? () => toggleSort(h.key) : undefined}
@@ -891,7 +892,7 @@ export default function CRM() {
                               <span>{c.name}</span>
                               {relanceDays && (
                                 <span style={{ fontSize: 10, fontWeight: 600, color: T.orange, background: T.orangeBg, padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>
-                                  {'⚠️'} Relance {relanceDays}j
+                                  {'⚠️'} {t('crm.staleAlert', { days: relanceDays })}
                                 </span>
                               )}
                             </div>
@@ -939,7 +940,7 @@ export default function CRM() {
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {colContacts.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: 16, fontSize: 11, color: T.textMuted }}>Aucun contact</div>
+                    <div style={{ textAlign: 'center', padding: 16, fontSize: 11, color: T.textMuted }}>{t('crm.noContacts')}</div>
                   )}
                   {colContacts.map((c) => {
                     const relanceDays = getRelanceInfo(c);
@@ -969,7 +970,7 @@ export default function CRM() {
                         {c.email && <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{c.email}</div>}
                         {relanceDays && (
                           <div style={{ marginTop: 4, fontSize: 10, fontWeight: 600, color: T.orange, background: T.orangeBg, padding: '2px 6px', borderRadius: 6, display: 'inline-block' }}>
-                            {'⚠️'} Relance {relanceDays}j
+                            {'⚠️'} {t('crm.staleAlert', { days: relanceDays })}
                           </div>
                         )}
                         <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end' }}>
@@ -1057,7 +1058,7 @@ export default function CRM() {
                       background: status.bg, textAlign: 'center',
                       fontSize: 10, color: status.color, fontWeight: 600,
                     }}>
-                      Déposer ici
+                      {t('common.add')}
                     </div>
                   )}
 
@@ -1070,7 +1071,7 @@ export default function CRM() {
                       <div style={{
                         textAlign: 'center', padding: 24,
                         fontSize: 11, color: T.textMuted, fontStyle: 'italic',
-                      }}>Aucun contact</div>
+                      }}>{t('crm.noContacts')}</div>
                     )}
                     {colContacts.map((c) => {
                       const score = leadScore(c);
@@ -1136,7 +1137,7 @@ export default function CRM() {
                           </div>
                           {c.expectedCloseDate && (
                             <div style={{ fontSize: 8, color: T.textMuted, marginTop: 2 }}>
-                              Closing : {new Date(c.expectedCloseDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                              {t('crm.expectedClose')} : {new Date(c.expectedCloseDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
                             </div>
                           )}
                         </div>
@@ -1160,12 +1161,12 @@ export default function CRM() {
                         fontSize: 10, color: T.textMuted,
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                          <span>Deals : <strong style={{ color: dealTotal > 0 ? T.green : T.textMuted }}>{dealTotal > 0 ? fK(dealTotal) + '€' : '—'}</strong></span>
-                          <span>Score moy. : <strong style={{ color: avgScore >= 60 ? T.orange : T.textMuted }}>{colContacts.length > 0 ? avgScore : '—'}</strong></span>
+                          <span>{t('crm.dealValue')} : <strong style={{ color: dealTotal > 0 ? T.green : T.textMuted }}>{dealTotal > 0 ? fK(dealTotal) + '€' : '—'}</strong></span>
+                          <span>{t('crm.score')} : <strong style={{ color: avgScore >= 60 ? T.orange : T.textMuted }}>{colContacts.length > 0 ? avgScore : '—'}</strong></span>
                         </div>
                         {weighted > 0 && (
                           <div style={{ fontSize: 9, color: T.accent, fontWeight: 700 }}>
-                            Pondéré : {fK(weighted)}€
+                            {t('crm.pipeline')} : {fK(weighted)}€
                           </div>
                         )}
                       </div>
@@ -1189,11 +1190,11 @@ export default function CRM() {
           backdropFilter: 'blur(12px)',
         }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: T.accent }}>
-            {selected.size} sélectionné{selected.size > 1 ? 's' : ''}
+            {selected.size} {t('crm.selectAll')}
           </span>
           <div style={{ width: 1, height: 20, background: T.border }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 10, color: T.textMuted, fontWeight: 600 }}>Changer statut :</span>
+            <span style={{ fontSize: 10, color: T.textMuted, fontWeight: 600 }}>{t('common.status')} :</span>
             <select
               onChange={(e) => { if (e.target.value) bulkChangeStatus(e.target.value); e.target.value = ''; }}
               defaultValue=""
@@ -1203,12 +1204,12 @@ export default function CRM() {
                 cursor: 'pointer',
               }}
             >
-              <option value="" disabled>Choisir...</option>
+              <option value="" disabled>...</option>
               {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
             </select>
           </div>
           <div style={{ width: 1, height: 20, background: T.border }} />
-          <Btn v="danger" small onClick={bulkDelete}>Supprimer ({selected.size})</Btn>
+          <Btn v="danger" small onClick={bulkDelete}>{t('common.delete')} ({selected.size})</Btn>
           <div style={{ width: 1, height: 20, background: T.border }} />
           <Btn v="secondary" small onClick={() => setShowEmailTemplate(true)}>📧 Email</Btn>
           <Btn v="ghost" small onClick={bulkExportCSV}>📥 Export CSV</Btn>
@@ -1218,7 +1219,7 @@ export default function CRM() {
 
       {/* ---- EMAIL TEMPLATE MODAL ---- */}
       {showEmailTemplate && (
-        <Modal open onClose={() => setShowEmailTemplate(false)} title={`Envoyer un email (${selected.size} contact${selected.size > 1 ? 's' : ''})`} wide>
+        <Modal open onClose={() => setShowEmailTemplate(false)} title={`${t('common.send')} email (${selected.size} contact${selected.size > 1 ? 's' : ''})`} wide>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ fontSize: 12, color: T.textSecondary, marginBottom: 4 }}>
               {contacts.filter(c => selected.has(c.id) && c.email).length} contact(s) avec email
@@ -1254,9 +1255,9 @@ export default function CRM() {
             )}
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Btn v="ghost" small onClick={() => setShowEmailTemplate(false)}>Annuler</Btn>
+              <Btn v="ghost" small onClick={() => setShowEmailTemplate(false)}>{t('common.cancel')}</Btn>
               <Btn small disabled={!selectedTemplate} onClick={() => selectedTemplate && bulkEmail(selectedTemplate)}>
-                Ouvrir dans messagerie
+                {t('common.send')}
               </Btn>
             </div>
           </div>
@@ -1264,16 +1265,16 @@ export default function CRM() {
       )}
 
       {/* ---- CONTACT MODAL ---- */}
-      <Modal open={showModal} onClose={() => { setShowModal(false); setEmailError(''); setDuplicateWarning(''); }} title={editId ? 'Modifier le contact' : 'Nouveau contact'} wide={!!editId} footer={
+      <Modal open={showModal} onClose={() => { setShowModal(false); setEmailError(''); setDuplicateWarning(''); }} title={editId ? t('crm.editContact') : t('crm.newContact')} wide={!!editId} footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
-          {saved && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>{'✓'} Enregistré</span>}
+          {saved && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>{'✓'} {t('common.save')}</span>}
           {editId && (
             <Btn v="secondary" small onClick={() => generateInvoice(editContact)} style={{ marginRight: 'auto' }}>
-              Facturer
+              {t('crm.generateInvoice')}
             </Btn>
           )}
-          <Btn v="ghost" onClick={() => { setShowModal(false); setEmailError(''); setDuplicateWarning(''); }}>Annuler</Btn>
-          <Btn onClick={saveContact} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>{editId ? 'Enregistrer' : 'Ajouter'}</Btn>
+          <Btn v="ghost" onClick={() => { setShowModal(false); setEmailError(''); setDuplicateWarning(''); }}>{t('common.cancel')}</Btn>
+          <Btn onClick={saveContact} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>{editId ? t('common.save') : t('common.add')}</Btn>
         </div>
       }>
         {/* Lead score display in modal (edit mode) */}
@@ -1299,35 +1300,35 @@ export default function CRM() {
           );
         })()}
 
-        <Inp label="Nom *" value={form.name} onChange={(v) => { setForm({ ...form, name: v }); setDuplicateWarning(checkDuplicate(v, form.email)); }} placeholder="Nom complet" />
-        <Inp label="Email" value={form.email} onChange={(v) => { setForm({ ...form, email: v }); setEmailError(''); setDuplicateWarning(checkDuplicate(form.name, v)); }} type="email" placeholder="email@exemple.com" />
+        <Inp label={`${t('common.name')} *`} value={form.name} onChange={(v) => { setForm({ ...form, name: v }); setDuplicateWarning(checkDuplicate(v, form.email)); }} placeholder={t('common.name')} />
+        <Inp label={t('common.email')} value={form.email} onChange={(v) => { setForm({ ...form, email: v }); setEmailError(''); setDuplicateWarning(checkDuplicate(form.name, v)); }} type="email" placeholder="email@exemple.com" />
         {emailError && <div style={{ fontSize: 11, color: T.red, marginTop: -8, marginBottom: 8 }}>{emailError}</div>}
         {duplicateWarning && <div style={{ fontSize: 11, color: T.orange, padding: '6px 10px', borderRadius: 6, background: T.orangeBg, marginTop: -4, marginBottom: 8 }}>{duplicateWarning}</div>}
-        <Inp label="Société" value={form.company} onChange={(v) => setForm({ ...form, company: v })} placeholder="Nom de la société" />
-        <Inp label="Téléphone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="+33 6 00 00 00 00" />
-        <Sel label="Statut" value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={STATUSES.map((s) => ({ value: s.id, label: s.label }))} />
-        <Inp label="Notes" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} placeholder="Notes..." />
+        <Inp label={t('crm.company')} value={form.company} onChange={(v) => setForm({ ...form, company: v })} placeholder={t('crm.company')} />
+        <Inp label={t('common.phone')} value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="+33 6 00 00 00 00" />
+        <Sel label={t('common.status')} value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={STATUSES.map((s) => ({ value: s.id, label: s.label }))} />
+        <Inp label={t('common.notes')} value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} placeholder={`${t('common.notes')}...`} />
 
         {/* Deal fields */}
         <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 12, marginTop: 8, marginBottom: 12 }}>
           <label style={{ display: 'block', color: T.textSecondary, fontSize: 11, fontWeight: 600, marginBottom: 8, letterSpacing: .3 }}>
-            Opportunité commerciale
+            {t('crm.dealValue')}
           </label>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-            <Inp label="Montant estimé (€)" value={form.dealValue} onChange={(v) => setForm({ ...form, dealValue: v })} type="number" placeholder="0" suffix="€" />
-            <Inp label="Probabilité (%)" value={form.dealProbability} onChange={(v) => setForm({ ...form, dealProbability: v })} type="number" placeholder={String(PIPELINE_STAGES.find((s) => s.id === form.status)?.proba || 20)} suffix="%" />
-            <Inp label="Date closing estimée" value={form.expectedCloseDate} onChange={(v) => setForm({ ...form, expectedCloseDate: v })} type="date" />
+            <Inp label={`${t('common.amount')} (€)`} value={form.dealValue} onChange={(v) => setForm({ ...form, dealValue: v })} type="number" placeholder="0" suffix="€" />
+            <Inp label={t('crm.dealProbability')} value={form.dealProbability} onChange={(v) => setForm({ ...form, dealProbability: v })} type="number" placeholder={String(PIPELINE_STAGES.find((s) => s.id === form.status)?.proba || 20)} suffix="%" />
+            <Inp label={t('crm.expectedClose')} value={form.expectedCloseDate} onChange={(v) => setForm({ ...form, expectedCloseDate: v })} type="date" />
           </div>
           {form.dealValue && form.dealProbability && (
             <div style={{ marginTop: 6, fontSize: 10, fontWeight: 600, color: T.accent }}>
-              Valeur pondérée : {fmt(Math.round(parseFloat(form.dealValue || 0) * parseFloat(form.dealProbability || 0) / 100))} €
+              {t('crm.dealValue')} : {fmt(Math.round(parseFloat(form.dealValue || 0) * parseFloat(form.dealProbability || 0) / 100))} €
             </div>
           )}
         </div>
 
         {/* Comment input */}
         <div style={{ marginBottom: 12 }}>
-          <label style={{ display: 'block', color: T.textSecondary, fontSize: 11, fontWeight: 600, marginBottom: 4, letterSpacing: .3 }}>Ajouter un commentaire</label>
+          <label style={{ display: 'block', color: T.textSecondary, fontSize: 11, fontWeight: 600, marginBottom: 4, letterSpacing: .3 }}>{t('crm.addComment')}</label>
           <div className="glass-input" style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
             <input
               type="text"
@@ -1343,7 +1344,7 @@ export default function CRM() {
                   setNewComment('');
                 }
               }}
-              placeholder="Écrire un commentaire..."
+              placeholder={`${t('crm.addComment')}...`}
               style={{ flex: 1, background: 'transparent', border: 'none', color: T.text, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none', width: '100%' }}
             />
             {editId && (
@@ -1354,7 +1355,7 @@ export default function CRM() {
                   return { ...c, commentaires: [...(c.commentaires || []), { text: newComment.trim(), date: new Date().toISOString() }] };
                 }));
                 setNewComment('');
-              }}>Ajouter</Btn>
+              }}>{t('common.add')}</Btn>
             )}
           </div>
           <div style={{ color: T.textMuted, fontSize: 10, marginTop: 2 }}>
@@ -1366,7 +1367,7 @@ export default function CRM() {
         {editId && activityTimeline.length > 0 && (
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: 'block', color: T.textSecondary, fontSize: 11, fontWeight: 600, marginBottom: 8, letterSpacing: .3 }}>
-              Historique d'activité ({activityTimeline.length})
+              {t('crm.comments')} ({activityTimeline.length})
             </label>
             <div style={{ maxHeight: 260, overflowY: 'auto', borderRadius: 10, border: `1px solid ${T.border}`, background: T.surface2, padding: '8px 0' }}>
               {activityTimeline.map((event, idx) => {
@@ -1399,7 +1400,7 @@ export default function CRM() {
                           fontSize: 11, fontWeight: 600,
                           color: event.type === 'status' ? T.accent : event.type === 'created' ? T.green : T.text,
                         }}>
-                          {event.type === 'comment' ? 'Commentaire' : event.label}
+                          {event.type === 'comment' ? t('crm.comments') : event.label}
                         </span>
                       </div>
                       {event.type === 'comment' && (
@@ -1424,15 +1425,15 @@ export default function CRM() {
       {/* ---- CONFIRM DIALOG ---- */}
       <ConfirmDialog
         open={del.isOpen}
-        title="Supprimer ce contact ?"
-        message="Le contact sera définitivement supprimé. Cette action est irréversible."
+        title={t('crm.deleteConfirm')}
+        message={t('common.irreversible')}
         onConfirm={del.execute}
         onCancel={del.cancel}
       />
 
       {/* ---- CONTACT LIMIT GATE ---- */}
-      <Modal open={showLimitGate} onClose={() => setShowLimitGate(false)} title="Limite atteinte">
-        <PremiumGate label={`Limite de ${editableLimit} contacts manuels atteinte`} blur={false}>
+      <Modal open={showLimitGate} onClose={() => setShowLimitGate(false)} title={t('crm.contactLimit')}>
+        <PremiumGate label={t('crm.contactLimitSub')} blur={false}>
           <div />
         </PremiumGate>
       </Modal>
@@ -1448,7 +1449,7 @@ export default function CRM() {
           animation: 'slideDown .3s ease',
           fontSize: 13, fontWeight: 700, color: T.green,
         }}>
-          {'🎉'} Nouveau client : {conversionToast} !
+          {'🎉'} {t('crm.convertedToClient', { name: conversionToast })}
         </div>
       )}
     </div>

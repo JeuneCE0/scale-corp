@@ -6,26 +6,27 @@ import { broadcast, subscribe } from '../lib/sync.js';
 import { Card, Btn, Inp, Badge, Modal, EmptyState, Sel, TabBar, Pagination, PremiumGate } from '../components/ui.jsx';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { INVOICE_STATUSES, TVA_RATES } from '../lib/constants.js';
+import { t } from '../lib/i18n.js';
 
 // ---------------------------------------------------------------------------
 // Document types & constants
 // ---------------------------------------------------------------------------
 
-const DOC_TYPES = [
-  { id: 'invoice', label: 'Facture', icon: '🧾', color: T.blue },
-  { id: 'quote', label: 'Devis', icon: '📋', color: T.purple },
-  { id: 'credit', label: 'Avoir', icon: '↩️', color: T.orange },
-  { id: 'receipt', label: 'Reçu', icon: '🧾', color: T.green },
+const getDOC_TYPES = () => [
+  { id: 'invoice', label: t('doc.invoice'), icon: '🧾', color: T.blue },
+  { id: 'quote', label: t('doc.quote'), icon: '📋', color: T.purple },
+  { id: 'credit', label: t('doc.credit'), icon: '↩️', color: T.orange },
+  { id: 'receipt', label: t('doc.receipt'), icon: '🧾', color: T.green },
 ];
 
-const FILTER_TABS = ['Tous', 'Factures', 'Devis', 'Avoirs', 'Reçus'];
-const FILTER_MAP = { Factures: 'invoice', Devis: 'quote', Avoirs: 'credit', 'Reçus': 'receipt' };
+const getFILTER_TABS = () => [t('doc.filterAll'), t('doc.filterInvoices'), t('doc.filterQuotes'), t('doc.filterCredits'), t('doc.filterReceipts')];
+const FILTER_MAP_KEYS = ['', 'invoice', 'quote', 'credit', 'receipt'];
 
-const SORT_OPTIONS = [
-  { value: 'date-desc', label: 'Plus récent' },
-  { value: 'date-asc', label: 'Plus ancien' },
-  { value: 'amount-desc', label: 'Montant ↓' },
-  { value: 'amount-asc', label: 'Montant ↑' },
+const getSORT_OPTIONS = () => [
+  { value: 'date-desc', label: t('doc.sortRecent') },
+  { value: 'date-asc', label: t('doc.sortOldest') },
+  { value: 'amount-desc', label: t('doc.sortAmountDesc') },
+  { value: 'amount-asc', label: t('doc.sortAmountAsc') },
 ];
 
 const STATUS_COLORS = {
@@ -38,17 +39,17 @@ const STATUS_COLORS = {
   cancelled: { color: T.textMuted, bg: T.surface2 },
 };
 
-const STATUS_LABELS = {
-  draft: 'Brouillon', sent: 'Envoyé', paid: 'Payé', overdue: 'En retard',
-  accepted: 'Accepté', rejected: 'Refusé', cancelled: 'Annulé',
-};
+const getSTATUS_LABELS = () => ({
+  draft: t('status.draft'), sent: t('status.sent'), paid: t('status.paid'), overdue: t('status.overdue'),
+  accepted: t('status.accepted'), rejected: t('status.rejected'), cancelled: t('status.cancelled'),
+});
 
 function emptyDoc() {
   return {
     id: uid(), type: 'invoice', status: 'draft',
     number: '', clientName: '', clientEmail: '', clientAddress: '',
     items: [{ id: uid(), description: '', qty: 1, unitPrice: 0, tva: 20 }],
-    notes: '', paymentTerms: '30 jours', createdAt: new Date().toISOString(),
+    notes: '', paymentTerms: t('doc.paymentDefault'), createdAt: new Date().toISOString(),
     dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
     paidAt: null,
   };
@@ -70,7 +71,7 @@ function computeTotals(items) {
 
 export default function Documents() {
   const [docs, setDocs] = useState(() => load('documents') || []);
-  const [filter, setFilter] = useState('Tous');
+  const [filterIdx, setFilterIdx] = useState(0);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('date-desc');
   const [editing, setEditing] = useState(null);
@@ -93,7 +94,7 @@ export default function Documents() {
     let list = [...docs];
 
     // Type filter
-    const typeKey = FILTER_MAP[filter];
+    const typeKey = FILTER_MAP_KEYS[filterIdx];
     if (typeKey) list = list.filter(d => d.type === typeKey);
 
     // Search
@@ -116,7 +117,7 @@ export default function Documents() {
     });
 
     return list;
-  }, [docs, filter, search, sort]);
+  }, [docs, filterIdx, search, sort]);
 
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
@@ -149,7 +150,7 @@ export default function Documents() {
   };
 
   const deleteDoc = async (id) => {
-    const ok = await confirm.open('Supprimer ce document ?', 'Cette action est irréversible.');
+    const ok = await confirm.open(t('doc.deleteConfirm'), t('common.irreversible'));
     if (ok) setDocs(prev => prev.filter(d => d.id !== id));
   };
 
@@ -159,14 +160,14 @@ export default function Documents() {
 
   const duplicateDoc = (doc) => {
     const newDoc = { ...doc, id: uid(), status: 'draft', createdAt: new Date().toISOString(), paidAt: null,
-      number: doc.number + '-COPIE', items: doc.items.map(i => ({ ...i, id: uid() })) };
+      number: doc.number + t('doc.copy'), items: doc.items.map(i => ({ ...i, id: uid() })) };
     setDocs(prev => [newDoc, ...prev]);
   };
 
   const generatePDF = (doc) => {
     const org = load('organization') || {};
     const { totalHT, totalTVA, totalTTC } = computeTotals(doc.items || []);
-    const typeLabel = DOC_TYPES.find(t => t.id === doc.type)?.label || 'Document';
+    const typeLabel = getDOC_TYPES().find(dt => dt.id === doc.type)?.label || 'Document';
     const html = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"><title>${typeLabel} ${doc.number}</title>
 <style>
@@ -188,22 +189,22 @@ tbody td:nth-child(n+2){text-align:right}
 .no-print{text-align:center;margin-bottom:20px}
 @media print{.no-print{display:none}}
 </style></head><body>
-<div class="no-print"><button onclick="window.print()" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Imprimer / PDF</button></div>
+<div class="no-print"><button onclick="window.print()" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">${t('doc.pdfPrint')}</button></div>
 <div class="header"><div><div class="brand">${org.name || 'HubScale'}</div><div class="brand-sub">${org.siret ? 'SIRET: ' + org.siret : ''}</div></div>
-<div class="meta"><h2>${typeLabel} ${doc.number}</h2><p>Date: ${formatDateFR(doc.createdAt)}<br>${doc.dueDate ? 'Échéance: ' + formatDateFR(doc.dueDate) : ''}<br>Statut: ${STATUS_LABELS[doc.status] || doc.status}</p></div></div>
-<div class="parties"><div class="party"><h3>Émetteur</h3><p><strong>${org.name || '—'}</strong><br>${org.address || ''}<br>${org.email || ''}</p></div>
-<div class="party"><h3>Client</h3><p><strong>${doc.clientName || '—'}</strong><br>${doc.clientAddress || ''}<br>${doc.clientEmail || ''}</p></div></div>
-<table><thead><tr><th>Description</th><th>Qté</th><th>PU HT</th><th>TVA</th><th>Total HT</th></tr></thead><tbody>
+<div class="meta"><h2>${typeLabel} ${doc.number}</h2><p>${t('common.date')}: ${formatDateFR(doc.createdAt)}<br>${doc.dueDate ? t('doc.dueDate') + ' ' + formatDateFR(doc.dueDate) : ''}<br>${t('common.status')}: ${getSTATUS_LABELS()[doc.status] || doc.status}</p></div></div>
+<div class="parties"><div class="party"><h3>${t('doc.pdfEmitter')}</h3><p><strong>${org.name || '—'}</strong><br>${org.address || ''}<br>${org.email || ''}</p></div>
+<div class="party"><h3>${t('doc.client')}</h3><p><strong>${doc.clientName || '—'}</strong><br>${doc.clientAddress || ''}<br>${doc.clientEmail || ''}</p></div></div>
+<table><thead><tr><th>${t('common.description')}</th><th>${t('doc.qty')}</th><th>${t('doc.unitPriceHT')}</th><th>${t('doc.tva')}</th><th>${t('doc.totalHT')}</th></tr></thead><tbody>
 ${(doc.items || []).map(i => `<tr><td>${i.description || '—'}</td><td>${i.qty}</td><td>${fmt(i.unitPrice)}€</td><td>${i.tva}%</td><td>${fmt(i.qty * i.unitPrice)}€</td></tr>`).join('')}
 </tbody></table>
 <div class="totals"><div class="totals-box">
-<div class="totals-row"><span>Total HT</span><span>${fmt(totalHT)}€</span></div>
-<div class="totals-row"><span>TVA</span><span>${fmt(totalTVA)}€</span></div>
-<div class="totals-row final"><span>Total TTC</span><span>${fmt(totalTTC)}€</span></div>
+<div class="totals-row"><span>${t('doc.totalHT')}</span><span>${fmt(totalHT)}€</span></div>
+<div class="totals-row"><span>${t('doc.totalTVA')}</span><span>${fmt(totalTVA)}€</span></div>
+<div class="totals-row final"><span>${t('doc.totalTTC')}</span><span>${fmt(totalTTC)}€</span></div>
 </div></div>
-${doc.notes ? `<div class="notes"><strong>Notes:</strong><br>${doc.notes}</div>` : ''}
+${doc.notes ? `<div class="notes"><strong>${t('common.notes')}:</strong><br>${doc.notes}</div>` : ''}
 <div class="footer"><strong>${org.name || 'HubScale'}</strong> — ${org.siret ? 'SIRET ' + org.siret : ''} ${org.tva_number ? '— TVA ' + org.tva_number : ''}<br>
-${org.iban ? 'IBAN: ' + org.iban + (org.bic ? ' — BIC: ' + org.bic : '') : 'Coordonnées bancaires non renseignées'}</div>
+${org.iban ? 'IBAN: ' + org.iban + (org.bic ? ' — BIC: ' + org.bic : '') : t('doc.bankInfoMissing')}</div>
 </body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); }
@@ -214,11 +215,11 @@ ${org.iban ? 'IBAN: ' + org.iban + (org.bic ? ' — BIC: ' + org.bic : '') : 'Co
       {/* Header Stats */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {[
-          { label: 'Documents', value: stats.total, icon: '📄', color: T.accent },
-          { label: 'Payés', value: stats.paid, icon: '✅', color: T.green },
-          { label: 'En retard', value: stats.overdue, icon: '⚠️', color: T.red },
-          { label: 'CA encaissé', value: fmt(stats.totalRevenue) + '€', icon: '💰', color: T.green },
-          { label: 'En attente', value: fmt(stats.pendingAmount) + '€', icon: '⏳', color: T.orange },
+          { label: t('doc.documents'), value: stats.total, icon: '📄', color: T.accent },
+          { label: t('doc.paid'), value: stats.paid, icon: '✅', color: T.green },
+          { label: t('doc.overdue'), value: stats.overdue, icon: '⚠️', color: T.red },
+          { label: t('doc.revenue'), value: fmt(stats.totalRevenue) + '€', icon: '💰', color: T.green },
+          { label: t('doc.pending'), value: fmt(stats.pendingAmount) + '€', icon: '⏳', color: T.orange },
         ].map((s, i) => (
           <div key={i} className="glass-static fade-up" style={{ flex: '1 1 140px', padding: '14px 16px', minWidth: 0 }}>
             <div style={{ fontSize: 10, color: T.textSecondary, fontWeight: 600, letterSpacing: .5, textTransform: 'uppercase', marginBottom: 4 }}>
@@ -232,25 +233,25 @@ ${org.iban ? 'IBAN: ' + org.iban + (org.bic ? ' — BIC: ' + org.bic : '') : 'Co
       {/* Toolbar */}
       <Card>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <TabBar items={FILTER_TABS} active={filter} onChange={(t) => { setFilter(t); setPage(1); }} />
+          <TabBar items={getFILTER_TABS()} active={getFILTER_TABS()[filterIdx]} onChange={(tab) => { setFilterIdx(getFILTER_TABS().indexOf(tab)); setPage(1); }} />
           <div style={{ flex: 1 }} />
-          <Inp small placeholder="Rechercher..." value={search} onChange={(v) => { setSearch(v); setPage(1); }} />
-          <Sel value={sort} onChange={setSort} options={SORT_OPTIONS} small />
+          <Inp small placeholder={t('common.search')} value={search} onChange={(v) => { setSearch(v); setPage(1); }} />
+          <Sel value={sort} onChange={setSort} options={getSORT_OPTIONS()} small />
           <div style={{ display: 'flex', gap: 6 }}>
-            <Btn small onClick={() => addDoc('invoice')}>+ Facture</Btn>
-            <Btn small v="secondary" onClick={() => addDoc('quote')}>+ Devis</Btn>
-            <Btn small v="ghost" onClick={() => addDoc('credit')}>+ Avoir</Btn>
+            <Btn small onClick={() => addDoc('invoice')}>{t('doc.addInvoice')}</Btn>
+            <Btn small v="secondary" onClick={() => addDoc('quote')}>{t('doc.addQuote')}</Btn>
+            <Btn small v="ghost" onClick={() => addDoc('credit')}>{t('doc.addCredit')}</Btn>
           </div>
         </div>
       </Card>
 
       {/* Document List */}
       {paged.length === 0 ? (
-        <EmptyState icon="📄" title="Aucun document" sub="Créez votre première facture ou devis" actionLabel="+ Créer un document" onAction={() => addDoc('invoice')} />
+        <EmptyState icon="📄" title={t('doc.noDocuments')} sub={t('doc.noDocSub')} actionLabel={t('doc.createDoc')} onAction={() => addDoc('invoice')} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {paged.map(doc => {
-            const docType = DOC_TYPES.find(t => t.id === doc.type) || DOC_TYPES[0];
+            const docType = getDOC_TYPES().find(dt => dt.id === doc.type) || getDOC_TYPES()[0];
             const { totalTTC } = computeTotals(doc.items || []);
             const sc = STATUS_COLORS[doc.status] || STATUS_COLORS.draft;
             const isOverdue = doc.status === 'sent' && doc.dueDate && new Date(doc.dueDate) < new Date();
@@ -261,13 +262,13 @@ ${org.iban ? 'IBAN: ' + org.iban + (org.bic ? ' — BIC: ' + org.bic : '') : 'Co
                 <div style={{ fontSize: 22 }}>{docType.icon}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                    <span style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{doc.number || 'Sans numéro'}</span>
-                    <Badge label={STATUS_LABELS[isOverdue ? 'overdue' : doc.status]} color={isOverdue ? T.red : sc.color} bg={isOverdue ? T.redBg : sc.bg} />
+                    <span style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{doc.number || t('common.noNumber')}</span>
+                    <Badge label={getSTATUS_LABELS()[isOverdue ? 'overdue' : doc.status]} color={isOverdue ? T.red : sc.color} bg={isOverdue ? T.redBg : sc.bg} />
                     <Badge label={docType.label} color={docType.color} bg={T.surface2} />
                   </div>
                   <div style={{ fontSize: 12, color: T.textSecondary }}>
-                    {doc.clientName || 'Client non renseigné'} — {formatDateFR(doc.createdAt)}
-                    {doc.dueDate && <span style={{ marginLeft: 8, color: isOverdue ? T.red : T.textMuted }}>Éch. {formatDateFR(doc.dueDate)}</span>}
+                    {doc.clientName || t('doc.noClient')} — {formatDateFR(doc.createdAt)}
+                    {doc.dueDate && <span style={{ marginLeft: 8, color: isOverdue ? T.red : T.textMuted }}>{t('doc.dueDate')} {formatDateFR(doc.dueDate)}</span>}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -327,53 +328,53 @@ function DocumentEditor({ doc, onSave, onClose, onDelete, onDuplicate, onMarkPai
   };
 
   return (
-    <Modal open onClose={onClose} title={`${DOC_TYPES.find(t => t.id === form.type)?.label || 'Document'} — ${form.number || 'Nouveau'}`} wide>
+    <Modal open onClose={onClose} title={`${getDOC_TYPES().find(dt => dt.id === form.type)?.label || 'Document'} — ${form.number || t('doc.new')}`} wide>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Type + Status */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 200px' }}>
-            <Sel label="Type" value={form.type} onChange={(v) => set('type', v)} options={DOC_TYPES.map(t => ({ value: t.id, label: t.label }))} />
+            <Sel label={t('common.type')} value={form.type} onChange={(v) => set('type', v)} options={getDOC_TYPES().map(dt => ({ value: dt.id, label: dt.label }))} />
           </div>
           <div style={{ flex: '1 1 200px' }}>
-            <Sel label="Statut" value={form.status} onChange={(v) => set('status', v)} options={Object.entries(STATUS_LABELS).map(([k, v]) => ({ value: k, label: v }))} />
+            <Sel label={t('common.status')} value={form.status} onChange={(v) => set('status', v)} options={Object.entries(getSTATUS_LABELS()).map(([k, v]) => ({ value: k, label: v }))} />
           </div>
           <div style={{ flex: '1 1 200px' }}>
-            <Inp label="Numéro" value={form.number} onChange={(v) => set('number', v)} />
+            <Inp label={t('doc.number')} value={form.number} onChange={(v) => set('number', v)} />
           </div>
         </div>
 
         {/* Client info */}
         <div style={{ padding: 14, background: T.surface2, borderRadius: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: .5 }}>Client</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: .5 }}>{t('doc.client')}</div>
           {contacts.length > 0 && (
             <div style={{ marginBottom: 10 }}>
-              <Sel small value="" onChange={fillFromContact} options={[{ value: '', label: 'Remplir depuis un contact...' }, ...contacts.map(c => ({ value: c.id, label: c.name || c.company || c.email }))]} />
+              <Sel small value="" onChange={fillFromContact} options={[{ value: '', label: t('doc.fillFromContact') }, ...contacts.map(c => ({ value: c.id, label: c.name || c.company || c.email }))]} />
             </div>
           )}
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 200px' }}><Inp small label="Nom" value={form.clientName} onChange={(v) => set('clientName', v)} /></div>
-            <div style={{ flex: '1 1 200px' }}><Inp small label="Email" value={form.clientEmail} onChange={(v) => set('clientEmail', v)} type="email" /></div>
-            <div style={{ flex: '1 1 300px' }}><Inp small label="Adresse" value={form.clientAddress} onChange={(v) => set('clientAddress', v)} /></div>
+            <div style={{ flex: '1 1 200px' }}><Inp small label={t('common.name')} value={form.clientName} onChange={(v) => set('clientName', v)} /></div>
+            <div style={{ flex: '1 1 200px' }}><Inp small label={t('common.email')} value={form.clientEmail} onChange={(v) => set('clientEmail', v)} type="email" /></div>
+            <div style={{ flex: '1 1 300px' }}><Inp small label={t('common.address')} value={form.clientAddress} onChange={(v) => set('clientAddress', v)} /></div>
           </div>
         </div>
 
         {/* Dates */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 200px' }}><Inp label="Date d'échéance" type="date" value={form.dueDate || ''} onChange={(v) => set('dueDate', v)} /></div>
-          <div style={{ flex: '1 1 200px' }}><Inp label="Conditions de paiement" value={form.paymentTerms} onChange={(v) => set('paymentTerms', v)} /></div>
+          <div style={{ flex: '1 1 200px' }}><Inp label={t('doc.dueDateLabel')} type="date" value={form.dueDate || ''} onChange={(v) => set('dueDate', v)} /></div>
+          <div style={{ flex: '1 1 200px' }}><Inp label={t('doc.paymentTerms')} value={form.paymentTerms} onChange={(v) => set('paymentTerms', v)} /></div>
         </div>
 
         {/* Line items */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: .5 }}>Lignes</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: .5 }}>{t('doc.lines')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowX: 'auto' }}>
             {form.items.map((item, idx) => (
               <div key={item.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-end', padding: '8px 10px', background: T.surface2, borderRadius: 8, minWidth: 520 }}>
-                <div style={{ flex: '3 1 200px' }}><Inp small label={idx === 0 ? 'Description' : ''} value={item.description} onChange={(v) => updateItem(item.id, 'description', v)} placeholder="Description..." /></div>
-                <div style={{ flex: '0 0 70px' }}><Inp small label={idx === 0 ? 'Qté' : ''} type="number" value={item.qty} onChange={(v) => updateItem(item.id, 'qty', parseFloat(v) || 0)} /></div>
-                <div style={{ flex: '0 0 100px' }}><Inp small label={idx === 0 ? 'PU HT' : ''} type="number" value={item.unitPrice} onChange={(v) => updateItem(item.id, 'unitPrice', parseFloat(v) || 0)} suffix="€" /></div>
+                <div style={{ flex: '3 1 200px' }}><Inp small label={idx === 0 ? t('common.description') : ''} value={item.description} onChange={(v) => updateItem(item.id, 'description', v)} placeholder={t('doc.descPlaceholder')} /></div>
+                <div style={{ flex: '0 0 70px' }}><Inp small label={idx === 0 ? t('doc.qty') : ''} type="number" value={item.qty} onChange={(v) => updateItem(item.id, 'qty', parseFloat(v) || 0)} /></div>
+                <div style={{ flex: '0 0 100px' }}><Inp small label={idx === 0 ? t('doc.unitPriceHT') : ''} type="number" value={item.unitPrice} onChange={(v) => updateItem(item.id, 'unitPrice', parseFloat(v) || 0)} suffix="€" /></div>
                 <div style={{ flex: '0 0 80px' }}>
-                  <Sel small label={idx === 0 ? 'TVA' : ''} value={item.tva} onChange={(v) => updateItem(item.id, 'tva', parseFloat(v))} options={TVA_RATES} />
+                  <Sel small label={idx === 0 ? t('doc.tva') : ''} value={item.tva} onChange={(v) => updateItem(item.id, 'tva', parseFloat(v))} options={TVA_RATES} />
                 </div>
                 <div style={{ flex: '0 0 90px', textAlign: 'right', fontWeight: 700, fontSize: 13, color: T.text, paddingBottom: 8 }}>
                   {fmt((item.qty || 0) * (item.unitPrice || 0))}€
@@ -384,37 +385,37 @@ function DocumentEditor({ doc, onSave, onClose, onDelete, onDuplicate, onMarkPai
               </div>
             ))}
           </div>
-          <Btn small v="ghost" onClick={addItem} style={{ marginTop: 8 }}>+ Ajouter une ligne</Btn>
+          <Btn small v="ghost" onClick={addItem} style={{ marginTop: 8 }}>{t('doc.addLine')}</Btn>
         </div>
 
         {/* Totals */}
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <div style={{ width: 240, display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: T.textSecondary }}>
-              <span>Total HT</span><span>{fmt(totalHT)}€</span>
+              <span>{t('doc.totalHT')}</span><span>{fmt(totalHT)}€</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: T.textSecondary }}>
-              <span>TVA</span><span>{fmt(totalTVA)}€</span>
+              <span>{t('doc.totalTVA')}</span><span>{fmt(totalTVA)}€</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 800, color: T.accent, borderTop: `2px solid ${T.border}`, paddingTop: 8 }}>
-              <span>Total TTC</span><span>{fmt(totalTTC)}€</span>
+              <span>{t('doc.totalTTC')}</span><span>{fmt(totalTTC)}€</span>
             </div>
           </div>
         </div>
 
         {/* Notes */}
-        <Inp label="Notes / Mentions légales" value={form.notes} onChange={(v) => set('notes', v)} textarea />
+        <Inp label={t('doc.notesLabel')} value={form.notes} onChange={(v) => set('notes', v)} textarea />
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', gap: 8 }}>
-            {form.status !== 'paid' && <Btn small v="success" onClick={() => { onMarkPaid(); }}>Marquer payé</Btn>}
-            <Btn small v="secondary" onClick={() => onGeneratePDF()}>Imprimer / PDF</Btn>
-            <Btn small v="ghost" onClick={() => onDuplicate()}>Dupliquer</Btn>
+            {form.status !== 'paid' && <Btn small v="success" onClick={() => { onMarkPaid(); }}>{t('doc.markPaid')}</Btn>}
+            <Btn small v="secondary" onClick={() => onGeneratePDF()}>{t('doc.printPdf')}</Btn>
+            <Btn small v="ghost" onClick={() => onDuplicate()}>{t('common.duplicate')}</Btn>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn small v="danger" onClick={() => onDelete()}>Supprimer</Btn>
-            <Btn small onClick={() => onSave(form)}>Enregistrer</Btn>
+            <Btn small v="danger" onClick={() => onDelete()}>{t('common.delete')}</Btn>
+            <Btn small onClick={() => onSave(form)}>{t('common.save')}</Btn>
           </div>
         </div>
       </div>

@@ -5,35 +5,36 @@ import { storeDebounced, load } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
 import { Card, Btn, Inp, Badge, Modal, EmptyState, Sel, TabBar } from '../components/ui.jsx';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
+import { t } from '../lib/i18n.js';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const TABS = ['FAQ', 'Tickets', 'Base de connaissances'];
+const getTabs = () => [t('help.faq'), t('help.tickets'), t('help.kb')];
 
-const TICKET_STATUSES = [
-  { id: 'open', label: 'Ouvert', color: T.blue, bg: T.blueBg },
-  { id: 'in_progress', label: 'En cours', color: T.orange, bg: T.orangeBg },
-  { id: 'waiting', label: 'En attente', color: T.purple, bg: T.purpleBg },
-  { id: 'resolved', label: 'Résolu', color: T.green, bg: T.greenBg },
-  { id: 'closed', label: 'Fermé', color: T.textMuted, bg: T.surface2 },
+const getTicketStatuses = () => [
+  { id: 'open', label: t('help.statusOpen'), color: T.blue, bg: T.blueBg },
+  { id: 'in_progress', label: t('help.statusInProgress'), color: T.orange, bg: T.orangeBg },
+  { id: 'waiting', label: t('help.statusWaiting'), color: T.purple, bg: T.purpleBg },
+  { id: 'resolved', label: t('help.statusResolved'), color: T.green, bg: T.greenBg },
+  { id: 'closed', label: t('help.statusClosed'), color: T.textMuted, bg: T.surface2 },
 ];
 
-const TICKET_PRIORITIES = [
-  { id: 'critical', label: 'Critique', color: T.red },
-  { id: 'high', label: 'Haute', color: T.orange },
-  { id: 'medium', label: 'Moyenne', color: '#eab308' },
-  { id: 'low', label: 'Basse', color: T.green },
+const getTicketPriorities = () => [
+  { id: 'critical', label: t('help.prioCritical'), color: T.red },
+  { id: 'high', label: t('help.prioHigh'), color: T.orange },
+  { id: 'medium', label: t('help.prioMedium'), color: '#eab308' },
+  { id: 'low', label: t('help.prioLow'), color: T.green },
 ];
 
-const TICKET_CATEGORIES = [
-  { value: 'billing', label: 'Facturation' },
-  { value: 'technical', label: 'Technique' },
-  { value: 'feature', label: 'Demande de fonctionnalité' },
-  { value: 'account', label: 'Compte' },
-  { value: 'integration', label: 'Intégration' },
-  { value: 'other', label: 'Autre' },
+const getTicketCategories = () => [
+  { value: 'billing', label: t('help.catBilling') },
+  { value: 'technical', label: t('help.catTechnical') },
+  { value: 'feature', label: t('help.catFeature') },
+  { value: 'account', label: t('help.catAccount') },
+  { value: 'integration', label: t('help.catIntegration') },
+  { value: 'other', label: t('help.catOther') },
 ];
 
 const DEFAULT_FAQ = [
@@ -47,13 +48,13 @@ const DEFAULT_FAQ = [
   { id: 'faq8', question: 'Puis-je synchroniser Google Calendar ?', answer: 'Oui ! Allez dans Paramètres → Intégrations → Google Calendar. Après connexion, vos événements seront synchronisés automatiquement dans l\'onglet Agenda.', category: 'integration', helpful: 9, notHelpful: 0 },
 ];
 
-const KB_CATEGORIES = [
-  { id: 'getting-started', label: 'Premiers pas', icon: '🚀', color: T.green },
-  { id: 'crm', label: 'CRM & Contacts', icon: '👥', color: T.blue },
-  { id: 'finance', label: 'Finance & Facturation', icon: '💰', color: T.orange },
-  { id: 'integrations', label: 'Intégrations', icon: '🔗', color: T.purple },
-  { id: 'automation', label: 'Automatisations', icon: '⚡', color: '#eab308' },
-  { id: 'security', label: 'Sécurité & RGPD', icon: '🔒', color: T.red },
+const getKBCategories = () => [
+  { id: 'getting-started', label: t('help.kbGettingStarted'), icon: '🚀', color: T.green },
+  { id: 'crm', label: t('help.kbCRM'), icon: '👥', color: T.blue },
+  { id: 'finance', label: t('help.kbFinance'), icon: '💰', color: T.orange },
+  { id: 'integrations', label: t('help.kbIntegrations'), icon: '🔗', color: T.purple },
+  { id: 'automation', label: t('help.kbAutomation'), icon: '⚡', color: '#eab308' },
+  { id: 'security', label: t('help.kbSecurity'), icon: '🔒', color: T.red },
 ];
 
 const DEFAULT_KB = [
@@ -70,7 +71,7 @@ const DEFAULT_KB = [
 // ---------------------------------------------------------------------------
 
 export default function HelpCenter() {
-  const [tab, setTab] = useState('FAQ');
+  const [tab, setTab] = useState(t('help.faq'));
   const [tickets, setTickets] = useState(() => load('support_tickets') || []);
   const [faq] = useState(DEFAULT_FAQ);
   const [kb] = useState(DEFAULT_KB);
@@ -112,7 +113,7 @@ export default function HelpCenter() {
   };
 
   const deleteTicket = async (id) => {
-    const ok = await confirm.open('Supprimer ce ticket ?', 'Cette action est irréversible.');
+    const ok = await confirm.open(t('help.deleteTicketConfirm'), t('common.irreversible'));
     if (ok) { setTickets(prev => prev.filter(t => t.id !== id)); setEditingTicket(null); }
   };
 
@@ -121,26 +122,26 @@ export default function HelpCenter() {
       {/* Header */}
       <div className="glass-static fade-up" style={{ padding: '24px 28px', textAlign: 'center' }}>
         <div style={{ fontSize: 28, marginBottom: 6 }}>💡</div>
-        <div style={{ fontSize: 18, fontWeight: 800, color: T.text, marginBottom: 4 }}>Centre d'aide</div>
-        <div style={{ fontSize: 13, color: T.textSecondary }}>Trouvez des réponses, créez des tickets, explorez la documentation</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: T.text, marginBottom: 4 }}>{t('help.title')}</div>
+        <div style={{ fontSize: 13, color: T.textSecondary }}>{t('help.subtitle')}</div>
       </div>
 
       {/* Tabs */}
       <Card>
-        <TabBar items={TABS} active={tab} onChange={setTab} />
+        <TabBar items={getTabs()} active={tab} onChange={setTab} />
       </Card>
 
       {/* FAQ */}
-      {tab === 'FAQ' && <FAQSection faq={faq} search={searchFAQ} onSearch={setSearchFAQ} />}
+      {tab === t('help.faq') && <FAQSection faq={faq} search={searchFAQ} onSearch={setSearchFAQ} />}
 
       {/* Tickets */}
-      {tab === 'Tickets' && (
+      {tab === t('help.tickets') && (
         <TicketsSection tickets={tickets} stats={ticketStats} onAdd={addTicket}
           onEdit={setEditingTicket} />
       )}
 
       {/* Knowledge Base */}
-      {tab === 'Base de connaissances' && (
+      {tab === t('help.kb') && (
         <KBSection articles={kb} search={searchKB} onSearch={setSearchKB}
           selected={selectedKB} onSelect={setSelectedKB} />
       )}
@@ -178,14 +179,14 @@ function FAQSection({ faq, search, onSearch }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 200 }}>
-          <Inp small placeholder="Rechercher dans la FAQ..." value={search} onChange={onSearch} />
+          <Inp small placeholder={t('help.searchFAQ')} value={search} onChange={onSearch} />
         </div>
         <Sel small value={filterCat} onChange={setFilterCat}
-          options={[{ value: '', label: 'Toutes catégories' }, ...TICKET_CATEGORIES]} />
+          options={[{ value: '', label: t('help.allCategories') }, ...getTicketCategories()]} />
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState icon="❓" title="Aucun résultat" sub="Essayez avec d'autres mots-clés" />
+        <EmptyState icon="❓" title={t('help.noResults')} sub={t('help.noResultsSub')} />
       ) : (
         filtered.map(item => (
           <div key={item.id} className="glass-static" style={{ overflow: 'hidden' }}>
@@ -193,13 +194,13 @@ function FAQSection({ faq, search, onSearch }) {
               style={{ padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 16, transition: 'transform .2s', transform: expanded === item.id ? 'rotate(90deg)' : 'none' }}>▸</span>
               <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: T.text }}>{item.question}</span>
-              <Badge label={TICKET_CATEGORIES.find(c => c.value === item.category)?.label || item.category} color={T.textMuted} bg={T.surface2} />
+              <Badge label={getTicketCategories().find(c => c.value === item.category)?.label || item.category} color={T.textMuted} bg={T.surface2} />
             </div>
             {expanded === item.id && (
               <div style={{ padding: '0 18px 16px 44px' }}>
                 <div style={{ fontSize: 13, color: T.textSecondary, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{item.answer}</div>
                 <div style={{ display: 'flex', gap: 12, marginTop: 12, alignItems: 'center' }}>
-                  <span style={{ fontSize: 11, color: T.textMuted }}>Cette réponse vous a aidé ?</span>
+                  <span style={{ fontSize: 11, color: T.textMuted }}>{t('help.helpfulQuestion')}</span>
                   <button style={{ background: T.greenBg, border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, color: T.green, cursor: 'pointer', fontWeight: 600 }}>
                     👍 {item.helpful}
                   </button>
@@ -226,10 +227,10 @@ function TicketsSection({ tickets, stats, onAdd, onEdit }) {
       {/* Stats */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {[
-          { label: 'Total', value: stats.total, icon: '🎫', color: T.accent },
-          { label: 'Ouverts', value: stats.open, icon: '📬', color: T.blue },
-          { label: 'Résolus', value: stats.resolved, icon: '✅', color: T.green },
-          { label: 'Temps moyen', value: stats.avgResponseTime, icon: '⏱', color: T.orange },
+          { label: t('help.ticketTotal'), value: stats.total, icon: '🎫', color: T.accent },
+          { label: t('help.ticketOpen'), value: stats.open, icon: '📬', color: T.blue },
+          { label: t('help.ticketResolved'), value: stats.resolved, icon: '✅', color: T.green },
+          { label: t('help.ticketAvgTime'), value: stats.avgResponseTime, icon: '⏱', color: T.orange },
         ].map((s, i) => (
           <div key={i} className="glass-static fade-up" style={{ flex: '1 1 130px', padding: '12px 14px', minWidth: 110 }}>
             <div style={{ fontSize: 10, color: T.textSecondary, fontWeight: 600, letterSpacing: .5, textTransform: 'uppercase', marginBottom: 4 }}>
@@ -241,27 +242,27 @@ function TicketsSection({ tickets, stats, onAdd, onEdit }) {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Btn small onClick={onAdd}>+ Nouveau ticket</Btn>
+        <Btn small onClick={onAdd}>{t('help.newTicket')}</Btn>
       </div>
 
       {tickets.length === 0 ? (
-        <EmptyState icon="🎫" title="Aucun ticket" sub="Créez un ticket pour obtenir de l'aide" actionLabel="+ Nouveau ticket" onAction={onAdd} />
+        <EmptyState icon="🎫" title={t('help.noTickets')} sub={t('help.noTicketSub')} actionLabel={t('help.newTicket')} onAction={onAdd} />
       ) : (
         tickets.map(ticket => {
-          const status = TICKET_STATUSES.find(s => s.id === ticket.status) || TICKET_STATUSES[0];
-          const prio = TICKET_PRIORITIES.find(p => p.id === ticket.priority) || TICKET_PRIORITIES[2];
+          const status = getTicketStatuses().find(s => s.id === ticket.status) || getTicketStatuses()[0];
+          const prio = getTicketPriorities().find(p => p.id === ticket.priority) || getTicketPriorities()[2];
           return (
             <div key={ticket.id} className="glass-static pressable" onClick={() => onEdit({ ...ticket, messages: [...(ticket.messages || [])] })}
               style={{ padding: '14px 18px', cursor: 'pointer', display: 'flex', gap: 14, alignItems: 'center' }}>
               <div style={{ fontSize: 20 }}>🎫</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{ticket.subject || 'Sans objet'}</span>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{ticket.subject || t('help.noSubject')}</span>
                   <Badge label={status.label} color={status.color} bg={status.bg} />
                   <Badge label={prio.label} color={prio.color} bg={prio.color + '18'} />
                 </div>
                 <div style={{ fontSize: 12, color: T.textSecondary }}>
-                  {TICKET_CATEGORIES.find(c => c.value === ticket.category)?.label || ticket.category}
+                  {getTicketCategories().find(c => c.value === ticket.category)?.label || ticket.category}
                   {' — '}{ago(ticket.createdAt)}
                   {ticket.messages?.length > 0 && ` — ${ticket.messages.length} message${ticket.messages.length > 1 ? 's' : ''}`}
                 </div>
@@ -288,15 +289,15 @@ function KBSection({ articles, search, onSearch, selected, onSelect }) {
   if (selected) {
     const article = articles.find(a => a.id === selected);
     if (!article) return null;
-    const cat = KB_CATEGORIES.find(c => c.id === article.category);
+    const cat = getKBCategories().find(c => c.id === article.category);
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <Btn small v="ghost" onClick={() => onSelect(null)}>← Retour</Btn>
+        <Btn small v="ghost" onClick={() => onSelect(null)}>← {t('common.back')}</Btn>
         <Card>
           <div style={{ padding: '8px 0' }}>
             {cat && <Badge label={cat.label} color={cat.color} bg={cat.color + '18'} />}
             <h2 style={{ fontSize: 20, fontWeight: 800, color: T.text, marginTop: 10, marginBottom: 6 }}>{article.title}</h2>
-            <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 20 }}>{article.views} vues</div>
+            <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 20 }}>{t('help.views').replace('{count}', article.views)}</div>
             <div style={{ fontSize: 14, color: T.textSecondary, lineHeight: 1.8, whiteSpace: 'pre-line' }}>
               {article.content.split(/(\*\*.*?\*\*)/).map((part, i) =>
                 part.startsWith('**') && part.endsWith('**')
@@ -312,18 +313,18 @@ function KBSection({ articles, search, onSearch, selected, onSelect }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <Inp small placeholder="Rechercher dans la base de connaissances..." value={search} onChange={onSearch} />
+      <Inp small placeholder={t('help.searchKB')} value={search} onChange={onSearch} />
 
       {/* Categories Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
-        {KB_CATEGORIES.map(cat => {
+        {getKBCategories().map(cat => {
           const catArticles = filtered.filter(a => a.category === cat.id);
           if (catArticles.length === 0 && search.trim()) return null;
           return (
             <div key={cat.id} className="glass-static" style={{ padding: '16px 18px' }}>
               <div style={{ fontSize: 24, marginBottom: 8 }}>{cat.icon}</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>{cat.label}</div>
-              <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 10 }}>{catArticles.length} article{catArticles.length !== 1 ? 's' : ''}</div>
+              <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 10 }}>{t('help.articleCount').replace('{count}', catArticles.length).replace('{s}', catArticles.length !== 1 ? 's' : '')}</div>
               {catArticles.map(a => (
                 <div key={a.id} onClick={() => onSelect(a.id)} className="pressable"
                   style={{ fontSize: 12, color: T.accent, cursor: 'pointer', padding: '4px 0', borderBottom: `1px solid ${T.border}20` }}>
@@ -355,31 +356,31 @@ function TicketEditor({ ticket, onSave, onClose, onDelete }) {
   };
 
   return (
-    <Modal open onClose={onClose} title="Ticket de support" wide>
+    <Modal open onClose={onClose} title={t('help.ticketEditor')} wide>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <Inp label="Sujet" value={form.subject} onChange={(v) => set('subject', v)} placeholder="Décrivez brièvement votre problème..." />
+        <Inp label={t('help.subject')} value={form.subject} onChange={(v) => set('subject', v)} placeholder={t('help.subjectPlaceholder')} />
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 180px' }}>
-            <Sel label="Catégorie" value={form.category} onChange={(v) => set('category', v)} options={TICKET_CATEGORIES} />
+            <Sel label={t('help.category')} value={form.category} onChange={(v) => set('category', v)} options={getTicketCategories()} />
           </div>
           <div style={{ flex: '1 1 180px' }}>
-            <Sel label="Priorité" value={form.priority} onChange={(v) => set('priority', v)}
-              options={TICKET_PRIORITIES.map(p => ({ value: p.id, label: p.label }))} />
+            <Sel label={t('help.priority')} value={form.priority} onChange={(v) => set('priority', v)}
+              options={getTicketPriorities().map(p => ({ value: p.id, label: p.label }))} />
           </div>
           <div style={{ flex: '1 1 180px' }}>
-            <Sel label="Statut" value={form.status} onChange={(v) => set('status', v)}
-              options={TICKET_STATUSES.map(s => ({ value: s.id, label: s.label }))} />
+            <Sel label={t('common.status')} value={form.status} onChange={(v) => set('status', v)}
+              options={getTicketStatuses().map(s => ({ value: s.id, label: s.label }))} />
           </div>
         </div>
 
-        <Inp label="Description" value={form.description} onChange={(v) => set('description', v)} textarea placeholder="Décrivez votre problème en détail..." />
+        <Inp label={t('common.description')} value={form.description} onChange={(v) => set('description', v)} textarea placeholder={t('help.descPlaceholder')} />
 
         {/* Message thread */}
         {(form.messages || []).length > 0 && (
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: .5 }}>
-              Conversation ({form.messages.length})
+              {t('help.conversation').replace('{count}', form.messages.length)}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto', padding: 4 }}>
               {form.messages.map(msg => (
@@ -398,17 +399,17 @@ function TicketEditor({ ticket, onSave, onClose, onDelete }) {
 
         {/* New message */}
         <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ flex: 1 }}><Inp small placeholder="Ajouter un message..." value={newMessage} onChange={setNewMessage}
+          <div style={{ flex: 1 }}><Inp small placeholder={t('help.addMessage')} value={newMessage} onChange={setNewMessage}
             onKeyDown={(e) => { if (e.key === 'Enter') addMessage(); }} /></div>
-          <Btn small onClick={addMessage} disabled={!newMessage.trim()}>Envoyer</Btn>
+          <Btn small onClick={addMessage} disabled={!newMessage.trim()}>{t('help.sendBtn')}</Btn>
         </div>
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap' }}>
-          <Btn small v="danger" onClick={onDelete}>Supprimer</Btn>
+          <Btn small v="danger" onClick={onDelete}>{t('common.delete')}</Btn>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn small v="ghost" onClick={onClose}>Annuler</Btn>
-            <Btn small onClick={() => onSave(form)}>Enregistrer</Btn>
+            <Btn small v="ghost" onClick={onClose}>{t('common.cancel')}</Btn>
+            <Btn small onClick={() => onSave(form)}>{t('common.save')}</Btn>
           </div>
         </div>
       </div>

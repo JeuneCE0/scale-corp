@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
-import { T, FONT } from './lib/theme.js';
+import { T, FONT, getTheme, applyTheme } from './lib/theme.js';
 import { GLOBAL_CSS } from './lib/css.js';
 import { load, store } from './lib/store.js';
 import { Spinner, ErrorBoundary, Btn, Badge, NotificationDot, useToast, ToastContainer } from './components/ui.jsx';
@@ -31,19 +31,17 @@ const HelpCenter = lazy(() => import('./pages/HelpCenter.jsx'));
 const Reports = lazy(() => import('./pages/Reports.jsx'));
 
 const TABS = [
-  { id: 'overview', label: 'Overview', icon: '📊', color: '#f97316' },
-  { id: 'crm', label: 'CRM', icon: '👥', color: '#3b82f6' },
-  { id: 'data', label: 'Data', icon: '💰', color: '#22c55e' },
-  { id: 'documents', label: 'Documents', icon: '🧾', color: '#06b6d4' },
-  { id: 'tasks', label: 'Tâches', icon: '📋', color: '#eab308' },
-  { id: 'agenda', label: 'Agenda', icon: '📅', color: '#a855f7' },
-  { id: 'analytics', label: 'Analytics', icon: '📈', color: '#6366f1' },
-  { id: 'reports', label: 'Rapports', icon: '📑', color: '#f43f5e' },
-  { id: 'help', label: 'Aide', icon: '💡', color: '#14b8a6' },
-  { id: 'settings', label: 'Paramètres', icon: '⚙️', color: '#71717a' },
+  { id: 'overview', icon: '📊', color: '#f97316' },
+  { id: 'crm', icon: '👥', color: '#3b82f6' },
+  { id: 'data', icon: '💰', color: '#22c55e' },
+  { id: 'documents', icon: '🧾', color: '#06b6d4' },
+  { id: 'tasks', icon: '📋', color: '#eab308' },
+  { id: 'agenda', icon: '📅', color: '#a855f7' },
+  { id: 'analytics', icon: '📈', color: '#6366f1' },
+  { id: 'reports', icon: '📑', color: '#f43f5e' },
+  { id: 'help', icon: '💡', color: '#14b8a6' },
+  { id: 'settings', icon: '⚙️', color: '#71717a' },
 ];
-
-const TAB_LABELS = { overview: 'Dashboard', crm: 'CRM', data: 'Data', documents: 'Documents', tasks: 'Tâches', agenda: 'Agenda', analytics: 'Analytics', reports: 'Rapports', help: 'Aide', settings: 'Paramètres' };
 
 // --- Session Greeting ---
 function getGreeting() {
@@ -58,7 +56,7 @@ function LoadingFallback({ page }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 10 }}>
       <Spinner size={24} />
-      <span style={{ color: T.textMuted, fontSize: 12 }}>Chargement {page ? `de ${page}` : ''}...</span>
+      <span style={{ color: T.textMuted, fontSize: 12 }}>{page ? t('app.loadingPage', { page }) : t('common.loading')}</span>
     </div>
   );
 }
@@ -83,7 +81,7 @@ function useNotifications() {
         notifs.push({
           id: `relance-${c.id}`,
           type: 'relance',
-          message: `${c.name} (prospect) sans activité depuis ${daysSinceActivity}j`,
+          message: `${c.name} (prospect) ${t('app.noActivitySince', { days: daysSinceActivity })}`,
           time: lastActivity,
           tab: 'crm',
         });
@@ -92,7 +90,7 @@ function useNotifications() {
         notifs.push({
           id: `relance-${c.id}`,
           type: 'relance',
-          message: `${c.name} (lead) sans activité depuis ${daysSinceActivity}j`,
+          message: `${c.name} (lead) ${t('app.noActivitySince', { days: daysSinceActivity })}`,
           time: lastActivity,
           tab: 'crm',
         });
@@ -1102,13 +1100,15 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: T.bg, fontFamily: FONT }}>
       {/* Skip nav (a11y) */}
-      <a href="#main-content" className="skip-nav" style={{ fontFamily: FONT }}>Aller au contenu</a>
+      <a href="#main-content" className="skip-nav" style={{ fontFamily: FONT }}>{t('app.skipNav')}</a>
 
       <nav role="navigation" aria-label="Navigation principale" style={{
         position: 'sticky', top: 0, zIndex: 100,
-        background: 'rgba(9,9,11,.9)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-        borderBottom: '1px solid rgba(255,255,255,.06)',
+        background: getTheme() === 'light' ? 'rgba(255,255,255,.92)' : 'rgba(9,9,11,.9)',
+        backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+        borderBottom: `1px solid ${getTheme() === 'light' ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.06)'}`,
         padding: '0 20px',
+        transition: 'background .3s ease, border-color .3s ease',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 52 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1121,11 +1121,11 @@ export default function App() {
             }}>H</div>
             <div className="hide-mobile">
               <div style={{ fontWeight: 800, fontSize: 14, color: T.text, lineHeight: 1.2, letterSpacing: -.3 }}>HubScale</div>
-              <div style={{ fontSize: 9, color: T.textMuted, letterSpacing: .5, textTransform: 'uppercase' }}>Client Portal</div>
+              <div style={{ fontSize: 9, color: T.textMuted, letterSpacing: .5, textTransform: 'uppercase' }}>{t('app.clientPortal')}</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={handleLangToggle} aria-label="Changer de langue" title={t('lang.label')}
+            <button onClick={handleLangToggle} aria-label={t('lang.label')} title={t('lang.label')}
               style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: T.textMuted, fontFamily: FONT }}>
               {getLang().toUpperCase()}
             </button>
@@ -1138,7 +1138,7 @@ export default function App() {
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <NotificationCenter onNavigate={navigate} />
               <div
-                title={isOnline ? 'Connecté' : 'Hors-ligne'}
+                title={isOnline ? t('app.connected') : t('app.offlineStatus')}
                 style={{
                   position: 'absolute', top: -2, right: -2,
                   width: 8, height: 8, borderRadius: '50%',
@@ -1150,7 +1150,7 @@ export default function App() {
                 }}
               />
             </div>
-            {!load('tourDone') && <button onClick={() => setTourOpen(true)} aria-label="Visite guidée" style={{ background: T.orangeBg, border: `1px solid ${T.orange}33`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: T.orange, fontFamily: FONT }}>Tour</button>}
+            {!load('tourDone') && <button onClick={() => setTourOpen(true)} aria-label={t('app.guidedTour')} style={{ background: T.orangeBg, border: `1px solid ${T.orange}33`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: T.orange, fontFamily: FONT }}>Tour</button>}
             <UserMenu user={user} onLogout={handleLogout} onAdmin={() => setView('admin')} />
           </div>
         </div>
@@ -1163,7 +1163,7 @@ export default function App() {
                 key={tb.id}
                 role="tab"
                 aria-selected={active}
-                aria-label={tb.label}
+                aria-label={t(`nav.${tb.id}`)}
                 className="nav-tab"
                 onClick={() => handleTabChange(tb.id)}
                 style={active ? {
@@ -1198,11 +1198,11 @@ export default function App() {
         }}>
           <span style={{ fontSize: 14 }}>{'⚠️'}</span>
           <span style={{ fontSize: 12, fontWeight: 600, color: T.orange }}>
-            Mode hors-ligne — Les modifications seront synchronisées à la reconnexion
+            {t('app.offline')}
           </span>
           <button
             onClick={() => setOfflineDismissed(true)}
-            aria-label="Fermer la bannière hors-ligne"
+            aria-label={t('common.close')}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
               fontSize: 14, color: T.orange, padding: '2px 6px', borderRadius: 4,
@@ -1215,8 +1215,8 @@ export default function App() {
       )}
 
       <main id="main-content" ref={mainRef} className="page-pad" style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px 60px', overflowX: 'hidden' }}>
-        <ErrorBoundary fallbackTitle={`Erreur dans ${TAB_LABELS[tab] || 'la page'}`}>
-          <Suspense fallback={<LoadingFallback page={TAB_LABELS[tab]} />}>
+        <ErrorBoundary fallbackTitle={t('app.errorIn', { page: t(`nav.${tab}`) })}>
+          <Suspense fallback={<LoadingFallback page={t(`nav.${tab}`)} />}>
             <div key={pageKey} className="page-transition" style={{ ...transitionStyle, minWidth: 0 }}>
               {tab === 'overview' && <Dashboard onNavigate={navigate} greeting={greeting} />}
               {tab === 'crm' && <CRM />}

@@ -5,38 +5,40 @@ import { storeDebounced, load } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
 import { Card, Btn, Inp, Badge, Modal, EmptyState, Sel, TabBar, Pagination } from '../components/ui.jsx';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
+import { t } from '../lib/i18n.js';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const TASK_STATUSES = [
-  { id: 'backlog', label: 'Backlog', icon: '📋', color: T.textMuted },
-  { id: 'todo', label: 'À faire', icon: '📌', color: T.blue },
-  { id: 'in_progress', label: 'En cours', icon: '🔧', color: T.orange },
-  { id: 'review', label: 'En revue', icon: '👀', color: T.purple },
-  { id: 'done', label: 'Terminé', icon: '✅', color: T.green },
+const getTASK_STATUSES = () => [
+  { id: 'backlog', label: t('task.backlog'), icon: '📋', color: T.textMuted },
+  { id: 'todo', label: t('task.todo'), icon: '📌', color: T.blue },
+  { id: 'in_progress', label: t('task.inProgress'), icon: '🔧', color: T.orange },
+  { id: 'review', label: t('task.review'), icon: '👀', color: T.purple },
+  { id: 'done', label: t('task.done'), icon: '✅', color: T.green },
 ];
 
-const PRIORITIES = [
-  { id: 'urgent', label: 'Urgent', icon: '🔴', color: T.red },
-  { id: 'high', label: 'Haute', icon: '🟠', color: T.orange },
-  { id: 'medium', label: 'Moyenne', icon: '🟡', color: '#eab308' },
-  { id: 'low', label: 'Basse', icon: '🟢', color: T.green },
+const getPRIORITIES = () => [
+  { id: 'urgent', label: t('task.urgent'), icon: '🔴', color: T.red },
+  { id: 'high', label: t('task.high'), icon: '🟠', color: T.orange },
+  { id: 'medium', label: t('task.medium'), icon: '🟡', color: '#eab308' },
+  { id: 'low', label: t('task.low'), icon: '🟢', color: T.green },
 ];
 
-const TASK_CATEGORIES = [
-  { value: '', label: 'Aucune' },
-  { value: 'dev', label: 'Développement' },
-  { value: 'design', label: 'Design' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'commercial', label: 'Commercial' },
-  { value: 'admin', label: 'Administratif' },
-  { value: 'support', label: 'Support' },
-  { value: 'autre', label: 'Autre' },
+const getTASK_CATEGORIES = () => [
+  { value: '', label: t('task.catNone') },
+  { value: 'dev', label: t('task.catDev') },
+  { value: 'design', label: t('task.catDesign') },
+  { value: 'marketing', label: t('task.catMarketing') },
+  { value: 'commercial', label: t('task.catCommercial') },
+  { value: 'admin', label: t('task.catAdmin') },
+  { value: 'support', label: t('task.catSupport') },
+  { value: 'autre', label: t('task.catOther') },
 ];
 
-const VIEW_TABS = ['Kanban', 'Liste', 'Calendrier'];
+const getVIEW_TABS = () => [t('task.kanban'), t('task.list'), t('task.calendar')];
+const VIEW_TAB_KEYS = ['Kanban', 'Liste', 'Calendrier'];
 
 function emptyTask() {
   return {
@@ -54,7 +56,7 @@ function emptyTask() {
 export default function Tasks() {
   const [tasks, setTasks] = useState(() => load('tasks') || []);
   const [projects, setProjects] = useState(() => load('projects') || []);
-  const [view, setView] = useState('Kanban');
+  const [viewIdx, setViewIdx] = useState(0);
   const [search, setSearch] = useState('');
   const [filterProject, setFilterProject] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
@@ -116,7 +118,7 @@ export default function Tasks() {
   };
 
   const deleteTask = async (id) => {
-    const ok = await confirm.open('Supprimer cette tâche ?', 'Cette action est irréversible.');
+    const ok = await confirm.open(t('task.deleteConfirm'), t('common.irreversible'));
     if (ok) { setTasks(prev => prev.filter(t => t.id !== id)); setEditing(null); }
   };
 
@@ -144,11 +146,11 @@ export default function Tasks() {
       {/* Stats */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {[
-          { label: 'Total', value: stats.total, icon: '📋', color: T.accent },
-          { label: 'En cours', value: stats.inProgress, icon: '🔧', color: T.orange },
-          { label: 'Terminées', value: stats.done, icon: '✅', color: T.green },
-          { label: 'En retard', value: stats.overdue, icon: '⚠️', color: T.red },
-          { label: 'Complétion', value: stats.completion + '%', icon: '📊', color: T.accent },
+          { label: t('task.total'), value: stats.total, icon: '📋', color: T.accent },
+          { label: t('task.inProgressStat'), value: stats.inProgress, icon: '🔧', color: T.orange },
+          { label: t('task.completed'), value: stats.done, icon: '✅', color: T.green },
+          { label: t('task.overdue'), value: stats.overdue, icon: '⚠️', color: T.red },
+          { label: t('task.completion'), value: stats.completion + '%', icon: '📊', color: T.accent },
         ].map((s, i) => (
           <div key={i} className="glass-static fade-up" style={{ flex: '1 1 130px', padding: '14px 16px', minWidth: 0 }}>
             <div style={{ fontSize: 10, color: T.textSecondary, fontWeight: 600, letterSpacing: .5, textTransform: 'uppercase', marginBottom: 4 }}>
@@ -162,24 +164,24 @@ export default function Tasks() {
       {/* Toolbar */}
       <Card>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <TabBar items={VIEW_TABS} active={view} onChange={setView} />
+          <TabBar items={getVIEW_TABS()} active={getVIEW_TABS()[viewIdx]} onChange={(tab) => setViewIdx(getVIEW_TABS().indexOf(tab))} />
           <div style={{ flex: 1 }} />
-          <Inp small placeholder="Rechercher..." value={search} onChange={setSearch} />
+          <Inp small placeholder={t('common.search')} value={search} onChange={setSearch} />
           {projects.length > 0 && (
             <Sel small value={filterProject} onChange={setFilterProject}
-              options={[{ value: '', label: 'Tous les projets' }, ...projects.map(p => ({ value: p.id, label: p.name }))]} />
+              options={[{ value: '', label: t('task.allProjects') }, ...projects.map(p => ({ value: p.id, label: p.name }))]} />
           )}
           <Sel small value={filterPriority} onChange={setFilterPriority}
-            options={[{ value: '', label: 'Toutes priorités' }, ...PRIORITIES.map(p => ({ value: p.id, label: p.label }))]} />
-          <Btn small onClick={() => addTask()}>+ Tâche</Btn>
-          <Btn small v="secondary" onClick={addProject}>+ Projet</Btn>
+            options={[{ value: '', label: t('task.allPriorities') }, ...getPRIORITIES().map(p => ({ value: p.id, label: p.label }))]} />
+          <Btn small onClick={() => addTask()}>{t('task.addTask')}</Btn>
+          <Btn small v="secondary" onClick={addProject}>{t('task.addProject')}</Btn>
         </div>
       </Card>
 
       {/* Views */}
-      {view === 'Kanban' && <KanbanView tasks={filtered} onEdit={setEditing} onMove={moveTask} onAdd={addTask} />}
-      {view === 'Liste' && <ListView tasks={filtered} onEdit={setEditing} onMove={moveTask} />}
-      {view === 'Calendrier' && <CalendarView tasks={filtered} onEdit={setEditing} />}
+      {viewIdx === 0 && <KanbanView tasks={filtered} onEdit={setEditing} onMove={moveTask} onAdd={addTask} />}
+      {viewIdx === 1 && <ListView tasks={filtered} onEdit={setEditing} onMove={moveTask} />}
+      {viewIdx === 2 && <CalendarView tasks={filtered} onEdit={setEditing} />}
 
       {/* Edit Modal */}
       {editing && (
@@ -224,7 +226,7 @@ function KanbanView({ tasks, onEdit, onMove, onAdd }) {
 
   return (
     <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, minHeight: 400 }}>
-      {TASK_STATUSES.map(col => {
+      {getTASK_STATUSES().map(col => {
         const colTasks = tasks.filter(t => t.status === col.id);
         return (
           <div key={col.id} style={{ flex: '1 1 220px', minWidth: 220, maxWidth: 320 }}
@@ -242,7 +244,7 @@ function KanbanView({ tasks, onEdit, onMove, onAdd }) {
             {/* Column Body */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minHeight: 200, padding: 4, borderRadius: 10, background: T.surface2, border: `1px solid ${T.border}` }}>
               {colTasks.length === 0 && (
-                <div style={{ padding: '30px 10px', textAlign: 'center', color: T.textMuted, fontSize: 11 }}>Aucune tâche</div>
+                <div style={{ padding: '30px 10px', textAlign: 'center', color: T.textMuted, fontSize: 11 }}>{t('task.noTasks')}</div>
               )}
               {colTasks.map(task => (
                 <KanbanCard key={task.id} task={task} onEdit={() => onEdit({ ...task, subtasks: [...(task.subtasks || [])] })}
@@ -257,7 +259,7 @@ function KanbanView({ tasks, onEdit, onMove, onAdd }) {
 }
 
 function KanbanCard({ task, onEdit, onDragStart }) {
-  const prio = PRIORITIES.find(p => p.id === task.priority) || PRIORITIES[2];
+  const prio = getPRIORITIES().find(p => p.id === task.priority) || getPRIORITIES()[2];
   const isOverdue = task.status !== 'done' && task.dueDate && new Date(task.dueDate) < new Date();
   const subtasksDone = (task.subtasks || []).filter(s => s.done).length;
   const subtasksTotal = (task.subtasks || []).length;
@@ -266,12 +268,12 @@ function KanbanCard({ task, onEdit, onDragStart }) {
     <div draggable onDragStart={onDragStart} onClick={onEdit} className="pressable"
       style={{ padding: '10px 12px', background: T.surface, borderRadius: 8, cursor: 'grab', border: `1px solid ${isOverdue ? T.red + '40' : T.border}`, transition: 'all .15s ease' }}>
       <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 6, lineHeight: 1.3 }}>
-        {task.title || 'Sans titre'}
+        {task.title || t('common.noTitle')}
       </div>
       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
         <Badge label={prio.label} color={prio.color} bg={prio.color + '18'} />
-        {task.category && <Badge label={TASK_CATEGORIES.find(c => c.value === task.category)?.label || task.category} color={T.textMuted} bg={T.surface2} />}
-        {isOverdue && <Badge label="En retard" color={T.red} bg={T.redBg} />}
+        {task.category && <Badge label={getTASK_CATEGORIES().find(c => c.value === task.category)?.label || task.category} color={T.textMuted} bg={T.surface2} />}
+        {isOverdue && <Badge label={t('task.overdue')} color={T.red} bg={T.redBg} />}
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center', fontSize: 10, color: T.textMuted }}>
         {task.assignee && <span>👤 {task.assignee}</span>}
@@ -294,7 +296,7 @@ function ListView({ tasks, onEdit, onMove }) {
   }, [tasks]);
 
   if (sorted.length === 0) {
-    return <EmptyState icon="📋" title="Aucune tâche" sub="Créez votre première tâche pour commencer" />;
+    return <EmptyState icon="📋" title={t('task.noTasks')} sub={t('task.noTaskSub')} />;
   }
 
   return (
@@ -302,27 +304,27 @@ function ListView({ tasks, onEdit, onMove }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {/* Header */}
         <div style={{ display: 'flex', gap: 10, padding: '8px 12px', borderBottom: `1px solid ${T.border}`, fontSize: 10, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5 }}>
-          <div style={{ flex: '0 0 30px' }}>Prio</div>
-          <div style={{ flex: 3 }}>Tâche</div>
-          <div style={{ flex: 1 }}>Statut</div>
-          <div style={{ flex: 1 }}>Assigné</div>
-          <div style={{ flex: 1 }}>Échéance</div>
+          <div style={{ flex: '0 0 30px' }}>{t('task.prio')}</div>
+          <div style={{ flex: 3 }}>{t('task.taskLabel')}</div>
+          <div style={{ flex: 1 }}>{t('common.status')}</div>
+          <div style={{ flex: 1 }}>{t('task.assigned')}</div>
+          <div style={{ flex: 1 }}>{t('task.deadline')}</div>
         </div>
         {sorted.map(task => {
-          const prio = PRIORITIES.find(p => p.id === task.priority) || PRIORITIES[2];
-          const status = TASK_STATUSES.find(s => s.id === task.status) || TASK_STATUSES[0];
+          const prio = getPRIORITIES().find(p => p.id === task.priority) || getPRIORITIES()[2];
+          const status = getTASK_STATUSES().find(s => s.id === task.status) || getTASK_STATUSES()[0];
           const isOverdue = task.status !== 'done' && task.dueDate && new Date(task.dueDate) < new Date();
           return (
             <div key={task.id} className="pressable" onClick={() => onEdit({ ...task, subtasks: [...(task.subtasks || [])] })}
               style={{ display: 'flex', gap: 10, padding: '10px 12px', alignItems: 'center', cursor: 'pointer', borderBottom: `1px solid ${T.border}20` }}>
               <div style={{ flex: '0 0 30px', fontSize: 14 }}>{prio.icon}</div>
               <div style={{ flex: 3, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title || 'Sans titre'}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title || t('common.noTitle')}</div>
                 {task.description && <div style={{ fontSize: 11, color: T.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.description}</div>}
               </div>
               <div style={{ flex: 1 }}>
                 <Sel small value={task.status} onChange={(v) => { onMove(task.id, v); }}
-                  options={TASK_STATUSES.map(s => ({ value: s.id, label: s.label }))} />
+                  options={getTASK_STATUSES().map(s => ({ value: s.id, label: s.label }))} />
               </div>
               <div style={{ flex: 1, fontSize: 12, color: T.textSecondary }}>{task.assignee || '—'}</div>
               <div style={{ flex: 1, fontSize: 12, color: isOverdue ? T.red : T.textSecondary }}>
@@ -361,8 +363,7 @@ function CalendarView({ tasks, onEdit }) {
       days.push({ day: d, date: dateStr, tasks: dayTasks });
     }
 
-    const MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
-    return { days, monthLabel: `${MONTHS[m - 1]} ${y}` };
+    return { days, monthLabel: `${t('month.' + m)} ${y}` };
   }, [month, tasks]);
 
   const prevMonth = () => {
@@ -386,7 +387,7 @@ function CalendarView({ tasks, onEdit }) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
-        {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(d => (
+        {[t('day.mon'), t('day.tue'), t('day.wed'), t('day.thu'), t('day.fri'), t('day.sat'), t('day.sun')].map(d => (
           <div key={d} style={{ padding: '6px 4px', textAlign: 'center', fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase' }}>{d}</div>
         ))}
         {days.map((d, i) => (
@@ -399,7 +400,7 @@ function CalendarView({ tasks, onEdit }) {
               <>
                 <div style={{ fontSize: 11, fontWeight: 600, color: T.textSecondary, marginBottom: 2 }}>{d.day}</div>
                 {d.tasks.slice(0, 3).map(task => {
-                  const prio = PRIORITIES.find(p => p.id === task.priority);
+                  const prio = getPRIORITIES().find(p => p.id === task.priority);
                   return (
                     <div key={task.id} onClick={() => onEdit({ ...task, subtasks: [...(task.subtasks || [])] })}
                       style={{ fontSize: 9, padding: '2px 4px', borderRadius: 3, marginBottom: 1, cursor: 'pointer',
@@ -436,45 +437,45 @@ function TaskEditor({ task, onSave, onClose, onDelete, projects }) {
   const subtasksTotal = (form.subtasks || []).length;
 
   return (
-    <Modal open onClose={onClose} title="Tâche" wide>
+    <Modal open onClose={onClose} title={t('task.modalTitle')} wide>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <Inp label="Titre" value={form.title} onChange={(v) => set('title', v)} placeholder="Titre de la tâche..." />
+        <Inp label={t('task.titleLabel')} value={form.title} onChange={(v) => set('title', v)} placeholder={t('task.titlePlaceholder')} />
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 180px' }}>
-            <Sel label="Statut" value={form.status} onChange={(v) => set('status', v)} options={TASK_STATUSES.map(s => ({ value: s.id, label: `${s.icon} ${s.label}` }))} />
+            <Sel label={t('task.statusLabel')} value={form.status} onChange={(v) => set('status', v)} options={getTASK_STATUSES().map(s => ({ value: s.id, label: `${s.icon} ${s.label}` }))} />
           </div>
           <div style={{ flex: '1 1 180px' }}>
-            <Sel label="Priorité" value={form.priority} onChange={(v) => set('priority', v)} options={PRIORITIES.map(p => ({ value: p.id, label: `${p.icon} ${p.label}` }))} />
+            <Sel label={t('task.priorityLabel')} value={form.priority} onChange={(v) => set('priority', v)} options={getPRIORITIES().map(p => ({ value: p.id, label: `${p.icon} ${p.label}` }))} />
           </div>
           <div style={{ flex: '1 1 180px' }}>
-            <Sel label="Catégorie" value={form.category} onChange={(v) => set('category', v)} options={TASK_CATEGORIES} />
+            <Sel label={t('task.categoryLabel')} value={form.category} onChange={(v) => set('category', v)} options={getTASK_CATEGORIES()} />
           </div>
         </div>
 
-        <Inp label="Description" value={form.description} onChange={(v) => set('description', v)} textarea placeholder="Détails de la tâche..." />
+        <Inp label={t('task.descLabel')} value={form.description} onChange={(v) => set('description', v)} textarea placeholder={t('task.descPlaceholder')} />
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 180px' }}><Inp label="Assigné à" value={form.assignee} onChange={(v) => set('assignee', v)} placeholder="Nom..." /></div>
-          <div style={{ flex: '1 1 180px' }}><Inp label="Date d'échéance" type="date" value={form.dueDate} onChange={(v) => set('dueDate', v)} /></div>
-          <div style={{ flex: '1 1 180px' }}><Inp label="Estimation (heures)" type="number" value={form.timeEstimate} onChange={(v) => set('timeEstimate', parseFloat(v) || 0)} /></div>
+          <div style={{ flex: '1 1 180px' }}><Inp label={t('task.assignedTo')} value={form.assignee} onChange={(v) => set('assignee', v)} placeholder={t('task.namePlaceholder')} /></div>
+          <div style={{ flex: '1 1 180px' }}><Inp label={t('task.dueDateLabel')} type="date" value={form.dueDate} onChange={(v) => set('dueDate', v)} /></div>
+          <div style={{ flex: '1 1 180px' }}><Inp label={t('task.estimateLabel')} type="number" value={form.timeEstimate} onChange={(v) => set('timeEstimate', parseFloat(v) || 0)} /></div>
         </div>
 
         {projects.length > 0 && (
-          <Sel label="Projet" value={form.projectId || ''} onChange={(v) => set('projectId', v || null)}
-            options={[{ value: '', label: 'Aucun projet' }, ...projects.map(p => ({ value: p.id, label: p.name }))]} />
+          <Sel label={t('task.projectLabel')} value={form.projectId || ''} onChange={(v) => set('projectId', v || null)}
+            options={[{ value: '', label: t('task.noProject') }, ...projects.map(p => ({ value: p.id, label: p.name }))]} />
         )}
 
         {contacts.length > 0 && (
-          <Sel label="Lié au contact" value={form.contactId || ''} onChange={(v) => set('contactId', v || null)}
-            options={[{ value: '', label: 'Aucun contact' }, ...contacts.map(c => ({ value: c.id, label: c.name || c.email }))]} />
+          <Sel label={t('task.linkedContact')} value={form.contactId || ''} onChange={(v) => set('contactId', v || null)}
+            options={[{ value: '', label: t('task.noContact') }, ...contacts.map(c => ({ value: c.id, label: c.name || c.email }))]} />
         )}
 
         {/* Subtasks */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
-              Sous-tâches {subtasksTotal > 0 && `(${subtasksDone}/${subtasksTotal})`}
+              {t('task.subtasks')} {subtasksTotal > 0 && `(${subtasksDone}/${subtasksTotal})`}
             </span>
             {subtasksTotal > 0 && (
               <div style={{ flex: 1, maxWidth: 120, height: 4, borderRadius: 2, background: T.surface2, overflow: 'hidden' }}>
@@ -486,19 +487,19 @@ function TaskEditor({ task, onSave, onClose, onDelete, projects }) {
             <div key={st.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
               <input type="checkbox" checked={st.done} onChange={(e) => updateSubtask(st.id, 'done', e.target.checked)}
                 style={{ accentColor: T.accent }} />
-              <input value={st.label} onChange={(e) => updateSubtask(st.id, 'label', e.target.value)} placeholder="Sous-tâche..."
+              <input value={st.label} onChange={(e) => updateSubtask(st.id, 'label', e.target.value)} placeholder={t('task.subtaskPlaceholder')}
                 style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `1px solid ${T.border}`, color: st.done ? T.textMuted : T.text,
                   textDecoration: st.done ? 'line-through' : 'none', fontSize: 13, padding: '4px 0', outline: 'none', fontFamily: "'Inter', sans-serif" }} />
               <button onClick={() => removeSubtask(st.id)} style={{ background: 'none', border: 'none', color: T.red, cursor: 'pointer', fontSize: 14 }}>×</button>
             </div>
           ))}
-          <Btn small v="ghost" onClick={addSubtask} style={{ marginTop: 4 }}>+ Sous-tâche</Btn>
+          <Btn small v="ghost" onClick={addSubtask} style={{ marginTop: 4 }}>{t('task.addSubtask')}</Btn>
         </div>
 
         {/* Time tracking */}
         {form.timeEstimate > 0 && (
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <Inp small label="Temps passé (h)" type="number" value={form.timeSpent} onChange={(v) => set('timeSpent', parseFloat(v) || 0)} />
+            <Inp small label={t('task.timeSpent')} type="number" value={form.timeSpent} onChange={(v) => set('timeSpent', parseFloat(v) || 0)} />
             <div style={{ fontSize: 12, color: form.timeSpent > form.timeEstimate ? T.red : T.textSecondary, paddingTop: 16 }}>
               {form.timeSpent}/{form.timeEstimate}h ({Math.round((form.timeSpent / form.timeEstimate) * 100)}%)
             </div>
@@ -507,10 +508,10 @@ function TaskEditor({ task, onSave, onClose, onDelete, projects }) {
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap' }}>
-          <Btn small v="danger" onClick={onDelete}>Supprimer</Btn>
+          <Btn small v="danger" onClick={onDelete}>{t('common.delete')}</Btn>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn small v="ghost" onClick={onClose}>Annuler</Btn>
-            <Btn small onClick={() => onSave(form)}>Enregistrer</Btn>
+            <Btn small v="ghost" onClick={onClose}>{t('common.cancel')}</Btn>
+            <Btn small onClick={() => onSave(form)}>{t('common.save')}</Btn>
           </div>
         </div>
       </div>
@@ -529,12 +530,12 @@ function ProjectEditor({ project, onSave, onClose }) {
   const COLORS = [T.accent, T.blue, T.green, T.orange, T.red, T.purple, '#eab308', '#06b6d4'];
 
   return (
-    <Modal open onClose={onClose} title="Projet">
+    <Modal open onClose={onClose} title={t('task.projectModal')}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <Inp label="Nom du projet" value={form.name} onChange={(v) => set('name', v)} placeholder="Mon projet..." />
-        <Inp label="Description" value={form.description} onChange={(v) => set('description', v)} textarea placeholder="Description..." />
+        <Inp label={t('task.projectName')} value={form.name} onChange={(v) => set('name', v)} placeholder={t('task.projectNamePlaceholder')} />
+        <Inp label={t('task.projectDesc')} value={form.description} onChange={(v) => set('description', v)} textarea placeholder={t('task.projectDescPlaceholder')} />
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: .5 }}>Couleur</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: .5 }}>{t('common.color')}</div>
           <div style={{ display: 'flex', gap: 8 }}>
             {COLORS.map(c => (
               <button key={c} onClick={() => set('color', c)}
@@ -544,8 +545,8 @@ function ProjectEditor({ project, onSave, onClose }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Btn small v="ghost" onClick={onClose}>Annuler</Btn>
-          <Btn small onClick={() => onSave(form)}>Enregistrer</Btn>
+          <Btn small v="ghost" onClick={onClose}>{t('common.cancel')}</Btn>
+          <Btn small onClick={() => onSave(form)}>{t('common.save')}</Btn>
         </div>
       </div>
     </Modal>

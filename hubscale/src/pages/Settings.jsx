@@ -8,22 +8,35 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { SECTORS, PLANS, INTEGRATIONS, AUTOMATION_RULES } from '../lib/constants.js';
 import { onIntegrationConnect, getIntegrationMeta } from '../lib/integrationData.js';
 import { isSupabaseConfigured } from '../lib/supabase.js';
+import { t } from '../lib/i18n.js';
 import { startOAuthFlow, disconnectIntegration as apiDisconnect, requestDataExport, requestAccountDeletion, createBillingPortalSession } from '../lib/api.js';
 import { sanitizeText, sanitizeEmail, sanitizePhone, sanitizeUrl } from '../lib/sanitize.js';
 
-const INTEGRATION_CATEGORIES = [
-  { label: 'Tous', cat: null },
-  { label: 'Paiements', cat: 'paiements' },
-  { label: 'Banque', cat: 'banque' },
-  { label: 'Agenda', cat: 'agenda' },
-  { label: 'CRM', cat: 'crm' },
-  { label: 'Marketing', cat: 'marketing' },
-  { label: 'Projet', cat: 'projet' },
-  { label: 'Publicité', cat: 'publicite' },
-  { label: 'Support', cat: 'support' },
-];
+function getIntegrationCategories() {
+  return [
+    { label: t('settings.catAll'), cat: null },
+    { label: t('settings.catPayments'), cat: 'paiements' },
+    { label: t('settings.catBank'), cat: 'banque' },
+    { label: t('settings.catAgenda'), cat: 'agenda' },
+    { label: t('settings.catCRM'), cat: 'crm' },
+    { label: t('settings.catMarketing'), cat: 'marketing' },
+    { label: t('settings.catProject'), cat: 'projet' },
+    { label: t('settings.catAds'), cat: 'publicite' },
+    { label: t('settings.catSupport'), cat: 'support' },
+  ];
+}
 
-const SUB_TABS = ['Compte', 'Utilisateurs', 'Facturation', 'Intégrations', 'Automatisations', 'Data & Export', 'RGPD & Légal'];
+function getSubTabs() {
+  return [
+    { key: 'account', label: t('settings.account') },
+    { key: 'users', label: t('settings.users') },
+    { key: 'billing', label: t('settings.billing') },
+    { key: 'integrations', label: t('settings.integrations') },
+    { key: 'automations', label: t('settings.automations') },
+    { key: 'dataExport', label: t('settings.dataExport') },
+    { key: 'gdpr', label: t('settings.gdpr') },
+  ];
+}
 
 const ACCENT_COLORS = [
   { name: 'Orange', value: '#f97316' },
@@ -56,7 +69,9 @@ function getLocalStorageSize() {
 }
 
 export default function Settings() {
-  const [subTab, setSubTab] = useState('Compte');
+  const SUB_TABS = useMemo(() => getSubTabs(), []);
+  const INTEGRATION_CATEGORIES = useMemo(() => getIntegrationCategories(), []);
+  const [subTab, setSubTab] = useState('account');
   const [company, setCompany] = useState(() => load('settings_company') || {
     name: '', siret: '', tva: '', sector: '', address: '', city: '', zip: '', email: '', phone: '', website: '',
   });
@@ -676,47 +691,47 @@ export default function Settings() {
   return (
     <div>
       <div className="fade-up" style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Paramètres</h1>
-        <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>Configuration de votre espace client</p>
+        <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{t('nav.settings')}</h1>
+        <p style={{ color: T.textSecondary, fontSize: 12, marginTop: 4 }}>{t('common.description')}</p>
       </div>
 
       <div className="fade-up d1" style={{ marginBottom: 24 }}>
-        <TabBar items={SUB_TABS} active={subTab} onChange={setSubTab} />
+        <TabBar items={SUB_TABS.map(st => st.label)} active={SUB_TABS.find(st => st.key === subTab)?.label} onChange={(label) => { const tab = SUB_TABS.find(st => st.label === label); if (tab) setSubTab(tab.key); }} />
       </div>
 
       {/* -------- COMPTE -------- */}
-      {subTab === 'Compte' && (
+      {subTab === 'account' && (
         <>
-          <Section title="INFORMATIONS DE LA SOCIÉTÉ" sub="Données légales et coordonnées">
+          <Section title={t('settings.companyName').toUpperCase()} sub={t('common.description')}>
             <Card>
               <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 0, columnGap: 16 }}>
-                <Inp label="Raison sociale" value={company.name} onChange={(v) => upd('name', v)} placeholder="Nom de votre société" />
-                <Inp label="SIRET" value={company.siret} onChange={(v) => upd('siret', v)} placeholder="123 456 789 00012" />
-                <Inp label="N° TVA intracommunautaire" value={company.tva} onChange={(v) => upd('tva', v)} placeholder="FR 12 345678901" />
-                <Sel label="Secteur d'activité" value={company.sector} onChange={(v) => upd('sector', v)} options={SECTORS} />
-                <Inp label="Adresse" value={company.address} onChange={(v) => upd('address', v)} placeholder="Rue, numéro" />
+                <Inp label={t('settings.companyName')} value={company.name} onChange={(v) => upd('name', v)} placeholder={t('settings.companyName')} />
+                <Inp label={t('settings.siret')} value={company.siret} onChange={(v) => upd('siret', v)} placeholder="123 456 789 00012" />
+                <Inp label={t('settings.tvaNumber')} value={company.tva} onChange={(v) => upd('tva', v)} placeholder="FR 12 345678901" />
+                <Sel label={t('settings.sector')} value={company.sector} onChange={(v) => upd('sector', v)} options={SECTORS} />
+                <Inp label={t('common.address')} value={company.address} onChange={(v) => upd('address', v)} placeholder={t('common.address')} />
                 <div className="grid-2-mobile-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <Inp label="Ville" value={company.city} onChange={(v) => upd('city', v)} placeholder="Paris" />
-                  <Inp label="Code postal" value={company.zip} onChange={(v) => upd('zip', v)} placeholder="75001" />
+                  <Inp label={t('settings.city')} value={company.city} onChange={(v) => upd('city', v)} placeholder={t('settings.city')} />
+                  <Inp label={t('settings.zip')} value={company.zip} onChange={(v) => upd('zip', v)} placeholder="75001" />
                 </div>
-                <Inp label="Email principal" value={company.email} onChange={(v) => upd('email', v)} type="email" placeholder="contact@societe.fr" />
-                <Inp label="Téléphone" value={company.phone} onChange={(v) => upd('phone', v)} placeholder="+33 1 23 45 67 89" />
-                <Inp label="Site web" value={company.website} onChange={(v) => upd('website', v)} placeholder="https://www.societe.fr" />
+                <Inp label={t('common.email')} value={company.email} onChange={(v) => upd('email', v)} type="email" placeholder="contact@societe.fr" />
+                <Inp label={t('common.phone')} value={company.phone} onChange={(v) => upd('phone', v)} placeholder="+33 1 23 45 67 89" />
+                <Inp label={t('settings.website')} value={company.website} onChange={(v) => upd('website', v)} placeholder="https://www.societe.fr" />
               </div>
               <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
-                {savedCompany && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>✓ Sauvegardé</span>}
-                <Btn onClick={saveCompany} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Sauvegarder</Btn>
+                {savedCompany && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>✓ {t('settings.saved')}</span>}
+                <Btn onClick={saveCompany} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>{t('common.save')}</Btn>
               </div>
             </Card>
           </Section>
 
-          <Section title="APPARENCE" sub="Personnalisez l'affichage de votre espace">
+          <Section title={t('settings.theme').toUpperCase()} sub={t('settings.accentColor')}>
             <Card>
               {/* Theme toggle */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>Thème</div>
-                  <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>Basculez entre le mode sombre et clair</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{t('settings.theme')}</div>
+                  <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>{t('settings.dark')} / {t('settings.light')}</div>
                 </div>
                 <Toggle
                   on={theme === 'light'}
@@ -724,16 +739,15 @@ export default function Settings() {
                     const next = theme === 'dark' ? 'light' : 'dark';
                     applyTheme(next);
                     setTheme(next);
-                    window.location.reload();
                   }}
-                  label={theme === 'dark' ? '🌙 Sombre' : '☀️ Clair'}
+                  label={theme === 'dark' ? `🌙 ${t('settings.dark')}` : `☀️ ${t('settings.light')}`}
                 />
               </div>
 
               {/* Logo upload */}
               <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${T.border}` }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 4 }}>Logo de l'entreprise</div>
-                <div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 12 }}>Uploadez le logo de votre société (PNG, JPG, SVG)</div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 4 }}>{t('settings.logo')}</div>
+                <div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 12 }}>{t('settings.uploadLogo')} (PNG, JPG, SVG)</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                   {/* Logo preview */}
                   <div style={{
@@ -759,10 +773,10 @@ export default function Settings() {
                       id="logo-upload"
                     />
                     <Btn v="secondary" small onClick={() => logoInputRef.current?.click()}>
-                      {logo ? 'Changer le logo' : 'Uploader un logo'}
+                      {t('settings.uploadLogo')}
                     </Btn>
                     {logo && (
-                      <Btn v="ghost" small onClick={removeLogo}>Supprimer le logo</Btn>
+                      <Btn v="ghost" small onClick={removeLogo}>{t('settings.removeLogo')}</Btn>
                     )}
                   </div>
                 </div>
@@ -770,8 +784,8 @@ export default function Settings() {
 
               {/* Accent color picker */}
               <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${T.border}` }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 4 }}>Couleur d'accent</div>
-                <div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 12 }}>Choisissez la couleur principale de votre interface</div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 4 }}>{t('settings.accentColor')}</div>
+                <div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 12 }}>{t('common.color')}</div>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                   {ACCENT_COLORS.map((c) => {
                     const selected = accentColor === c.value;
@@ -796,13 +810,13 @@ export default function Settings() {
                     );
                   })}
                 </div>
-                <div style={{ fontSize: 10, color: T.textMuted, marginTop: 8 }}>Rechargez la page pour appliquer</div>
+                <div style={{ fontSize: 10, color: T.textMuted, marginTop: 8 }}>{t('common.loading')}</div>
               </div>
             </Card>
           </Section>
 
           {/* Usage stats */}
-          <Section title="UTILISATION" sub="Aperçu de vos données et stockage">
+          <Section title={t('settings.storageUsed').toUpperCase()} sub={t('settings.storageUsed')}>
             <Card>
               <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
                 {[
@@ -823,7 +837,7 @@ export default function Settings() {
               </div>
               <div style={{ marginTop: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: T.textSecondary }}>Espace utilisé</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: T.textSecondary }}>{t('settings.storageUsed')}</span>
                   <span style={{ fontSize: 11, fontWeight: 600, color: T.textMuted }}>~{usageStats.storageKB}KB / 5MB</span>
                 </div>
                 <ProgressBar value={usageStats.storageKB} max={5120} color={usageStats.storageKB > 4096 ? T.red : usageStats.storageKB > 2560 ? T.orange : T.green} h={5} />
@@ -831,24 +845,24 @@ export default function Settings() {
             </Card>
           </Section>
 
-          <Section title="ZONE DANGEREUSE">
+          <Section title={t('settings.gdprDelete').toUpperCase()}>
             <Card style={{ borderLeft: `3px solid ${T.red}` }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: T.red }}>Supprimer le compte</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: T.red }}>{t('settings.gdprDelete')}</div>
                   <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>
-                    Cette action est irréversible. Toutes les données seront définitivement supprimées.
+                    {t('settings.gdprDeleteWarning')}
                   </div>
                 </div>
-                <Btn v="danger" onClick={() => setShowDeleteConfirm(true)}>Supprimer mon compte</Btn>
+                <Btn v="danger" onClick={() => setShowDeleteConfirm(true)}>{t('settings.gdprDelete')}</Btn>
               </div>
               {showDeleteConfirm && (
                 <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: T.redBg, border: `1px solid ${T.red}22` }}>
-                  <div style={{ fontSize: 11, color: T.red, marginBottom: 8 }}>Tapez SUPPRIMER pour confirmer :</div>
+                  <div style={{ fontSize: 11, color: T.red, marginBottom: 8 }}>{t('settings.clearDataConfirm')} :</div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <Inp small value={deleteConfirmText} onChange={setDeleteConfirmText} placeholder="SUPPRIMER" />
-                    <Btn v="danger" small onClick={deleteAccount} disabled={deleteConfirmText !== 'SUPPRIMER'}>Confirmer</Btn>
-                    <Btn v="ghost" small onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}>Annuler</Btn>
+                    <Btn v="danger" small onClick={deleteAccount} disabled={deleteConfirmText !== 'SUPPRIMER'}>{t('common.confirm')}</Btn>
+                    <Btn v="ghost" small onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}>{t('common.cancel')}</Btn>
                   </div>
                 </div>
               )}
@@ -858,15 +872,15 @@ export default function Settings() {
       )}
 
       {/* -------- UTILISATEURS -------- */}
-      {subTab === 'Utilisateurs' && (
-        <Section title="GESTION DES UTILISATEURS" sub="Ajoutez et gérez les membres de votre équipe">
-          <PremiumGate label="Gestion d'équipe" blur>
+      {subTab === 'users' && (
+        <Section title={t('settings.users').toUpperCase()} sub={t('settings.inviteUser')}>
+          <PremiumGate label={t('settings.users')} blur>
             <Card>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
-                <div style={{ fontSize: 12, color: T.textSecondary }}>{users.length} utilisateur{users.length > 1 ? 's' : ''} sur votre forfait</div>
+                <div style={{ fontSize: 12, color: T.textSecondary }}>{users.length} {t('settings.users')}</div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <Inp small value={inviteEmail} onChange={(v) => { setInviteEmail(v); setInviteError(''); }} placeholder="email@exemple.com" onKeyDown={(e) => e.key === 'Enter' && inviteUser()} />
-                  <Btn onClick={inviteUser} aria-label="Inviter un utilisateur" style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>+ Inviter</Btn>
+                  <Btn onClick={inviteUser} aria-label={t('settings.inviteUser')} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>+ {t('settings.invite')}</Btn>
                   {inviteError && <span style={{ fontSize: 11, color: T.red, fontWeight: 600, width: '100%' }}>{inviteError}</span>}
                 </div>
               </div>
@@ -890,8 +904,8 @@ export default function Settings() {
 
           <ConfirmDialog
             open={del.isOpen}
-            title="Retirer cet utilisateur ?"
-            message="L'utilisateur n'aura plus accès à votre espace client."
+            title={`${t('common.delete')} ?`}
+            message={t('common.irreversible')}
             onConfirm={del.execute}
             onCancel={del.cancel}
           />
@@ -899,22 +913,22 @@ export default function Settings() {
       )}
 
       {/* -------- FACTURATION -------- */}
-      {subTab === 'Facturation' && (
+      {subTab === 'billing' && (
         <>
           {/* Subscription status */}
           <Card className="fade-up" style={{ marginBottom: 20, padding: '16px 20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
               <div>
-                <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 4 }}>Votre abonnement</div>
+                <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 4 }}>{t('settings.currentPlan')}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 16, fontWeight: 800, color: T.text, textTransform: 'capitalize' }}>{getPlan()}</span>
-                  <Badge color={isPaid() ? T.green : T.orange}>{isPaid() ? 'Actif' : 'Essai'}</Badge>
+                  <Badge color={isPaid() ? T.green : T.orange}>{isPaid() ? t('common.yes') : t('ui.freeTrial')}</Badge>
                 </div>
                 {!isPaid() && getTrialInfo() && (
                   <div style={{ fontSize: 11, color: getTrialInfo().daysLeft <= 3 ? T.red : T.textSecondary, marginTop: 4 }}>
                     {getTrialInfo().expired
-                      ? 'Votre essai est terminé. Souscrivez pour continuer.'
-                      : `${getTrialInfo().daysLeft} jours restants dans votre essai gratuit`}
+                      ? t('ui.freeTrial')
+                      : t('ui.trialDaysLeft', { days: getTrialInfo().daysLeft })}
                   </div>
                 )}
               </div>
@@ -924,24 +938,24 @@ export default function Settings() {
                     const { url } = await createBillingPortalSession();
                     if (url) window.location.href = url;
                   } catch (err) { alert('Erreur : ' + err.message); }
-                }}>Gérer mon abonnement</Btn>
+                }}>{t('settings.billing')}</Btn>
               )}
             </div>
           </Card>
 
           <div className="fade-up" style={{ textAlign: 'center', marginBottom: 24 }}>
-            <p style={{ color: T.textSecondary, fontSize: 12 }}>Paiement sécurisé via Stripe. Annulez à tout moment.</p>
+            <p style={{ color: T.textSecondary, fontSize: 12 }}>{t('settings.billing')}</p>
             {isSupabaseConfigured() && (
               <Btn v="secondary" small style={{ marginTop: 8 }} onClick={async () => {
                 try {
                   const { url } = await createBillingPortalSession();
                   if (url) window.location.href = url;
                 } catch (err) { alert('Erreur : ' + err.message); }
-              }}>Gérer mon abonnement Stripe</Btn>
+              }}>{t('settings.billing')}</Btn>
             )}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 12 }}>
-              <span style={{ fontSize: 12, fontWeight: annual ? 500 : 700, color: annual ? T.textMuted : T.text }}>Mensuel</span>
-              <Toggle on={annual} onToggle={() => setAnnual(!annual)} label={<><span>Annuel</span> <span style={{ color: T.green, fontWeight: 700 }}>-20%</span></>} />
+              <span style={{ fontSize: 12, fontWeight: annual ? 500 : 700, color: annual ? T.textMuted : T.text }}>{t('settings.monthly')}</span>
+              <Toggle on={annual} onToggle={() => setAnnual(!annual)} label={<><span>{t('settings.annual')}</span> <span style={{ color: T.green, fontWeight: 700 }}>-20%</span></>} />
             </div>
           </div>
 
@@ -983,7 +997,7 @@ export default function Settings() {
                   <div style={{ marginTop: 16 }}>
                     <Btn full v={active ? 'primary' : 'secondary'}
                       style={active ? { background: 'linear-gradient(135deg, #f97316, #f59e0b)', boxShadow: '0 2px 12px rgba(249,115,22,.3)' } : {}}>
-                      {active ? 'Plan actuel' : 'Choisir'}
+                      {active ? t('settings.currentPlan') : t('common.confirm')}
                     </Btn>
                   </div>
                 </div>
@@ -994,9 +1008,9 @@ export default function Settings() {
       )}
 
       {/* -------- INTÉGRATIONS -------- */}
-      {subTab === 'Intégrations' && (
-        <Section title="INTÉGRATIONS API" sub="Connectez vos outils et services externes">
-          <PremiumGate label="Intégrations API" blur>
+      {subTab === 'integrations' && (
+        <Section title={t('settings.integrations').toUpperCase()} sub={t('settings.searchIntegrations')}>
+          <PremiumGate label={t('settings.integrations')} blur>
           {/* Search bar + Category filter */}
           <Card style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1005,7 +1019,7 @@ export default function Settings() {
                   type="text"
                   value={integrationSearch}
                   onChange={(e) => setIntegrationSearch(e.target.value)}
-                  placeholder="Rechercher une intégration..."
+                  placeholder={t('settings.searchIntegrations')}
                   style={{
                     width: '100%', padding: '9px 14px 9px 34px', borderRadius: 10, fontSize: 12,
                     background: T.surface2, border: `1px solid ${T.border}`, color: T.text,
@@ -1019,7 +1033,7 @@ export default function Settings() {
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: T.textSecondary }}>
-                {Object.values(integrations).filter(Boolean).length}/{INTEGRATIONS.length} connectées
+                {Object.values(integrations).filter(Boolean).length}/{INTEGRATIONS.length}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
@@ -1048,14 +1062,14 @@ export default function Settings() {
           {/* Filtered integration list grouped by category */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {[
-              { label: '💳 Paiements & E-commerce', cat: 'paiements' },
-              { label: '🏦 Banque & Comptabilité', cat: 'banque' },
-              { label: '📅 Agenda', cat: 'agenda' },
-              { label: '📈 CRM & Gestion', cat: 'crm' },
-              { label: '📧 Email Marketing & Automation', cat: 'marketing' },
-              { label: '📋 Gestion de projet & Communication', cat: 'projet' },
-              { label: '📣 Publicité', cat: 'publicite' },
-              { label: '🎧 Support Client', cat: 'support' },
+              { label: `💳 ${t('settings.catPayments')}`, cat: 'paiements' },
+              { label: `🏦 ${t('settings.catBank')}`, cat: 'banque' },
+              { label: `📅 ${t('settings.catAgenda')}`, cat: 'agenda' },
+              { label: `📈 ${t('settings.catCRM')}`, cat: 'crm' },
+              { label: `📧 ${t('settings.catMarketing')}`, cat: 'marketing' },
+              { label: `📋 ${t('settings.catProject')}`, cat: 'projet' },
+              { label: `📣 ${t('settings.catAds')}`, cat: 'publicite' },
+              { label: `🎧 ${t('settings.catSupport')}`, cat: 'support' },
             ].map(({ label, cat }) => {
               const items = filteredIntegrations.filter((ig) => ig.category === cat);
               if (items.length === 0) return null;
@@ -1089,19 +1103,19 @@ export default function Settings() {
                                 <Badge label="Demo" color={T.textSecondary} bg={T.bgSecondary || 'rgba(255,255,255,.06)'} />
                               )}
                               {connected && !syncing && (
-                                <Badge label="Connecté" color={T.green} bg={T.greenBg} />
+                                <Badge label={t('settings.connectBtn')} color={T.green} bg={T.greenBg} />
                               )}
                               {syncing && (
-                                <Badge label="Synchronisation..." color={T.orange} bg={T.orangeBg} />
+                                <Badge label={t('common.loading')} color={T.orange} bg={T.orangeBg} />
                               )}
                               {justSynced && (
-                                <Badge label="Données importées" color={T.green} bg={T.greenBg} />
+                                <Badge label={t('settings.saved')} color={T.green} bg={T.greenBg} />
                               )}
                             </div>
                             <div style={{ fontSize: 11, color: T.textSecondary }}>{ig.desc}</div>
                             {connected && timestamp && (
                               <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>
-                                Connecté le {new Date(timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                {t('settings.connectedAt', { date: new Date(timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) })}
                                 {meta && meta.accountId && <> — ID: {meta.accountId}</>}
                                 {meta && meta.syncedContacts && <> — {meta.syncedContacts} contacts importés</>}
                                 {meta && meta.syncedEvents && <> — {meta.syncedEvents} événements synchronisés</>}
@@ -1114,7 +1128,7 @@ export default function Settings() {
                             transform: isBouncing ? 'scale(1.2)' : 'scale(1)',
                           }} onClick={(e) => e.stopPropagation()}>
                             <Btn v={connected ? 'success' : 'secondary'} small onClick={() => toggleIntegration(ig.name)} disabled={syncing}>
-                              {syncing ? '⟳ Sync...' : connected ? '✓ Connecté' : 'Connecter'}
+                              {syncing ? '⟳ Sync...' : connected ? `✓ ${t('settings.connectBtn')}` : t('settings.connectBtn')}
                             </Btn>
                           </div>
                         </Card>
@@ -1126,7 +1140,7 @@ export default function Settings() {
             })}
             {filteredIntegrations.length === 0 && (
               <div style={{ textAlign: 'center', padding: '24px 0', color: T.textMuted, fontSize: 12 }}>
-                Aucune intégration ne correspond à votre recherche
+                {t('common.noData')}
               </div>
             )}
           </div>
@@ -1137,7 +1151,7 @@ export default function Settings() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                 <span style={{ fontSize: 14 }}>{'🔗'}</span>
                 <span style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5 }}>
-                  Résumé des connexions
+                  {t('settings.integrations')}
                 </span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
@@ -1149,7 +1163,7 @@ export default function Settings() {
                   }}>
                     <div style={{ fontSize: 18, marginBottom: 4 }}>{ig.icon}</div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: T.green }}>{ig.name}</div>
-                    <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>Actif</div>
+                    <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>{t('settings.connectBtn')}</div>
                   </div>
                 ))}
               </div>
@@ -1204,11 +1218,11 @@ export default function Settings() {
                       boxShadow: connected ? `0 0 8px ${T.green}66` : 'none',
                     }} />
                     <span style={{ fontSize: 12, fontWeight: 700, color: connected ? T.green : T.textMuted }}>
-                      {connected ? 'Connecté' : 'Déconnecté'}
+                      {connected ? t('settings.connectBtn') : t('settings.disconnectBtn')}
                     </span>
                     {timestamp && (
                       <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 'auto' }}>
-                        depuis le {new Date(timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        {t('settings.connectedAt', { date: new Date(timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) })}
                       </span>
                     )}
                   </div>
@@ -1217,7 +1231,7 @@ export default function Settings() {
                   {connected && metaEntries.length > 0 && (
                     <div style={{ marginBottom: 16 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8 }}>
-                        Détails de connexion
+                        {t('settings.integrationDetail')}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {metaEntries.map(([k, v]) => (
@@ -1244,7 +1258,7 @@ export default function Settings() {
                     return (
                       <div style={{ marginBottom: 16 }}>
                         <div style={{ fontSize: 10, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8 }}>
-                          Historique de synchronisation
+                          {t('settings.syncHistoryTitle')}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           {history.map((h, i) => (
@@ -1271,10 +1285,10 @@ export default function Settings() {
                       <>
                         <Btn v="secondary" small onClick={() => resyncIntegration(ig.name)}
                           disabled={syncStatus[ig.name] === 'syncing'} style={{ flex: 1 }}>
-                          {syncStatus[ig.name] === 'syncing' ? '⟳ Sync...' : '⟳ Re-sync'}
+                          {syncStatus[ig.name] === 'syncing' ? '⟳ Sync...' : `⟳ ${t('settings.resyncBtn')}`}
                         </Btn>
                         <Btn v="danger" small onClick={() => { toggleIntegration(ig.name); setDetailModal(null); }} style={{ flex: 1 }}>
-                          Déconnecter
+                          {t('settings.disconnectBtn')}
                         </Btn>
                         <Btn v="ghost" small onClick={() => setDetailModal(null)}>
                           ✕
@@ -1284,10 +1298,10 @@ export default function Settings() {
                       <>
                         <Btn v="primary" small onClick={() => { toggleIntegration(ig.name); setDetailModal(null); }}
                           style={{ flex: 1, background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>
-                          Connecter
+                          {t('settings.connectBtn')}
                         </Btn>
                         <Btn v="ghost" small onClick={() => setDetailModal(null)} style={{ flex: 1 }}>
-                          Fermer
+                          {t('common.close')}
                         </Btn>
                       </>
                     )}
@@ -1303,12 +1317,12 @@ export default function Settings() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 16 }}>{'📡'}</span>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>Journal d'activité API</div>
-                  <div style={{ fontSize: 10, color: T.textSecondary, marginTop: 1 }}>Historique des appels API récents vers vos intégrations</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{t('settings.apiLogs')}</div>
+                  <div style={{ fontSize: 10, color: T.textSecondary, marginTop: 1 }}>{t('settings.apiLogs')}</div>
                 </div>
               </div>
               <Btn v="secondary" small onClick={simulateApiCall} disabled={Object.values(integrations).filter(Boolean).length === 0}>
-                Simuler un appel API
+                {t('settings.apiLogs')}
               </Btn>
             </div>
 
@@ -1359,7 +1373,7 @@ export default function Settings() {
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '20px 0', color: T.textMuted, fontSize: 11 }}>
-                Connectez une intégration pour voir les appels API
+                {t('settings.noApiLogs')}
               </div>
             )}
           </Card>
@@ -1368,7 +1382,7 @@ export default function Settings() {
       )}
 
       {/* -------- AUTOMATISATIONS -------- */}
-      {subTab === 'Automatisations' && (() => {
+      {subTab === 'automations' && (() => {
         const [automations, setAutomations] = React.useState(() => {
           const saved = load('automations') || {};
           const defaults = {};
@@ -1388,13 +1402,13 @@ export default function Settings() {
 
         return (
           <>
-            <Section title="AUTOMATISATIONS" sub={`${enabledCount} règle(s) active(s) sur ${AUTOMATION_RULES.length}`}>
+            <Section title={t('settings.automations').toUpperCase()} sub={`${enabledCount} / ${AUTOMATION_RULES.length}`}>
               <Card>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {['crm', 'finance'].map((cat) => (
                     <div key={cat}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-                        {cat === 'crm' ? 'CRM & Commercial' : 'Finance & Facturation'}
+                        {cat === 'crm' ? t('settings.catCRM') : t('settings.billing')}
                       </div>
                       {AUTOMATION_RULES.filter((r) => r.category === cat).map((rule) => (
                         <div key={rule.id} style={{
@@ -1423,16 +1437,16 @@ export default function Settings() {
       })()}
 
       {/* -------- DATA & EXPORT -------- */}
-      {subTab === 'Data & Export' && (
+      {subTab === 'dataExport' && (
         <>
-          <Section title="EXPORT DE DONNÉES" sub="Téléchargez vos données au format CSV ou JSON">
+          <Section title={t('settings.dataExport').toUpperCase()} sub={t('common.export')}>
             <Card>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {[
-                  { label: 'Exporter les contacts (CSV)', sub: 'Nom, email, société, téléphone, statut, CA, date, source', icon: '👥', type: 'contacts' },
-                  { label: 'Exporter les finances (CSV)', sub: 'Mois, CA, charges, résultat, trésorerie', icon: '💰', type: 'finances' },
-                  { label: 'Exporter les événements (CSV)', sub: 'Titre, date, heure, type, description, source', icon: '📅', type: 'events' },
-                  { label: 'Backup complet (JSON)', sub: 'Toutes les données : contacts, finances, événements, paramètres, intégrations', icon: '💾', type: 'backup' },
+                  { label: t('settings.exportContacts'), sub: `${t('common.name')}, ${t('common.email')}, ${t('common.phone')}, ${t('common.status')}`, icon: '👥', type: 'contacts' },
+                  { label: t('settings.exportFinance'), sub: `CA, ${t('common.amount')}`, icon: '💰', type: 'finances' },
+                  { label: `${t('common.export')} (CSV)`, sub: `${t('common.title')}, ${t('common.date')}, ${t('common.type')}`, icon: '📅', type: 'events' },
+                  { label: `Backup (JSON)`, sub: t('common.export'), icon: '💾', type: 'backup' },
                 ].map((e) => (
                   <div key={e.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: 8, background: T.surface2, flexWrap: 'wrap', gap: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 180 }}>
@@ -1442,55 +1456,55 @@ export default function Settings() {
                         <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1 }}>{e.sub}</div>
                       </div>
                     </div>
-                    <Btn v="secondary" small onClick={canAccessPro() ? () => exportData(e.type) : undefined} disabled={!canAccessPro()}>{canAccessPro() ? 'Télécharger' : '🔒 Pro'}</Btn>
+                    <Btn v="secondary" small onClick={canAccessPro() ? () => exportData(e.type) : undefined} disabled={!canAccessPro()}>{canAccessPro() ? t('common.export') : '🔒 Pro'}</Btn>
                   </div>
                 ))}
               </div>
             </Card>
           </Section>
 
-          <Section title="RAPPORT FINANCIER PDF" sub="Générez un rapport financier imprimable avec synthèse visuelle">
+          <Section title={`${t('common.export')} PDF`} sub={t('common.print')}>
             <Card>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 200 }}>
                   <span style={{ fontSize: 22 }}>{'📊'}</span>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>Rapport financier</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{t('common.print')}</div>
                     <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>
-                      Ouvre un rapport complet dans une nouvelle fenêtre : informations société, tableau détaillé CA/Charges/Résultat/Trésorerie, graphique d'évolution, et totaux.
+                      {t('common.print')}
                     </div>
                   </div>
                 </div>
-                <Btn onClick={canAccessPro() ? generateFinancialReport : undefined} disabled={!canAccessPro()} style={{ background: canAccessPro() ? 'linear-gradient(135deg, #f97316, #f59e0b)' : T.surface2 }}>{canAccessPro() ? 'Générer le rapport' : '🔒 Réservé Pro'}</Btn>
+                <Btn onClick={canAccessPro() ? generateFinancialReport : undefined} disabled={!canAccessPro()} style={{ background: canAccessPro() ? 'linear-gradient(135deg, #f97316, #f59e0b)' : T.surface2 }}>{canAccessPro() ? t('common.print') : '🔒 Pro'}</Btn>
               </div>
             </Card>
           </Section>
 
-          <Section title="EXPORT INTÉGRATIONS" sub="Exportez le statut de vos intégrations connectées">
+          <Section title={`${t('common.export')} ${t('settings.integrations')}`} sub={t('settings.integrations')}>
             <Card>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 200 }}>
                   <span style={{ fontSize: 22 }}>{'🔗'}</span>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>Statut des intégrations (CSV)</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{t('settings.integrations')} (CSV)</div>
                     <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>
-                      Exporte la liste de toutes les intégrations avec leur statut de connexion, date et catégorie.
+                      {t('common.export')}
                     </div>
                   </div>
                 </div>
-                <Btn v="secondary" onClick={exportIntegrationsCSV}>Exporter CSV</Btn>
+                <Btn v="secondary" onClick={exportIntegrationsCSV}>{t('common.export')} CSV</Btn>
               </div>
             </Card>
           </Section>
 
-          <Section title="IMPORT DE DONNÉES" sub="Restaurez vos données depuis un fichier de sauvegarde JSON">
+          <Section title={`${t('common.add')} / Import`} sub="JSON">
             <Card>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                 <span style={{ fontSize: 22 }}>{'📥'}</span>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>Importer un backup</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{t('common.add')} backup</div>
                   <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>
-                    Sélectionnez un fichier <code style={{ background: T.surface2, padding: '1px 5px', borderRadius: 4, fontSize: 10 }}>hubscale_backup.json</code> pour restaurer vos données. Les données existantes seront écrasées.
+                    <code style={{ background: T.surface2, padding: '1px 5px', borderRadius: 4, fontSize: 10 }}>hubscale_backup.json</code>
                   </div>
                 </div>
               </div>
@@ -1504,8 +1518,8 @@ export default function Settings() {
                 id="import-json"
               />
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <Btn v="secondary" onClick={() => importInputRef.current?.click()}>Choisir un fichier JSON</Btn>
-                {importSuccess && <Badge label="Import réussi !" color={T.green} bg={T.greenBg} />}
+                <Btn v="secondary" onClick={() => importInputRef.current?.click()}>{t('common.add')} JSON</Btn>
+                {importSuccess && <Badge label={t('settings.saved')} color={T.green} bg={T.greenBg} />}
               </div>
 
               {importError && (
@@ -1516,7 +1530,7 @@ export default function Settings() {
 
               {importPreview && (
                 <div style={{ marginTop: 14, padding: 16, borderRadius: 10, background: T.surface2, border: `1px solid ${T.border}` }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: T.text, marginBottom: 12 }}>Aperçu de l'importation</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: T.text, marginBottom: 12 }}>{t('common.description')}</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 14 }}>
                     {[
                       { label: 'Contacts', value: importPreview.contacts, icon: '👥', color: T.accent },
@@ -1533,11 +1547,11 @@ export default function Settings() {
                     ))}
                   </div>
                   <div style={{ padding: '8px 12px', borderRadius: 6, background: T.orangeBg, border: `1px solid ${T.orange}22`, fontSize: 11, color: T.orange, marginBottom: 12 }}>
-                    Attention : l'importation remplacera les données existantes pour chaque catégorie présente dans le fichier.
+                    {t('common.irreversible')}
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <Btn onClick={confirmImport} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>Confirmer l'import</Btn>
-                    <Btn v="ghost" onClick={cancelImport}>Annuler</Btn>
+                    <Btn onClick={confirmImport} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}>{t('common.confirm')}</Btn>
+                    <Btn v="ghost" onClick={cancelImport}>{t('common.cancel')}</Btn>
                   </div>
                 </div>
               )}
@@ -1547,20 +1561,20 @@ export default function Settings() {
       )}
 
       {/* -------- RGPD -------- */}
-      {subTab === 'RGPD & Légal' && (
-        <Section title="RGPD & CONFORMITÉ" sub="Gestion des données personnelles">
+      {subTab === 'gdpr' && (
+        <Section title={t('settings.gdpr').toUpperCase()} sub={t('settings.gdprTitle')}>
           <Card>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 4 }}>Politique de confidentialité</div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 4 }}>{t('settings.gdprTitle')}</div>
                 <div style={{ fontSize: 11, color: T.textSecondary }}>
-                  Vos données sont hébergées en Europe via Supabase. Nous ne partageons aucune donnée avec des tiers sans votre consentement.
+                  {t('settings.gdprTitle')}
                 </div>
               </div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 4 }}>Droit à l'oubli</div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 4 }}>{t('settings.gdprDelete')}</div>
                 <div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 8 }}>
-                  Conformément au RGPD, vous pouvez demander la suppression complète de toutes vos données personnelles.
+                  {t('settings.gdprDeleteWarning')}
                 </div>
                 <Btn v="danger" small onClick={async () => {
                   if (isSupabaseConfigured()) {
@@ -1571,14 +1585,14 @@ export default function Settings() {
                       } catch (err) { alert(err.message); }
                     }
                   } else {
-                    setSubTab('Compte'); setShowDeleteConfirm(true);
+                    setSubTab('account'); setShowDeleteConfirm(true);
                   }
-                }}>Demander la suppression</Btn>
+                }}>{t('settings.gdprDelete')}</Btn>
               </div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 4 }}>Export des données (RGPD Art. 20)</div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 4 }}>{t('settings.gdprExport')}</div>
                 <div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 8 }}>
-                  Téléchargez l'intégralité de vos données dans un format portable.
+                  {t('settings.gdprExport')}
                 </div>
                 <Btn v="secondary" small onClick={async () => {
                   if (isSupabaseConfigured()) {
@@ -1592,7 +1606,7 @@ export default function Settings() {
                   } else {
                     exportData('backup');
                   }
-                }}>Exporter mes données</Btn>
+                }}>{t('settings.gdprExport')}</Btn>
               </div>
             </div>
           </Card>

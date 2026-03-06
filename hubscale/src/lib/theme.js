@@ -57,9 +57,14 @@ export function getTheme() {
 
 export function applyTheme(mode) {
   try { localStorage.setItem('hs_theme', mode); } catch {}
-  T = mode === 'light' ? LIGHT : DARK;
+  const palette = mode === 'light' ? LIGHT : DARK;
+  T = palette;
   try {
-    document.documentElement.setAttribute('data-theme', mode);
+    const root = document.documentElement;
+    root.setAttribute('data-theme', mode);
+    Object.entries(palette).forEach(([key, val]) => {
+      root.style.setProperty(`--hs-${key}`, val);
+    });
     document.body.style.transition = 'background .3s ease, color .3s ease';
   } catch {}
 }
