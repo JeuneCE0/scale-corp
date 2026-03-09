@@ -6,6 +6,42 @@ import { createCheckoutSession } from '../lib/api.js';
 import { store, load } from '../lib/store.js';
 import { PLANS } from '../lib/constants.js';
 import { Btn, Inp } from '../components/ui.jsx';
+import { broadcast } from '../lib/sync.js';
+
+// ─── Referral attribution helper ────────────────────────────────────────────
+function recordReferral(refSlug, signupName, signupEmail, plan, price) {
+  const affiliation = load('affiliation');
+  if (!affiliation || affiliation.slug !== refSlug) return;
+
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const referral = {
+    id,
+    name: signupName,
+    email: signupEmail,
+    status: 'pending',
+    joinedAt: new Date().toISOString(),
+    plan,
+    saleAmount: price || 0,
+    commissionEarned: Math.round((price || 0) * 0.2),
+  };
+
+  affiliation.referrals = [...(affiliation.referrals || []), referral];
+  affiliation.totalEarned = (affiliation.totalEarned || 0) + referral.commissionEarned;
+
+  // Record a click for today if not already tracked
+  const today = new Date().toISOString().split('T')[0];
+  const clicks = affiliation.clicks || [];
+  const todayClick = clicks.find(c => c.date === today);
+  if (todayClick) {
+    todayClick.count = (todayClick.count || 0) + 1;
+  } else {
+    clicks.push({ date: today, count: 1 });
+  }
+  affiliation.clicks = clicks;
+
+  store('affiliation', affiliation);
+  broadcast('affiliation', affiliation);
+}
 
 // ─── Card formatting helpers ───────────────────────────────────────────────
 function formatCardNumber(v) {
@@ -142,6 +178,7 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
       const refSlug = load('ref_slug');
       if (refSlug) {
         store('referred_by', { slug: refSlug, signedUpAt: new Date().toISOString() });
+        recordReferral(refSlug, name, email, selectedPlan, price);
       }
 
       // Create Stripe Checkout session with timeout protection (10s)
@@ -213,6 +250,7 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
       const refSlug = load('ref_slug');
       if (refSlug) {
         store('referred_by', { slug: refSlug, signedUpAt: new Date().toISOString() });
+        recordReferral(refSlug, name, email, selectedPlan, price);
       }
 
       setLoading(false);
@@ -370,7 +408,7 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
                     </div>
 
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontSize: 20, fontWeight: 900, color: T.text }}>{pr}<span style={{ fontSize: 11, fontWeight: 500, color: T.textMuted }}>\u20ac</span></div>
+                      <div style={{ fontSize: 20, fontWeight: 900, color: T.text }}>{pr}<span style={{ fontSize: 11, fontWeight: 500, color: T.textMuted }}>{'€'}</span></div>
                       <div style={{ fontSize: 9, color: T.textMuted }}>/mois</div>
                     </div>
                   </div>
@@ -409,8 +447,8 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
                 <div style={{ fontSize: 10, color: T.textSecondary }}>14 jours d'essai gratuit</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: T.text }}>{price}<span style={{ fontSize: 10, color: T.textMuted }}>\u20ac/mois</span></div>
-                {annual && <div style={{ fontSize: 9, color: T.green }}>{price * 12}\u20ac/an</div>}
+                <div style={{ fontSize: 16, fontWeight: 800, color: T.text }}>{price}<span style={{ fontSize: 10, color: T.textMuted }}>{'€/mois'}</span></div>
+                {annual && <div style={{ fontSize: 9, color: T.green }}>{price * 12}{'€/an'}</div>}
               </div>
               <button onClick={() => setStep(0)} style={{
                 background: 'none', border: 'none', cursor: 'pointer',
@@ -478,7 +516,7 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Plan {plan.name}</span>
-                <span style={{ fontSize: 15, fontWeight: 800, color: T.text }}>{price}\u20ac<span style={{ fontSize: 10, fontWeight: 500, color: T.textMuted }}>/mois</span></span>
+                <span style={{ fontSize: 15, fontWeight: 800, color: T.text }}>{price}{'€'}<span style={{ fontSize: 10, fontWeight: 500, color: T.textMuted }}>/mois</span></span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{
