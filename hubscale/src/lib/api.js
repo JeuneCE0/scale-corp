@@ -129,3 +129,30 @@ export async function deleteNotification(id) {
     body: JSON.stringify({ action: 'delete', id }),
   });
 }
+
+// ─── Affiliate ───
+
+export async function getAffiliateDashboard() {
+  return apiCall('/affiliate?action=dashboard');
+}
+
+export async function registerAffiliateSlug(slug, orgId) {
+  return apiCall('/affiliate?action=register-slug', {
+    method: 'POST',
+    body: JSON.stringify({ slug, org_id: orgId }),
+  });
+}
+
+export async function requestAffiliatePayout(amount, bankInfo) {
+  return apiCall('/affiliate?action=request-payout', {
+    method: 'POST',
+    body: JSON.stringify({ amount, bank_info: bankInfo }),
+  });
+}
+
+export async function saveAffiliateBankInfo(bankInfo) {
+  return apiCall('/affiliate?action=save-bank-info', {
+    method: 'POST',
+    body: JSON.stringify({ bank_info: bankInfo }),
+  });
+}

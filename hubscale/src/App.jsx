@@ -1019,10 +1019,16 @@ export default function App() {
     // Persist referral slug so checkout can attribute the referral
     store('ref_slug', slug);
     store('ref_captured_at', new Date().toISOString());
-    // Record click for affiliate tracking
+    // Record click locally
     const clicks = load('ref_clicks') || [];
     clicks.push({ slug, at: new Date().toISOString(), ua: navigator.userAgent });
     store('ref_clicks', clicks);
+    // Track click server-side (so affiliate dashboard shows it)
+    fetch('/api/affiliate?action=track-click', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug }),
+    }).catch(() => {});
     // Redirect to homepage immediately
     window.history.replaceState(null, '', '/');
   }

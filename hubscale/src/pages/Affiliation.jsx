@@ -5,6 +5,8 @@ import { store, storeDebounced, load } from '../lib/store.js';
 import { broadcast, subscribe } from '../lib/sync.js';
 import { Card, Btn, Inp, Badge, Modal, EmptyState, TabBar, Pagination } from '../components/ui.jsx';
 import { t } from '../lib/i18n.js';
+import { isSupabaseConfigured } from '../lib/supabase.js';
+import { getAffiliateDashboard, registerAffiliateSlug, requestAffiliatePayout, saveAffiliateBankInfo } from '../lib/api.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -98,6 +100,8 @@ export default function Affiliation() {
   const [page, setPage] = useState(1);
   const perPage = 10;
 
+  const [serverLoaded, setServerLoaded] = useState(false);
+
   useEffect(() => {
     storeDebounced('affiliation', data);
     broadcast('affiliation', data);
@@ -106,6 +110,91 @@ export default function Affiliation() {
   useEffect(() => {
     const unsub = subscribe('affiliation', (d) => setData(d));
     return unsub;
+  }, []);
+
+  // Fetch affiliate data from server (Supabase) and merge with local
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        // Register slug on server if not already done
+        const orgId = load('_orgId');
+        if (orgId && data.slug) {
+          await registerAffiliateSlug(data.slug, orgId).catch(() => {});
+        }
+
+        const res = await getAffiliateDashboard();
+        if (cancelled || !res.ok) return;
+
+        // Merge server referrals with local data
+        const serverRefs = (res.referrals || []).map(r => ({
+          id: r.id,
+          name: r.name,
+          email: r.email,
+          status: r.status,
+          joinedAt: r.joined_at,
+          convertedAt: r.converted_at,
+          plan: r.plan,
+          saleAmount: r.sale_amount,
+          commissionEarned: r.commission_earned,
+          potentialCommission: r.potential_commission,
+          trialEndsAt: r.trial_ends_at,
+          firstChargeConfirmed: r.first_charge_confirmed,
+          _fromServer: true,
+        }));
+
+        const serverPayouts = (res.payouts || []).map(p => ({
+          id: p.id,
+          amount: p.amount,
+          status: p.status,
+          date: p.requested_at,
+          method: p.method,
+          bankInfo: p.bank_info,
+          _fromServer: true,
+        }));
+
+        const serverClicks = (res.clickDays || []).map(c => ({
+          date: c.date,
+          count: c.count,
+        }));
+
+        setData(prev => {
+          // Merge: server referrals + any local-only referrals not in server
+          const serverEmails = new Set(serverRefs.map(r => r.email?.toLowerCase()));
+          const localOnly = (prev.referrals || []).filter(r => !r._fromServer && !serverEmails.has(r.email?.toLowerCase()));
+          const mergedRefs = [...serverRefs, ...localOnly];
+
+          const serverPayoutIds = new Set(serverPayouts.map(p => p.id));
+          const localOnlyPayouts = (prev.payouts || []).filter(p => !p._fromServer && !serverPayoutIds.has(p.id));
+          const mergedPayouts = [...serverPayouts, ...localOnlyPayouts];
+
+          // Use server clicks if available, otherwise keep local
+          const mergedClicks = serverClicks.length > 0 ? serverClicks : (prev.clicks || []);
+
+          const bankInfo = res.affiliate?.bank_info || prev.bankInfo;
+          const totalPaid = res.affiliate?.total_paid || prev.totalPaid;
+          const slug = res.affiliate?.slug || prev.slug;
+
+          return {
+            ...prev,
+            slug,
+            referrals: mergedRefs,
+            payouts: mergedPayouts,
+            clicks: mergedClicks,
+            totalPaid,
+            bankInfo,
+          };
+        });
+        setServerLoaded(true);
+      } catch (e) {
+        // Server not available — continue with local data only
+        console.warn('Affiliate dashboard fetch failed:', e);
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, []);
 
   const referralLink = `${window.location.host}/r/${data.slug}`;
@@ -120,6 +209,10 @@ export default function Affiliation() {
   const saveBankInfo = (bankInfo) => {
     setData(prev => ({ ...prev, bankInfo }));
     setShowBankModal(false);
+    // Save to server
+    if (isSupabaseConfigured()) {
+      saveAffiliateBankInfo(bankInfo).catch(() => {});
+    }
   };
 
   // Stats
@@ -155,7 +248,7 @@ export default function Affiliation() {
 
   const getTabs = () => [t('affiliation.tabQuickstart'), t('affiliation.tabEarnings'), t('affiliation.tabLinks'), t('affiliation.tabLeaderboard'), t('affiliation.tabFaq')];
 
-  const requestPayout = () => {
+  const requestPayout = async () => {
     if (stats.pendingPayout < 50) return;
     if (!data.bankInfo?.iban) {
       setShowBankModal(true);
@@ -174,6 +267,14 @@ export default function Affiliation() {
       payouts: [...prev.payouts, payout],
       totalPaid: prev.totalPaid + stats.pendingPayout,
     }));
+    // Send to server
+    if (isSupabaseConfigured()) {
+      try {
+        await requestAffiliatePayout(stats.pendingPayout, data.bankInfo);
+      } catch (e) {
+        console.warn('Server payout request failed:', e);
+      }
+    }
   };
 
   const hasBankInfo = data.bankInfo && data.bankInfo.iban;

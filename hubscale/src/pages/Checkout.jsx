@@ -9,41 +9,56 @@ import { Btn, Inp } from '../components/ui.jsx';
 import { broadcast } from '../lib/sync.js';
 
 // ─── Referral attribution helper ────────────────────────────────────────────
+// Records the referral SERVER-SIDE so the affiliate sees it on their dashboard
+// (regardless of browser). Also updates local storage as fallback.
 function recordReferral(refSlug, signupName, signupEmail, plan, price) {
+  // 1. Send to server (the critical fix — works cross-browser)
+  fetch('/api/affiliate?action=record-referral', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      slug: refSlug,
+      name: signupName,
+      email: signupEmail,
+      plan,
+      sale_amount: price || 0,
+    }),
+  }).catch(() => {});
+
+  // 2. Also update local affiliation data (if same browser — legacy support)
   const affiliation = load('affiliation');
-  if (!affiliation || affiliation.slug !== refSlug) return;
+  if (affiliation && affiliation.slug === refSlug) {
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const referral = {
+      id,
+      name: signupName,
+      email: signupEmail,
+      status: 'pending',
+      joinedAt: new Date().toISOString(),
+      plan,
+      saleAmount: price || 0,
+      commissionEarned: 0,
+      potentialCommission: Math.round((price || 0) * 0.2),
+      trialEndsAt: new Date(Date.now() + 14 * 86400000).toISOString(),
+      firstChargeConfirmed: false,
+    };
 
-  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  const referral = {
-    id,
-    name: signupName,
-    email: signupEmail,
-    status: 'pending',
-    joinedAt: new Date().toISOString(),
-    plan,
-    saleAmount: price || 0,
-    commissionEarned: 0,
-    potentialCommission: Math.round((price || 0) * 0.2),
-    trialEndsAt: new Date(Date.now() + 14 * 86400000).toISOString(),
-    firstChargeConfirmed: false,
-  };
+    affiliation.referrals = [...(affiliation.referrals || []), referral];
+    affiliation.totalEarned = (affiliation.totalEarned || 0) + referral.commissionEarned;
 
-  affiliation.referrals = [...(affiliation.referrals || []), referral];
-  affiliation.totalEarned = (affiliation.totalEarned || 0) + referral.commissionEarned;
+    const today = new Date().toISOString().split('T')[0];
+    const clicks = affiliation.clicks || [];
+    const todayClick = clicks.find(c => c.date === today);
+    if (todayClick) {
+      todayClick.count = (todayClick.count || 0) + 1;
+    } else {
+      clicks.push({ date: today, count: 1 });
+    }
+    affiliation.clicks = clicks;
 
-  // Record a click for today if not already tracked
-  const today = new Date().toISOString().split('T')[0];
-  const clicks = affiliation.clicks || [];
-  const todayClick = clicks.find(c => c.date === today);
-  if (todayClick) {
-    todayClick.count = (todayClick.count || 0) + 1;
-  } else {
-    clicks.push({ date: today, count: 1 });
+    store('affiliation', affiliation);
+    broadcast('affiliation', affiliation);
   }
-  affiliation.clicks = clicks;
-
-  store('affiliation', affiliation);
-  broadcast('affiliation', affiliation);
 }
 
 // ─── Card formatting helpers ───────────────────────────────────────────────
