@@ -48,6 +48,7 @@ function emptyDoc() {
   return {
     id: uid(), type: 'invoice', status: 'draft',
     number: '', clientName: '', clientEmail: '', clientAddress: '',
+    clientSiret: '', clientTvaNumber: '',
     items: [{ id: uid(), description: '', qty: 1, unitPrice: 0, tva: 20 }],
     notes: '', paymentTerms: t('doc.paymentDefault'), createdAt: new Date().toISOString(),
     dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
@@ -193,7 +194,7 @@ tbody td:nth-child(n+2){text-align:right}
 <div class="header"><div><div class="brand">${org.name || 'HubScale'}</div><div class="brand-sub">${org.siret ? 'SIRET: ' + org.siret : ''}</div></div>
 <div class="meta"><h2>${typeLabel} ${doc.number}</h2><p>${t('common.date')}: ${formatDateFR(doc.createdAt)}<br>${doc.dueDate ? t('doc.dueDate') + ' ' + formatDateFR(doc.dueDate) : ''}<br>${t('common.status')}: ${getSTATUS_LABELS()[doc.status] || doc.status}</p></div></div>
 <div class="parties"><div class="party"><h3>${t('doc.pdfEmitter')}</h3><p><strong>${org.name || '—'}</strong><br>${org.address || ''}<br>${org.email || ''}</p></div>
-<div class="party"><h3>${t('doc.client')}</h3><p><strong>${doc.clientName || '—'}</strong><br>${doc.clientAddress || ''}<br>${doc.clientEmail || ''}</p></div></div>
+<div class="party"><h3>${t('doc.client')}</h3><p><strong>${doc.clientName || '—'}</strong><br>${doc.clientAddress || ''}<br>${doc.clientEmail || ''}${doc.clientSiret ? '<br>SIRET: ' + doc.clientSiret : ''}${doc.clientTvaNumber ? '<br>TVA: ' + doc.clientTvaNumber : ''}</p></div></div>
 <table><thead><tr><th>${t('common.description')}</th><th>${t('doc.qty')}</th><th>${t('doc.unitPriceHT')}</th><th>${t('doc.tva')}</th><th>${t('doc.totalHT')}</th></tr></thead><tbody>
 ${(doc.items || []).map(i => `<tr><td>${i.description || '—'}</td><td>${i.qty}</td><td>${fmt(i.unitPrice)}€</td><td>${i.tva}%</td><td>${fmt(i.qty * i.unitPrice)}€</td></tr>`).join('')}
 </tbody></table>
@@ -355,6 +356,10 @@ function DocumentEditor({ doc, onSave, onClose, onDelete, onDuplicate, onMarkPai
             <div style={{ flex: '1 1 200px' }}><Inp small label={t('common.name')} value={form.clientName} onChange={(v) => set('clientName', v)} /></div>
             <div style={{ flex: '1 1 200px' }}><Inp small label={t('common.email')} value={form.clientEmail} onChange={(v) => set('clientEmail', v)} type="email" /></div>
             <div style={{ flex: '1 1 300px' }}><Inp small label={t('common.address')} value={form.clientAddress} onChange={(v) => set('clientAddress', v)} /></div>
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
+            <div style={{ flex: '1 1 200px' }}><Inp small label={t('doc.clientSiret')} value={form.clientSiret || ''} onChange={(v) => set('clientSiret', v)} placeholder="XXX XXX XXX XXXXX" /></div>
+            <div style={{ flex: '1 1 200px' }}><Inp small label={t('doc.clientTvaNumber')} value={form.clientTvaNumber || ''} onChange={(v) => set('clientTvaNumber', v)} placeholder="FR XX XXXXXXXXX" /></div>
           </div>
         </div>
 

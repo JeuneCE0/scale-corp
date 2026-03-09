@@ -29,6 +29,7 @@ const Documents = lazy(() => import('./pages/Documents.jsx'));
 const Tasks = lazy(() => import('./pages/Tasks.jsx'));
 const HelpCenter = lazy(() => import('./pages/HelpCenter.jsx'));
 const Reports = lazy(() => import('./pages/Reports.jsx'));
+const Affiliation = lazy(() => import('./pages/Affiliation.jsx'));
 
 const TABS = [
   { id: 'overview', icon: '📊', color: '#f97316' },
@@ -39,6 +40,7 @@ const TABS = [
   { id: 'agenda', icon: '📅', color: '#a855f7' },
   { id: 'analytics', icon: '📈', color: '#6366f1' },
   { id: 'reports', icon: '📑', color: '#f43f5e' },
+  { id: 'affiliation', icon: '🎁', color: '#ec4899' },
   { id: 'help', icon: '💡', color: '#14b8a6' },
   { id: 'settings', icon: '⚙️', color: '#71717a' },
 ];
@@ -1226,6 +1228,7 @@ export default function App() {
               {tab === 'agenda' && <Agenda />}
               {tab === 'analytics' && <Analytics onNavigate={navigate} />}
               {tab === 'reports' && <Reports />}
+              {tab === 'affiliation' && <Affiliation />}
               {tab === 'help' && <HelpCenter />}
               {tab === 'settings' && <Settings />}
             </div>

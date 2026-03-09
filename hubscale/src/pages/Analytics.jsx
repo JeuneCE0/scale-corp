@@ -257,40 +257,6 @@ export default function Analytics({ onNavigate }) {
   }, [contacts]);
 
   /* ================================================================ */
-  /*  SECTION 4: Integration Coverage                                  */
-  /* ================================================================ */
-  const integrationCategories = useMemo(() => {
-    const cats = {};
-    const catLabels = { paiements: t('analytics.catPayments'), banque: t('analytics.catBank'), agenda: t('analytics.catAgenda'), crm: t('analytics.catCRM'), marketing: t('analytics.catMarketing'), projet: t('analytics.catProject'), publicite: t('analytics.catAds'), support: t('analytics.catSupport') };
-    const catColors = { paiements: T.orange, banque: T.blue, agenda: T.green, crm: T.purple, marketing: T.accent, projet: T.blue, publicite: T.red, support: T.green };
-
-    INTEGRATIONS.forEach((ig) => {
-      if (!cats[ig.category]) {
-        cats[ig.category] = {
-          label: catLabels[ig.category] || ig.category,
-          color: catColors[ig.category] || T.accent,
-          total: 0,
-          connected: 0,
-        };
-      }
-      cats[ig.category].total++;
-      if (integrations[ig.name]) cats[ig.category].connected++;
-    });
-
-    return Object.entries(cats).map(([id, data]) => ({
-      id,
-      ...data,
-      healthScore: data.total > 0 ? Math.round((data.connected / data.total) * 100) : 0,
-    }));
-  }, [integrations]);
-
-  const recentSyncEvents = useMemo(() => {
-    return [...syncHistory]
-      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
-      .slice(0, 8);
-  }, [syncHistory]);
-
-  /* ================================================================ */
   /*  SECTION 6: Channel ROI                                           */
   /* ================================================================ */
   const channelROI = useMemo(() => {
@@ -594,82 +560,6 @@ export default function Analytics({ onNavigate }) {
                 </div>
               </div>
             )}
-          </Card>
-        </div>
-      </Section>
-
-      {/* ============================================================ */}
-      {/*  SECTION 4: Integration Coverage                              */}
-      {/* ============================================================ */}
-      <Section title={t('analytics.integrationCoverage')} sub={t('analytics.integrationCoverageSub')}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 14 }} className="grid-desktop-15-1">
-          {/* Integration categories grid */}
-          <Card>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 }}>
-              {t('analytics.coverageByCategory')}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
-              {integrationCategories.map((cat) => (
-                <div key={cat.id} style={{
-                  padding: '12px 10px', borderRadius: 10, textAlign: 'center',
-                  background: cat.color + '08', border: `1px solid ${cat.color}22`,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: 6 }}>
-                    <ScoreRing score={cat.healthScore} size={32} strokeWidth={3} color={cat.color}>
-                      <span style={{ fontSize: 8, fontWeight: 800, color: cat.color }}>{cat.healthScore}</span>
-                    </ScoreRing>
-                  </div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: cat.color }}>{cat.label}</div>
-                  <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>
-                    {t('analytics.connected', { n: cat.connected, total: cat.total })}
-                  </div>
-                  <div style={{ marginTop: 6 }}>
-                    <ProgressBar value={cat.connected} max={cat.total} color={cat.color} h={4} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* Recent sync events */}
-          <Card>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 }}>
-              {t('analytics.syncHistory')}
-            </div>
-            {recentSyncEvents.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 24, color: T.textMuted, fontSize: 11 }}>
-                {t('analytics.noSyncEvents')}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {recentSyncEvents.map((ev, i) => {
-                  const actionLabels = { connect: t('analytics.syncConnect'), disconnect: t('analytics.syncDisconnect'), resync: t('analytics.syncResync') };
-                  const actionColors = { connect: T.green, disconnect: T.red, resync: T.blue };
-                  return (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: i < recentSyncEvents.length - 1 ? `1px solid ${T.border}` : 'none' }}>
-                      <div style={{
-                        width: 6, height: 6, borderRadius: 3, flexShrink: 0,
-                        background: actionColors[ev.action] || T.accent,
-                      }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {ev.name}
-                        </div>
-                        <div style={{ fontSize: 9, color: T.textMuted }}>
-                          {actionLabels[ev.action] || ev.action}
-                        </div>
-                      </div>
-                      <div style={{ fontSize: 9, color: T.textMuted, flexShrink: 0 }}>
-                        {ev.date ? new Date(ev.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <div style={{ marginTop: 12, textAlign: 'center' }}>
-              <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>{t('analytics.manageIntegrations')}</Btn>
-            </div>
           </Card>
         </div>
       </Section>
