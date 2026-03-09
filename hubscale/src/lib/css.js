@@ -14,7 +14,7 @@ body{margin:0;font-family:${FONT};background:var(--hs-bg,${T.bg});color:var(--hs
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 @keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-@keyframes pageEnter{from{opacity:0;transform:translateY(10px) scale(.998)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes pageEnter{from{opacity:0;transform:translateY(10px) scale(.998)}to{opacity:1;transform:none}}
 @keyframes pagePulse{0%{opacity:.5}50%{opacity:1}100%{opacity:.5}}
 @keyframes bounceIn{0%{opacity:0;transform:scale(.3)}50%{opacity:1;transform:scale(1.05)}70%{transform:scale(.95)}100%{transform:scale(1)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
