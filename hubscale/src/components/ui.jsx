@@ -1,5 +1,6 @@
 // HubScale — Base UI Components
 import React, { useState, useEffect, useRef, useCallback, Component } from 'react';
+import { createPortal } from 'react-dom';
 import { T, FONT, getTheme } from '../lib/theme.js';
 import { clamp, pct } from '../lib/utils.js';
 import { isPaid, canAccessPro, getTrialInfo } from '../lib/plan.js';
@@ -170,7 +171,7 @@ export function Modal({ open, onClose, title, children, wide, footer }) {
   }, [open, onClose]);
 
   if (!open) return null;
-  return (
+  return createPortal(
     <div className="fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={title}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1000, display: 'grid', placeItems: 'center', overflowY: 'auto', padding: '24px 16px', backdropFilter: 'blur(8px)' }}>
       <div ref={modalRef} className="scale-in modal-inner" onClick={(e) => e.stopPropagation()}
@@ -188,7 +189,8 @@ export function Modal({ open, onClose, title, children, wide, footer }) {
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -381,7 +383,7 @@ export function ConfirmDialog({ open, onConfirm, onCancel, title, message }) {
   }, [open, onCancel]);
 
   if (!open) return null;
-  return (
+  return createPortal(
     <div className="fade-in" onClick={onCancel} role="alertdialog" aria-modal="true" aria-label={title || 'Confirmation'}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, backdropFilter: 'blur(8px)' }}>
       <div className="scale-in" onClick={(e) => e.stopPropagation()}
@@ -394,7 +396,8 @@ export function ConfirmDialog({ open, onConfirm, onCancel, title, message }) {
           <Btn v="danger" onClick={onConfirm}>Supprimer</Btn>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
