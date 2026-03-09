@@ -108,7 +108,7 @@ export default function Affiliation() {
     return unsub;
   }, []);
 
-  const referralLink = `hubscale.app/r/${data.slug}`;
+  const referralLink = `${window.location.host}/r/${data.slug}`;
 
   const copyLink = useCallback(() => {
     navigator.clipboard.writeText('https://' + referralLink).then(() => {

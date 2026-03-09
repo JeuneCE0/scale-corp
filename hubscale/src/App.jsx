@@ -1012,36 +1012,19 @@ export default function App() {
 
   // ─── View routing (all hooks are declared above, safe from Rules of Hooks) ───
 
-  // Referral link handling: /r/:slug — capture slug and show confirmation before redirecting
+  // Referral link handling: /r/:slug — capture slug, track click, and redirect to homepage
   const refMatch = window.location.pathname.match(/^\/r\/([^/]+)$/);
   if (refMatch) {
     const slug = refMatch[1];
     // Persist referral slug so checkout can attribute the referral
     store('ref_slug', slug);
     store('ref_captured_at', new Date().toISOString());
-    // Show referral confirmation page — auto-redirects to checkout/app
-    return (
-      <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, padding: 16 }}>
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 32, textAlign: 'center', maxWidth: 420, width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,.12)' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🤝</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 8 }}>
-            {t('affiliation.referralWelcome') || 'Bienvenue !'}
-          </div>
-          <div style={{ fontSize: 13, color: T.textSecondary, marginBottom: 24, lineHeight: 1.6 }}>
-            {t('affiliation.referralCaptured') || 'Votre parrainage a bien été enregistré. Créez votre compte pour en profiter.'}
-          </div>
-          <button
-            onClick={() => {
-              window.history.replaceState(null, '', '/');
-              setView(authed ? 'app' : 'checkout');
-            }}
-            style={{ display: 'inline-block', padding: '14px 28px', borderRadius: 12, background: `linear-gradient(135deg, ${T.accent}, ${T.accentHover || T.accent})`, color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: FONT, transition: 'transform .15s ease' }}
-          >
-            {authed ? (t('affiliation.goToDashboard') || 'Accéder au dashboard →') : (t('affiliation.createAccount') || 'Créer mon compte →')}
-          </button>
-        </div>
-      </div>
-    );
+    // Record click for affiliate tracking
+    const clicks = load('ref_clicks') || [];
+    clicks.push({ slug, at: new Date().toISOString(), ua: navigator.userAgent });
+    store('ref_clicks', clicks);
+    // Redirect to homepage immediately
+    window.history.replaceState(null, '', '/');
   }
 
   // Auth loading
