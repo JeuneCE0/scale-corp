@@ -122,8 +122,7 @@ export default function Dashboard({ onNavigate }) {
       ? Math.round((finHistory[finHistory.length - 1]?.ca || 0) / clientCount)
       : 0;
     return [
-      { stage: t('dash.pipeline.prospect'), count: contacts.filter((c) => c.status === 'prospect').length, color: T.orange, status: 'prospect' },
-      { stage: t('dash.pipeline.lead'), count: contacts.filter((c) => c.status === 'lead').length, color: T.blue, status: 'lead' },
+      { stage: t('dash.pipeline.prospect'), count: contacts.filter((c) => c.status === 'prospect' || c.status === 'lead').length, color: T.orange, status: 'prospect' },
       { stage: t('dash.pipeline.client'), count: contacts.filter((c) => c.status === 'client').length, color: T.green, status: 'client' },
       { stage: t('dash.pipeline.partenaire'), count: contacts.filter((c) => c.status === 'partenaire').length, color: T.purple, status: 'partenaire' },
       { stage: t('dash.pipeline.perdu'), count: contacts.filter((c) => c.status === 'perdu').length, color: T.red, status: 'perdu' },
@@ -153,10 +152,9 @@ export default function Dashboard({ onNavigate }) {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
-    // 1. Contacts to follow up: prospects > 14 days, leads > 21 days
-    const staleProspects = contacts.filter((c) => c.status === 'prospect' && daysSince(c.createdAt) > 14);
-    const staleLeads = contacts.filter((c) => c.status === 'lead' && daysSince(c.createdAt) > 21);
-    const followUpCount = staleProspects.length + staleLeads.length;
+    // 1. Contacts to follow up: prospects > 14 days
+    const staleProspects = contacts.filter((c) => (c.status === 'prospect' || c.status === 'lead') && daysSince(c.createdAt) > 14);
+    const followUpCount = staleProspects.length;
     if (followUpCount > 0) {
       actions.push({
         id: 'followup',
@@ -367,7 +365,7 @@ export default function Dashboard({ onNavigate }) {
   const [widgetOrder, setWidgetOrder] = useState(() => {
     const saved = load('dashWidgetOrder');
     if (saved && saved.includes('weekly-recap')) return saved;
-    return ['weekly-recap', 'chart-pipeline', 'integration-kpis', 'expense-breakdown', 'cashflow-projection', 'cross-insights', 'crm-banner', 'pub-banner', 'integrations-hub', 'activity-tasks'];
+    return ['weekly-recap', 'chart-pipeline', 'integration-kpis', 'expense-breakdown', 'cashflow-projection', 'cross-insights', 'crm-banner', 'pub-banner', 'activity-tasks'];
   });
   const [dragWidget, setDragWidget] = useState(null);
   const handleWidgetDragStart = useCallback((e, id) => { setDragWidget(id); e.dataTransfer.effectAllowed = 'move'; }, []);
@@ -715,8 +713,7 @@ export default function Dashboard({ onNavigate }) {
   /*  CRM stats                                                        */
   /* ---------------------------------------------------------------- */
   const crmStats = useMemo(() => [
-    { l: t('dash.pipeline.prospect'), n: contacts.filter((c) => c.status === 'prospect').length, c: T.orange },
-    { l: t('dash.pipeline.lead'), n: contacts.filter((c) => c.status === 'lead').length, c: T.blue },
+    { l: t('dash.pipeline.prospect'), n: contacts.filter((c) => c.status === 'prospect' || c.status === 'lead').length, c: T.orange },
     { l: t('dash.pipeline.client'), n: contacts.filter((c) => c.status === 'client').length, c: T.green },
     { l: t('dash.pipeline.perdu'), n: contacts.filter((c) => c.status === 'perdu').length, c: T.red },
   ], [contacts]);
@@ -1415,7 +1412,7 @@ export default function Dashboard({ onNavigate }) {
                 <div style={{ padding: '12px 14px', borderRadius: 10, background: T.orange + '10', border: `1px solid ${T.orange}22`, textAlign: 'center' }}>
                   <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>{t('dash.aRelancer')}</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: T.orange }}>
-                    {contacts.filter((c) => (c.status === 'prospect' && daysSince(c.createdAt) > 14) || (c.status === 'lead' && daysSince(c.createdAt) > 21)).length}
+                    {contacts.filter((c) => (c.status === 'prospect' || c.status === 'lead') && daysSince(c.createdAt) > 14).length}
                   </div>
                   <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>{t('dash.contactsInactifs')}</div>
                 </div>
@@ -1424,17 +1421,14 @@ export default function Dashboard({ onNavigate }) {
                   <svg viewBox="0 0 80 40" style={{ width: 80, height: 40, margin: '0 auto', display: 'block' }}>
                     {(() => {
                       const total = contacts.length || 1;
-                      const prosp = contacts.filter((c) => c.status === 'prospect').length;
-                      const lead = contacts.filter((c) => c.status === 'lead').length;
+                      const prosp = contacts.filter((c) => c.status === 'prospect' || c.status === 'lead').length;
                       const client = contacts.filter((c) => c.status === 'client').length;
                       const w1 = Math.max((prosp / total) * 80, 10);
-                      const w2 = Math.max((lead / total) * 80, 8);
-                      const w3 = Math.max((client / total) * 80, 6);
+                      const w2 = Math.max((client / total) * 80, 8);
                       return (
                         <>
-                          <rect x={(80 - w1) / 2} y="2" width={w1} height="10" rx="2" fill={T.orange} opacity=".8" />
-                          <rect x={(80 - w2) / 2} y="15" width={w2} height="10" rx="2" fill={T.blue} opacity=".8" />
-                          <rect x={(80 - w3) / 2} y="28" width={w3} height="10" rx="2" fill={T.green} opacity=".8" />
+                          <rect x={(80 - w1) / 2} y="5" width={w1} height="13" rx="2" fill={T.orange} opacity=".8" />
+                          <rect x={(80 - w2) / 2} y="22" width={w2} height="13" rx="2" fill={T.green} opacity=".8" />
                         </>
                       );
                     })()}
@@ -1519,63 +1513,6 @@ export default function Dashboard({ onNavigate }) {
             </Card>
           ),
 
-          /* ------ Integrations Hub ------ */
-          'integrations-hub': totalConnected > 0 ? (
-            <Card delay={8} style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 16 }}>🔗</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{t('dash.integrationsHub')}</span>
-                  <Badge label={t('dash.activeCount', { count: totalConnected })} color={T.accent} bg={T.accent + '18'} />
-                </div>
-                <Btn v="ghost" small onClick={() => onNavigate?.('settings')}>{t('dash.manageIntBtn')}</Btn>
-              </div>
-
-              {/* Category breakdown */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 8, marginBottom: 14 }}>
-                {Object.entries(integrationSummary)
-                  .filter(([, v]) => v.connected > 0)
-                  .map(([cat, v]) => {
-                    const catLabels = { paiements: t('analytics.catPayments'), banque: t('analytics.catBank'), agenda: t('analytics.catAgenda'), crm: t('analytics.catCRM'), marketing: t('analytics.catMarketing'), projet: t('analytics.catProject'), publicite: t('analytics.catAds'), support: t('analytics.catSupport') };
-                    const catColors = { paiements: T.orange, banque: T.blue, agenda: T.green, crm: T.purple, marketing: T.accent, projet: T.blue, publicite: T.red, support: T.green };
-                    const color = catColors[cat] || T.accent;
-                    return (
-                      <div key={cat} style={{
-                        padding: '10px 8px', borderRadius: 10, textAlign: 'center',
-                        background: color + '10', border: `1px solid ${color}22`,
-                      }}>
-                        <div style={{ fontSize: 18, fontWeight: 800, color }}>{v.connected}</div>
-                        <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginTop: 2 }}>
-                          {catLabels[cat] || cat}
-                        </div>
-                        <div style={{ marginTop: 4, height: 3, borderRadius: 2, background: color + '22', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${(v.connected / v.total) * 100}%`, background: color, borderRadius: 2 }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-
-              {/* Connected integrations icons */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {connectedIntegrations.slice(0, 16).map((ig) => (
-                  <div key={ig.name} title={ig.name} style={{
-                    width: 34, height: 34, borderRadius: 8, fontSize: 16,
-                    background: T.greenBg, border: `1px solid ${T.green}22`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'default',
-                  }}>{ig.icon}</div>
-                ))}
-                {connectedIntegrations.length > 16 && (
-                  <div style={{
-                    width: 34, height: 34, borderRadius: 8, fontSize: 10, fontWeight: 700,
-                    background: T.surface2, color: T.textMuted,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>+{connectedIntegrations.length - 16}</div>
-                )}
-              </div>
-            </Card>
-          ) : null,
         };
 
         const content = WIDGETS[id];

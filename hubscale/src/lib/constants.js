@@ -3,13 +3,12 @@ import { T } from './theme.js';
 
 export const CRM_STATUSES = [
   { id: 'prospect', label: 'PROSPECT', color: T.orange, bg: T.orangeBg },
-  { id: 'lead', label: 'LEAD', color: T.orange, bg: T.orangeBg },
   { id: 'client', label: 'CLIENT', color: T.green, bg: T.greenBg },
   { id: 'perdu', label: 'PERDU', color: T.red, bg: T.redBg },
   { id: 'partenaire', label: 'PARTENAIRE', color: T.purple, bg: T.purpleBg },
 ];
 
-export const CRM_FILTER_TABS = ['Tous', 'Prospect', 'Lead', 'Client', 'Perdu', 'Partenaire'];
+export const CRM_FILTER_TABS = ['Tous', 'Prospect', 'Client', 'Perdu', 'Partenaire'];
 
 export const EVENT_TYPES = [
   { value: 'reunion', label: 'Réunion' },

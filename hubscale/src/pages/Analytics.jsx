@@ -209,8 +209,7 @@ export default function Analytics({ onNavigate }) {
   /*  SECTION 3: CRM Funnel Analysis                                   */
   /* ================================================================ */
   const funnelStages = useMemo(() => {
-    const prospects = contacts.filter((c) => c.status === 'prospect');
-    const leads = contacts.filter((c) => c.status === 'lead');
+    const prospects = contacts.filter((c) => c.status === 'prospect' || c.status === 'lead');
     const clients = contacts.filter((c) => c.status === 'client');
     const perdus = contacts.filter((c) => c.status === 'perdu');
 
@@ -221,24 +220,20 @@ export default function Analytics({ onNavigate }) {
 
     const stages = [
       { id: 'prospect', label: 'Prospect', count: prospects.length, color: T.orange, avgDays: calcAvgDays(prospects) },
-      { id: 'lead', label: 'Lead', count: leads.length, color: T.blue, avgDays: calcAvgDays(leads) },
       { id: 'client', label: 'Client', count: clients.length, color: T.green, avgDays: calcAvgDays(clients) },
       { id: 'perdu', label: 'Perdu', count: perdus.length, color: T.red, avgDays: calcAvgDays(perdus) },
     ];
 
     // Conversion rates between stages
     const total = contacts.length || 1;
-    const prospectToLead = prospects.length + leads.length + clients.length > 0
-      ? Math.round(((leads.length + clients.length) / (prospects.length + leads.length + clients.length)) * 100)
-      : 0;
-    const leadToClient = leads.length + clients.length > 0
-      ? Math.round((clients.length / (leads.length + clients.length)) * 100)
+    const prospectToClient = prospects.length + clients.length > 0
+      ? Math.round((clients.length / (prospects.length + clients.length)) * 100)
       : 0;
     const clientToPerdu = clients.length + perdus.length > 0
       ? Math.round((perdus.length / (clients.length + perdus.length)) * 100)
       : 0;
 
-    return { stages, conversions: { prospectToLead, leadToClient, clientToPerdu }, total };
+    return { stages, conversions: { prospectToClient, clientToPerdu }, total };
   }, [contacts]);
 
   const maxFunnelCount = useMemo(() => Math.max(...funnelStages.stages.map((s) => s.count), 1), [funnelStages]);
@@ -547,7 +542,7 @@ export default function Analytics({ onNavigate }) {
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 0' }}>
                             <span style={{ fontSize: 10, color: T.textMuted }}>↓</span>
                             <Badge
-                              label={`${i === 0 ? funnelStages.conversions.prospectToLead : i === 1 ? funnelStages.conversions.leadToClient : funnelStages.conversions.clientToPerdu}%`}
+                              label={`${i === 0 ? funnelStages.conversions.prospectToClient : funnelStages.conversions.clientToPerdu}%`}
                               color={T.accent}
                               bg={T.accentBg}
                             />

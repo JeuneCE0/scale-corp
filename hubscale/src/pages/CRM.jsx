@@ -17,8 +17,7 @@ import { t } from '../lib/i18n.js';
 /** Check if a contact needs a relance alert */
 function getRelanceInfo(contact) {
   const days = daysSince(contact.createdAt);
-  if (contact.status === 'prospect' && days > 14) return days;
-  if (contact.status === 'lead' && days > 21) return days;
+  if ((contact.status === 'prospect' || contact.status === 'lead') && days > 14) return days;
   return null;
 }
 
@@ -223,14 +222,21 @@ export default function CRM() {
 
   // ---- KPI counts ----
   const counts = useMemo(() =>
-    STATUSES.reduce((acc, s) => { acc[s.id] = contacts.filter((c) => c.status === s.id).length; return acc; }, {}),
+    STATUSES.reduce((acc, s) => {
+      acc[s.id] = s.id === 'prospect'
+        ? contacts.filter((c) => c.status === 'prospect' || c.status === 'lead').length
+        : contacts.filter((c) => c.status === s.id).length;
+      return acc;
+    }, {}),
     [contacts]
   );
 
   const filterCounts = useMemo(() => {
     const c = {};
     FILTER_TABS.forEach((f) => {
-      c[f] = f === 'Tous' ? contacts.length : contacts.filter((ct) => ct.status === f.toLowerCase()).length;
+      if (f === 'Tous') c[f] = contacts.length;
+      else if (f === 'Prospect') c[f] = contacts.filter((ct) => ct.status === 'prospect' || ct.status === 'lead').length;
+      else c[f] = contacts.filter((ct) => ct.status === f.toLowerCase()).length;
     });
     return c;
   }, [contacts]);
@@ -270,7 +276,11 @@ export default function CRM() {
   const filtered = useMemo(() => {
     return contacts.filter((c) => {
       // Status filter
-      if (filter !== 'Tous' && c.status !== filter.toLowerCase()) return false;
+      if (filter !== 'Tous') {
+        const fStatus = filter.toLowerCase();
+        const cStatus = c.status === 'lead' ? 'prospect' : c.status;
+        if (cStatus !== fStatus) return false;
+      }
       // Text search
       if (debouncedSearch) {
         const q = debouncedSearch.toLowerCase();
@@ -924,7 +934,9 @@ export default function CRM() {
       {viewMode === 'kanban' && view === 'list' && contacts.length > 0 && (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12 }}>
           {STATUSES.map((status) => {
-            const colContacts = contacts.filter((c) => c.status === status.id);
+            const colContacts = status.id === 'prospect'
+              ? contacts.filter((c) => c.status === 'prospect' || c.status === 'lead')
+              : contacts.filter((c) => c.status === status.id);
             return (
               <div key={status.id}
                 onDragOver={handleDragOver}
@@ -1006,7 +1018,9 @@ export default function CRM() {
         return (
           <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 16, minHeight: 400 }}>
             {STATUSES.map((status) => {
-              const colContacts = pipelineContacts.filter((c) => c.status === status.id);
+              const colContacts = status.id === 'prospect'
+                ? pipelineContacts.filter((c) => c.status === 'prospect' || c.status === 'lead')
+                : pipelineContacts.filter((c) => c.status === status.id);
               const isOver = dragOverCol === status.id && dragId;
               const totalCA = colContacts.reduce((sum, c) => sum + (c.ca || 0), 0);
               const avgScore = colContacts.length > 0

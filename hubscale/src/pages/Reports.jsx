@@ -469,8 +469,7 @@ ${data.map(r => `<tr><td>${monthLabel(r.key)}</td><td>${new Intl.NumberFormat('f
 </tbody></table>` : ''}
 ${type === 'crm' || type === 'performance' ? `<h2>${t('reports.contacts')} (${contacts.length})</h2>
 <div class="kpis">
-<div class="kpi"><div class="kpi-label">Prospects</div><div class="kpi-value">${contacts.filter(c => c.status === 'prospect').length}</div></div>
-<div class="kpi"><div class="kpi-label">Leads</div><div class="kpi-value">${contacts.filter(c => c.status === 'lead').length}</div></div>
+<div class="kpi"><div class="kpi-label">Prospects</div><div class="kpi-value">${contacts.filter(c => c.status === 'prospect' || c.status === 'lead').length}</div></div>
 <div class="kpi"><div class="kpi-label">Clients</div><div class="kpi-value">${contacts.filter(c => c.status === 'client').length}</div></div>
 </div>` : ''}
 <div class="footer">${t('reports.reportGenerated')} <strong>${org.name || 'HubScale'}</strong> — ${new Date().toLocaleDateString('fr-FR')}</div>

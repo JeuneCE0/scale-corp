@@ -1048,8 +1048,7 @@ function SalesTab() {
 
   const stats = useMemo(() => {
     const total = contacts.length;
-    const prospects = contacts.filter((c) => c.status === 'prospect').length;
-    const leads = contacts.filter((c) => c.status === 'lead').length;
+    const prospects = contacts.filter((c) => c.status === 'prospect' || c.status === 'lead').length;
     const clients = contacts.filter((c) => c.status === 'client').length;
     const partenaires = contacts.filter((c) => c.status === 'partenaire').length;
     const lost = contacts.filter((c) => c.status === 'perdu').length;
@@ -1062,16 +1061,15 @@ function SalesTab() {
     const finHistory = load('finHistory') || [];
     const totalCA = finHistory.reduce((s, r) => s + (r.ca || 0), 0);
     const avgCAPerClient = clients > 0 && totalCA > 0 ? Math.round(totalCA / clients) : 5000;
-    const pipelineValue = leads * avgCAPerClient;
+    const pipelineValue = prospects * avgCAPerClient;
 
-    return { total, prospects, leads, clients, partenaires, lost, conversionRate, pipelineValue, avgCAPerClient };
+    return { total, prospects, clients, partenaires, lost, conversionRate, pipelineValue, avgCAPerClient };
   }, [contacts]);
 
   // Funnel stages
   const funnel = useMemo(() => {
     const steps = [
       { label: 'Prospects', count: stats.prospects, color: T.orange },
-      { label: 'Leads', count: stats.leads, color: T.blue },
       { label: 'Clients', count: stats.clients, color: T.green },
     ];
     const maxCount = Math.max(...steps.map((s) => s.count), 1);
@@ -1097,7 +1095,6 @@ function SalesTab() {
         {[
           { l: 'Total contacts', v: stats.total, c: T.accent, icon: '📋' },
           { l: 'Prospects', v: stats.prospects, c: T.orange, icon: '🔍' },
-          { l: 'Leads', v: stats.leads, c: T.blue, icon: '📧' },
           { l: 'Clients', v: stats.clients, c: T.green, icon: '✅' },
           { l: 'Perdus', v: stats.lost, c: T.red, icon: '❌' },
         ].map((s) => (
@@ -1135,7 +1132,7 @@ function SalesTab() {
             </div>
             <div style={{ fontSize: 28, fontWeight: 800, color: T.blue }}>{fK(stats.pipelineValue)}€</div>
             <div style={{ fontSize: 10, color: T.textMuted, marginTop: 4 }}>
-              {stats.leads} leads x {fK(stats.avgCAPerClient)}€ moy.
+              {stats.prospects} prospects x {fK(stats.avgCAPerClient)}€ moy.
             </div>
           </div>
         </Card>
