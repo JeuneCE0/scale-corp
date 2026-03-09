@@ -1012,6 +1012,23 @@ export default function App() {
 
   // ─── View routing (all hooks are declared above, safe from Rules of Hooks) ───
 
+  // Referral link handling: /r/:slug — capture slug and redirect to signup
+  const refMatch = window.location.pathname.match(/^\/r\/([^/]+)$/);
+  if (refMatch) {
+    const slug = refMatch[1];
+    // Persist referral slug so checkout can attribute the referral
+    store('ref_slug', slug);
+    store('ref_captured_at', new Date().toISOString());
+    // Clean URL and go to landing/signup
+    window.history.replaceState(null, '', '/');
+    if (!authed) {
+      if (view !== 'checkout' && view !== 'login') {
+        // Trigger signup flow directly
+        setTimeout(() => setView('checkout'), 0);
+      }
+    }
+  }
+
   // Auth loading
   if (authLoading) {
     return (

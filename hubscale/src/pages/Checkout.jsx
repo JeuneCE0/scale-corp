@@ -3,7 +3,7 @@ import { T, FONT } from '../lib/theme.js';
 import { signup, ensureDemoAccount } from '../lib/auth.js';
 import { isSupabaseConfigured } from '../lib/supabase.js';
 import { createCheckoutSession } from '../lib/api.js';
-import { store } from '../lib/store.js';
+import { store, load } from '../lib/store.js';
 import { PLANS } from '../lib/constants.js';
 import { Btn, Inp } from '../components/ui.jsx';
 
@@ -138,6 +138,12 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
         return;
       }
 
+      // Persist referral attribution if user came via /r/ link
+      const refSlug = load('ref_slug');
+      if (refSlug) {
+        store('referred_by', { slug: refSlug, signedUpAt: new Date().toISOString() });
+      }
+
       // Create Stripe Checkout session with timeout protection (10s)
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Le serveur de paiement ne répond pas. Veuillez réessayer.')), 10000)
@@ -202,6 +208,12 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
         endsAt: new Date(Date.now() + 14 * 86400000).toISOString(),
         plan: selectedPlan,
       });
+
+      // Persist referral attribution if user came via /r/ link
+      const refSlug = load('ref_slug');
+      if (refSlug) {
+        store('referred_by', { slug: refSlug, signedUpAt: new Date().toISOString() });
+      }
 
       setLoading(false);
       setSuccessMsg('Paiement réussi ! Redirection...');
