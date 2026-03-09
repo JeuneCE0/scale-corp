@@ -38,6 +38,210 @@ export default async function handler(req, res) {
   if (!action) return badRequest(res, "Missing action");
 
   try {
+    // ── Track affiliate link click (public, no auth) ──
+    if (action === "track-click") {
+      if (req.method !== "POST") return res.status(405).json({ error: "POST required" });
+      const { ref_code, referrer_client_id } = req.body || {};
+      if (!society_id) return badRequest(res, "Missing society_id");
+      if (!ref_code) return badRequest(res, "Missing ref_code");
+
+      const click = {
+        society_id,
+        ref_code,
+        referrer_client_id: referrer_client_id || '',
+        ip: ip || '',
+        user_agent: (req.headers['user-agent'] || '').slice(0, 500),
+        created_at: new Date().toISOString(),
+      };
+
+      const r = await sbFetch('affiliate_clicks', {
+        method: 'POST',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(click),
+      });
+      const result = await r.json();
+      apiLog('info', { api: 'affiliate', action: 'track-click', society_id, ref_code });
+      return res.status(r.ok ? 200 : r.status).json({ ok: r.ok, click: Array.isArray(result) ? result[0] : result });
+    }
+
+    // ── Track referral conversion (create affiliate_referrals record) ──
+    if (action === "track-referral") {
+      if (req.method !== "POST") return res.status(405).json({ error: "POST required" });
+      const { referrer_client_id, referred_client_id, ref_code, referred_name } = req.body || {};
+      if (!society_id) return badRequest(res, "Missing society_id");
+      if (!referrer_client_id) return badRequest(res, "Missing referrer_client_id");
+      if (!referred_client_id) return badRequest(res, "Missing referred_client_id");
+      if (!ref_code) return badRequest(res, "Missing ref_code");
+
+      // Check if referral already exists
+      const existR = await sbFetch(`affiliate_referrals?society_id=eq.${encodeURIComponent(society_id)}&referred_client_id=eq.${encodeURIComponent(referred_client_id)}`);
+      const existing = await existR.json();
+      if (existing && existing.length > 0) {
+        return res.json({ ok: true, referral: existing[0], existing: true });
+      }
+
+      const referral = {
+        society_id,
+        referrer_client_id,
+        referred_client_id,
+        ref_code,
+        referred_name: referred_name || '',
+        status: 'active',
+        revenue: 0,
+        commission: 0,
+        commission_rate: COMMISSION_RATE,
+        converted_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const r = await sbFetch('affiliate_referrals', {
+        method: 'POST',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(referral),
+      });
+      const result = await r.json();
+      apiLog('info', { api: 'affiliate', action: 'track-referral', society_id, referrer_client_id, referred_client_id });
+      return res.status(r.ok ? 200 : r.status).json({ ok: r.ok, referral: Array.isArray(result) ? result[0] : result });
+    }
+
+    // ── Get referrals for a specific affiliate ──
+    if (action === "get-affiliate-referrals") {
+      if (!society_id) return badRequest(res, "Missing society_id");
+      const affiliate_client_id = req.query.affiliate_client_id;
+      if (!affiliate_client_id) return badRequest(res, "Missing affiliate_client_id");
+      const r = await sbFetch(`affiliate_referrals?society_id=eq.${encodeURIComponent(society_id)}&referrer_client_id=eq.${encodeURIComponent(affiliate_client_id)}&order=created_at.desc`);
+      return res.status(r.status).json(await r.json());
+    }
+
+    // ── Get click count for an affiliate ──
+    if (action === "get-clicks") {
+      if (!society_id) return badRequest(res, "Missing society_id");
+      const ref_code = req.query.ref_code;
+      if (!ref_code) return badRequest(res, "Missing ref_code");
+      const r = await sbFetch(`affiliate_clicks?society_id=eq.${encodeURIComponent(society_id)}&ref_code=eq.${encodeURIComponent(ref_code)}&select=id`);
+      const clicks = await r.json();
+      return res.json({ count: Array.isArray(clicks) ? clicks.length : 0 });
+    }
+
+    // ── Update referral revenue/commission ──
+    if (action === "update-referral") {
+      if (req.method !== "POST") return res.status(405).json({ error: "POST required" });
+      const { referral_id, revenue, status } = req.body || {};
+      if (!referral_id) return badRequest(res, "Missing referral_id");
+
+      const updates = { updated_at: new Date().toISOString() };
+      if (revenue !== undefined) {
+        updates.revenue = revenue;
+        updates.commission = Math.round(revenue * COMMISSION_RATE);
+      }
+      if (status) updates.status = status;
+
+      const r = await sbFetch(`affiliate_referrals?id=eq.${encodeURIComponent(referral_id)}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(updates),
+      });
+      const result = await r.json();
+      return res.status(r.status).json(Array.isArray(result) ? result[0] : result);
+    }
+
+    // ── Register a pending referral (lead from affiliate link) ──
+    if (action === "register-lead") {
+      if (req.method !== "POST") return res.status(405).json({ error: "POST required" });
+      const { ref_code, referrer_client_id, lead_name, lead_email, lead_phone } = req.body || {};
+      if (!society_id) return badRequest(res, "Missing society_id");
+      if (!ref_code) return badRequest(res, "Missing ref_code");
+      if (!lead_email && !lead_phone) return badRequest(res, "Email ou téléphone requis");
+
+      const pending = {
+        society_id,
+        ref_code,
+        referrer_client_id: referrer_client_id || '',
+        lead_name: lead_name || '',
+        lead_email: (lead_email || '').toLowerCase().trim(),
+        lead_phone: lead_phone || '',
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const r = await sbFetch('affiliate_pending_referrals', {
+        method: 'POST',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(pending),
+      });
+      const result = await r.json();
+      apiLog('info', { api: 'affiliate', action: 'register-lead', society_id, ref_code, lead_email });
+      return res.status(r.ok ? 200 : r.status).json({ ok: r.ok, pending: Array.isArray(result) ? result[0] : result });
+    }
+
+    // ── Match a new client against pending referrals by email/phone ──
+    if (action === "match-pending") {
+      if (req.method !== "POST") return res.status(405).json({ error: "POST required" });
+      const { client_id, client_email, client_phone, client_name } = req.body || {};
+      if (!society_id) return badRequest(res, "Missing society_id");
+      if (!client_id) return badRequest(res, "Missing client_id");
+
+      // Search for pending referrals matching by email or phone
+      let pendingRefs = [];
+      if (client_email) {
+        const r = await sbFetch(`affiliate_pending_referrals?society_id=eq.${encodeURIComponent(society_id)}&lead_email=eq.${encodeURIComponent(client_email.toLowerCase().trim())}&status=eq.pending`);
+        const data = await r.json();
+        if (Array.isArray(data)) pendingRefs.push(...data);
+      }
+      if (client_phone && pendingRefs.length === 0) {
+        const r = await sbFetch(`affiliate_pending_referrals?society_id=eq.${encodeURIComponent(society_id)}&lead_phone=eq.${encodeURIComponent(client_phone)}&status=eq.pending`);
+        const data = await r.json();
+        if (Array.isArray(data)) pendingRefs.push(...data);
+      }
+
+      if (pendingRefs.length === 0) {
+        return res.json({ ok: true, matched: false });
+      }
+
+      const pending = pendingRefs[0];
+
+      // Check if referral already exists for this client
+      const existR = await sbFetch(`affiliate_referrals?society_id=eq.${encodeURIComponent(society_id)}&referred_client_id=eq.${encodeURIComponent(client_id)}`);
+      const existing = await existR.json();
+      if (existing && existing.length > 0) {
+        return res.json({ ok: true, matched: true, referral: existing[0], existing: true });
+      }
+
+      // Create the affiliate_referral record
+      const referral = {
+        society_id,
+        referrer_client_id: pending.referrer_client_id,
+        referred_client_id: client_id,
+        ref_code: pending.ref_code,
+        referred_name: client_name || pending.lead_name || '',
+        status: 'active',
+        revenue: 0,
+        commission: 0,
+        commission_rate: COMMISSION_RATE,
+        converted_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const refR = await sbFetch('affiliate_referrals', {
+        method: 'POST',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(referral),
+      });
+      const refResult = await refR.json();
+
+      // Mark pending referral as matched
+      await sbFetch(`affiliate_pending_referrals?id=eq.${encodeURIComponent(pending.id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'matched', matched_client_id: client_id, updated_at: new Date().toISOString() }),
+      });
+
+      apiLog('info', { api: 'affiliate', action: 'match-pending', society_id, client_id, referrer: pending.referrer_client_id });
+      return res.json({ ok: true, matched: true, referral: Array.isArray(refResult) ? refResult[0] : refResult });
+    }
+
     // ── List payouts for a society ──
     if (action === "list-payouts") {
       if (!society_id) return badRequest(res, "Missing society_id");

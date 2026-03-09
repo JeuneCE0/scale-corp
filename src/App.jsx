@@ -25,7 +25,7 @@ import {
 
 /* UI COMPONENTS */
 import {
-  ActionItem, AdminClientsTab, AffiliatePortal, Badge, BenchmarkRadar, Btn, CTip, Card, ClientPortal,
+  ActionItem, AdminClientsTab, AffiliatePortal, Badge, BenchmarkRadar, Btn, CTip, Card, ClientPortal, ReferralLanding,
   CohortAnalysis, DealFlow, GradeBadge, InboxUnifiee, Inp, InvestorBoard, KPI, KnowledgeBase, LeaderboardCard, MeetingMode,
   MilestonesCompact, Modal, PBar, PulseOverview, RiskMatrix, Sect, Sel, Sidebar, SmartAlertsPanel,
   SocieteView, SubsTeamBadge, SubsTeamPanel, SynergiesAutoPanel, SynergiesPanel, Toggle, TutorialOverlay, ValRow,
@@ -407,7 +407,17 @@ function AppInner(){
     const kept=prev.filter(c=>!(ghlSocIds.includes(c.socId)&&c.id.startsWith("ghl_")));
     const newCl=ghlSocIds.flatMap(sid=>newData[sid].ghlClients);
     const merged=[...kept,...newCl];
-    sSet("scAcl",merged);return merged;
+    sSet("scAcl",merged);
+    // Auto-match new GHL clients against pending affiliate referrals
+    newCl.forEach(cl=>{
+     if(cl.email||cl.phone){
+      fetch(`/api/affiliate?action=match-pending&society_id=${encodeURIComponent(cl.socId)}`,{
+       method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({client_id:cl.id,client_email:cl.email||'',client_phone:cl.phone||'',client_name:cl.name||''})
+      }).catch(()=>{});
+     }
+    });
+    return merged;
    });
   }
  },[socs]);
@@ -519,8 +529,8 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   if(ref){
    const referrer=findReferrerByCode(clients,ref.socId,ref.refCode);
    trackEvent("referral_click",{socId:ref.socId,refCode:ref.refCode,referrer:referrer?.name||"unknown"});
+   return <><style>{CSS}{POLISH_CSS}</style><ReferralLanding socId={ref.socId} refCode={ref.refCode} socs={socs} clients={clients} referrer={referrer}/></>;
   }
-  // Clean hash and let the normal flow continue (login page will render)
   window.history.replaceState(null,"",window.location.pathname);
  }
  /* PATH-BASED AFFILIATE LINK: /r/:refCode — capture referral and redirect to main page */
@@ -529,8 +539,8 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
   if(ref){
    const referrer=findReferrerByCode(clients,ref.socId,ref.refCode);
    trackEvent("referral_click",{socId:ref.socId,refCode:ref.refCode,referrer:referrer?.name||"unknown"});
+   return <><style>{CSS}{POLISH_CSS}</style><ReferralLanding socId={ref.socId} refCode={ref.refCode} socs={socs} clients={clients} referrer={referrer}/></>;
   }
-  // Clean URL and let the normal flow continue (login page will render)
   window.history.replaceState(null,"","/");
  }
  if(hash.startsWith("#board/")){const bPin=hash.replace("#board/","");return <><style>{CSS}{POLISH_CSS}</style><InvestorBoard socs={socs} reps={reps} allM={allM} hold={hold} pin={bPin}/></>;}

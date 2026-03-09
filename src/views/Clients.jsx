@@ -61,15 +61,30 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
   const isNew=!clients.some(c=>c.id===cl.id);
   // Referral attribution on new client
   if(isNew){
+   // 1. Check local referral (visitor's browser)
    const ref=getActiveReferral(soc.id);
    if(ref){
     const referrer=findReferrerByCode(clients,soc.id,ref.refCode);
     if(referrer){
      cl.referredBy=referrer.id;cl.refCode=ref.refCode;
      convertReferral(soc.id,cl.id);
-     saveReferralRecord({id:uid(),socId:soc.id,referrerId:referrer.id,referredClientId:cl.id,refCode:ref.refCode,date:new Date().toISOString(),status:"active",revenue:0,commission:0});
+     saveReferralRecord({id:uid(),socId:soc.id,referrerId:referrer.id,referredClientId:cl.id,refCode:ref.refCode,referredName:cl.name||'',date:new Date().toISOString(),status:"active",revenue:0,commission:0});
      trackEvent("referral_conversion",{socId:soc.id,refCode:ref.refCode,referrer:referrer.name,client:cl.name});
     }
+   }
+   // 2. Check server-side pending referrals by email/phone (affiliate link registration)
+   if(!cl.referredBy&&(cl.email||cl.phone)){
+    fetch(`/api/affiliate?action=match-pending&society_id=${encodeURIComponent(soc.id)}`,{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({client_id:cl.id,client_email:cl.email||'',client_phone:cl.phone||'',client_name:cl.name||''})
+    }).then(r=>r.json()).then(d=>{
+     if(d.matched&&d.referral){
+      cl.referredBy=d.referral.referrer_client_id;cl.refCode=d.referral.ref_code;
+      const updated=clients.map(c=>c.id===cl.id?{...c,referredBy:cl.referredBy,refCode:cl.refCode}:c);
+      saveClients(updated);
+      trackEvent("referral_conversion_server",{socId:soc.id,refCode:d.referral.ref_code,client:cl.name});
+     }
+    }).catch(()=>{});
    }
   }
   const idx=clients.findIndex(x=>x.id===cl.id);

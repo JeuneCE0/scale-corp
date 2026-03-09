@@ -1277,10 +1277,15 @@ export function captureReferralFromPath(clients){
 function _persistReferral(socId,refCode){
  const ref={socId,refCode,capturedAt:new Date().toISOString(),converted:false};
  localStorage.setItem(REF_COOKIE_KEY,JSON.stringify(ref));
- // Track click
+ // Track click locally
  const clicks=JSON.parse(localStorage.getItem(REF_CLICKS_KEY)||"[]");
  clicks.push({socId,refCode,at:new Date().toISOString(),ua:navigator.userAgent});
  localStorage.setItem(REF_CLICKS_KEY,JSON.stringify(clicks));
+ // Track click server-side in Supabase
+ fetch(`/api/affiliate?action=track-click&society_id=${encodeURIComponent(socId)}`,{
+  method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({ref_code:refCode})
+ }).catch(()=>{});
  return ref;
 }
 
@@ -1305,11 +1310,24 @@ export function convertReferral(socId,clientId){
 }
 
 // Save a referral record (called when a client is attributed to an affiliate)
+// Now also saves to Supabase affiliate_referrals via API
 export async function saveReferralRecord(record){
  const all=await getReferralRecords();
  const idx=all.findIndex(r=>r.id===record.id);
  if(idx>=0)all[idx]=record;else all.push(record);
  await sSet(REF_STORAGE_KEY,all);
+ // Also save to Supabase server-side
+ try{
+  await fetch(`/api/affiliate?action=track-referral&society_id=${encodeURIComponent(record.socId)}`,{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({
+    referrer_client_id:record.referrerId,
+    referred_client_id:record.referredClientId,
+    ref_code:record.refCode,
+    referred_name:record.referredName||''
+   })
+  });
+ }catch{}
  return all;
 }
 
@@ -1319,9 +1337,43 @@ export async function getReferralRecords(){
 }
 
 // Get referrals for a specific affiliate (by clientId of the referrer)
+// Now fetches from Supabase server-side + merges with local records
 export async function getAffiliateReferrals(socId,affiliateClientId){
- const all=await getReferralRecords();
- return all.filter(r=>r.socId===socId&&r.referrerId===affiliateClientId);
+ const local=await getReferralRecords();
+ const localFiltered=local.filter(r=>r.socId===socId&&r.referrerId===affiliateClientId);
+ // Fetch from Supabase server-side
+ try{
+  const r=await fetch(`/api/affiliate?action=get-affiliate-referrals&society_id=${encodeURIComponent(socId)}&affiliate_client_id=${encodeURIComponent(affiliateClientId)}`);
+  if(r.ok){
+   const serverRefs=await r.json();
+   if(Array.isArray(serverRefs)&&serverRefs.length>0){
+    // Merge: server records take priority, add local-only records
+    const serverIds=new Set(serverRefs.map(s=>s.referred_client_id));
+    const merged=serverRefs.map(s=>({
+     id:s.id,socId:s.society_id,referrerId:s.referrer_client_id,
+     referredClientId:s.referred_client_id,refCode:s.ref_code,
+     date:s.converted_at||s.created_at,status:s.status,
+     revenue:s.revenue||0,commission:s.commission||0,
+     referredName:s.referred_name||''
+    }));
+    // Add any local-only records not in server
+    for(const lr of localFiltered){
+     if(!serverIds.has(lr.referredClientId))merged.push(lr);
+    }
+    return merged;
+   }
+  }
+ }catch{}
+ return localFiltered;
+}
+
+// Get click count from server for an affiliate's ref code
+export async function getAffiliateClickCount(socId,refCode){
+ try{
+  const r=await fetch(`/api/affiliate?action=get-clicks&society_id=${encodeURIComponent(socId)}&ref_code=${encodeURIComponent(refCode)}`);
+  if(r.ok){const d=await r.json();return d.count||0;}
+ }catch{}
+ return getReferralClicks(socId).length;
 }
 
 // Get referral clicks for a society
@@ -1362,9 +1414,34 @@ export async function updateReferralCommissions(socId,clients){
    rec.revenue=rev;rec.commission=comm;rec.status=status;
    rec.updatedAt=new Date().toISOString();
    changed=true;
+   // Also update in Supabase
+   fetch(`/api/affiliate?action=update-referral&society_id=${encodeURIComponent(socId)}`,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({referral_id:rec.id,revenue:rev,status})
+   }).catch(()=>{});
   }
  }
  if(changed)await sSet(REF_STORAGE_KEY,all);
+ // Also sync any server-side referrals not in local
+ try{
+  const r=await fetch(`/api/affiliate?action=list-referrals&society_id=${encodeURIComponent(socId)}`);
+  if(r.ok){
+   const serverRefs=await r.json();
+   for(const sr of (serverRefs||[])){
+    const referred=clients.find(c=>c.id===sr.referred_client_id);
+    if(!referred)continue;
+    const rev=clientTotalValue(referred);
+    const comm=Math.round(rev*AFFILIATE_COMMISSION_RATE);
+    const status=referred.status==="churned"?"churned":(rev>0?"active":"pending");
+    if(sr.revenue!==rev||sr.commission!==comm||sr.status!==status){
+     fetch(`/api/affiliate?action=update-referral&society_id=${encodeURIComponent(socId)}`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({referral_id:sr.id,revenue:rev,status})
+     }).catch(()=>{});
+    }
+   }
+  }
+ }catch{}
  return all;
 }
 

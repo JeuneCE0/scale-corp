@@ -157,6 +157,32 @@ create table if not exists public.ad_attribution (
   unique(society_id, month, platform)
 );
 
+-- Affiliate link clicks (server-side tracking)
+create table if not exists public.affiliate_clicks (
+  id uuid primary key default gen_random_uuid(),
+  society_id text references public.societies(id),
+  ref_code text not null,
+  referrer_client_id text default '',
+  ip text default '',
+  user_agent text default '',
+  created_at timestamptz default now()
+);
+
+-- Affiliate pending referrals (leads captured from affiliate links, awaiting client match)
+create table if not exists public.affiliate_pending_referrals (
+  id uuid primary key default gen_random_uuid(),
+  society_id text references public.societies(id),
+  ref_code text not null,
+  referrer_client_id text not null,
+  lead_name text default '',
+  lead_email text default '',
+  lead_phone text default '',
+  status text default 'pending',        -- pending, matched, expired
+  matched_client_id text default '',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 -- Affiliate referrals (tracks each referral: who referred whom)
 create table if not exists public.affiliate_referrals (
   id uuid primary key default gen_random_uuid(),
@@ -171,6 +197,7 @@ create table if not exists public.affiliate_referrals (
   converted_at timestamptz,               -- when the referral converted to active
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
+  referred_name text default '',
   unique(society_id, referred_client_id)
 );
 
@@ -221,6 +248,8 @@ alter table public.tx_categories enable row level security;
 alter table public.user_settings enable row level security;
 alter table public.holding enable row level security;
 
+alter table public.affiliate_clicks enable row level security;
+alter table public.affiliate_pending_referrals enable row level security;
 alter table public.affiliate_referrals enable row level security;
 alter table public.affiliate_commissions enable row level security;
 alter table public.affiliate_payouts enable row level security;
@@ -237,6 +266,8 @@ create policy "Allow all via service key" on public.user_settings for all using 
 create policy "Allow all via service key" on public.holding for all using (true);
 create policy "Allow all via service key" on public.api_tokens for all using (true);
 create policy "Allow all via service key" on public.ad_attribution for all using (true);
+create policy "Allow all via service key" on public.affiliate_clicks for all using (true);
+create policy "Allow all via service key" on public.affiliate_pending_referrals for all using (true);
 create policy "Allow all via service key" on public.affiliate_referrals for all using (true);
 create policy "Allow all via service key" on public.affiliate_commissions for all using (true);
 create policy "Allow all via service key" on public.affiliate_payouts for all using (true);

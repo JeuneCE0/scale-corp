@@ -11,7 +11,7 @@ import {
   ghlCreateInvoice, ghlSendInvoice, ghlUpdateContact, healthScore, matchSubsToRevolut, ml, nextM, normalizeStr, pct,
   pf, prevM, project, revFinancials, runway, sSet, sbUpsert, simH, sinceLbl, sinceMonths, slackSend, subMonthly, teamMonthly,
   uid, autoCategorize, TX_CATEGORIES, TIMING,
-  getActiveReferral, convertReferral, findReferrerByCode, saveReferralRecord, buildRefCode, getAffiliateReferrals, getReferralRecords, getReferralClicks, sGet,
+  getActiveReferral, convertReferral, findReferrerByCode, saveReferralRecord, buildRefCode, getAffiliateReferrals, getReferralRecords, getReferralClicks, getAffiliateClickCount, sGet,
   AFFILIATE_COMMISSION_RATE, updateReferralCommissions, getAffiliateLeaderboard,
 } from "./shared.jsx";
 
@@ -5247,18 +5247,28 @@ export function AffiliatePortal({socId,clientId,socs,clients}){
  const[copied,setCopied]=useState(false);
  const[tab,setTab]=useState("overview");
 
- // Real affiliate data from persisted referral records
+ // Real affiliate data from Supabase + local records
  const[refRecords,setRefRecords]=useState([]);
- const refClicks=useMemo(()=>getReferralClicks(socId),[socId]);
- useEffect(()=>{getAffiliateReferrals(socId,clientId).then(setRefRecords);},[socId,clientId]);
+ const[clickCount,setClickCount]=useState(0);
+ const[loading,setLoading]=useState(true);
+ useEffect(()=>{
+  setLoading(true);
+  Promise.all([
+   getAffiliateReferrals(socId,clientId),
+   getAffiliateClickCount(socId,refCode)
+  ]).then(([refs,clicks])=>{
+   setRefRecords(refs);
+   setClickCount(clicks);
+  }).finally(()=>setLoading(false));
+ },[socId,clientId,refCode]);
  const affiliateData=useMemo(()=>{
   const COMMISSION_RATE=AFFILIATE_COMMISSION_RATE;
   const referrals=refRecords.map(r=>{
    const referred=(clients||[]).find(c=>c.id===r.referredClientId);
-   const rev=referred?clientTotalValue(referred):0;
-   const comm=Math.round(rev*COMMISSION_RATE);
-   const st=referred?(referred.status==="active"?"active":referred.status==="churned"?"inactive":"pending"):"pending";
-   return{id:r.id,name:referred?.name||"Inconnu",date:r.date,status:st,revenue:rev,commission:comm};
+   const rev=referred?clientTotalValue(referred):(r.revenue||0);
+   const comm=referred?Math.round(rev*COMMISSION_RATE):(r.commission||0);
+   const st=referred?(referred.status==="active"?"active":referred.status==="churned"?"inactive":"pending"):(r.status==="active"?"active":"pending");
+   return{id:r.id,name:referred?.name||r.referredName||"Inconnu",date:r.date||r.converted_at||r.created_at,status:st,revenue:rev,commission:comm};
   });
   const totalCommissions=referrals.reduce((a,r)=>a+r.commission,0);
   const pendingPayout=referrals.filter(r=>r.status==="active").reduce((a,r)=>a+r.commission,0);
@@ -5274,10 +5284,9 @@ export function AffiliatePortal({socId,clientId,socs,clients}){
    const mRefs=referrals.filter(r=>r.date&&r.date.startsWith(mKey));
    monthlyData.push({month:mNames[d.getMonth()],referrals:mRefs.length,commissions:mRefs.reduce((a,r)=>a+r.commission,0)});
   }
-  // Payouts are manual — show click stats instead if no records
   const payouts=[];
-  return{referrals,totalCommissions,pendingPayout,totalReferrals,activeReferrals,conversionRate,monthlyData,payouts,clicks:refClicks.length};
- },[refRecords,clients,refClicks]);
+  return{referrals,totalCommissions,pendingPayout,totalReferrals,activeReferrals,conversionRate,monthlyData,payouts,clicks:clickCount};
+ },[refRecords,clients,clickCount]);
 
  const copyLink=()=>{try{navigator.clipboard.writeText(refLink);setCopied(true);setTimeout(()=>setCopied(false),2000);}catch{}};
 
@@ -5447,6 +5456,88 @@ export function AffiliatePortal({socId,clientId,socs,clients}){
 
    {/* Footer */}
    <div style={{textAlign:"center",marginTop:24,fontSize:10,color:C.tm}}>Propulsé par {soc.nom}</div>
+  </div>
+ </div>;
+}
+
+/* ============ REFERRAL LANDING PAGE ============ */
+export function ReferralLanding({socId,refCode,socs,clients,referrer}){
+ const soc=socs.find(s=>s.id===socId);
+ const accent=soc?.brandColor||soc?.color||C.acc;
+ const[name,setName]=useState("");
+ const[email,setEmail]=useState("");
+ const[phone,setPhone]=useState("");
+ const[submitted,setSubmitted]=useState(false);
+ const[submitting,setSubmitting]=useState(false);
+ const[error,setError]=useState("");
+
+ const handleSubmit=async(e)=>{
+  e?.preventDefault();
+  if(!email.trim()&&!phone.trim()){setError("Email ou téléphone requis");return;}
+  setSubmitting(true);setError("");
+  try{
+   const r=await fetch(`/api/affiliate?action=register-lead&society_id=${encodeURIComponent(socId)}`,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+     ref_code:refCode,
+     referrer_client_id:referrer?.id||'',
+     lead_name:name.trim(),
+     lead_email:email.trim().toLowerCase(),
+     lead_phone:phone.trim()
+    })
+   });
+   if(r.ok){setSubmitted(true);}
+   else{const d=await r.json();setError(d.error||"Erreur, réessayez");}
+  }catch{setError("Erreur réseau, réessayez");}
+  finally{setSubmitting(false);}
+ };
+
+ if(!soc)return <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT,color:C.td}}>Lien invalide</div>;
+
+ return <div className="glass-bg" style={{minHeight:"100vh",fontFamily:FONT,padding:"40px 16px",display:"flex",alignItems:"center",justifyContent:"center"}}>
+  <style>{CSS}</style>
+  <div style={{width:"100%",maxWidth:440}}>
+   {/* Header */}
+   <div className="glass-card-static si" style={{padding:28,textAlign:"center",marginBottom:16,position:"relative",overflow:"hidden"}}>
+    <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,${accent},${accent}cc)`}}/>
+    <div style={{width:64,height:64,borderRadius:32,background:accent+"22",border:`2px solid ${accent}44`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:28,fontWeight:900,color:accent,marginBottom:12}}>{(soc.nom||"?")[0]}</div>
+    <h1 style={{margin:0,fontSize:20,fontWeight:900,color:C.t,fontFamily:FONT_TITLE}}>{soc.nom}</h1>
+    {referrer&&<div style={{fontSize:12,color:C.td,marginTop:6}}>Recommandé par <span style={{fontWeight:700,color:accent}}>{referrer.name}</span></div>}
+   </div>
+
+   {submitted?<div className="glass-card-static si" style={{padding:28,textAlign:"center"}}>
+    <div style={{fontSize:48,marginBottom:12}}>🎉</div>
+    <h2 style={{fontSize:18,fontWeight:800,color:C.t,margin:"0 0 8px",fontFamily:FONT_TITLE}}>Inscription enregistrée !</h2>
+    <p style={{fontSize:12,color:C.td,lineHeight:1.6,margin:0}}>Votre demande a été enregistrée avec succès. L'équipe de {soc.nom} vous contactera très bientôt pour finaliser votre inscription.</p>
+    <div style={{marginTop:16,padding:"10px 16px",borderRadius:10,background:C.gD,color:C.g,fontSize:11,fontWeight:600,display:"inline-block"}}>✅ Parrainage activé</div>
+   </div>
+
+   :<div className="glass-card-static si" style={{padding:24}}>
+    <div style={{textAlign:"center",marginBottom:20}}>
+     <div style={{fontSize:24,marginBottom:6}}>🤝</div>
+     <h2 style={{fontSize:16,fontWeight:800,color:C.t,margin:"0 0 4px",fontFamily:FONT_TITLE}}>Inscription via parrainage</h2>
+     <p style={{fontSize:11,color:C.td,margin:0}}>Remplissez vos coordonnées pour bénéficier du parrainage</p>
+    </div>
+    <form onSubmit={handleSubmit}>
+     <div style={{marginBottom:12}}>
+      <label style={{display:"block",fontSize:10,fontWeight:600,color:C.td,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>Nom complet</label>
+      <input value={name} onChange={e=>setName(e.target.value)} placeholder="Votre nom" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:13,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/>
+     </div>
+     <div style={{marginBottom:12}}>
+      <label style={{display:"block",fontSize:10,fontWeight:600,color:C.td,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>Email *</label>
+      <input value={email} onChange={e=>{setEmail(e.target.value);setError("");}} type="email" placeholder="votre@email.com" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:13,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/>
+     </div>
+     <div style={{marginBottom:16}}>
+      <label style={{display:"block",fontSize:10,fontWeight:600,color:C.td,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>Téléphone</label>
+      <input value={phone} onChange={e=>setPhone(e.target.value)} type="tel" placeholder="+33 6 12 34 56 78" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:13,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/>
+     </div>
+     {error&&<div style={{color:C.r,fontSize:11,marginBottom:10,textAlign:"center"}}>⚠ {error}</div>}
+     <button type="submit" disabled={submitting} style={{width:"100%",padding:"12px 0",borderRadius:10,border:"none",background:`linear-gradient(135deg,${accent},${accent}cc)`,color:"#0a0a0f",fontSize:13,fontWeight:700,cursor:submitting?"wait":"pointer",fontFamily:FONT,opacity:submitting?.7:1,transition:"all .2s ease"}}>{submitting?"Envoi...":"S'inscrire via parrainage"}</button>
+    </form>
+    <div style={{textAlign:"center",marginTop:12,fontSize:9,color:C.tm}}>Code affilié : {refCode}</div>
+   </div>}
+
+   <div style={{textAlign:"center",marginTop:20,fontSize:10,color:C.tm}}>Propulsé par {soc.nom}</div>
   </div>
  </div>;
 }
