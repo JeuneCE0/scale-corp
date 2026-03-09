@@ -3457,7 +3457,7 @@ export function CRMPanel({soc,clients,saveClients,ghlData,socBankData}){
  const prospects=myClients.filter(c=>c.status==="prospect").length;
  const churned=myClients.filter(c=>c.status==="churned").length;
  return <Sect title="📇 CRM" sub="Gestion des contacts" right={<Btn small onClick={()=>setShowAdd(true)}>+ Contact</Btn>}>
-  {showAdd&&<Modal title="Nouveau contact" onClose={()=>setShowAdd(false)}>
+  {showAdd&&<Modal open={true} title="Nouveau contact" onClose={()=>setShowAdd(false)}>
    <div style={{display:"flex",flexDirection:"column",gap:10,padding:4}}>
     <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Nom *</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Nom complet" style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/></div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -3531,7 +3531,7 @@ export function FacturationPanel({soc,clients,invoices,saveInvoices,socBankData}
  const filtered=filter==="all"?myInvoices:myInvoices.filter(i=>i.status===filter);
  const statusStyle={draft:{c:C.td,bg:C.card2,l:"Brouillon",icon:"📝"},sent:{c:C.b,bg:C.bD,l:"Envoyée",icon:"📤"},paid:{c:C.g,bg:C.gD,l:"Payée",icon:"✅"},overdue:{c:C.r,bg:C.rD,l:"En retard",icon:"⚠️"},cancelled:{c:C.td,bg:C.card2,l:"Annulée",icon:"🚫"}};
  return <Sect title="🧾 Facturation" sub="Gestion des factures" right={<Btn small onClick={()=>setShowAdd(true)}>+ Facture</Btn>}>
-  {showAdd&&<Modal title="Nouvelle facture" onClose={()=>setShowAdd(false)}>
+  {showAdd&&<Modal open={true} title="Nouvelle facture" onClose={()=>setShowAdd(false)}>
    <div style={{display:"flex",flexDirection:"column",gap:10,padding:4}}>
     <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Client *</label><select value={form.clientId} onChange={e=>setForm({...form,clientId:e.target.value})} style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}><option value="">Sélectionner un client...</option>{myClients.filter(c=>c.status==="active"||c.status==="prospect").map(c=><option key={c.id} value={c.id}>{c.name||c.email||"Sans nom"}</option>)}</select></div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -3618,7 +3618,7 @@ export function TachesPanel({soc,ghlData,socBankData,clients}){
  const todoCount=sorted.filter(t=>!doneIds.includes(t.id)).length;
  const pctDone=sorted.length>0?Math.round(doneCount/sorted.length*100):0;
  return <Sect title="☑️ Tâches" sub="Gestion des tâches" right={<Btn small onClick={()=>setShowAdd(true)}>+ Tâche</Btn>}>
-  {showAdd&&<Modal title="Nouvelle tâche" onClose={()=>setShowAdd(false)}>
+  {showAdd&&<Modal open={true} title="Nouvelle tâche" onClose={()=>setShowAdd(false)}>
    <div style={{display:"flex",flexDirection:"column",gap:10,padding:4}}>
     <div><label style={{fontSize:10,fontWeight:700,color:C.td,display:"block",marginBottom:4}}>Tâche *</label><input value={form.text} onChange={e=>setForm({...form,text:e.target.value})} onKeyDown={e=>{if(e.key==="Enter")addTask();}} placeholder="Décrire la tâche..." style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:C.bg,color:C.t,fontSize:12,fontFamily:FONT,outline:"none"}}/></div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
