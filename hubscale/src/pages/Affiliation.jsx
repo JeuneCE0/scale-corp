@@ -127,7 +127,7 @@ export default function Affiliation() {
     const active = data.referrals.filter(r => r.status === 'active').length;
     const pending = data.referrals.filter(r => r.status === 'pending').length;
     const totalSalesAmount = data.referrals.filter(r => r.status === 'active').reduce((s, r) => s + (r.saleAmount || 0), 0);
-    const totalCommissions = data.referrals.reduce((s, r) => s + (r.commissionEarned || 0), 0);
+    const totalCommissions = data.referrals.filter(r => r.status === 'active' && r.firstChargeConfirmed).reduce((s, r) => s + (r.commissionEarned || 0), 0);
     const pendingPayout = totalCommissions - data.totalPaid;
     const clicks = (data.clicks || []).reduce((s, c) => s + (c.count || 0), 0);
 
@@ -227,6 +227,10 @@ export default function Affiliation() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: T.text }}>
                   <span style={{ fontSize: 14 }}>🎁</span>
                   <span>{t('affiliation.newUserDiscount')}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: T.text }}>
+                  <span style={{ fontSize: 14 }}>⏳</span>
+                  <span style={{ fontSize: 11, color: T.textMuted }}>Commission activée après la fin de l'essai et le 1er paiement confirmé</span>
                 </div>
                 <div style={{ marginTop: 4, fontSize: 11, fontWeight: 600, color: T.textMuted }}>
                   {t('affiliation.holdingPeriod')}
@@ -589,22 +593,69 @@ function EarningsTab({ referrals, payouts, stats, onRequestPayout, page, setPage
           <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 12 }}>
             {t('affiliation.salesHistory')}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {pagedReferrals.map(ref => {
               const st = REFERRAL_STATUSES[ref.status] || REFERRAL_STATUSES.pending;
+              const isActive = ref.status === 'active' && ref.firstChargeConfirmed;
+              const trialEnd = ref.trialEndsAt ? new Date(ref.trialEndsAt) : null;
+              const now = new Date();
+              const trialDaysLeft = trialEnd ? Math.max(0, Math.ceil((trialEnd - now) / 86400000)) : 0;
+              const inTrial = trialEnd && trialDaysLeft > 0;
+              const commissionAmount = isActive ? (ref.commissionEarned || 0) : (ref.potentialCommission || ref.commissionEarned || 0);
+
               return (
-                <div key={ref.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8, background: T.surface2 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 18, background: st.color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: st.color }}>
-                    {ref.name?.[0]?.toUpperCase() || '?'}
+                <div key={ref.id} style={{ padding: '14px 16px', borderRadius: 10, background: T.surface2, border: `1px solid ${T.border}` }}>
+                  {/* Row 1: Avatar, name, status, commission */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 19, background: st.color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: st.color, flexShrink: 0 }}>
+                      {ref.name?.[0]?.toUpperCase() || '?'}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: T.text }}>{ref.name || t('affiliation.noReferrals')}</div>
+                      <div style={{ fontSize: 11, color: T.textMuted }}>{ref.email || '—'}</div>
+                    </div>
+                    <Badge label={st.label()} color={st.color} bg={st.bg} />
+                    <div style={{ textAlign: 'right', minWidth: 90 }}>
+                      {isActive ? (
+                        <>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: T.green }}>+{fmt(commissionAmount)}€</div>
+                          <div style={{ fontSize: 9, color: T.textMuted }}>20% {t('affiliation.commission')}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ fontWeight: 600, fontSize: 12, color: T.textMuted }}>~{fmt(commissionAmount)}€</div>
+                          <div style={{ fontSize: 9, color: T.orange }}>{t('affiliation.potentialCommission')}</div>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: T.text }}>{ref.name || ref.email}</div>
-                    <div style={{ fontSize: 11, color: T.textMuted }}>{formatDateFR(ref.joinedAt)}</div>
-                  </div>
-                  <Badge label={st.label()} color={st.color} bg={st.bg} />
-                  <div style={{ textAlign: 'right', minWidth: 80 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: T.green }}>+{fmt(ref.commissionEarned || 0)}€</div>
-                    <div style={{ fontSize: 9, color: T.textMuted }}>20% {t('affiliation.commission')}</div>
+
+                  {/* Row 2: Details */}
+                  <div style={{ display: 'flex', gap: 16, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.border}`, flexWrap: 'wrap' }}>
+                    <div style={{ minWidth: 80 }}>
+                      <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 2 }}>{t('affiliation.referralJoinDate')}</div>
+                      <div style={{ fontSize: 11, color: T.textSecondary }}>{formatDateFR(ref.joinedAt)}</div>
+                    </div>
+                    <div style={{ minWidth: 80 }}>
+                      <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 2 }}>{t('affiliation.referralPlan')}</div>
+                      <div style={{ fontSize: 11, color: T.textSecondary, textTransform: 'capitalize' }}>{ref.plan || '—'}</div>
+                    </div>
+                    <div style={{ minWidth: 60 }}>
+                      <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 2 }}>{t('affiliation.referralAmount')}</div>
+                      <div style={{ fontSize: 11, color: T.textSecondary }}>{fmt(ref.saleAmount || 0)}€/mois</div>
+                    </div>
+                    <div style={{ minWidth: 100 }}>
+                      <div style={{ fontSize: 9, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', marginBottom: 2 }}>{t('affiliation.referralTrialStatus')}</div>
+                      {isActive ? (
+                        <div style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>✓ {t('affiliation.firstPaymentDone')}</div>
+                      ) : inTrial ? (
+                        <div style={{ fontSize: 11, color: T.orange, fontWeight: 600 }}>⏳ {t('affiliation.trialEndsIn', { days: trialDaysLeft })}</div>
+                      ) : ref.status === 'churned' ? (
+                        <div style={{ fontSize: 11, color: T.red, fontWeight: 600 }}>{st.label()}</div>
+                      ) : (
+                        <div style={{ fontSize: 11, color: T.orange, fontWeight: 600 }}>{t('affiliation.commissionPending')}</div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

@@ -22,7 +22,10 @@ function recordReferral(refSlug, signupName, signupEmail, plan, price) {
     joinedAt: new Date().toISOString(),
     plan,
     saleAmount: price || 0,
-    commissionEarned: Math.round((price || 0) * 0.2),
+    commissionEarned: 0,
+    potentialCommission: Math.round((price || 0) * 0.2),
+    trialEndsAt: new Date(Date.now() + 14 * 86400000).toISOString(),
+    firstChargeConfirmed: false,
   };
 
   affiliation.referrals = [...(affiliation.referrals || []), referral];
