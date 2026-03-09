@@ -73,7 +73,10 @@ export function ClientsPanelInner({soc,clients,saveClients,ghlData,socBankData,i
    }
   }
   const idx=clients.findIndex(x=>x.id===cl.id);
-  if(idx>=0){const nc=[...clients];nc[idx]=cl;saveClients(nc);}else saveClients([...clients,cl]);
+  const updatedClients=idx>=0?(()=>{const nc=[...clients];nc[idx]=cl;return nc;})():[...clients,cl];
+  saveClients(updatedClients);
+  // Update affiliate commissions whenever a client is saved (billing/revenue may have changed)
+  U.updateReferralCommissions(soc.id,updatedClients).catch(()=>{});
   // GHL bidirectional sync
   const loc=soc.ghlLocationId;
   if(loc&&cl.ghlId){

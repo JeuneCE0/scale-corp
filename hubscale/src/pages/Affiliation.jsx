@@ -716,39 +716,55 @@ function LinksTab({ referralLink, slug, onCopy, copied }) {
 // ---------------------------------------------------------------------------
 
 function LeaderboardTab() {
-  const leaderboard = useMemo(() => [
-    { rank: 1, name: 'Marie D.', referrals: 47, earned: 2340, badge: '🏆' },
-    { rank: 2, name: 'Thomas L.', referrals: 38, earned: 1890, badge: '🥈' },
-    { rank: 3, name: 'Sophie M.', referrals: 31, earned: 1540, badge: '🥉' },
-    { rank: 4, name: 'Lucas R.', referrals: 24, earned: 1180, badge: '' },
-    { rank: 5, name: 'Emma B.', referrals: 19, earned: 940, badge: '' },
-    { rank: 6, name: 'Hugo P.', referrals: 15, earned: 720, badge: '' },
-    { rank: 7, name: 'Léa C.', referrals: 12, earned: 580, badge: '' },
-    { rank: 8, name: 'Nathan V.', referrals: 9, earned: 430, badge: '' },
-    { rank: 9, name: 'Chloé F.', referrals: 7, earned: 340, badge: '' },
-    { rank: 10, name: 'Jules G.', referrals: 5, earned: 240, badge: '' },
-  ], []);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchLeaderboard() {
+      try {
+        const company = load('settings_company') || {};
+        const socId = company.societyId || company.id;
+        if (socId) {
+          const r = await fetch(`/api/affiliate?action=leaderboard&society_id=${encodeURIComponent(socId)}`);
+          if (r.ok && !cancelled) {
+            const data = await r.json();
+            if (Array.isArray(data) && data.length > 0) { setLeaderboard(data); }
+          }
+        }
+      } catch { /* silently fallback to empty */ }
+      if (!cancelled) setLoading(false);
+    }
+    fetchLeaderboard();
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <Card>
       <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 14 }}>
         {t('affiliation.leaderboardTitle')}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {leaderboard.map((entry, i) => (
-          <div key={entry.rank} style={{
-            display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8,
-            background: i < 3 ? T.accent + '06' : 'transparent',
-          }}>
-            <div style={{ width: 28, minWidth: 28, textAlign: 'center', fontSize: i < 3 ? 18 : 13, fontWeight: 700, color: i < 3 ? T.accent : T.textMuted }}>
-              {entry.badge || `#${entry.rank}`}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '24px 0', color: T.textMuted, fontSize: 12 }}>Chargement...</div>
+      ) : leaderboard.length === 0 ? (
+        <EmptyState icon="🏆" title={t('affiliation.noReferrals')} sub="Le classement apparaitra quand les premiers affiliés auront parrainé." />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {leaderboard.map((entry, i) => (
+            <div key={entry.rank} style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8,
+              background: i < 3 ? T.accent + '06' : 'transparent',
+            }}>
+              <div style={{ width: 28, minWidth: 28, textAlign: 'center', fontSize: i < 3 ? 18 : 13, fontWeight: 700, color: i < 3 ? T.accent : T.textMuted }}>
+                {entry.badge || `#${entry.rank}`}
+              </div>
+              <div style={{ flex: 1, fontWeight: 600, fontSize: 13, color: T.text }}>{entry.name}</div>
+              <div style={{ fontSize: 12, color: T.textSecondary, minWidth: 90, textAlign: 'right' }}>{entry.referrals} {t('affiliation.referralsLabel')}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.green, minWidth: 80, textAlign: 'right' }}>{fmt(entry.earned)}€</div>
             </div>
-            <div style={{ flex: 1, fontWeight: 600, fontSize: 13, color: T.text }}>{entry.name}</div>
-            <div style={{ fontSize: 12, color: T.textSecondary, minWidth: 90, textAlign: 'right' }}>{entry.referrals} {t('affiliation.referralsLabel')}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: T.green, minWidth: 80, textAlign: 'right' }}>{fmt(entry.earned)}€</div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }

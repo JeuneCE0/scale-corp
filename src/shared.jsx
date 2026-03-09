@@ -1240,7 +1240,11 @@ export function categorizeTransaction(tx){
  return findCat("autres");
 }
 
-/* ═══════════════ REFERRAL TRACKING ═══════════════ */
+/* ═══════════════ REFERRAL / AFFILIATION ═══════════════ */
+export const AFFILIATE_COMMISSION_RATE=0.20; // 20% — single source of truth
+export const AFFILIATE_MIN_PAYOUT=50; // minimum 50€ for payout request
+export const AFFILIATE_HOLDING_DAYS=30; // 30 days holding period before payout
+
 const REF_STORAGE_KEY="scReferrals";
 const REF_CLICKS_KEY="scRefClicks";
 const REF_COOKIE_KEY="sc_ref";
@@ -1340,5 +1344,49 @@ export function findReferrerByCode(clients,socId,refCode){
 // Build referral code for a client (same algo as AffiliatePortal)
 export function buildRefCode(client){
  return(client.name||"").replace(/[^a-zA-Z0-9]/g,"").slice(0,8).toUpperCase()+"-"+(client.id||"").slice(-4).toUpperCase();
+}
+
+// Recalculate commissions for all referrals in a society based on current client values
+// Should be called whenever clients are saved (billing changes, payments, etc.)
+export async function updateReferralCommissions(socId,clients){
+ const all=await getReferralRecords();
+ let changed=false;
+ for(const rec of all){
+  if(rec.socId!==socId)continue;
+  const referred=clients.find(c=>c.id===rec.referredClientId);
+  if(!referred)continue;
+  const rev=clientTotalValue(referred);
+  const comm=Math.round(rev*AFFILIATE_COMMISSION_RATE);
+  const status=referred.status==="churned"?"churned":(rev>0?"active":"pending");
+  if(rec.revenue!==rev||rec.commission!==comm||rec.status!==status){
+   rec.revenue=rev;rec.commission=comm;rec.status=status;
+   rec.updatedAt=new Date().toISOString();
+   changed=true;
+  }
+ }
+ if(changed)await sSet(REF_STORAGE_KEY,all);
+ return all;
+}
+
+// Get leaderboard data for a society: aggregates all affiliates' referral counts and earnings
+export async function getAffiliateLeaderboard(socId,clients){
+ const all=await getReferralRecords();
+ const socRefs=all.filter(r=>r.socId===socId);
+ const byReferrer={};
+ for(const r of socRefs){
+  if(!byReferrer[r.referrerId])byReferrer[r.referrerId]={referrerId:r.referrerId,referrals:0,earned:0};
+  byReferrer[r.referrerId].referrals++;
+  byReferrer[r.referrerId].earned+=(r.commission||0);
+ }
+ const board=Object.values(byReferrer).map(e=>{
+  const cl=clients.find(c=>c.id===e.referrerId);
+  const name=cl?cl.name:"Inconnu";
+  // Anonymize: first name + last initial
+  const parts=name.split(" ");
+  const display=parts[0]+(parts[1]?" "+parts[1][0]+".":"");
+  return{...e,name:display};
+ });
+ board.sort((a,b)=>b.earned-a.earned);
+ return board.map((e,i)=>({rank:i+1,name:e.name,referrals:e.referrals,earned:e.earned,badge:i===0?"🏆":i===1?"🥈":i===2?"🥉":""}));
 }
 

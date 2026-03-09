@@ -4,7 +4,7 @@ import { applyHeaders, rateLimit, getClientIP, apiLog, sanitizeParam, tooManyReq
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
-const TABLES = ['users', 'societies', 'client_data', 'meta_ads', 'sales_data', 'reports', 'tx_categories', 'user_settings', 'holding', 'api_tokens', 'ad_attribution'];
+const TABLES = ['users', 'societies', 'client_data', 'meta_ads', 'sales_data', 'reports', 'tx_categories', 'user_settings', 'holding', 'api_tokens', 'ad_attribution', 'affiliate_referrals', 'affiliate_commissions', 'affiliate_payouts'];
 const ACTIONS = ['get', 'list', 'upsert', 'delete'];
 
 function sbHeaders(extra = {}) {

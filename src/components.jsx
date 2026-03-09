@@ -12,6 +12,7 @@ import {
   pf, prevM, project, revFinancials, runway, sSet, sbUpsert, simH, sinceLbl, sinceMonths, slackSend, subMonthly, teamMonthly,
   uid, autoCategorize, TX_CATEGORIES, TIMING,
   getActiveReferral, convertReferral, findReferrerByCode, saveReferralRecord, buildRefCode, getAffiliateReferrals, getReferralRecords, getReferralClicks, sGet,
+  AFFILIATE_COMMISSION_RATE, updateReferralCommissions, getAffiliateLeaderboard,
 } from "./shared.jsx";
 
 
@@ -5251,7 +5252,7 @@ export function AffiliatePortal({socId,clientId,socs,clients}){
  const refClicks=useMemo(()=>getReferralClicks(socId),[socId]);
  useEffect(()=>{getAffiliateReferrals(socId,clientId).then(setRefRecords);},[socId,clientId]);
  const affiliateData=useMemo(()=>{
-  const COMMISSION_RATE=0.10;
+  const COMMISSION_RATE=AFFILIATE_COMMISSION_RATE;
   const referrals=refRecords.map(r=>{
    const referred=(clients||[]).find(c=>c.id===r.referredClientId);
    const rev=referred?clientTotalValue(referred):0;
@@ -5394,7 +5395,7 @@ export function AffiliatePortal({socId,clientId,socs,clients}){
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:16}}>
      <div className="glass-card-static" style={{padding:14,textAlign:"center"}}>
       <div style={{fontSize:9,color:C.td,fontWeight:600,textTransform:"uppercase",marginBottom:4}}>Taux de commission</div>
-      <div style={{fontSize:20,fontWeight:900,color:accent}}>10%</div>
+      <div style={{fontSize:20,fontWeight:900,color:accent}}>20%</div>
       <div style={{fontSize:9,color:C.tm}}>sur le CA généré</div>
      </div>
      <div className="glass-card-static" style={{padding:14,textAlign:"center"}}>
