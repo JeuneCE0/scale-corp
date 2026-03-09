@@ -13,6 +13,10 @@ import {
   uid, autoCategorize, TX_CATEGORIES, TIMING,
   getActiveReferral, convertReferral, findReferrerByCode, saveReferralRecord, buildRefCode, getAffiliateReferrals, getReferralRecords, getReferralClicks, getAffiliateClickCount, sGet,
   AFFILIATE_COMMISSION_RATE, updateReferralCommissions, getAffiliateLeaderboard,
+  fetchOAuthStatus, oauthConnect, oauthDisconnect, OAUTH_PROVIDERS,
+  fetchMetaAds, fetchGoogleAds, fetchTikTokAds, syncAdData, roasColor, roasLabel,
+  syncGHLForSoc, syncSocRevolut, syncStripeData, syncRevolut, sbAuthHeaders,
+  cacheGet, cacheSet,
 } from "./shared.jsx";
 
 
@@ -4202,22 +4206,33 @@ export function SalesPanel({soc,ghlData,socBankData,clients,reps,setPTab}){
 
 /* ===== PUBLICITE PANEL ===== */
 /* ===== PUBLICITE PANEL ===== */
-export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
+export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab,oauthTokens,adApiData}){
  const cm=curM();
  const gd=ghlData?.[soc.id];const opps=gd?.opportunities||[];const calEvts=gd?.calendarEvents||[];const ghlCl=gd?.ghlClients||[];
  const myClients=(clients||[]).filter(c=>c.socId===soc.id&&c.status==="active");
  const wonAll=opps.filter(o=>o.status==="won");
+ // Check if we have API ad data (from syncAdData)
+ const apiUnified=adApiData?.unified||[];
+ const apiByMonth=useMemo(()=>{const m={};apiUnified.forEach(u=>{m[u.month]=u;});return m;},[apiUnified]);
+ const hasApiData=apiUnified.length>0;
  // 12 months of meta ads data
  const now12=new Date();const months12=[];for(let i=11;i>=0;i--){const d=new Date(now12.getFullYear(),now12.getMonth()-i,1);months12.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);}
  const getMetaMonth=(mo)=>{
+  // Priority 1: API data from connected ad platforms
+  const apiMo=apiByMonth[mo];
+  // Priority 2: localStorage manual data
   let raw=null;try{raw=JSON.parse(localStorage.getItem(`metaAds_${soc.id}_${mo}`));}catch{}
-  const spend=raw?.spend||0,imp=raw?.impressions||0,clk=raw?.clicks||0,lds=raw?.leads||0,rev=raw?.revenue||0;
+  const spend=apiMo?.totals?.spend||raw?.spend||0;
+  const imp=apiMo?.totals?.impressions||raw?.impressions||0;
+  const clk=apiMo?.totals?.clicks||raw?.clicks||0;
+  const lds=apiMo?.totals?.leads||raw?.leads||0;
+  const rev=apiMo?.totals?.revenue||raw?.revenue||0;
   const moWon=opps.filter(o=>o.status==="won"&&(o.updatedAt||o.createdAt||"").startsWith(mo));
   const wonVal=moWon.reduce((a,o)=>a+(o.value||0),0);const wonCount=moWon.length;
   return{mo,spend,impressions:imp,clicks:clk,leads:lds,revenue:rev||wonVal,
    cpl:lds>0?spend/lds:0,cpc:clk>0?spend/clk:0,cpm:imp>0?(spend/imp)*1000:0,
    ctr:imp>0?(clk/imp)*100:0,roas:spend>0?(rev||wonVal)/spend:0,
-   cpa:wonCount>0?spend/wonCount:0,wonCount,wonVal};
+   cpa:wonCount>0?spend/wonCount:0,wonCount,wonVal,fromApi:!!apiMo};
  };
  const metaData=months12.map(getMetaMonth);const last6=metaData.slice(-6);
  // Totals
@@ -4271,14 +4286,21 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
  const breakEvenLeads=totCpl>0&&avgClientsPerMonth>0&&panierMoyenPub2>0?Math.ceil(totSpend/(panierMoyenPub2*avgClientsPerMonth/avgLeadsPerMonth)):0;
  if(!hasData)return <div className="fu" style={{padding:"40px 0",textAlign:"center"}}>
   <div style={{fontSize:48,marginBottom:12}}>📣</div>
-  <div style={{fontWeight:800,fontSize:16,color:C.t,marginBottom:4}}>Publicité Meta</div>
-  <div style={{fontSize:12,color:C.td,marginBottom:16}}>Aucune donnée publicitaire — Renseignez vos données Meta Ads dans les Paramètres</div>
-  <button onClick={()=>setPTab(12)} style={{padding:"8px 20px",borderRadius:10,border:`1px solid ${C.acc}44`,background:C.accD,color:C.acc,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>⚙️ Aller aux Paramètres</button>
+  <div style={{fontWeight:800,fontSize:16,color:C.t,marginBottom:4}}>Publicité</div>
+  <div style={{fontSize:12,color:C.td,marginBottom:16}}>Aucune donnée publicitaire — Connectez vos comptes pub via les Intégrations ou renseignez manuellement dans les Paramètres</div>
+  <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+   <button onClick={()=>setPTab(15)} style={{padding:"8px 20px",borderRadius:10,border:`1px solid #14b8a644`,background:"rgba(20,184,166,.1)",color:"#14b8a6",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>🔌 Intégrations</button>
+   <button onClick={()=>setPTab(12)} style={{padding:"8px 20px",borderRadius:10,border:`1px solid ${C.acc}44`,background:C.accD,color:C.acc,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>⚙️ Paramètres</button>
+  </div>
  </div>;
  return <div className="fu">
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-   <div><div style={{fontSize:9,fontWeight:700,color:C.acc,letterSpacing:1.5,fontFamily:FONT_TITLE}}>📣 PUBLICITÉ — {soc.nom}</div><div style={{fontSize:11,color:C.td,marginTop:2}}>Données Meta Ads × GHL</div></div>
-   <button onClick={()=>setPTab(12)} style={{padding:"5px 12px",borderRadius:8,border:`1px solid ${C.acc}44`,background:C.accD,color:C.acc,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>✏️ Modifier les données</button>
+   <div><div style={{fontSize:9,fontWeight:700,color:C.acc,letterSpacing:1.5,fontFamily:FONT_TITLE}}>📣 PUBLICITÉ — {soc.nom}</div><div style={{fontSize:11,color:C.td,marginTop:2}}>{hasApiData?"Données API (Meta/Google/TikTok) × GHL":"Données manuelles × GHL"}</div></div>
+   <div style={{display:"flex",gap:6}}>
+    {hasApiData&&<span style={{fontSize:8,padding:"3px 8px",borderRadius:6,background:C.gD,color:C.g,fontWeight:700,display:"flex",alignItems:"center",gap:3}}>⚡ API</span>}
+    <button onClick={()=>setPTab(15)} style={{padding:"5px 12px",borderRadius:8,border:`1px solid #14b8a644`,background:"rgba(20,184,166,.08)",color:"#14b8a6",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>🔌 Intégrations</button>
+    <button onClick={()=>setPTab(12)} style={{padding:"5px 12px",borderRadius:8,border:`1px solid ${C.acc}44`,background:C.accD,color:C.acc,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>✏️ Modifier</button>
+   </div>
   </div>
   {/* KPIs */}
   <div className="kpi-grid-responsive" style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20}}>
@@ -4462,7 +4484,7 @@ export function PublicitePanel({soc,ghlData,socBankData,clients,reps,setPTab}){
  </div>;
 }
 
-export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,savePulse,socBankData,syncSocBank,okrs,saveOkrs,kb,saveKb,socs,subs,saveSubs,team,saveTeam,clients,saveClients,ghlData,invoices,saveInvoices,hold,onTour,onThemeToggle,stripeData,adminBack}){
+export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,saveAJ,savePulse,socBankData,syncSocBank,okrs,saveOkrs,kb,saveKb,socs,subs,saveSubs,team,saveTeam,clients,saveClients,ghlData,invoices,saveInvoices,hold,onTour,onThemeToggle,stripeData,adminBack,oauthTokens,onSyncGHL,onSyncRevolut,onSyncStripe,onSyncAds}){
  const cM2=curM();const[pTab,setPTab]=useState(0);const[mo,setMo]=useState(cM2);
  const[f,setF]=useState(()=>gr(reps,soc.id,cM2)||{...BF});const[done,setDone]=useState(false);const[showPub,setShowPub]=useState(false);const[jText,setJText]=useState("");
 
@@ -4536,9 +4558,10 @@ export function SocieteView({soc,reps,allM,save,onLogout,actions,journal,pulses,
   {pTab===13&&<ErrorBoundary label="Rapports"><RapportsPanel soc={soc} socBankData={socBankData} ghlData={ghlData} clients={clients} reps={reps} allM={allM} hold={hold}/></ErrorBoundary>}
   {pTab===11&&<ErrorBoundary label="Agenda"><AgendaPanel soc={soc} ghlData={ghlData}/></ErrorBoundary>}
   {pTab===12&&<SocSettingsPanel soc={soc} save={save} socs={socs} clients={clients}/>}
+  {pTab===15&&<IntegrationsPanel soc={soc} socs={socs} oauthTokens={oauthTokens} onSyncGHL={onSyncGHL} onSyncRevolut={onSyncRevolut} onSyncStripe={onSyncStripe} onSyncAds={onSyncAds}/>}
   {pTab===1&&<ErrorBoundary label="Activité"><ActivitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
   {pTab===2&&<ErrorBoundary label="Sales"><SalesPanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
-  {pTab===3&&<ErrorBoundary label="Publicité"><PublicitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab}/></ErrorBoundary>}
+  {pTab===3&&<ErrorBoundary label="Publicité"><PublicitePanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients} reps={reps} setPTab={setPTab} oauthTokens={oauthTokens} adApiData={cacheGet("adData_"+soc.id)}/></ErrorBoundary>}
   {pTab===4&&<ErrorBoundary label="CRM"><CRMPanel soc={soc} clients={clients} saveClients={saveClients} ghlData={ghlData} socBankData={socBankData}/></ErrorBoundary>}
   {pTab===6&&<ErrorBoundary label="Facturation"><FacturationPanel soc={soc} clients={clients} invoices={invoices} saveInvoices={saveInvoices} socBankData={socBankData}/></ErrorBoundary>}
   {pTab===7&&<ErrorBoundary label="Tâches"><TachesPanel soc={soc} ghlData={ghlData} socBankData={socBankData} clients={clients}/></ErrorBoundary>}
@@ -4997,6 +5020,183 @@ export function TutorialOverlay({steps,onFinish,onSkip,setActiveTab}){
  </div>;
 }
 
+/* ====== INTEGRATIONS PANEL ====== */
+export function IntegrationsPanel({soc,socs,oauthTokens,onSyncGHL,onSyncRevolut,onSyncStripe,onSyncAds,isAdmin}){
+ const[oauthData,setOauthData]=useState(null);const[loading,setLoading]=useState(true);
+ const[syncing,setSyncing]=useState({});const[syncResults,setSyncResults]=useState({});
+ const[connectSoc,setConnectSoc]=useState(null);
+ const[adData,setAdData]=useState(null);const[adLoading,setAdLoading]=useState(false);
+
+ useEffect(()=>{fetchOAuthStatus().then(d=>{setOauthData(d);setLoading(false);}).catch(()=>setLoading(false));},[]);
+
+ const tokens=oauthData?.tokens||oauthTokens||[];
+ const tokenMap=useMemo(()=>{const m={};tokens.forEach(t=>{m[`${t.provider}_${t.society_id}`]=t;});return m;},[tokens]);
+ const targetSocs=isAdmin?(socs||[]).filter(s=>["active","lancement"].includes(s.stat)):soc?[soc]:[];
+
+ const getConnected=(providerId)=>tokens.filter(t=>t.provider===providerId);
+ const isConnected=(providerId,socId)=>!!tokenMap[`${providerId}_${socId||soc?.id}`];
+
+ const doSync=async(type,label)=>{
+  setSyncing(p=>({...p,[type]:true}));setSyncResults(p=>({...p,[type]:null}));
+  try{
+   const start=Date.now();
+   if(type==="ghl"&&onSyncGHL)await onSyncGHL();
+   else if(type==="revolut"&&onSyncRevolut)await onSyncRevolut();
+   else if(type==="stripe"&&onSyncStripe)await onSyncStripe();
+   else if(type==="ads"&&onSyncAds){
+    const socId=soc?.id||targetSocs[0]?.id;
+    if(socId)await onSyncAds(socId);
+   }
+   else if(type==="meta"){
+    const socId=soc?.id||targetSocs[0]?.id;
+    if(socId){const r=await fetchMetaAds("account_insights",socId,{dateRange:{since:new Date(Date.now()-90*864e5).toISOString().split("T")[0],until:new Date().toISOString().split("T")[0],increment:"monthly"}});setAdData(p=>({...p,meta:r}));}
+   }else if(type==="google_ads"){
+    const socId=soc?.id||targetSocs[0]?.id;
+    if(socId){const r=await fetchGoogleAds("campaign_insights",socId,{dateRange:{since:new Date(Date.now()-90*864e5).toISOString().split("T")[0],until:new Date().toISOString().split("T")[0]}});setAdData(p=>({...p,google:r}));}
+   }else if(type==="tiktok"){
+    const socId=soc?.id||targetSocs[0]?.id;
+    if(socId){const r=await fetchTikTokAds("insights",socId,{dateRange:{since:new Date(Date.now()-90*864e5).toISOString().split("T")[0],until:new Date().toISOString().split("T")[0]}});setAdData(p=>({...p,tiktok:r}));}
+   }
+   const ms=Date.now()-start;
+   setSyncResults(p=>({...p,[type]:{ok:true,ms,at:new Date().toISOString()}}));
+  }catch(e){setSyncResults(p=>({...p,[type]:{ok:false,error:e.message}}));}
+  setSyncing(p=>({...p,[type]:false}));
+ };
+
+ const handleDisconnect=async(provider,socId)=>{
+  const ok=await oauthDisconnect(provider,socId);
+  if(ok){setOauthData(prev=>({...prev,tokens:(prev?.tokens||[]).filter(t=>t.id!==`${provider}_${socId}`)}));showToast(`${provider} déconnecté`,"info");}
+ };
+
+ const INTEGRATIONS=[
+  {id:"ghl",name:"GoHighLevel",icon:"📡",color:"#4CAF50",desc:"CRM, contacts, pipeline, calendrier, conversations",syncType:"ghl",features:["Contacts","Opportunités","Pipeline","Calendrier","Conversations","Factures"],dataSource:"API REST v2"},
+  {id:"revolut",name:"Revolut Business",icon:"🏦",color:"#0075EB",desc:"Comptes, transactions, trésorerie en temps réel",syncType:"revolut",features:["Comptes bancaires","Transactions","Soldes","Virements"],dataSource:"API REST v1"},
+  {id:"stripe",name:"Stripe",icon:"💳",color:"#635BFF",desc:"Paiements, abonnements, clients, factures",syncType:"stripe",features:["Clients","Charges","Abonnements","Factures","Balance"],dataSource:"API REST"},
+  {id:"meta",name:"Meta Ads",icon:"📘",color:"#1877F2",desc:"Campagnes Facebook & Instagram, ROAS, leads",syncType:"meta",features:["Comptes pub","Campagnes","Ad Sets","Insights","ROAS"],dataSource:"Marketing API v21"},
+  {id:"google_ads",name:"Google Ads",icon:"🔍",color:"#4285F4",desc:"Campagnes Search & Display, conversions",syncType:"google_ads",features:["Comptes","Campagnes","Insights","Conversions"],dataSource:"Google Ads API v17"},
+  {id:"tiktok",name:"TikTok Ads",icon:"🎵",color:"#010101",desc:"Campagnes TikTok, reach, CPM, conversions",syncType:"tiktok",features:["Annonceurs","Campagnes","Insights"],dataSource:"Business API v1.3"},
+  {id:"qonto",name:"Qonto",icon:"🏛️",color:"#482DDD",desc:"Comptes Qonto, transactions, catégorisation",syncType:"qonto",features:["Comptes","Transactions"],dataSource:"API REST v2"},
+  {id:"slack",name:"Slack",icon:"💬",color:"#4A154B",desc:"Notifications, alertes automatiques, rapports",syncType:"slack",features:["Notifications","Rapports auto","Alertes"],dataSource:"Web API"},
+ ];
+
+ if(loading)return <div style={{textAlign:"center",padding:40,color:C.td}}><div style={{animation:"sp 1s linear infinite",display:"inline-block",fontSize:24}}>⟳</div><div style={{marginTop:8,fontSize:11}}>Chargement des intégrations...</div></div>;
+
+ return <div className="fu">
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+   <div>
+    <div style={{fontSize:9,fontWeight:700,color:C.acc,letterSpacing:1.5,fontFamily:FONT_TITLE}}>🔌 INTÉGRATIONS{soc?` — ${soc.nom}`:""}</div>
+    <div style={{fontSize:11,color:C.td,marginTop:2}}>Connectez vos outils et importez vos données</div>
+   </div>
+   <div style={{display:"flex",gap:6,alignItems:"center"}}>
+    <span style={{fontSize:9,color:C.g,fontWeight:700}}>✅ {tokens.length} connexion{tokens.length>1?"s":""}</span>
+   </div>
+  </div>
+
+  {/* Quick sync all */}
+  <Card style={{padding:14,marginBottom:16,background:`linear-gradient(135deg,${C.accD},${C.card})`}}>
+   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+     <span style={{fontSize:18}}>⚡</span>
+     <div><div style={{fontWeight:800,fontSize:12,color:C.t}}>Import rapide — Toutes les données</div><div style={{fontSize:9,color:C.td}}>Synchronise GHL, Revolut, Stripe et les plateformes pub en une fois</div></div>
+    </div>
+    <div style={{display:"flex",gap:6}}>
+     <Btn small onClick={async()=>{
+      setSyncing({all:true});
+      try{
+       await Promise.allSettled([
+        onSyncGHL?.(),onSyncRevolut?.(),onSyncStripe?.(),
+        ...(soc?[syncAdData(soc.id,tokens)]:[]),
+       ]);
+       setSyncResults(p=>({...p,all:{ok:true,at:new Date().toISOString()}}));
+       showToast("✅ Toutes les données importées","success");
+      }catch{showToast("⚠️ Import partiel — vérifiez les erreurs","warning");}
+      setSyncing({});
+     }} disabled={syncing.all}>{syncing.all?"⟳ Import en cours...":"🔄 Tout synchroniser"}</Btn>
+    </div>
+   </div>
+   {syncResults.all?.ok&&<div style={{marginTop:8,fontSize:9,color:C.g,fontWeight:600}}>✅ Dernier sync complet: {new Date(syncResults.all.at).toLocaleTimeString("fr-FR")}</div>}
+  </Card>
+
+  {/* Integration cards */}
+  <div style={{display:"grid",gridTemplateColumns:"1fr",gap:10}}>
+   {INTEGRATIONS.map(integ=>{
+    const connected=getConnected(integ.id);
+    const configured=oauthData?.configured?.[integ.id];
+    const result=syncResults[integ.syncType];
+    const isSyncing=syncing[integ.syncType];
+    const lastCacheKey=integ.id==="ghl"?"ghl_"+(soc?.id||""):integ.id==="revolut"?"rev_"+(soc?.revolutCompany||"eco"):integ.id==="stripe"?"stripe":null;
+    const cached=lastCacheKey?cacheGet(lastCacheKey):null;
+
+    return <Card key={integ.id} style={{padding:14,borderLeft:`3px solid ${connected.length>0?integ.color:C.brd}`}}>
+     <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
+      <div style={{width:40,height:40,borderRadius:10,background:integ.color+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{integ.icon}</div>
+      <div style={{flex:1,minWidth:0}}>
+       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+        <span style={{fontWeight:800,fontSize:13,color:C.t}}>{integ.name}</span>
+        {connected.length>0&&<span style={{fontSize:8,padding:"2px 6px",borderRadius:4,background:C.gD,color:C.g,fontWeight:700}}>Connecté</span>}
+        {!connected.length&&configured&&<span style={{fontSize:8,padding:"2px 6px",borderRadius:4,background:C.oD,color:C.o,fontWeight:700}}>Prêt</span>}
+        {!connected.length&&!configured&&<span style={{fontSize:8,padding:"2px 6px",borderRadius:4,background:C.card2,color:C.td,fontWeight:700}}>Non configuré</span>}
+       </div>
+       <div style={{fontSize:10,color:C.td,marginBottom:6}}>{integ.desc}</div>
+
+       {/* Features tags */}
+       <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:8}}>
+        {integ.features.map(f=><span key={f} style={{fontSize:8,padding:"2px 6px",borderRadius:4,background:C.card2,color:C.td,border:`1px solid ${C.brd}`}}>{f}</span>)}
+       </div>
+
+       {/* Connected accounts */}
+       {connected.length>0&&<div style={{marginBottom:8}}>
+        {connected.map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 8px",background:C.bg,borderRadius:6,border:`1px solid ${C.brd}`,marginBottom:4,fontSize:10}}>
+         <span style={{width:6,height:6,borderRadius:3,background:C.g}}/>
+         <span style={{fontWeight:600,color:C.t}}>{t.society_id}</span>
+         <span style={{color:C.td,fontSize:9}}>{t.connected_at?`Connecté ${ago(t.connected_at)}`:""}</span>
+         {t.expires_at&&new Date(t.expires_at)<new Date(Date.now()+7*864e5)&&<span style={{fontSize:8,color:C.o,fontWeight:700}}>⚠️ Expire bientôt</span>}
+         <div style={{flex:1}}/>
+         <button onClick={()=>handleDisconnect(t.provider,t.society_id)} style={{background:"none",border:"none",color:C.r,fontSize:9,cursor:"pointer",fontFamily:FONT,fontWeight:600}}>Déconnecter</button>
+        </div>)}
+       </div>}
+
+       {/* Sync results */}
+       {result&&<div style={{fontSize:9,padding:"4px 8px",borderRadius:6,marginBottom:6,background:result.ok?C.gD:C.rD,color:result.ok?C.g:C.r,fontWeight:600}}>
+        {result.ok?`✅ Import réussi en ${result.ms}ms — ${new Date(result.at).toLocaleTimeString("fr-FR")}`:`❌ Erreur: ${result.error}`}
+       </div>}
+       {cached&&!result&&<div style={{fontSize:9,color:C.td,marginBottom:6}}>📦 Dernières données en cache disponibles</div>}
+
+       {/* Actions */}
+       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+        {connected.length>0&&<Btn small onClick={()=>doSync(integ.syncType,integ.name)} disabled={isSyncing} style={{fontSize:10}}>
+         {isSyncing?"⟳ Sync...":"🔄 Importer les données"}
+        </Btn>}
+        {!connected.length&&configured&&<Btn small v="secondary" onClick={()=>setConnectSoc({provider:integ.id,name:integ.name})} style={{fontSize:10}}>🔗 Connecter</Btn>}
+        {!connected.length&&!configured&&<span style={{fontSize:9,color:C.td,fontStyle:"italic"}}>Configurez les clés API dans .env pour activer</span>}
+       </div>
+      </div>
+     </div>
+    </Card>;
+   })}
+  </div>
+
+  {/* Import history / data preview */}
+  {adData&&(adData.meta||adData.google||adData.tiktok)&&<Card style={{padding:14,marginTop:12}}>
+   <div style={{fontWeight:800,fontSize:12,marginBottom:8,color:C.t}}>📊 Aperçu données importées</div>
+   {adData.meta?.data&&<div style={{fontSize:10,color:C.td,marginBottom:4}}>Meta Ads: {adData.meta.data.length} période{adData.meta.data.length>1?"s":""} importée{adData.meta.data.length>1?"s":""}</div>}
+   {adData.google?.data&&<div style={{fontSize:10,color:C.td,marginBottom:4}}>Google Ads: {adData.google.data.length} entrée{adData.google.data.length>1?"s":""} importée{adData.google.data.length>1?"s":""}</div>}
+   {adData.tiktok?.data&&<div style={{fontSize:10,color:C.td,marginBottom:4}}>TikTok Ads: {(adData.tiktok.data||[]).length} entrée{(adData.tiktok.data||[]).length>1?"s":""} importée{(adData.tiktok.data||[]).length>1?"s":""}</div>}
+  </Card>}
+
+  {/* Society selector modal for OAuth connect */}
+  {connectSoc&&<Modal open={!!connectSoc} onClose={()=>setConnectSoc(null)} title={`Connecter ${connectSoc.name}`}>
+   <div style={{color:C.td,fontSize:12,marginBottom:12}}>Sélectionnez la société à connecter :</div>
+   <div style={{display:"flex",flexDirection:"column",gap:6}}>
+    {targetSocs.map(s=><div key={s.id} onClick={()=>{oauthConnect(connectSoc.provider,s.id);}} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",background:C.bg,borderRadius:8,border:`1px solid ${C.brd}`,cursor:"pointer",transition:"border-color .2s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.acc+"66";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.brd;}}>
+     <span style={{width:8,height:8,borderRadius:4,background:s.color}}/><span style={{fontWeight:700,fontSize:12}}>{s.nom}</span><span style={{flex:1,fontSize:10,color:C.td}}>{s.porteur}</span>
+     <span style={{fontSize:10,color:C.acc,fontWeight:600}}>Connecter →</span>
+    </div>)}
+   </div>
+  </Modal>}
+ </div>;
+}
+
 /* SIDEBAR NAVIGATION */
 /* SIDEBAR NAVIGATION */
 export const SB_ADMIN=[
@@ -5009,6 +5209,7 @@ export const SB_ADMIN=[
  {id:"pub",icon:"📣",label:"Publicité",tab:16,accent:"#f472b6"},
  {id:"rapports",icon:"📋",label:"Rapports",tab:17,accent:C.v},
  {id:"access",icon:"🔐",label:"Accès",tab:14,accent:"#f59e0b"},
+ {id:"integrations",icon:"🔌",label:"Intégrations",tab:19,accent:"#14b8a6"},
  {id:"params",icon:"⚙️",label:"Paramètres",tab:18,accent:C.td},
  {id:"pulse",icon:"⚡",label:"PULSE",tab:99,accent:"#FFAA00"},
 ];
@@ -5025,6 +5226,7 @@ export const SB_PORTEUR=[
  {id:"bank",icon:"🏦",label:"Banque",tab:5,accent:C.g},
  {id:"rapports",icon:"📋",label:"Rapports",tab:13,accent:C.v},
  {id:"agenda",icon:"📅",label:"Agenda",tab:11,accent:"#14b8a6"},
+ {id:"integrations",icon:"🔌",label:"Intégrations",tab:15,accent:"#14b8a6"},
  {id:"settings",icon:"⚙️",label:"Paramètres",tab:12,accent:C.td},
 ];
 
