@@ -1245,13 +1245,32 @@ const REF_STORAGE_KEY="scReferrals";
 const REF_CLICKS_KEY="scRefClicks";
 const REF_COOKIE_KEY="sc_ref";
 
-// Capture referral code from URL hash and persist it
+// Capture referral code from URL hash (#ref/socId/refCode) and persist it
 export function captureReferral(){
  const hash=window.location.hash;
  if(!hash.startsWith("#ref/"))return null;
  const parts=hash.replace("#ref/","").split("/");
  if(parts.length<2)return null;
  const socId=parts[0];const refCode=parts[1];
+ return _persistReferral(socId,refCode);
+}
+
+// Capture referral from path-based URL (/r/refCode) — searches all clients to find socId
+export function captureReferralFromPath(clients){
+ const path=window.location.pathname;
+ const m=path.match(/^\/r\/([^/]+)$/);
+ if(!m)return null;
+ const code=m[1];
+ // Search all clients for a matching refCode (case-insensitive)
+ const match=clients.find(c=>{
+  const expected=buildRefCode(c);
+  return expected.toLowerCase()===code.toLowerCase();
+ });
+ if(!match)return null;
+ return _persistReferral(match.socId,buildRefCode(match));
+}
+
+function _persistReferral(socId,refCode){
  const ref={socId,refCode,capturedAt:new Date().toISOString(),converted:false};
  localStorage.setItem(REF_COOKIE_KEY,JSON.stringify(ref));
  // Track click

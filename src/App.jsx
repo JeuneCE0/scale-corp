@@ -20,7 +20,7 @@ import {
   syncGHLForSoc, syncRevolut, syncSocRevolut, syncStripeData, teamMonthly, uid, gr, TIMING,
   fetchOAuthStatus, oauthConnect, oauthDisconnect, OAUTH_PROVIDERS,
   fetchMetaAds, fetchGoogleAds, fetchTikTokAds, syncAdData, roasColor, roasLabel, calcAttribution,
-  captureReferral, findReferrerByCode, saveReferralRecord, convertReferral, buildRefCode, getReferralRecords,
+  captureReferral, captureReferralFromPath, findReferrerByCode, saveReferralRecord, convertReferral, buildRefCode, getReferralRecords,
 } from "./shared.jsx";
 
 /* UI COMPONENTS */
@@ -531,6 +531,40 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
       Vous avez été recommandé par un membre de {soc?.nom||"notre réseau"}. Votre parrainage a été enregistré.
      </div>
      <a href={window.location.origin} onClick={()=>{window.location.hash="";}} style={{display:"inline-block",padding:"12px 24px",borderRadius:12,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,color:"#0a0a0f",fontSize:13,fontWeight:700,textDecoration:"none",cursor:"pointer",fontFamily:FONT}}>Accéder à la plateforme →</a>
+    </div>
+   </div>
+  </>;
+ }
+ /* PATH-BASED AFFILIATE LINK: /r/:refCode */
+ if(window.location.pathname.match(/^\/r\/[^/]+$/)){
+  const ref=captureReferralFromPath(clients);
+  if(ref){
+   const referrer=findReferrerByCode(clients,ref.socId,ref.refCode);
+   trackEvent("referral_click",{socId:ref.socId,refCode:ref.refCode,referrer:referrer?.name||"unknown"});
+   const soc=socs.find(s=>s.id===ref.socId);
+   return <><style>{CSS}{POLISH_CSS}</style>
+    <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT,padding:16}}>
+     <div className="glass-card-static fu" style={{padding:32,textAlign:"center",maxWidth:420}}>
+      <div style={{fontSize:48,marginBottom:16}}>🤝</div>
+      <div style={{fontSize:20,fontWeight:900,color:C.t,marginBottom:8}}>Bienvenue !</div>
+      <div style={{fontSize:13,color:C.td,marginBottom:20,lineHeight:1.6}}>
+       Vous avez été recommandé par un membre de {soc?.nom||"notre réseau"}. Votre parrainage a été enregistré.
+      </div>
+      <a href={window.location.origin} style={{display:"inline-block",padding:"12px 24px",borderRadius:12,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,color:"#0a0a0f",fontSize:13,fontWeight:700,textDecoration:"none",cursor:"pointer",fontFamily:FONT}}>Accéder à la plateforme →</a>
+     </div>
+    </div>
+   </>;
+  }
+  /* Code not found — show error page */
+  return <><style>{CSS}{POLISH_CSS}</style>
+   <div className="glass-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONT,padding:16}}>
+    <div className="glass-card-static fu" style={{padding:32,textAlign:"center",maxWidth:420}}>
+     <div style={{fontSize:48,marginBottom:16}}>🔗</div>
+     <div style={{fontSize:20,fontWeight:900,color:C.t,marginBottom:8}}>Lien invalide</div>
+     <div style={{fontSize:13,color:C.td,marginBottom:20,lineHeight:1.6}}>
+      Ce lien de parrainage n'est pas reconnu. Veuillez vérifier le lien ou contacter la personne qui vous l'a partagé.
+     </div>
+     <a href={window.location.origin} style={{display:"inline-block",padding:"12px 24px",borderRadius:12,background:`linear-gradient(135deg,${C.acc},#FF9D00)`,color:"#0a0a0f",fontSize:13,fontWeight:700,textDecoration:"none",cursor:"pointer",fontFamily:FONT}}>Retour à l'accueil →</a>
     </div>
    </div>
   </>;

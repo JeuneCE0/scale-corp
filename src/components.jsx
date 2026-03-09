@@ -5242,7 +5242,7 @@ export function AffiliatePortal({socId,clientId,socs,clients}){
 
  const accent=soc.brandColor||soc.color||C.acc;
  const refCode=useMemo(()=>(client.name||"").replace(/[^a-zA-Z0-9]/g,"").slice(0,8).toUpperCase()+"-"+clientId.slice(-4).toUpperCase(),[client.name,clientId]);
- const refLink=`${window.location.origin}/#ref/${socId}/${refCode}`;
+ const refLink=`${window.location.origin}/r/${refCode}`;
  const[copied,setCopied]=useState(false);
  const[tab,setTab]=useState("overview");
 
