@@ -10,19 +10,63 @@ const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
 
 // OAuth configs per integration (add real values in env)
 const OAUTH_CONFIGS = {
+  // --- Paiements ---
   stripe: {
     authorizeUrl: 'https://connect.stripe.com/oauth/authorize',
     tokenUrl: 'https://connect.stripe.com/oauth/token',
     clientId: process.env.STRIPE_CLIENT_ID,
     clientSecret: process.env.STRIPE_SECRET_KEY,
     scopes: 'read_write',
+    extraParams: { stripe_landing: 'login' },
   },
+  paypal: {
+    authorizeUrl: 'https://www.paypal.com/signin/authorize',
+    tokenUrl: 'https://api-m.paypal.com/v1/oauth2/token',
+    clientId: process.env.PAYPAL_CLIENT_ID,
+    clientSecret: process.env.PAYPAL_CLIENT_SECRET,
+    scopes: 'openid email https://uri.paypal.com/services/reporting/search/read',
+    tokenExchangeMethod: 'basic_auth',
+  },
+  shopify: {
+    authorizeUrl: null, // Per-store URL: https://{shop}.myshopify.com/admin/oauth/authorize
+    tokenUrl: null, // Per-store URL: https://{shop}.myshopify.com/admin/oauth/access_token
+    clientId: process.env.SHOPIFY_CLIENT_ID,
+    clientSecret: process.env.SHOPIFY_CLIENT_SECRET,
+    scopes: 'read_orders,read_products,read_customers',
+    requiresShopDomain: true,
+  },
+  // --- Banque & Comptabilité ---
+  revolut: {
+    authorizeUrl: 'https://business.revolut.com/app-confirm',
+    tokenUrl: 'https://b2b.revolut.com/api/1.0/auth/token',
+    clientId: process.env.REVOLUT_OAUTH_CLIENT_ID,
+    clientSecret: process.env.REVOLUT_OAUTH_CLIENT_SECRET,
+    scopes: 'accounts:read transactions:read',
+  },
+  qonto: {
+    authorizeUrl: 'https://connect.qonto.com/oauth2/auth',
+    tokenUrl: 'https://connect.qonto.com/oauth2/token',
+    clientId: process.env.QONTO_OAUTH_CLIENT_ID,
+    clientSecret: process.env.QONTO_OAUTH_CLIENT_SECRET,
+    scopes: 'offline_access transactions:read balances:read organization:read',
+  },
+  // --- Agenda ---
   'google calendar': {
     authorizeUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
     tokenUrl: 'https://oauth2.googleapis.com/token',
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     scopes: 'https://www.googleapis.com/auth/calendar.readonly',
+    extraParams: { access_type: 'offline', prompt: 'consent' },
+  },
+  // --- CRM ---
+  gohighlevel: {
+    authorizeUrl: 'https://marketplace.gohighlevel.com/oauth/chooselocation',
+    tokenUrl: 'https://services.leadconnectorhq.com/oauth/token',
+    clientId: process.env.GHL_OAUTH_CLIENT_ID,
+    clientSecret: process.env.GHL_OAUTH_CLIENT_SECRET,
+    scopes: 'contacts.readonly contacts.write opportunities.readonly opportunities.write calendars.readonly calendars/events.readonly conversations.readonly conversations/message.write locations.readonly',
+    extraParams: { userType: 'Location' },
   },
   hubspot: {
     authorizeUrl: 'https://app.hubspot.com/oauth/authorize',
@@ -31,12 +75,98 @@ const OAUTH_CONFIGS = {
     clientSecret: process.env.HUBSPOT_CLIENT_SECRET,
     scopes: 'crm.objects.contacts.read crm.objects.deals.read',
   },
+  salesforce: {
+    authorizeUrl: 'https://login.salesforce.com/services/oauth2/authorize',
+    tokenUrl: 'https://login.salesforce.com/services/oauth2/token',
+    clientId: process.env.SALESFORCE_CLIENT_ID,
+    clientSecret: process.env.SALESFORCE_CLIENT_SECRET,
+    scopes: 'api refresh_token',
+  },
+  pipedrive: {
+    authorizeUrl: 'https://oauth.pipedrive.com/oauth/authorize',
+    tokenUrl: 'https://oauth.pipedrive.com/oauth/token',
+    clientId: process.env.PIPEDRIVE_CLIENT_ID,
+    clientSecret: process.env.PIPEDRIVE_CLIENT_SECRET,
+    scopes: '',
+  },
+  zoho: {
+    authorizeUrl: 'https://accounts.zoho.eu/oauth/v2/auth',
+    tokenUrl: 'https://accounts.zoho.eu/oauth/v2/token',
+    clientId: process.env.ZOHO_CLIENT_ID,
+    clientSecret: process.env.ZOHO_CLIENT_SECRET,
+    scopes: 'ZohoCRM.modules.ALL ZohoCRM.settings.ALL',
+    extraParams: { access_type: 'offline', prompt: 'consent' },
+  },
+  brevo: {
+    authorizeUrl: 'https://app.brevo.com/oauth2/authorize',
+    tokenUrl: 'https://app.brevo.com/oauth2/token',
+    clientId: process.env.BREVO_CLIENT_ID,
+    clientSecret: process.env.BREVO_CLIENT_SECRET,
+    scopes: 'contacts:read contacts:write',
+  },
+  // --- Email Marketing ---
+  mailchimp: {
+    authorizeUrl: 'https://login.mailchimp.com/oauth2/authorize',
+    tokenUrl: 'https://login.mailchimp.com/oauth2/token',
+    clientId: process.env.MAILCHIMP_CLIENT_ID,
+    clientSecret: process.env.MAILCHIMP_CLIENT_SECRET,
+    scopes: '',
+  },
+  activecampaign: {
+    authorizeUrl: 'https://app.activecampaign.com/oauth2/authorize',
+    tokenUrl: 'https://app.activecampaign.com/oauth2/token',
+    clientId: process.env.ACTIVECAMPAIGN_CLIENT_ID,
+    clientSecret: process.env.ACTIVECAMPAIGN_CLIENT_SECRET,
+    scopes: '',
+  },
+  // --- Publicité ---
+  'meta ads': {
+    authorizeUrl: 'https://www.facebook.com/v21.0/dialog/oauth',
+    tokenUrl: 'https://graph.facebook.com/v21.0/oauth/access_token',
+    clientId: process.env.META_APP_ID,
+    clientSecret: process.env.META_APP_SECRET,
+    scopes: 'ads_read ads_management read_insights business_management',
+    exchangeLongLived: true,
+  },
+  'google ads': {
+    authorizeUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    clientId: process.env.GOOGLE_ADS_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_ADS_CLIENT_SECRET,
+    scopes: 'https://www.googleapis.com/auth/adwords',
+    extraParams: { access_type: 'offline', prompt: 'consent' },
+  },
+  'tiktok ads': {
+    authorizeUrl: 'https://business-api.tiktok.com/portal/auth',
+    tokenUrl: 'https://business-api.tiktok.com/open_api/v1.3/oauth2/access_token/',
+    clientId: process.env.TIKTOK_APP_ID,
+    clientSecret: process.env.TIKTOK_APP_SECRET,
+    scopes: '',
+    customTokenExchange: 'tiktok',
+  },
+  'linkedin ads': {
+    authorizeUrl: 'https://www.linkedin.com/oauth/v2/authorization',
+    tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
+    clientId: process.env.LINKEDIN_CLIENT_ID,
+    clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
+    scopes: 'r_ads r_ads_reporting r_organization_social',
+  },
+  // --- Projet ---
+  notion: {
+    authorizeUrl: 'https://api.notion.com/v1/oauth/authorize',
+    tokenUrl: 'https://api.notion.com/v1/oauth/token',
+    clientId: process.env.NOTION_CLIENT_ID,
+    clientSecret: process.env.NOTION_CLIENT_SECRET,
+    scopes: '',
+    tokenExchangeMethod: 'basic_auth',
+    owner: 'user',
+  },
   slack: {
     authorizeUrl: 'https://slack.com/oauth/v2/authorize',
     tokenUrl: 'https://slack.com/api/oauth.v2.access',
     clientId: process.env.SLACK_CLIENT_ID,
     clientSecret: process.env.SLACK_CLIENT_SECRET,
-    scopes: 'channels:read chat:write',
+    scopes: 'channels:read chat:write incoming-webhook',
   },
 };
 
@@ -116,6 +246,9 @@ function startOAuth(res, profile, name) {
   if (!config || !config.clientId) {
     return res.status(400).json({ error: `OAuth non configuré pour ${name}` });
   }
+  if (!config.authorizeUrl) {
+    return res.status(400).json({ error: `OAuth pour ${name} nécessite une configuration manuelle` });
+  }
 
   const state = Buffer.from(JSON.stringify({
     org_id: profile.org_id,
@@ -124,13 +257,31 @@ function startOAuth(res, profile, name) {
     ts: Date.now(),
   })).toString('base64url');
 
+  const redirectUri = `${APP_URL}/api/integrations/oauth?action=callback`;
+
   const params = new URLSearchParams({
-    client_id: config.clientId,
-    redirect_uri: `${APP_URL}/api/integrations/oauth?action=callback`,
     response_type: 'code',
-    scope: config.scopes,
+    redirect_uri: redirectUri,
     state,
   });
+
+  // TikTok uses app_id instead of client_id
+  if (config.customTokenExchange === 'tiktok') {
+    params.set('app_id', config.clientId);
+  } else {
+    params.set('client_id', config.clientId);
+  }
+
+  if (config.scopes) {
+    params.set('scope', config.scopes);
+  }
+
+  // Provider-specific extra authorization params
+  if (config.extraParams) {
+    for (const [k, v] of Object.entries(config.extraParams)) {
+      params.set(k, v);
+    }
+  }
 
   return res.status(200).json({ url: `${config.authorizeUrl}?${params}` });
 }
@@ -139,29 +290,101 @@ async function handleCallback(res, profile, name, code) {
   const config = OAUTH_CONFIGS[name];
   if (!config) return res.status(400).json({ error: 'Integration inconnue' });
 
-  // Exchange code for tokens
-  const tokenRes = await fetch(config.tokenUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
+  const redirectUri = `${APP_URL}/api/integrations/oauth?action=callback`;
+  let tokens;
+
+  // TikTok uses JSON body with app_id/secret instead of standard OAuth
+  if (config.customTokenExchange === 'tiktok') {
+    const tiktokRes = await fetch(config.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ app_id: config.clientId, secret: config.clientSecret, auth_code: code }),
+    });
+    if (!tiktokRes.ok) {
+      console.error(`[oauth] TikTok token exchange failed: ${tiktokRes.status}`);
+      return res.status(400).json({ error: 'Échec de l\'autorisation TikTok' });
+    }
+    const tiktokData = await tiktokRes.json();
+    if (tiktokData.code !== 0) {
+      return res.status(400).json({ error: tiktokData.message || 'Erreur TikTok' });
+    }
+    tokens = {
+      access_token: tiktokData.data?.access_token,
+      scope: (tiktokData.data?.scope || []).join(','),
+      advertiser_ids: tiktokData.data?.advertiser_ids || [],
+    };
+  } else {
+    // Standard OAuth2 token exchange
+    const body = new URLSearchParams({
       grant_type: 'authorization_code',
       code,
-      client_id: config.clientId,
-      client_secret: config.clientSecret,
-      redirect_uri: `${APP_URL}/api/integrations/oauth?action=callback`,
-    }),
-  });
+      redirect_uri: redirectUri,
+    });
 
-  if (!tokenRes.ok) {
-    const err = await tokenRes.text();
-    console.error(`[oauth] Token exchange failed for ${name}:`, err);
-    return res.status(400).json({ error: 'Échec de l\'autorisation' });
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+
+    // Some providers (Notion, PayPal) use HTTP Basic Auth for token exchange
+    if (config.tokenExchangeMethod === 'basic_auth') {
+      headers.Authorization = 'Basic ' + Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64');
+    } else {
+      body.set('client_id', config.clientId);
+      body.set('client_secret', config.clientSecret);
+    }
+
+    // Stripe doesn't use redirect_uri in token exchange
+    if (name === 'stripe') {
+      body.delete('redirect_uri');
+    }
+
+    const tokenRes = await fetch(config.tokenUrl, {
+      method: 'POST',
+      headers,
+      body: body.toString(),
+    });
+
+    if (!tokenRes.ok) {
+      const err = await tokenRes.text();
+      console.error(`[oauth] Token exchange failed for ${name}:`, err);
+      return res.status(400).json({ error: 'Échec de l\'autorisation' });
+    }
+
+    tokens = await tokenRes.json();
   }
 
-  const tokens = await tokenRes.json();
+  // Meta: exchange short-lived token for long-lived token (60 days)
+  if (config.exchangeLongLived && tokens.access_token) {
+    try {
+      const llRes = await fetch(
+        `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${config.clientId}&client_secret=${config.clientSecret}&fb_exchange_token=${tokens.access_token}`
+      );
+      if (llRes.ok) {
+        const llData = await llRes.json();
+        tokens.access_token = llData.access_token;
+        tokens.expires_in = llData.expires_in || 5184000; // 60 days
+      }
+    } catch { /* keep short-lived token */ }
+
+    // Fetch ad accounts for Meta
+    try {
+      const acctRes = await fetch(
+        `https://graph.facebook.com/v21.0/me/adaccounts?fields=id,name,account_id,currency,business_name&access_token=${tokens.access_token}`
+      );
+      if (acctRes.ok) {
+        const acctData = await acctRes.json();
+        tokens.ad_accounts = acctData.data || [];
+      }
+    } catch { /* ignore */ }
+  }
 
   // Store tokens securely in DB
   const sb = getSupabaseAdmin();
+  const metadata = { scope: tokens.scope || config.scopes };
+  // Store provider-specific metadata
+  if (tokens.ad_accounts) metadata.ad_accounts = tokens.ad_accounts;
+  if (tokens.advertiser_ids) metadata.advertiser_ids = tokens.advertiser_ids;
+  if (tokens.locationId) metadata.location_id = tokens.locationId;
+  if (tokens.stripe_user_id) metadata.stripe_user_id = tokens.stripe_user_id;
+
   await sb.from('integrations').upsert({
     org_id: profile.org_id,
     name,
@@ -172,7 +395,7 @@ async function handleCallback(res, profile, name, code) {
       ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
       : null,
     last_synced_at: new Date().toISOString(),
-    metadata: { scope: tokens.scope || config.scopes },
+    metadata,
   }, { onConflict: 'org_id,name' });
 
   // Log

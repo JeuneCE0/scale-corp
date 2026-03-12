@@ -54,12 +54,12 @@ export const PLANS = [
 export const INTEGRATIONS = [
   // Paiements
   { name: 'Stripe', desc: 'Paiements et facturation', icon: '💳', category: 'paiements', tier: 'live' },
-  { name: 'PayPal', desc: 'Paiements en ligne', icon: '🅿️', category: 'paiements', tier: 'demo' },
-  { name: 'Shopify', desc: 'E-commerce & paiements', icon: '🛍️', category: 'paiements', tier: 'demo' },
+  { name: 'PayPal', desc: 'Paiements en ligne', icon: '🅿️', category: 'paiements', tier: 'oauth' },
+  { name: 'Shopify', desc: 'E-commerce & paiements', icon: '🛍️', category: 'paiements', tier: 'oauth' },
   { name: 'WooCommerce', desc: 'E-commerce WordPress', icon: '🛒', category: 'paiements', tier: 'demo' },
   // Banque & Comptabilité
-  { name: 'Revolut', desc: 'Données bancaires', icon: '🏦', category: 'banque', tier: 'demo' },
-  { name: 'Qonto', desc: 'Banque pro & comptabilité', icon: '🏛️', category: 'banque', tier: 'demo' },
+  { name: 'Revolut', desc: 'Données bancaires', icon: '🏦', category: 'banque', tier: 'live' },
+  { name: 'Qonto', desc: 'Banque pro & comptabilité', icon: '🏛️', category: 'banque', tier: 'live' },
   { name: 'Shine', desc: 'Banque des indépendants', icon: '✨', category: 'banque', tier: 'demo' },
   { name: 'Bunq', desc: 'Banque digitale', icon: '🐰', category: 'banque', tier: 'demo' },
   { name: 'N26', desc: 'Banque mobile', icon: '🔢', category: 'banque', tier: 'demo' },
@@ -68,16 +68,16 @@ export const INTEGRATIONS = [
   // Agenda
   { name: 'Google Calendar', desc: 'Synchronisation agenda et événements', icon: '📅', category: 'agenda', tier: 'live' },
   // CRM & Gestion
-  { name: 'GoHighLevel', desc: 'CRM et marketing automation', icon: '📈', category: 'crm', tier: 'demo' },
+  { name: 'GoHighLevel', desc: 'CRM et marketing automation', icon: '📈', category: 'crm', tier: 'live' },
   { name: 'HubSpot', desc: 'CRM, marketing et ventes', icon: '🟠', category: 'crm', tier: 'live' },
-  { name: 'Salesforce', desc: 'CRM entreprise', icon: '☁️', category: 'crm', tier: 'demo' },
-  { name: 'Zoho', desc: 'Suite CRM complète', icon: '🔴', category: 'crm', tier: 'demo' },
-  { name: 'Pipedrive', desc: 'CRM pipeline de ventes', icon: '🟢', category: 'crm', tier: 'demo' },
-  { name: 'Brevo', desc: 'Email marketing & CRM', icon: '💌', category: 'crm', tier: 'demo' },
+  { name: 'Salesforce', desc: 'CRM entreprise', icon: '☁️', category: 'crm', tier: 'live' },
+  { name: 'Zoho', desc: 'Suite CRM complète', icon: '🔴', category: 'crm', tier: 'oauth' },
+  { name: 'Pipedrive', desc: 'CRM pipeline de ventes', icon: '🟢', category: 'crm', tier: 'live' },
+  { name: 'Brevo', desc: 'Email marketing & CRM', icon: '💌', category: 'crm', tier: 'oauth' },
   { name: 'Axonaut', desc: 'CRM & facturation PME', icon: '🔧', category: 'crm', tier: 'demo' },
   // Email Marketing & Automation
-  { name: 'ActiveCampaign', desc: 'Email marketing & automation', icon: '⚡', category: 'marketing', tier: 'demo' },
-  { name: 'Mailchimp', desc: 'Email marketing', icon: '🐵', category: 'marketing', tier: 'demo' },
+  { name: 'ActiveCampaign', desc: 'Email marketing & automation', icon: '⚡', category: 'marketing', tier: 'oauth' },
+  { name: 'Mailchimp', desc: 'Email marketing', icon: '🐵', category: 'marketing', tier: 'live' },
   { name: 'Klaviyo', desc: 'Email & SMS marketing e-commerce', icon: '📧', category: 'marketing', tier: 'demo' },
   { name: 'Sendinblue', desc: 'Email transactionnel & marketing', icon: '💙', category: 'marketing', tier: 'demo' },
   { name: 'Lemlist', desc: 'Cold email & prospection', icon: '🍋', category: 'marketing', tier: 'demo' },
@@ -86,15 +86,15 @@ export const INTEGRATIONS = [
   // Gestion de projet
   { name: 'Monday', desc: 'Gestion de projet & workflow', icon: '📋', category: 'projet', tier: 'demo' },
   { name: 'Asana', desc: 'Gestion de projet & tâches', icon: '🎯', category: 'projet', tier: 'demo' },
-  { name: 'Notion', desc: 'Wiki, docs & gestion de projet', icon: '📝', category: 'projet', tier: 'demo' },
+  { name: 'Notion', desc: 'Wiki, docs & gestion de projet', icon: '📝', category: 'projet', tier: 'oauth' },
   { name: 'Trello', desc: 'Tableaux kanban', icon: '📌', category: 'projet', tier: 'demo' },
   { name: 'Jira', desc: 'Gestion de projet technique', icon: '🔷', category: 'projet', tier: 'demo' },
   { name: 'Slack', desc: 'Communication d\'équipe', icon: '💬', category: 'projet', tier: 'oauth' },
   // Publicité
-  { name: 'Meta Ads', desc: 'Publicité Facebook/Instagram', icon: '📣', category: 'publicite', tier: 'demo' },
-  { name: 'Google Ads', desc: 'Publicité Google & YouTube', icon: '🔍', category: 'publicite', tier: 'demo' },
-  { name: 'TikTok Ads', desc: 'Publicité TikTok', icon: '🎵', category: 'publicite', tier: 'demo' },
-  { name: 'LinkedIn Ads', desc: 'Publicité LinkedIn B2B', icon: '💼', category: 'publicite', tier: 'demo' },
+  { name: 'Meta Ads', desc: 'Publicité Facebook/Instagram', icon: '📣', category: 'publicite', tier: 'live' },
+  { name: 'Google Ads', desc: 'Publicité Google & YouTube', icon: '🔍', category: 'publicite', tier: 'live' },
+  { name: 'TikTok Ads', desc: 'Publicité TikTok', icon: '🎵', category: 'publicite', tier: 'live' },
+  { name: 'LinkedIn Ads', desc: 'Publicité LinkedIn B2B', icon: '💼', category: 'publicite', tier: 'oauth' },
   // Support Client
   { name: 'Zendesk', desc: 'Support client & ticketing', icon: '🎧', category: 'support', tier: 'demo' },
   { name: 'Freshdesk', desc: 'Helpdesk & support', icon: '🟩', category: 'support', tier: 'demo' },
