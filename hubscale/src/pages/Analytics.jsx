@@ -1,4 +1,4 @@
-import React, { useMemo, lazy, Suspense } from 'react';
+import React, { useMemo, useState, useEffect, lazy, Suspense } from 'react';
 import { T, FONT } from '../lib/theme.js';
 import { load } from '../lib/store.js';
 import { fmt, fK, pct, monthLabel, forecastCA, leadScore, daysSince, MONTHS_FR, curMonth, nextMonth, sameMonthLastYear } from '../lib/utils.js';
@@ -114,12 +114,22 @@ const LazyForecastChart = lazy(() =>
 /* ================================================================== */
 export default function Analytics({ onNavigate }) {
   /* ---------------------------------------------------------------- */
+  /*  Refresh key — incremented when integration data changes          */
+  /* ---------------------------------------------------------------- */
+  const [refreshKey, setRefreshKey] = useState(0);
+  useEffect(() => {
+    const handler = () => setRefreshKey((k) => k + 1);
+    window.addEventListener('hs:integration-sync', handler);
+    return () => window.removeEventListener('hs:integration-sync', handler);
+  }, []);
+
+  /* ---------------------------------------------------------------- */
   /*  Data from localStorage                                           */
   /* ---------------------------------------------------------------- */
-  const finHistory = useMemo(() => load('finHistory') || [], []);
-  const contacts = useMemo(() => load('contacts') || [], []);
-  const integrations = useMemo(() => load('integrations') || {}, []);
-  const syncHistory = useMemo(() => load('syncHistory') || [], []);
+  const finHistory = useMemo(() => load('finHistory') || [], [refreshKey]);
+  const contacts = useMemo(() => load('contacts') || [], [refreshKey]);
+  const integrations = useMemo(() => load('integrations') || {}, [refreshKey]);
+  const syncHistory = useMemo(() => load('syncHistory') || [], [refreshKey]);
 
   /* ---------------------------------------------------------------- */
   /*  Date range label                                                 */

@@ -1399,6 +1399,17 @@ export default function Data() {
 
   useEffect(() => subscribe('finHistory', (data) => setHistory(data)), []);
 
+  // Refresh all data when an integration syncs
+  const [syncRefreshKey, setSyncRefreshKey] = useState(0);
+  useEffect(() => {
+    const handler = () => {
+      setHistory(load('finHistory') || generateDefaultHistory());
+      setSyncRefreshKey((k) => k + 1);
+    };
+    window.addEventListener('hs:integration-sync', handler);
+    return () => window.removeEventListener('hs:integration-sync', handler);
+  }, []);
+
   const lastRow = useMemo(() => history[history.length - 1] || {}, [history]);
 
   // Sparkline data for KPIs
@@ -1843,19 +1854,19 @@ export default function Data() {
       )}
 
       {/* ===================== SALES TAB ===================== */}
-      {subTab === 'Sales' && <SalesTab />}
+      {subTab === 'Sales' && <SalesTab key={syncRefreshKey} />}
 
       {/* ===================== CATALOGUE TAB ===================== */}
-      {subTab === 'Catalogue' && <CatalogTab />}
+      {subTab === 'Catalogue' && <CatalogTab key={syncRefreshKey} />}
 
       {/* ===================== FACTURES TAB ===================== */}
-      {subTab === 'Factures' && <InvoicesTab />}
+      {subTab === 'Factures' && <InvoicesTab key={syncRefreshKey} />}
 
       {/* ===================== P&L TAB ===================== */}
-      {subTab === 'P&L' && <PLTab />}
+      {subTab === 'P&L' && <PLTab key={syncRefreshKey} />}
 
       {/* ===================== PUBLICITE TAB ===================== */}
-      {subTab === 'Publicité' && <PubliciteTab />}
+      {subTab === 'Publicité' && <PubliciteTab key={syncRefreshKey} />}
     </div>
   );
 }

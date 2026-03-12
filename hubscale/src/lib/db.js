@@ -306,7 +306,7 @@ export async function listBankAccounts() {
  */
 export async function fetchAllSyncedData() {
   if (!isSupabaseConfigured() || !orgId()) return;
-  await Promise.all([
+  const [, , , , adInsights, , transactions] = await Promise.all([
     listContacts(),
     listFinancialHistory(),
     listEvents(),
@@ -316,6 +316,46 @@ export async function fetchAllSyncedData() {
     listTransactions(),
     listBankAccounts(),
   ]);
+
+  // Compute aggregated ad metrics for pages that read 'metaAds'
+  if (adInsights && adInsights.length > 0) {
+    const totalSpend = adInsights.reduce((s, r) => s + (r.spend || 0), 0);
+    const totalImpressions = adInsights.reduce((s, r) => s + (r.impressions || 0), 0);
+    const totalClicks = adInsights.reduce((s, r) => s + (r.clicks || 0), 0);
+    const totalConversions = adInsights.reduce((s, r) => s + (r.conversions || 0), 0);
+    const totalRevenue = adInsights.reduce((s, r) => s + (r.revenue || 0), 0);
+    store('metaAds', {
+      spend: Math.round(totalSpend * 100) / 100,
+      impressions: totalImpressions,
+      clicks: totalClicks,
+      conversions: totalConversions,
+      ctr: totalImpressions > 0 ? Math.round((totalClicks / totalImpressions) * 10000) / 100 : 0,
+      cpa: totalConversions > 0 ? Math.round((totalSpend / totalConversions) * 100) / 100 : 0,
+      roas: totalSpend > 0 ? Math.round((totalRevenue / totalSpend) * 100) / 100 : 0,
+    });
+  }
+
+  // Update finHistory from transaction data if available
+  if (transactions && transactions.length > 0) {
+    const existing = load('finHistory') || [];
+    const monthMap = {};
+    existing.forEach((r) => { monthMap[r.key] = { ...r }; });
+    transactions.forEach((tx) => {
+      const d = tx.date || tx.created_at;
+      if (!d) return;
+      const key = d.slice(0, 7); // YYYY-MM
+      if (!monthMap[key]) monthMap[key] = { key, ca: 0, charges: 0, marge: 0, treso: 0 };
+      const amount = Number(tx.amount) || 0;
+      if (amount > 0) monthMap[key].ca += amount;
+      else monthMap[key].charges += Math.abs(amount);
+    });
+    Object.values(monthMap).forEach((r) => {
+      r.marge = r.ca - r.charges;
+      r.result = r.marge;
+    });
+    const updated = Object.values(monthMap).sort((a, b) => a.key.localeCompare(b.key));
+    store('finHistory', updated);
+  }
 }
 
 // ─── User Preferences ───

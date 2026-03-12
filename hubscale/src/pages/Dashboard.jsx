@@ -84,14 +84,24 @@ const GREETING = () => {
 /* ================================================================== */
 export default function Dashboard({ onNavigate }) {
   /* ---------------------------------------------------------------- */
+  /*  Refresh key — incremented when integration data changes          */
+  /* ---------------------------------------------------------------- */
+  const [refreshKey, setRefreshKey] = useState(0);
+  useEffect(() => {
+    const handler = () => setRefreshKey((k) => k + 1);
+    window.addEventListener('hs:integration-sync', handler);
+    return () => window.removeEventListener('hs:integration-sync', handler);
+  }, []);
+
+  /* ---------------------------------------------------------------- */
   /*  Data from localStorage                                           */
   /* ---------------------------------------------------------------- */
-  const contacts = useMemo(() => load('contacts') || [], []);
-  const events = useMemo(() => load('events') || [], []);
-  const finHistory = useMemo(() => load('finHistory') || [], []);
-  const integrations = useMemo(() => load('integrations') || {}, []);
-  const caGoal = useMemo(() => load('caGoal') || 0, []);
-  const companyInfo = useMemo(() => load('companyInfo') || {}, []);
+  const contacts = useMemo(() => load('contacts') || [], [refreshKey]);
+  const events = useMemo(() => load('events') || [], [refreshKey]);
+  const finHistory = useMemo(() => load('finHistory') || [], [refreshKey]);
+  const integrations = useMemo(() => load('integrations') || {}, [refreshKey]);
+  const caGoal = useMemo(() => load('caGoal') || 0, [refreshKey]);
+  const companyInfo = useMemo(() => load('companyInfo') || {}, [refreshKey]);
 
   /* ---------------------------------------------------------------- */
   /*  Business Health & Weather                                        */

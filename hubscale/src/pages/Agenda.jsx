@@ -125,9 +125,10 @@ export default function Agenda() {
   // Listen for external connection changes (e.g. from Settings page)
   useEffect(() => {
     const handler = (e) => {
+      // Always refresh events — any integration may add calendar events
+      setEvents(load('events') || []);
       if (e.detail?.name === 'Google Calendar') {
-        setGcalConnected(e.detail.action === 'connect');
-        if (e.detail.action === 'connect') setEvents(load('events') || []);
+        setGcalConnected(e.detail.action === 'connect' || e.detail.action === 'resync');
       }
     };
     window.addEventListener('hs:integration-sync', handler);

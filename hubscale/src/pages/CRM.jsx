@@ -220,6 +220,13 @@ export default function CRM() {
 
   useEffect(() => subscribe('contacts', (data) => setContacts(data)), []);
 
+  // Refresh contacts when an integration syncs new data
+  useEffect(() => {
+    const handler = () => setContacts(load('contacts') || []);
+    window.addEventListener('hs:integration-sync', handler);
+    return () => window.removeEventListener('hs:integration-sync', handler);
+  }, []);
+
   // ---- KPI counts ----
   const counts = useMemo(() =>
     STATUSES.reduce((acc, s) => {
