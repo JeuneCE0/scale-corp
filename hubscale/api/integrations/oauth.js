@@ -251,13 +251,15 @@ export default async function handler(req, res) {
     const profile = await verifyAuth(req);
     if (!profile) return res.status(401).json({ error: 'Non autorisé' });
 
-    const { action, integration, code } = req.body;
+    const { action, integration, code, apiKey, apiUrl } = req.body;
     const name = (integration || '').toLowerCase();
 
     if (action === 'start') {
       return startOAuth(res, profile, name);
     } else if (action === 'callback') {
       return handleCallback(res, profile, name, code);
+    } else if (action === 'connect_with_key') {
+      return handleConnectWithKey(res, profile, name, apiKey, apiUrl);
     } else if (action === 'disconnect') {
       return handleDisconnect(res, profile, name);
     }
@@ -455,6 +457,117 @@ async function handleCallbackInternal(res, profile, name, code, isGetRedirect = 
   if (isGetRedirect) {
     return res.redirect(302, `${APP_URL}?tab=settings&oauth=success&integration=${encodeURIComponent(name)}`);
   }
+  return res.status(200).json({ ok: true, integration: name });
+}
+
+async function handleConnectWithKey(res, profile, name, apiKey, apiUrl) {
+  if (!apiKey) {
+    return res.status(400).json({ error: 'Clé API requise' });
+  }
+
+  // Validate the API key by making a test call
+  const validators = {
+    stripe: async () => {
+      const r = await fetch('https://api.stripe.com/v1/balance', {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!r.ok) throw new Error('Clé Stripe invalide');
+      return {};
+    },
+    revolut: async () => {
+      const r = await fetch('https://b2b.revolut.com/api/1.0/accounts', {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!r.ok) throw new Error('Token Revolut invalide');
+      return {};
+    },
+    qonto: async () => {
+      const url = apiUrl || 'https://thirdparty.qonto.com/v2';
+      const r = await fetch(`${url}/organization`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!r.ok) throw new Error('Clé Qonto invalide');
+      return {};
+    },
+    hubspot: async () => {
+      const r = await fetch('https://api.hubapi.com/crm/v3/objects/contacts?limit=1', {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!r.ok) throw new Error('Clé HubSpot invalide');
+      return {};
+    },
+    mailchimp: async () => {
+      // Mailchimp API key contains dc suffix: key-us21
+      const dc = apiKey.includes('-') ? apiKey.split('-').pop() : 'us1';
+      const r = await fetch(`https://${dc}.api.mailchimp.com/3.0/ping`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!r.ok) throw new Error('Clé Mailchimp invalide');
+      return { dc };
+    },
+    brevo: async () => {
+      const r = await fetch('https://api.brevo.com/v3/account', {
+        headers: { 'api-key': apiKey },
+      });
+      if (!r.ok) throw new Error('Clé Brevo invalide');
+      return {};
+    },
+    pipedrive: async () => {
+      const r = await fetch(`https://api.pipedrive.com/v1/users/me?api_token=${apiKey}`);
+      if (!r.ok) throw new Error('Clé Pipedrive invalide');
+      return {};
+    },
+    salesforce: async () => {
+      if (!apiUrl) throw new Error('URL d\'instance Salesforce requise');
+      const r = await fetch(`${apiUrl}/services/data/v59.0/`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!r.ok) throw new Error('Token Salesforce invalide');
+      return {};
+    },
+  };
+
+  const validator = validators[name];
+  if (validator) {
+    try {
+      const extra = await validator();
+      // Store metadata if validator returned extra info
+      var metadata = { ...extra, connection_method: 'api_key' };
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+  } else {
+    var metadata = { connection_method: 'api_key' };
+  }
+
+  // Store the API key securely
+  const sb = getSupabaseAdmin();
+  await sb.from('integrations').upsert({
+    org_id: profile.org_id,
+    name,
+    connected: true,
+    access_token_enc: encrypt(apiKey),
+    refresh_token_enc: null,
+    token_expires_at: null,
+    last_synced_at: new Date().toISOString(),
+    metadata,
+  }, { onConflict: 'org_id,name' });
+
+  await sb.from('sync_history').insert({
+    org_id: profile.org_id,
+    integration_name: name,
+    action: 'connect',
+    details: 'Connected with API key',
+  });
+
+  await sb.from('audit_log').insert({
+    org_id: profile.org_id,
+    user_id: profile.id,
+    action: 'integration_connected',
+    entity_type: 'integration',
+    details: { integration: name, method: 'api_key' },
+  });
+
   return res.status(200).json({ ok: true, integration: name });
 }
 

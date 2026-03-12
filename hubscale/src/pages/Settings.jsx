@@ -9,7 +9,7 @@ import { SECTORS, PLANS, INTEGRATIONS, AUTOMATION_RULES } from '../lib/constants
 import { onIntegrationConnect, getIntegrationMeta } from '../lib/integrationData.js';
 import { isSupabaseConfigured } from '../lib/supabase.js';
 import { t } from '../lib/i18n.js';
-import { startOAuthFlow, disconnectIntegration as apiDisconnect, syncIntegration, requestDataExport, requestAccountDeletion, createBillingPortalSession } from '../lib/api.js';
+import { startOAuthFlow, disconnectIntegration as apiDisconnect, syncIntegration, connectWithApiKey, requestDataExport, requestAccountDeletion, createBillingPortalSession } from '../lib/api.js';
 import { fetchAllSyncedData, setIntegrationConnected } from '../lib/db.js';
 import { sanitizeText, sanitizeEmail, sanitizePhone, sanitizeUrl } from '../lib/sanitize.js';
 
@@ -107,6 +107,13 @@ export default function Settings() {
 
   // Integration detail modal
   const [detailModal, setDetailModal] = useState(null); // integration name or null
+
+  // API key connection modal
+  const [connectModal, setConnectModal] = useState(null); // integration name or null
+  const [connectKey, setConnectKey] = useState('');
+  const [connectUrl, setConnectUrl] = useState('');
+  const [connectError, setConnectError] = useState('');
+  const [connectLoading, setConnectLoading] = useState(false);
 
   // Sync history log
   const [syncHistory, setSyncHistory] = useState(() => load('syncHistory') || []);
@@ -223,6 +230,61 @@ export default function Settings() {
     return list;
   }, [integrationSearch, integrationCatFilter]);
 
+  // Handle successful connection after API key or OAuth
+  const finalizeConnection = useCallback((name) => {
+    setIntegrations((prev) => {
+      const updated = { ...prev, [name]: true };
+      store('integrations', updated);
+      return updated;
+    });
+    setIntegrationTimestamps((prev) => {
+      const updated = { ...prev, [name]: new Date().toISOString() };
+      store('integrationTimestamps', updated);
+      return updated;
+    });
+    setSyncStatus((prev) => ({ ...prev, [name]: 'done' }));
+    setSyncHistory((prev) => {
+      const entry = { name, action: 'connect', timestamp: new Date().toISOString() };
+      const updated = [entry, ...prev].slice(0, 50);
+      store('syncHistory', updated);
+      return updated;
+    });
+    window.dispatchEvent(new CustomEvent('hs:integration-sync', { detail: { name, action: 'connect' } }));
+    setTimeout(() => setSyncStatus((prev) => ({ ...prev, [name]: null })), 2000);
+  }, []);
+
+  // Submit API key connection from modal
+  const submitApiKeyConnection = useCallback(async (name) => {
+    if (!connectKey.trim()) { setConnectError('Veuillez entrer votre clé API'); return; }
+    setConnectLoading(true);
+    setConnectError('');
+    try {
+      if (isSupabaseConfigured()) {
+        await connectWithApiKey(name, connectKey.trim(), connectUrl.trim() || undefined);
+        setSyncStatus((prev) => ({ ...prev, [name]: 'syncing' }));
+        try {
+          await syncIntegration(name);
+          await fetchAllSyncedData();
+        } catch (syncErr) {
+          console.warn(`[sync] ${name}:`, syncErr.message);
+        }
+        await setIntegrationConnected(name, true);
+      } else {
+        // No Supabase — store key locally for reference, seed demo data
+        store(`apikey_${name.toLowerCase()}`, connectKey.trim());
+        onIntegrationConnect(name);
+      }
+      finalizeConnection(name);
+      setConnectModal(null);
+      setConnectKey('');
+      setConnectUrl('');
+    } catch (err) {
+      setConnectError(err.message || 'Erreur de connexion');
+    } finally {
+      setConnectLoading(false);
+    }
+  }, [connectKey, connectUrl, finalizeConnection]);
+
   const toggleIntegration = useCallback(async (name) => {
     setBouncingIntegration(name);
     setTimeout(() => setBouncingIntegration(null), 400);
@@ -231,57 +293,42 @@ export default function Settings() {
     const integDef = INTEGRATIONS.find((ig) => ig.name === name);
     const isLive = integDef?.tier === 'live' || integDef?.tier === 'oauth';
 
-    // Production mode: use real OAuth flow for live/oauth tier integrations
-    if (isSupabaseConfigured() && isLive) {
-      if (wasOff) {
+    if (wasOff && isLive) {
+      // Try OAuth first (requires Supabase + env vars)
+      if (isSupabaseConfigured()) {
         setSyncStatus((prev) => ({ ...prev, [name]: 'syncing' }));
         try {
           const result = await startOAuthFlow(name);
           if (result.url) {
-            // Redirect to OAuth provider — callback will handle sync
             window.location.href = result.url;
             return;
           }
         } catch (err) {
-          console.warn(`[oauth] ${name}: ${err.message}, falling back to local mode`);
+          console.warn(`[oauth] ${name}: ${err.message}`);
         }
         setSyncStatus((prev) => ({ ...prev, [name]: null }));
-      } else {
-        // Disconnect via API
+      }
+      // OAuth not available — open API key modal
+      setConnectModal(name);
+      setConnectKey('');
+      setConnectUrl('');
+      setConnectError('');
+      return;
+    }
+
+    if (!wasOff) {
+      // Disconnect
+      if (isSupabaseConfigured() && isLive) {
         try {
           await apiDisconnect(name);
           await setIntegrationConnected(name, false);
         } catch {}
       }
-    }
-
-    setIntegrations((prev) => {
-      const updated = { ...prev, [name]: !prev[name] };
-      store('integrations', updated);
-      return updated;
-    });
-
-    if (wasOff) {
-      setIntegrationTimestamps((prev) => {
-        const updated = { ...prev, [name]: new Date().toISOString() };
-        store('integrationTimestamps', updated);
+      setIntegrations((prev) => {
+        const updated = { ...prev, [name]: false };
+        store('integrations', updated);
         return updated;
       });
-      // For demo-tier or when Supabase is not configured, seed demo data
-      setSyncStatus((prev) => ({ ...prev, [name]: 'syncing' }));
-      setTimeout(() => {
-        onIntegrationConnect(name);
-        setSyncStatus((prev) => ({ ...prev, [name]: 'done' }));
-        setSyncHistory((prev) => {
-          const entry = { name, action: 'connect', timestamp: new Date().toISOString() };
-          const updated = [entry, ...prev].slice(0, 50);
-          store('syncHistory', updated);
-          return updated;
-        });
-        window.dispatchEvent(new CustomEvent('hs:integration-sync', { detail: { name, action: 'connect' } }));
-        setTimeout(() => setSyncStatus((prev) => ({ ...prev, [name]: null })), 2000);
-      }, 800);
-    } else {
       setSyncHistory((prev) => {
         const entry = { name, action: 'disconnect', timestamp: new Date().toISOString() };
         const updated = [entry, ...prev].slice(0, 50);
@@ -289,7 +336,33 @@ export default function Settings() {
         return updated;
       });
       window.dispatchEvent(new CustomEvent('hs:integration-sync', { detail: { name, action: 'disconnect' } }));
+      return;
     }
+
+    // Demo-tier connect: seed demo data locally
+    setIntegrations((prev) => {
+      const updated = { ...prev, [name]: true };
+      store('integrations', updated);
+      return updated;
+    });
+    setIntegrationTimestamps((prev) => {
+      const updated = { ...prev, [name]: new Date().toISOString() };
+      store('integrationTimestamps', updated);
+      return updated;
+    });
+    setSyncStatus((prev) => ({ ...prev, [name]: 'syncing' }));
+    setTimeout(() => {
+      onIntegrationConnect(name);
+      setSyncStatus((prev) => ({ ...prev, [name]: 'done' }));
+      setSyncHistory((prev) => {
+        const entry = { name, action: 'connect', timestamp: new Date().toISOString() };
+        const updated = [entry, ...prev].slice(0, 50);
+        store('syncHistory', updated);
+        return updated;
+      });
+      window.dispatchEvent(new CustomEvent('hs:integration-sync', { detail: { name, action: 'connect' } }));
+      setTimeout(() => setSyncStatus((prev) => ({ ...prev, [name]: null })), 2000);
+    }, 800);
   }, [integrations]);
 
   // Re-sync an integration — real sync for live tier, demo seed for others
@@ -1383,6 +1456,118 @@ export default function Settings() {
                         </Btn>
                       </>
                     )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* API Key Connection Modal */}
+          {connectModal && (() => {
+            const ig = INTEGRATIONS.find((i) => i.name === connectModal);
+            if (!ig) return null;
+            const keyFields = {
+              Stripe: { label: 'Clé secrète Stripe (sk_...)', placeholder: 'sk_live_... ou sk_test_...' },
+              Revolut: { label: 'Access Token Revolut Business', placeholder: 'oa_prod_...' },
+              Qonto: { label: 'Clé API Qonto', placeholder: 'Votre clé API Qonto', hasUrl: true, urlLabel: 'URL API (optionnel)', urlPlaceholder: 'https://thirdparty.qonto.com/v2' },
+              HubSpot: { label: 'Clé API privée HubSpot', placeholder: 'pat-na1-...' },
+              Salesforce: { label: 'Access Token Salesforce', placeholder: 'Votre access token', hasUrl: true, urlLabel: 'URL instance Salesforce', urlPlaceholder: 'https://votreinstance.salesforce.com' },
+              Pipedrive: { label: 'Token API Pipedrive', placeholder: 'Votre token API Pipedrive' },
+              Mailchimp: { label: 'Clé API Mailchimp', placeholder: 'xxxx-us21' },
+              Brevo: { label: 'Clé API Brevo', placeholder: 'xkeysib-...' },
+              'Meta Ads': { label: 'Access Token Meta (long-lived)', placeholder: 'EAAx...' },
+              'Google Ads': { label: 'Developer Token Google Ads', placeholder: 'Votre developer token' },
+              'TikTok Ads': { label: 'Access Token TikTok Ads', placeholder: 'Votre access token' },
+              'Google Calendar': { label: 'Clé API Google', placeholder: 'AIza...' },
+              GoHighLevel: { label: 'Clé API GoHighLevel', placeholder: 'Votre clé API GHL' },
+              PayPal: { label: 'Client Secret PayPal', placeholder: 'Votre client secret' },
+              Zoho: { label: 'Clé API Zoho CRM', placeholder: 'Votre clé API Zoho' },
+              ActiveCampaign: { label: 'Clé API ActiveCampaign', placeholder: 'Votre clé API', hasUrl: true, urlLabel: 'URL API ActiveCampaign', urlPlaceholder: 'https://votrecompte.api-us1.com' },
+            };
+            const field = keyFields[ig.name] || { label: `Clé API ${ig.name}`, placeholder: 'Votre clé API' };
+            return (
+              <div onClick={() => setConnectModal(null)} style={{
+                position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 9999,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+              }}>
+                <div onClick={(e) => e.stopPropagation()} style={{
+                  background: T.surface, borderRadius: 16, padding: 24, maxWidth: 460, width: '100%',
+                  border: `1px solid ${T.border}`, boxShadow: '0 20px 60px rgba(0,0,0,.4)',
+                }}>
+                  {/* Header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+                    <div style={{
+                      width: 48, height: 48, borderRadius: 14, fontSize: 24,
+                      background: T.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>{ig.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: T.text }}>Connecter {ig.name}</div>
+                      <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>{ig.desc}</div>
+                    </div>
+                    <span onClick={() => setConnectModal(null)} style={{
+                      fontSize: 18, color: T.textMuted, cursor: 'pointer', padding: '4px 8px',
+                      borderRadius: 8, background: T.surface2,
+                    }}>✕</span>
+                  </div>
+
+                  {/* Info */}
+                  <div style={{
+                    padding: '10px 14px', borderRadius: 10, marginBottom: 16,
+                    background: T.blueBg, border: `1px solid ${T.blue}22`, fontSize: 11, color: T.blue, lineHeight: 1.5,
+                  }}>
+                    Entrez votre clé API pour connecter {ig.name} et synchroniser vos données automatiquement.
+                  </div>
+
+                  {/* API Key Input */}
+                  <div style={{ marginBottom: field.hasUrl ? 10 : 16 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 6 }}>
+                      {field.label}
+                    </label>
+                    <Inp
+                      type="password"
+                      value={connectKey}
+                      onChange={(e) => setConnectKey(e.target.value)}
+                      placeholder={field.placeholder}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+
+                  {/* Optional URL field */}
+                  {field.hasUrl && (
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 6 }}>
+                        {field.urlLabel}
+                      </label>
+                      <Inp
+                        value={connectUrl}
+                        onChange={(e) => setConnectUrl(e.target.value)}
+                        placeholder={field.urlPlaceholder}
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Error */}
+                  {connectError && (
+                    <div style={{
+                      padding: '8px 12px', borderRadius: 8, marginBottom: 12,
+                      background: T.redBg, border: `1px solid ${T.red}22`,
+                      fontSize: 11, color: T.red, fontWeight: 600,
+                    }}>
+                      {connectError}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Btn v="primary" small onClick={() => submitApiKeyConnection(ig.name)}
+                      disabled={connectLoading || !connectKey.trim()}
+                      style={{ flex: 1, background: 'linear-gradient(135deg, #f97316, #f59e0b)', opacity: connectLoading ? 0.7 : 1 }}>
+                      {connectLoading ? '⟳ Connexion...' : 'Connecter'}
+                    </Btn>
+                    <Btn v="ghost" small onClick={() => setConnectModal(null)} style={{ flex: 1 }}>
+                      Annuler
+                    </Btn>
                   </div>
                 </div>
               </div>

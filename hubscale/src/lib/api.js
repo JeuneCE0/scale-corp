@@ -69,6 +69,13 @@ export async function disconnectIntegration(integrationName) {
   });
 }
 
+export async function connectWithApiKey(integrationName, apiKey, apiUrl) {
+  return apiCall('/integrations/oauth', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'connect_with_key', integration: integrationName, apiKey, apiUrl }),
+  });
+}
+
 // ─── Integration Sync ───
 
 export async function syncIntegration(integrationName) {
