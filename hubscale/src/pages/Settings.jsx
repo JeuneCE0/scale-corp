@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { T, getTheme, applyTheme } from '../lib/theme.js';
 import { store, load } from '../lib/store.js';
 import { isValidEmail } from '../lib/utils.js';
@@ -9,7 +9,8 @@ import { SECTORS, PLANS, INTEGRATIONS, AUTOMATION_RULES } from '../lib/constants
 import { onIntegrationConnect, getIntegrationMeta } from '../lib/integrationData.js';
 import { isSupabaseConfigured } from '../lib/supabase.js';
 import { t } from '../lib/i18n.js';
-import { startOAuthFlow, disconnectIntegration as apiDisconnect, requestDataExport, requestAccountDeletion, createBillingPortalSession } from '../lib/api.js';
+import { startOAuthFlow, disconnectIntegration as apiDisconnect, syncIntegration, requestDataExport, requestAccountDeletion, createBillingPortalSession } from '../lib/api.js';
+import { fetchAllSyncedData, setIntegrationConnected } from '../lib/db.js';
 import { sanitizeText, sanitizeEmail, sanitizePhone, sanitizeUrl } from '../lib/sanitize.js';
 
 function getIntegrationCategories() {
@@ -113,6 +114,70 @@ export default function Settings() {
   // API Logs state
   const [apiLogs, setApiLogs] = useState(() => load('apiLogs') || []);
 
+  // OAuth callback detection: after redirect from OAuth provider
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthResult = params.get('oauth');
+    const integrationName = params.get('integration');
+    if (!oauthResult) return;
+
+    // Clean URL params
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState(null, '', cleanUrl);
+
+    if (oauthResult === 'success' && integrationName) {
+      // Mark as connected locally
+      setIntegrations((prev) => {
+        const updated = { ...prev, [integrationName]: true };
+        store('integrations', updated);
+        return updated;
+      });
+      setIntegrationTimestamps((prev) => {
+        const updated = { ...prev, [integrationName]: new Date().toISOString() };
+        store('integrationTimestamps', updated);
+        return updated;
+      });
+
+      // Find integration tier
+      const integDef = INTEGRATIONS.find((ig) => ig.name.toLowerCase() === integrationName.toLowerCase());
+      const isLive = integDef?.tier === 'live';
+
+      // Trigger sync + data fetch for live integrations
+      setSyncStatus((prev) => ({ ...prev, [integrationName]: 'syncing' }));
+      (async () => {
+        try {
+          if (isLive && isSupabaseConfigured()) {
+            await syncIntegration(integrationName);
+            await fetchAllSyncedData();
+          } else {
+            // Fallback to demo seeder for non-live integrations
+            onIntegrationConnect(integrationName);
+          }
+          await setIntegrationConnected(integrationName, true);
+        } catch (err) {
+          console.warn(`[sync] ${integrationName}:`, err.message);
+          // Fallback to demo data on sync failure
+          onIntegrationConnect(integrationName);
+        }
+        setSyncStatus((prev) => ({ ...prev, [integrationName]: 'done' }));
+        setSyncHistory((prev) => {
+          const entry = { name: integrationName, action: 'connect', timestamp: new Date().toISOString() };
+          const updated = [entry, ...prev].slice(0, 50);
+          store('syncHistory', updated);
+          return updated;
+        });
+        window.dispatchEvent(new CustomEvent('hs:integration-sync', { detail: { name: integrationName, action: 'connect' } }));
+        setTimeout(() => setSyncStatus((prev) => ({ ...prev, [integrationName]: null })), 2000);
+      })();
+
+      // Navigate to integrations sub-tab
+      setSubTab('integrations');
+    } else if (oauthResult === 'error') {
+      console.error('[oauth] Callback error:', params.get('error'));
+      setSubTab('integrations');
+    }
+  }, []);
+
   const removeUser = useCallback((email) => {
     setUsers((prev) => {
       const updated = prev.filter((u) => u.email !== email);
@@ -163,26 +228,30 @@ export default function Settings() {
     setTimeout(() => setBouncingIntegration(null), 400);
 
     const wasOff = !integrations[name];
+    const integDef = INTEGRATIONS.find((ig) => ig.name === name);
+    const isLive = integDef?.tier === 'live' || integDef?.tier === 'oauth';
 
-    // Production mode: use real OAuth flow
-    if (isSupabaseConfigured()) {
+    // Production mode: use real OAuth flow for live/oauth tier integrations
+    if (isSupabaseConfigured() && isLive) {
       if (wasOff) {
         setSyncStatus((prev) => ({ ...prev, [name]: 'syncing' }));
         try {
           const result = await startOAuthFlow(name);
           if (result.url) {
-            // Redirect to OAuth provider
+            // Redirect to OAuth provider — callback will handle sync
             window.location.href = result.url;
             return;
           }
         } catch (err) {
-          // If OAuth not configured for this integration, fall through to local mode
           console.warn(`[oauth] ${name}: ${err.message}, falling back to local mode`);
         }
         setSyncStatus((prev) => ({ ...prev, [name]: null }));
       } else {
         // Disconnect via API
-        try { await apiDisconnect(name); } catch {}
+        try {
+          await apiDisconnect(name);
+          await setIntegrationConnected(name, false);
+        } catch {}
       }
     }
 
@@ -192,19 +261,17 @@ export default function Settings() {
       return updated;
     });
 
-    // Track timestamp and seed data when connecting
     if (wasOff) {
       setIntegrationTimestamps((prev) => {
         const updated = { ...prev, [name]: new Date().toISOString() };
         store('integrationTimestamps', updated);
         return updated;
       });
-      // Show syncing state, then seed data
+      // For demo-tier or when Supabase is not configured, seed demo data
       setSyncStatus((prev) => ({ ...prev, [name]: 'syncing' }));
       setTimeout(() => {
         onIntegrationConnect(name);
         setSyncStatus((prev) => ({ ...prev, [name]: 'done' }));
-        // Record sync history
         setSyncHistory((prev) => {
           const entry = { name, action: 'connect', timestamp: new Date().toISOString() };
           const updated = [entry, ...prev].slice(0, 50);
@@ -215,7 +282,6 @@ export default function Settings() {
         setTimeout(() => setSyncStatus((prev) => ({ ...prev, [name]: null })), 2000);
       }, 800);
     } else {
-      // Disconnection — record it
       setSyncHistory((prev) => {
         const entry = { name, action: 'disconnect', timestamp: new Date().toISOString() };
         const updated = [entry, ...prev].slice(0, 50);
@@ -226,21 +292,33 @@ export default function Settings() {
     }
   }, [integrations]);
 
-  // Re-sync an integration (force re-seed)
-  const resyncIntegration = useCallback((name) => {
+  // Re-sync an integration — real sync for live tier, demo seed for others
+  const resyncIntegration = useCallback(async (name) => {
     setSyncStatus((prev) => ({ ...prev, [name]: 'syncing' }));
-    setTimeout(() => {
+    const integDef = INTEGRATIONS.find((ig) => ig.name === name);
+    const isLive = integDef?.tier === 'live';
+
+    try {
+      if (isLive && isSupabaseConfigured()) {
+        await syncIntegration(name);
+        await fetchAllSyncedData();
+      } else {
+        onIntegrationConnect(name);
+      }
+    } catch (err) {
+      console.warn(`[resync] ${name}:`, err.message);
       onIntegrationConnect(name);
-      setSyncStatus((prev) => ({ ...prev, [name]: 'done' }));
-      setSyncHistory((prev) => {
-        const entry = { name, action: 'resync', timestamp: new Date().toISOString() };
-        const updated = [entry, ...prev].slice(0, 50);
-        store('syncHistory', updated);
-        return updated;
-      });
-      window.dispatchEvent(new CustomEvent('hs:integration-sync', { detail: { name, action: 'resync' } }));
-      setTimeout(() => setSyncStatus((prev) => ({ ...prev, [name]: null })), 2000);
-    }, 800);
+    }
+
+    setSyncStatus((prev) => ({ ...prev, [name]: 'done' }));
+    setSyncHistory((prev) => {
+      const entry = { name, action: 'resync', timestamp: new Date().toISOString() };
+      const updated = [entry, ...prev].slice(0, 50);
+      store('syncHistory', updated);
+      return updated;
+    });
+    window.dispatchEvent(new CustomEvent('hs:integration-sync', { detail: { name, action: 'resync' } }));
+    setTimeout(() => setSyncStatus((prev) => ({ ...prev, [name]: null })), 2000);
   }, []);
 
   const selectPlan = useCallback((id) => {

@@ -214,9 +214,37 @@ async function verifyAuth(req) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', APP_URL);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // GET: OAuth provider redirects here with ?code=...&state=...
+  if (req.method === 'GET') {
+    const { code, state, error: oauthError } = req.query || {};
+    if (oauthError) {
+      return res.redirect(302, `${APP_URL}?tab=settings&oauth=error&error=${encodeURIComponent(oauthError)}`);
+    }
+    if (!code || !state) {
+      return res.status(400).json({ error: 'Missing code or state' });
+    }
+    try {
+      const stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
+      const name = stateData.integration;
+      const orgId = stateData.org_id;
+      const userId = stateData.user_id;
+      if (!name || !orgId) {
+        return res.redirect(302, `${APP_URL}?tab=settings&oauth=error&error=invalid_state`);
+      }
+      // Build a fake profile for handleCallback
+      const profile = { org_id: orgId, id: userId };
+      await handleCallbackInternal(res, profile, name, code);
+    } catch (err) {
+      console.error('[oauth] GET callback error:', err);
+      return res.redirect(302, `${APP_URL}?tab=settings&oauth=error&error=callback_failed`);
+    }
+    return;
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
@@ -257,7 +285,7 @@ function startOAuth(res, profile, name) {
     ts: Date.now(),
   })).toString('base64url');
 
-  const redirectUri = `${APP_URL}/api/integrations/oauth?action=callback`;
+  const redirectUri = `${APP_URL}/api/integrations/oauth`;
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -287,10 +315,17 @@ function startOAuth(res, profile, name) {
 }
 
 async function handleCallback(res, profile, name, code) {
-  const config = OAUTH_CONFIGS[name];
-  if (!config) return res.status(400).json({ error: 'Integration inconnue' });
+  return handleCallbackInternal(res, profile, name, code, false);
+}
 
-  const redirectUri = `${APP_URL}/api/integrations/oauth?action=callback`;
+async function handleCallbackInternal(res, profile, name, code, isGetRedirect = true) {
+  const config = OAUTH_CONFIGS[name];
+  if (!config) {
+    if (isGetRedirect) return res.redirect(302, `${APP_URL}?tab=settings&oauth=error&error=unknown_integration`);
+    return res.status(400).json({ error: 'Integration inconnue' });
+  }
+
+  const redirectUri = `${APP_URL}/api/integrations/oauth`;
   let tokens;
 
   // TikTok uses JSON body with app_id/secret instead of standard OAuth
@@ -302,10 +337,12 @@ async function handleCallback(res, profile, name, code) {
     });
     if (!tiktokRes.ok) {
       console.error(`[oauth] TikTok token exchange failed: ${tiktokRes.status}`);
+      if (isGetRedirect) return res.redirect(302, `${APP_URL}?tab=settings&oauth=error&error=tiktok_token_failed`);
       return res.status(400).json({ error: 'Échec de l\'autorisation TikTok' });
     }
     const tiktokData = await tiktokRes.json();
     if (tiktokData.code !== 0) {
+      if (isGetRedirect) return res.redirect(302, `${APP_URL}?tab=settings&oauth=error&error=tiktok_error`);
       return res.status(400).json({ error: tiktokData.message || 'Erreur TikTok' });
     }
     tokens = {
@@ -345,6 +382,7 @@ async function handleCallback(res, profile, name, code) {
     if (!tokenRes.ok) {
       const err = await tokenRes.text();
       console.error(`[oauth] Token exchange failed for ${name}:`, err);
+      if (isGetRedirect) return res.redirect(302, `${APP_URL}?tab=settings&oauth=error&error=token_exchange_failed`);
       return res.status(400).json({ error: 'Échec de l\'autorisation' });
     }
 
@@ -414,6 +452,9 @@ async function handleCallback(res, profile, name, code) {
     details: { integration: name },
   });
 
+  if (isGetRedirect) {
+    return res.redirect(302, `${APP_URL}?tab=settings&oauth=success&integration=${encodeURIComponent(name)}`);
+  }
   return res.status(200).json({ ok: true, integration: name });
 }
 

@@ -235,6 +235,89 @@ export async function setIntegrationConnected(name, connected) {
   store('integrations', map);
 }
 
+// ─── Synced Integration Data (ad_insights, deals, bank_accounts, transactions) ───
+
+export async function listAdInsights() {
+  const sb = getSupabase();
+  if (sb && orgId()) {
+    const { data, error } = await sb
+      .from('ad_insights')
+      .select('*')
+      .eq('org_id', orgId())
+      .order('date', { ascending: false });
+    if (!error && data) {
+      store('adInsights', data);
+      return data;
+    }
+  }
+  return load('adInsights') || [];
+}
+
+export async function listDeals() {
+  const sb = getSupabase();
+  if (sb && orgId()) {
+    const { data, error } = await sb
+      .from('deals')
+      .select('*')
+      .eq('org_id', orgId())
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      store('deals', data);
+      return data;
+    }
+  }
+  return load('deals') || [];
+}
+
+export async function listTransactions() {
+  const sb = getSupabase();
+  if (sb && orgId()) {
+    const { data, error } = await sb
+      .from('transactions')
+      .select('*')
+      .eq('org_id', orgId())
+      .order('date', { ascending: false });
+    if (!error && data) {
+      store('transactions', data);
+      return data;
+    }
+  }
+  return load('transactions') || [];
+}
+
+export async function listBankAccounts() {
+  const sb = getSupabase();
+  if (sb && orgId()) {
+    const { data, error } = await sb
+      .from('bank_accounts')
+      .select('*')
+      .eq('org_id', orgId());
+    if (!error && data) {
+      store('bankAccounts', data);
+      return data;
+    }
+  }
+  return load('bankAccounts') || [];
+}
+
+/**
+ * Pull ALL synced data from Supabase into localStorage.
+ * Call this after an integration sync to ensure the UI has fresh data.
+ */
+export async function fetchAllSyncedData() {
+  if (!isSupabaseConfigured() || !orgId()) return;
+  await Promise.all([
+    listContacts(),
+    listFinancialHistory(),
+    listEvents(),
+    listIntegrations(),
+    listAdInsights(),
+    listDeals(),
+    listTransactions(),
+    listBankAccounts(),
+  ]);
+}
+
 // ─── User Preferences ───
 
 export async function loadPreferences() {
