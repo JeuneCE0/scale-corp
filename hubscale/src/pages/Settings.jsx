@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { T, getTheme, applyTheme } from '../lib/theme.js';
 import { store, load } from '../lib/store.js';
 import { isValidEmail } from '../lib/utils.js';
-import { Card, Section, Btn, Inp, Sel, TabBar, Toggle, ConfirmDialog, Badge, ProgressBar, PremiumGate } from '../components/ui.jsx';
+import { Card, Section, Btn, Inp, Sel, TabBar, Toggle, ConfirmDialog, Badge, ProgressBar, PremiumGate, Modal } from '../components/ui.jsx';
 import { canAccessPro, getPlan, isPaid, getTrialInfo } from '../lib/plan.js';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { SECTORS, PLANS, INTEGRATIONS, AUTOMATION_RULES } from '../lib/constants.js';
@@ -1463,9 +1463,8 @@ export default function Settings() {
           })()}
 
           {/* API Key Connection Modal */}
-          {connectModal && (() => {
-            const ig = INTEGRATIONS.find((i) => i.name === connectModal);
-            if (!ig) return null;
+          {(() => {
+            const ig = connectModal ? INTEGRATIONS.find((i) => i.name === connectModal) : null;
             const keyFields = {
               Stripe: { label: 'Clé secrète Stripe (sk_...)', placeholder: 'sk_live_... ou sk_test_...' },
               Revolut: { label: 'Access Token Revolut Business', placeholder: 'oa_prod_...' },
@@ -1484,93 +1483,72 @@ export default function Settings() {
               Zoho: { label: 'Clé API Zoho CRM', placeholder: 'Votre clé API Zoho' },
               ActiveCampaign: { label: 'Clé API ActiveCampaign', placeholder: 'Votre clé API', hasUrl: true, urlLabel: 'URL API ActiveCampaign', urlPlaceholder: 'https://votrecompte.api-us1.com' },
             };
-            const field = keyFields[ig.name] || { label: `Clé API ${ig.name}`, placeholder: 'Votre clé API' };
+            const field = ig ? (keyFields[ig.name] || { label: `Clé API ${ig.name}`, placeholder: 'Votre clé API' }) : {};
             return (
-              <div onClick={() => setConnectModal(null)} style={{
-                position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 9999,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-              }}>
-                <div onClick={(e) => e.stopPropagation()} style={{
-                  background: T.surface, borderRadius: 16, padding: 24, maxWidth: 460, width: '100%',
-                  border: `1px solid ${T.border}`, boxShadow: '0 20px 60px rgba(0,0,0,.4)',
-                }}>
-                  {/* Header */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-                    <div style={{
-                      width: 48, height: 48, borderRadius: 14, fontSize: 24,
-                      background: T.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>{ig.icon}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: T.text }}>Connecter {ig.name}</div>
-                      <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>{ig.desc}</div>
+              <Modal open={!!connectModal} onClose={() => setConnectModal(null)} title={ig ? `Connecter ${ig.name}` : ''}>
+                {ig && (
+                  <>
+                    {/* Icon + description */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                      <div style={{
+                        width: 44, height: 44, borderRadius: 12, fontSize: 22,
+                        background: T.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                      }}>{ig.icon}</div>
+                      <div style={{ fontSize: 12, color: T.textSecondary, lineHeight: 1.4 }}>{ig.desc}</div>
                     </div>
-                    <span onClick={() => setConnectModal(null)} style={{
-                      fontSize: 18, color: T.textMuted, cursor: 'pointer', padding: '4px 8px',
-                      borderRadius: 8, background: T.surface2,
-                    }}>✕</span>
-                  </div>
 
-                  {/* Info */}
-                  <div style={{
-                    padding: '10px 14px', borderRadius: 10, marginBottom: 16,
-                    background: T.blueBg, border: `1px solid ${T.blue}22`, fontSize: 11, color: T.blue, lineHeight: 1.5,
-                  }}>
-                    Entrez votre clé API pour connecter {ig.name} et synchroniser vos données automatiquement.
-                  </div>
+                    {/* Info banner */}
+                    <div style={{
+                      padding: '10px 14px', borderRadius: 10, marginBottom: 16,
+                      background: T.blueBg, border: `1px solid ${T.blue}22`, fontSize: 11, color: T.blue, lineHeight: 1.5,
+                    }}>
+                      Entrez votre clé API pour connecter {ig.name} et synchroniser vos données automatiquement.
+                    </div>
 
-                  {/* API Key Input */}
-                  <div style={{ marginBottom: field.hasUrl ? 10 : 16 }}>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 6 }}>
-                      {field.label}
-                    </label>
+                    {/* API Key Input */}
                     <Inp
+                      label={field.label}
                       type="password"
                       value={connectKey}
-                      onChange={(e) => setConnectKey(e.target.value)}
+                      onChange={setConnectKey}
                       placeholder={field.placeholder}
-                      style={{ width: '100%' }}
                     />
-                  </div>
 
-                  {/* Optional URL field */}
-                  {field.hasUrl && (
-                    <div style={{ marginBottom: 16 }}>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 6 }}>
-                        {field.urlLabel}
-                      </label>
+                    {/* Optional URL field */}
+                    {field.hasUrl && (
                       <Inp
+                        label={field.urlLabel}
                         value={connectUrl}
-                        onChange={(e) => setConnectUrl(e.target.value)}
+                        onChange={setConnectUrl}
                         placeholder={field.urlPlaceholder}
-                        style={{ width: '100%' }}
                       />
-                    </div>
-                  )}
+                    )}
 
-                  {/* Error */}
-                  {connectError && (
-                    <div style={{
-                      padding: '8px 12px', borderRadius: 8, marginBottom: 12,
-                      background: T.redBg, border: `1px solid ${T.red}22`,
-                      fontSize: 11, color: T.red, fontWeight: 600,
-                    }}>
-                      {connectError}
-                    </div>
-                  )}
+                    {/* Error */}
+                    {connectError && (
+                      <div style={{
+                        padding: '8px 12px', borderRadius: 8, marginBottom: 12,
+                        background: T.redBg, border: `1px solid ${T.red}22`,
+                        fontSize: 11, color: T.red, fontWeight: 600,
+                      }}>
+                        {connectError}
+                      </div>
+                    )}
 
-                  {/* Actions */}
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Btn v="primary" small onClick={() => submitApiKeyConnection(ig.name)}
-                      disabled={connectLoading || !connectKey.trim()}
-                      style={{ flex: 1, background: 'linear-gradient(135deg, #f97316, #f59e0b)', opacity: connectLoading ? 0.7 : 1 }}>
-                      {connectLoading ? '⟳ Connexion...' : 'Connecter'}
-                    </Btn>
-                    <Btn v="ghost" small onClick={() => setConnectModal(null)} style={{ flex: 1 }}>
-                      Annuler
-                    </Btn>
-                  </div>
-                </div>
-              </div>
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <Btn v="primary" small onClick={() => submitApiKeyConnection(ig.name)}
+                        disabled={connectLoading || !connectKey.trim()}
+                        style={{ flex: 1, background: 'linear-gradient(135deg, #f97316, #f59e0b)', opacity: connectLoading ? 0.7 : 1 }}>
+                        {connectLoading ? '⟳ Connexion...' : 'Connecter'}
+                      </Btn>
+                      <Btn v="ghost" small onClick={() => setConnectModal(null)} style={{ flex: 1 }}>
+                        Annuler
+                      </Btn>
+                    </div>
+                  </>
+                )}
+              </Modal>
             );
           })()}
 
