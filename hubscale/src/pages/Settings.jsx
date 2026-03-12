@@ -10,7 +10,7 @@ import { onIntegrationConnect, getIntegrationMeta } from '../lib/integrationData
 import { isSupabaseConfigured } from '../lib/supabase.js';
 import { t } from '../lib/i18n.js';
 import { startOAuthFlow, disconnectIntegration as apiDisconnect, syncIntegration, connectWithApiKey, requestDataExport, requestAccountDeletion, createBillingPortalSession } from '../lib/api.js';
-import { fetchAllSyncedData, setIntegrationConnected } from '../lib/db.js';
+import { setIntegrationConnected } from '../lib/db.js';
 import { sanitizeText, sanitizeEmail, sanitizePhone, sanitizeUrl } from '../lib/sanitize.js';
 
 function getIntegrationCategories() {
@@ -153,18 +153,13 @@ export default function Settings() {
       setSyncStatus((prev) => ({ ...prev, [integrationName]: 'syncing' }));
       (async () => {
         try {
-          if (isLive && isSupabaseConfigured()) {
-            await syncIntegration(integrationName);
-            await fetchAllSyncedData();
-          } else {
-            // Fallback to demo seeder for non-live integrations
-            onIntegrationConnect(integrationName);
+          if (isLive) {
+            const syncResult = await syncIntegration(integrationName);
+            if (syncResult?.data) storeSyncData(syncResult.data);
           }
-          await setIntegrationConnected(integrationName, true);
+          try { await setIntegrationConnected(integrationName, true); } catch {}
         } catch (err) {
           console.warn(`[sync] ${integrationName}:`, err.message);
-          // Fallback to demo data on sync failure
-          onIntegrationConnect(integrationName);
         }
         setSyncStatus((prev) => ({ ...prev, [integrationName]: 'done' }));
         setSyncHistory((prev) => {
@@ -217,6 +212,44 @@ export default function Settings() {
 
   const [syncStatus, setSyncStatus] = useState({});
 
+  // Store sync response data directly into localStorage
+  const storeSyncData = useCallback((data) => {
+    if (!data || typeof data !== 'object') return;
+    if (data.contacts?.length) {
+      const existing = load('contacts') || [];
+      const byId = new Map(existing.map((c) => [c.external_id || c.email || c.name, c]));
+      data.contacts.forEach((c) => byId.set(c.external_id || c.email || c.name, c));
+      store('contacts', Array.from(byId.values()));
+    }
+    if (data.transactions?.length) {
+      store('transactions', data.transactions);
+      // Aggregate into finHistory monthly buckets
+      const monthMap = {};
+      data.transactions.forEach((tx) => {
+        const d = new Date(tx.created_at || tx.date || Date.now());
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (!monthMap[key]) monthMap[key] = { month: key, revenue: 0, expenses: 0, profit: 0 };
+        const amt = Math.abs(tx.amount || 0);
+        if ((tx.amount || 0) >= 0) { monthMap[key].revenue += amt; } else { monthMap[key].expenses += amt; }
+        monthMap[key].profit = monthMap[key].revenue - monthMap[key].expenses;
+      });
+      const finHistory = Object.values(monthMap).sort((a, b) => a.month.localeCompare(b.month));
+      if (finHistory.length) store('finHistory', finHistory);
+    }
+    if (data.events?.length) {
+      store('events', data.events);
+    }
+    if (data.deals?.length) {
+      store('deals', data.deals);
+    }
+    if (data.adInsights?.length) {
+      store('metaAds', data.adInsights);
+    }
+    if (data.balance) {
+      store('stripeBalance', data.balance);
+    }
+  }, []);
+
   // Filtered integrations based on search + category
   const filteredIntegrations = useMemo(() => {
     let list = INTEGRATIONS;
@@ -259,21 +292,16 @@ export default function Settings() {
     setConnectLoading(true);
     setConnectError('');
     try {
-      if (isSupabaseConfigured()) {
-        await connectWithApiKey(name, connectKey.trim(), connectUrl.trim() || undefined);
-        setSyncStatus((prev) => ({ ...prev, [name]: 'syncing' }));
-        try {
-          await syncIntegration(name);
-          await fetchAllSyncedData();
-        } catch (syncErr) {
-          console.warn(`[sync] ${name}:`, syncErr.message);
-        }
-        await setIntegrationConnected(name, true);
-      } else {
-        // No Supabase — store key locally for reference, seed demo data
-        store(`apikey_${name.toLowerCase()}`, connectKey.trim());
-        onIntegrationConnect(name);
+      // Always try the real API first
+      await connectWithApiKey(name, connectKey.trim(), connectUrl.trim() || undefined);
+      setSyncStatus((prev) => ({ ...prev, [name]: 'syncing' }));
+      try {
+        const syncResult = await syncIntegration(name);
+        if (syncResult?.data) storeSyncData(syncResult.data);
+      } catch (syncErr) {
+        console.warn(`[sync] ${name}:`, syncErr.message);
       }
+      try { await setIntegrationConnected(name, true); } catch {}
       finalizeConnection(name);
       setConnectModal(null);
       setConnectKey('');
@@ -283,7 +311,7 @@ export default function Settings() {
     } finally {
       setConnectLoading(false);
     }
-  }, [connectKey, connectUrl, finalizeConnection]);
+  }, [connectKey, connectUrl, finalizeConnection, storeSyncData]);
 
   const toggleIntegration = useCallback(async (name) => {
     setBouncingIntegration(name);
@@ -294,20 +322,18 @@ export default function Settings() {
     const isLive = integDef?.tier === 'live' || integDef?.tier === 'oauth';
 
     if (wasOff && isLive) {
-      // Try OAuth first (requires Supabase + env vars)
-      if (isSupabaseConfigured()) {
-        setSyncStatus((prev) => ({ ...prev, [name]: 'syncing' }));
-        try {
-          const result = await startOAuthFlow(name);
-          if (result.url) {
-            window.location.href = result.url;
-            return;
-          }
-        } catch (err) {
-          console.warn(`[oauth] ${name}: ${err.message}`);
+      // Try OAuth first
+      setSyncStatus((prev) => ({ ...prev, [name]: 'syncing' }));
+      try {
+        const result = await startOAuthFlow(name);
+        if (result.url) {
+          window.location.href = result.url;
+          return;
         }
-        setSyncStatus((prev) => ({ ...prev, [name]: null }));
+      } catch (err) {
+        console.warn(`[oauth] ${name}: ${err.message}`);
       }
+      setSyncStatus((prev) => ({ ...prev, [name]: null }));
       // OAuth not available — open API key modal
       setConnectModal(name);
       setConnectKey('');
@@ -318,7 +344,7 @@ export default function Settings() {
 
     if (!wasOff) {
       // Disconnect
-      if (isSupabaseConfigured() && isLive) {
+      if (isLive) {
         try {
           await apiDisconnect(name);
           await setIntegrationConnected(name, false);
@@ -365,22 +391,15 @@ export default function Settings() {
     }, 800);
   }, [integrations]);
 
-  // Re-sync an integration — real sync for live tier, demo seed for others
+  // Re-sync an integration — always try real API
   const resyncIntegration = useCallback(async (name) => {
     setSyncStatus((prev) => ({ ...prev, [name]: 'syncing' }));
-    const integDef = INTEGRATIONS.find((ig) => ig.name === name);
-    const isLive = integDef?.tier === 'live';
 
     try {
-      if (isLive && isSupabaseConfigured()) {
-        await syncIntegration(name);
-        await fetchAllSyncedData();
-      } else {
-        onIntegrationConnect(name);
-      }
+      const syncResult = await syncIntegration(name);
+      if (syncResult?.data) storeSyncData(syncResult.data);
     } catch (err) {
       console.warn(`[resync] ${name}:`, err.message);
-      onIntegrationConnect(name);
     }
 
     setSyncStatus((prev) => ({ ...prev, [name]: 'done' }));
@@ -392,7 +411,7 @@ export default function Settings() {
     });
     window.dispatchEvent(new CustomEvent('hs:integration-sync', { detail: { name, action: 'resync' } }));
     setTimeout(() => setSyncStatus((prev) => ({ ...prev, [name]: null })), 2000);
-  }, []);
+  }, [storeSyncData]);
 
   const selectPlan = useCallback((id) => {
     setSelectedPlan(id);

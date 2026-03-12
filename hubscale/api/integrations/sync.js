@@ -45,8 +45,9 @@ async function syncStripe(sb, orgId, accessToken) {
   const Stripe = (await import('stripe')).default;
   const stripe = new Stripe(accessToken);
 
+  // Fetch charges (payments received)
   const charges = await stripe.charges.list({ limit: 100 });
-  const rows = (charges.data || []).map((c) => ({
+  const transactions = (charges.data || []).map((c) => ({
     org_id: orgId,
     source: 'stripe',
     external_id: c.id,
@@ -54,14 +55,41 @@ async function syncStripe(sb, orgId, accessToken) {
     currency: c.currency,
     status: c.status,
     description: c.description || '',
+    date: new Date(c.created * 1000).toISOString().split('T')[0],
     created_at: new Date(c.created * 1000).toISOString(),
   }));
 
-  if (rows.length > 0) {
-    await sb.from('transactions').upsert(rows, { onConflict: 'org_id,source,external_id' });
+  // Fetch customers as contacts
+  const customers = await stripe.customers.list({ limit: 100 });
+  const contacts = (customers.data || []).map((cu) => ({
+    org_id: orgId,
+    source: 'stripe',
+    external_id: cu.id,
+    name: cu.name || cu.email || 'Sans nom',
+    email: cu.email || '',
+    phone: cu.phone || '',
+    company: cu.metadata?.company || '',
+    status: 'client',
+    created_at: new Date(cu.created * 1000).toISOString(),
+  }));
+
+  // Fetch balance
+  const balance = await stripe.balance.retrieve();
+  const available = balance.available || [];
+  const totalBalance = available.reduce((s, b) => s + b.amount, 0) / 100;
+  const currency = available[0]?.currency || 'eur';
+
+  if (transactions.length > 0) {
+    await sb.from('transactions').upsert(transactions, { onConflict: 'org_id,source,external_id' });
+  }
+  if (contacts.length > 0) {
+    await sb.from('contacts').upsert(contacts, { onConflict: 'org_id,source,external_id' });
   }
 
-  return { synced: rows.length };
+  return {
+    synced: transactions.length + contacts.length,
+    data: { transactions, contacts, balance: { amount: totalBalance, currency } },
+  };
 }
 
 // ─── Google Calendar Sync ───
@@ -111,7 +139,7 @@ async function syncGoogleCalendar(sb, orgId, accessToken) {
     await sb.from('events').upsert(rows, { onConflict: 'org_id,source,external_id' });
   }
 
-  return { synced: rows.length };
+  return { synced: rows.length, data: { events: rows } };
 }
 
 // ─── HubSpot Sync ───
@@ -151,7 +179,7 @@ async function syncHubSpot(sb, orgId, accessToken) {
     await sb.from('contacts').upsert(rows, { onConflict: 'org_id,source,external_id' });
   }
 
-  return { synced: rows.length };
+  return { synced: rows.length, data: { contacts: rows } };
 }
 
 // ─── Revolut Sync ───
@@ -205,7 +233,7 @@ async function syncRevolut(sb, orgId, accessToken) {
     await sb.from('bank_accounts').upsert(balanceRows, { onConflict: 'org_id,source,external_id' });
   }
 
-  return { synced: rows.length + balanceRows.length };
+  return { synced: rows.length + balanceRows.length, data: { transactions: rows, bankAccounts: balanceRows } };
 }
 
 // ─── Qonto Sync ───
@@ -261,7 +289,7 @@ async function syncQonto(sb, orgId, accessToken) {
     await sb.from('bank_accounts').upsert(acctRows, { onConflict: 'org_id,source,external_id' });
   }
 
-  return { synced: allTx.length + acctRows.length };
+  return { synced: allTx.length + acctRows.length, data: { transactions: allTx, bankAccounts: acctRows } };
 }
 
 // ─── GoHighLevel Sync ───
@@ -350,7 +378,7 @@ async function syncGoHighLevel(sb, orgId, accessToken, metadata) {
     }
   }
 
-  return { synced };
+  return { synced, data: { contacts: contactRows } };
 }
 
 // ─── Meta Ads Sync ───
@@ -360,6 +388,7 @@ async function syncMetaAds(sb, orgId, accessToken, metadata) {
   const adAccounts = metadata?.ad_accounts || [];
 
   let synced = 0;
+  let allRows = [];
 
   for (const acct of adAccounts) {
     const acctId = acct.id || acct;
@@ -409,10 +438,11 @@ async function syncMetaAds(sb, orgId, accessToken, metadata) {
     if (rows.length > 0) {
       await sb.from('ad_insights').upsert(rows, { onConflict: 'org_id,source,external_id' });
       synced += rows.length;
+      allRows = allRows.concat(rows);
     }
   }
 
-  return { synced };
+  return { synced, data: { adInsights: allRows } };
 }
 
 // ─── Google Ads Sync ───
@@ -435,6 +465,7 @@ async function syncGoogleAds(sb, orgId, accessToken) {
   const customerIds = (custData.resourceNames || []).map((r) => r.replace('customers/', ''));
 
   let synced = 0;
+  let allRows = [];
   const now = new Date();
   const since = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().split('T')[0];
   const until = now.toISOString().split('T')[0];
@@ -472,10 +503,11 @@ async function syncGoogleAds(sb, orgId, accessToken) {
     if (rows.length > 0) {
       await sb.from('ad_insights').upsert(rows, { onConflict: 'org_id,source,external_id' });
       synced += rows.length;
+      allRows = allRows.concat(rows);
     }
   }
 
-  return { synced };
+  return { synced, data: { adInsights: allRows } };
 }
 
 // ─── TikTok Ads Sync ───
@@ -490,6 +522,7 @@ async function syncTikTokAds(sb, orgId, accessToken, metadata) {
   };
 
   let synced = 0;
+  let allRows = [];
   const now = new Date();
   const startDate = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().split('T')[0];
   const endDate = now.toISOString().split('T')[0];
@@ -533,10 +566,11 @@ async function syncTikTokAds(sb, orgId, accessToken, metadata) {
     if (rows.length > 0) {
       await sb.from('ad_insights').upsert(rows, { onConflict: 'org_id,source,external_id' });
       synced += rows.length;
+      allRows = allRows.concat(rows);
     }
   }
 
-  return { synced };
+  return { synced, data: { adInsights: allRows } };
 }
 
 // ─── Salesforce Sync ───
@@ -569,7 +603,7 @@ async function syncSalesforce(sb, orgId, accessToken) {
     await sb.from('contacts').upsert(rows, { onConflict: 'org_id,source,external_id' });
   }
 
-  return { synced: rows.length };
+  return { synced: rows.length, data: { contacts: rows } };
 }
 
 // ─── Pipedrive Sync ───
@@ -601,9 +635,10 @@ async function syncPipedrive(sb, orgId, accessToken) {
   // Sync deals
   const dealsRes = await fetch('https://api.pipedrive.com/v1/deals?limit=200&status=all_not_deleted', { headers });
   let dealsSynced = 0;
+  let dealRows = [];
   if (dealsRes.ok) {
     const dealsData = await dealsRes.json();
-    const dealRows = (dealsData.data || []).map((d) => ({
+    dealRows = (dealsData.data || []).map((d) => ({
       org_id: orgId,
       source: 'pipedrive',
       external_id: String(d.id),
@@ -620,7 +655,7 @@ async function syncPipedrive(sb, orgId, accessToken) {
     }
   }
 
-  return { synced: rows.length + dealsSynced };
+  return { synced: rows.length + dealsSynced, data: { contacts: rows, deals: dealRows || [] } };
 }
 
 // ─── Mailchimp Sync ───
@@ -641,6 +676,7 @@ async function syncMailchimp(sb, orgId, accessToken) {
   const listsData = await listsRes.json();
 
   let synced = 0;
+  let allRows = [];
   for (const list of (listsData.lists || []).slice(0, 3)) {
     const membersRes = await fetch(
       `https://${dc}.api.mailchimp.com/3.0/lists/${list.id}/members?count=200&fields=members.id,members.email_address,members.full_name,members.status`,
@@ -661,10 +697,11 @@ async function syncMailchimp(sb, orgId, accessToken) {
     if (rows.length > 0) {
       await sb.from('contacts').upsert(rows, { onConflict: 'org_id,source,external_id' });
       synced += rows.length;
+      allRows = allRows.concat(rows);
     }
   }
 
-  return { synced };
+  return { synced, data: { contacts: allRows } };
 }
 
 // ─── Sync Dispatcher ───
@@ -743,7 +780,7 @@ export default async function handler(req, res) {
       details: `Synced ${result.synced} records`,
     });
 
-    return res.status(200).json({ ok: true, synced: result.synced, source: name });
+    return res.status(200).json({ ok: true, synced: result.synced, source: name, data: result.data || {} });
   } catch (err) {
     console.error('[sync]', err);
     return res.status(500).json({ error: 'Erreur serveur' });
