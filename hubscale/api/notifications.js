@@ -3,21 +3,17 @@
 
 import { getSupabaseAdmin } from './utils/supabase.js';
 import { verifyAuth } from './utils/auth.js';
-
-const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
+import { cors, unauthorized, badRequest, methodNotAllowed, serverError } from './utils/errors.js';
 
 const PAGE_SIZE = 20;
 
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', APP_URL);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  cors(res, 'GET, POST, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
     const profile = await verifyAuth(req);
-    if (!profile) return res.status(401).json({ error: 'Non autorisé' });
+    if (!profile) return unauthorized(res);
 
     const sb = getSupabaseAdmin();
 
@@ -72,7 +68,7 @@ export default async function handler(req, res) {
       const { action, id } = req.body;
 
       if (action === 'mark_read') {
-        if (!id) return res.status(400).json({ error: 'ID requis' });
+        if (!id) return badRequest(res, 'ID requis');
 
         const { error } = await sb
           .from('notifications')
@@ -104,7 +100,7 @@ export default async function handler(req, res) {
       }
 
       if (action === 'delete') {
-        if (!id) return res.status(400).json({ error: 'ID requis' });
+        if (!id) return badRequest(res, 'ID requis');
 
         const { error } = await sb
           .from('notifications')
@@ -120,12 +116,11 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       }
 
-      return res.status(400).json({ error: 'Action invalide' });
+      return badRequest(res, 'Action invalide');
     }
 
-    return res.status(405).json({ error: 'Méthode non autorisée' });
-  } catch (err) {
-    console.error('[notifications]', err);
-    return res.status(500).json({ error: 'Erreur serveur' });
+    return methodNotAllowed(res);
+  } catch {
+    return serverError(res);
   }
 }

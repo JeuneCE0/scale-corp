@@ -3,19 +3,16 @@
 
 import { getSupabaseAdmin } from './utils/supabase.js';
 import { verifyAuth } from './utils/auth.js';
-
-const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
+import { cors, unauthorized, badRequest, methodNotAllowed, serverError } from './utils/errors.js';
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', APP_URL);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  cors(res, 'POST, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') return methodNotAllowed(res);
 
   try {
     const profile = await verifyAuth(req);
-    if (!profile) return res.status(401).json({ error: 'Non autorisé' });
+    if (!profile) return unauthorized(res);
 
     const { action } = req.body;
 
@@ -25,10 +22,9 @@ export default async function handler(req, res) {
       return handleDeletion(res, profile);
     }
 
-    return res.status(400).json({ error: 'Action invalide' });
-  } catch (err) {
-    console.error('[gdpr]', err);
-    return res.status(500).json({ error: 'Erreur serveur' });
+    return badRequest(res, 'Action invalide');
+  } catch {
+    return serverError(res);
   }
 }
 

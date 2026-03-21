@@ -3,8 +3,7 @@
 
 import { getSupabaseAdmin } from './utils/supabase.js';
 import { verifyAuth } from './utils/auth.js';
-
-const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
+import { cors, unauthorized, badRequest, methodNotAllowed, serverError } from './utils/errors.js';
 
 async function safeQuery(promise) {
   try {
@@ -53,28 +52,24 @@ async function fetchEvents(sb, orgId) {
 // ─── Main Handler ───
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', APP_URL);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  cors(res, 'POST, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') return methodNotAllowed(res);
 
   try {
     const profile = await verifyAuth(req);
-    if (!profile) return res.status(401).json({ error: 'Non autorisé' });
+    if (!profile) return unauthorized(res);
 
     const { format, scope } = req.body;
 
-    // Validate format
     const validFormats = ['csv', 'json'];
     if (!format || !validFormats.includes(format)) {
-      return res.status(400).json({ error: 'Format invalide. Utilisez "csv" ou "json".' });
+      return badRequest(res, 'Format invalide. Utilisez "csv" ou "json".');
     }
 
-    // Validate scope
     const validScopes = ['contacts', 'finances', 'events', 'all'];
     if (!scope || !validScopes.includes(scope)) {
-      return res.status(400).json({ error: 'Scope invalide. Utilisez "contacts", "finances", "events" ou "all".' });
+      return badRequest(res, 'Scope invalide. Utilisez "contacts", "finances", "events" ou "all".');
     }
 
     const sb = getSupabaseAdmin();
@@ -129,8 +124,7 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${scope}_export.csv"`);
     return res.status(200).send(csv);
-  } catch (err) {
-    console.error('[export]', err);
-    return res.status(500).json({ error: 'Erreur serveur' });
+  } catch {
+    return serverError(res);
   }
 }
