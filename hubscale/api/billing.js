@@ -1,10 +1,8 @@
 // HubScale — Billing API (Vercel Serverless Function)
 // Handles Stripe Checkout, Subscriptions, and Billing Portal
 
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from './utils/supabase.js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
@@ -19,10 +17,6 @@ const PLAN_PRICES = {
 async function getStripe() {
   const Stripe = (await import('stripe')).default;
   return new Stripe(STRIPE_SECRET_KEY);
-}
-
-function getSupabaseAdmin() {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 }
 
 // Read raw body from request stream (needed for Stripe webhook signature)

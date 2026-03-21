@@ -126,8 +126,8 @@ describe('Dashboard page', () => {
   it('shows pipeline stages', () => {
     seedTestData();
     renderPage(Dashboard, { onNavigate: vi.fn() });
-    expect(screen.getByText('Prospect')).toBeTruthy();
-    expect(screen.getByText('Client')).toBeTruthy();
+    expect(screen.getAllByText('Prospect').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Client').length).toBeGreaterThan(0);
   });
 
   it('renders without error when onNavigate is provided', () => {

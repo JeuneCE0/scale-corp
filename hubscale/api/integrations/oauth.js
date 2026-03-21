@@ -1,11 +1,9 @@
 // HubScale — Integration OAuth API (Vercel Serverless Function)
 // Handles OAuth flows for third-party integrations
 
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '../utils/supabase.js';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
 
 // OAuth configs per integration (add real values in env)
@@ -169,10 +167,6 @@ const OAUTH_CONFIGS = {
     scopes: 'channels:read chat:write incoming-webhook',
   },
 };
-
-function getSupabaseAdmin() {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-}
 
 const ENCRYPTION_KEY = process.env.OAUTH_ENCRYPTION_KEY;
 

@@ -1,25 +1,10 @@
 // HubScale — Export API (Vercel Serverless Function)
 // Handles data export in CSV and JSON formats
 
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from './utils/supabase.js';
+import { verifyAuth } from './utils/auth.js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
-
-function getSupabaseAdmin() {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-}
-
-async function verifyAuth(req) {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return null;
-  const sb = getSupabaseAdmin();
-  const { data: { user }, error } = await sb.auth.getUser(auth.slice(7));
-  if (error || !user) return null;
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
-  return profile;
-}
 
 async function safeQuery(promise) {
   try {

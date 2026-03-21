@@ -2,15 +2,9 @@
 // Receives Stripe webhook events and syncs transaction data in real-time
 // This is separate from billing.js webhooks which handle subscription lifecycle
 
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '../utils/supabase.js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const STRIPE_INTEGRATION_WEBHOOK_SECRET = process.env.STRIPE_INTEGRATION_WEBHOOK_SECRET;
-
-function getSupabaseAdmin() {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-}
 
 function getRawBody(req) {
   return new Promise((resolve, reject) => {

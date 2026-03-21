@@ -1,30 +1,12 @@
 // HubScale — Notifications API (Vercel Serverless Function)
 // Handles listing, marking read, and deleting notifications
 
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from './utils/supabase.js';
+import { verifyAuth } from './utils/auth.js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
 
 const PAGE_SIZE = 20;
-
-function getSupabaseAdmin() {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-}
-
-async function verifyAuth(req) {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return null;
-  const token = auth.slice(7);
-
-  const sb = getSupabaseAdmin();
-  const { data: { user }, error } = await sb.auth.getUser(token);
-  if (error || !user) return null;
-
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
-  return profile;
-}
 
 export default async function handler(req, res) {
   // CORS

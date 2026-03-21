@@ -1,10 +1,8 @@
 // HubScale — Admin API (Vercel Serverless Function)
 // Super-admin panel endpoints for cross-org management
 
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from './utils/supabase.js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
 
@@ -23,10 +21,6 @@ const PLAN_PRICES = {
   professional: process.env.STRIPE_PRICE_PROFESSIONAL,
   enterprise: process.env.STRIPE_PRICE_ENTERPRISE,
 };
-
-function getSupabaseAdmin() {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-}
 
 async function getStripe() {
   const Stripe = (await import('stripe')).default;

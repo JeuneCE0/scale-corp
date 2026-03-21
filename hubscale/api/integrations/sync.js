@@ -1,11 +1,10 @@
 // HubScale — Integration Sync API (Vercel Serverless Function)
 // Syncs data from connected third-party integrations
 
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '../utils/supabase.js';
+import { verifyAuth } from '../utils/auth.js';
 import { createDecipheriv, createCipheriv, randomBytes } from 'node:crypto';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
 const ENCRYPTION_KEY = process.env.OAUTH_ENCRYPTION_KEY;
 
@@ -37,10 +36,6 @@ const REFRESH_CONFIGS = {
     clientSecret: process.env.HUBSPOT_CLIENT_SECRET,
   },
 };
-
-function getSupabaseAdmin() {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-}
 
 function decrypt(encoded) {
   if (!encoded || !ENCRYPTION_KEY) return encoded;
@@ -84,8 +79,6 @@ async function refreshAccessToken(sb, integ) {
     }
   }
 
-  console.log(`[sync] Refreshing token for ${integ.name} (org: ${integ.org_id})`);
-
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
     refresh_token: refreshToken,
@@ -101,7 +94,6 @@ async function refreshAccessToken(sb, integ) {
 
   if (!tokenRes.ok) {
     const err = await tokenRes.text();
-    console.error(`[sync] Token refresh failed for ${integ.name}:`, err);
     // Mark integration as needing re-auth
     await sb.from('sync_history').insert({
       org_id: integ.org_id,
@@ -131,18 +123,7 @@ async function refreshAccessToken(sb, integ) {
     .eq('org_id', integ.org_id)
     .eq('name', integ.name);
 
-  console.log(`[sync] Token refreshed for ${integ.name}`);
   return newAccessToken;
-}
-
-async function verifyAuth(req) {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return null;
-  const sb = getSupabaseAdmin();
-  const { data: { user }, error } = await sb.auth.getUser(auth.slice(7));
-  if (error || !user) return null;
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
-  return profile;
 }
 
 // ─── Stripe Sync ───
@@ -621,6 +602,9 @@ async function syncGoogleAds(sb, orgId, accessToken) {
   const now = new Date();
   const since = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().split('T')[0];
   const until = now.toISOString().split('T')[0];
+  // Validate date format to prevent injection in GAQL query
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRe.test(since) || !dateRe.test(until)) throw new Error('Invalid date range');
 
   for (const customerId of customerIds.slice(0, 5)) {
     const query = `SELECT campaign.name, campaign.id, metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.conversions_value, metrics.ctr, metrics.average_cpc, metrics.average_cpm, segments.date FROM campaign WHERE segments.date BETWEEN '${since}' AND '${until}' AND campaign.status != 'REMOVED' ORDER BY segments.date`;
@@ -946,8 +930,6 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ ok: true, synced: result.synced, source: name, data: result.data || {} });
   } catch (err) {
-    console.error('[sync]', err);
-
     // Log sync failure to history
     try {
       const sb = getSupabaseAdmin();

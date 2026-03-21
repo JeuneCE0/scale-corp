@@ -1,27 +1,12 @@
 // HubScale — Email API (Vercel Serverless Function)
 // Handles transactional emails via Resend (welcome, password reset, invoice)
 
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from './utils/supabase.js';
+import { verifyAuth } from './utils/auth.js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
 const FROM_EMAIL = process.env.EMAIL_FROM || 'HubScale <noreply@hubscale.app>';
-
-function getSupabaseAdmin() {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-}
-
-async function verifyAuth(req) {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return null;
-  const sb = getSupabaseAdmin();
-  const { data: { user }, error } = await sb.auth.getUser(auth.slice(7));
-  if (error || !user) return null;
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
-  return profile;
-}
 
 // ---------------------------------------------------------------------------
 // Email Templates
