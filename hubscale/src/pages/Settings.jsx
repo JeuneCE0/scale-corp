@@ -10,7 +10,7 @@ import { onIntegrationConnect, getIntegrationMeta } from '../lib/integrationData
 import { isSupabaseConfigured } from '../lib/supabase.js';
 import { t } from '../lib/i18n.js';
 import { startOAuthFlow, disconnectIntegration as apiDisconnect, syncIntegration, connectWithApiKey, requestDataExport, requestAccountDeletion, createBillingPortalSession } from '../lib/api.js';
-import { setIntegrationConnected } from '../lib/db.js';
+import { setIntegrationConnected, fetchAllSyncedData } from '../lib/db.js';
 import { sanitizeText, sanitizeEmail, sanitizePhone, sanitizeUrl } from '../lib/sanitize.js';
 
 function getIntegrationCategories() {
@@ -156,6 +156,7 @@ export default function Settings() {
           if (isLive) {
             const syncResult = await syncIntegration(integrationName);
             if (syncResult?.data) storeSyncData(syncResult.data);
+            await fetchAllSyncedData().catch(() => {});
           }
           try { await setIntegrationConnected(integrationName, true); } catch {}
         } catch (err) {
@@ -223,17 +224,23 @@ export default function Settings() {
     }
     if (data.transactions?.length) {
       store('transactions', data.transactions);
-      // Aggregate into finHistory monthly buckets
+      // Merge into finHistory monthly buckets (key/ca/charges/marge/treso format)
+      const existing = load('finHistory') || [];
       const monthMap = {};
+      existing.forEach((r) => { monthMap[r.key] = { ...r }; });
       data.transactions.forEach((tx) => {
         const d = new Date(tx.created_at || tx.date || Date.now());
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        if (!monthMap[key]) monthMap[key] = { month: key, revenue: 0, expenses: 0, profit: 0 };
-        const amt = Math.abs(tx.amount || 0);
-        if ((tx.amount || 0) >= 0) { monthMap[key].revenue += amt; } else { monthMap[key].expenses += amt; }
-        monthMap[key].profit = monthMap[key].revenue - monthMap[key].expenses;
+        if (!monthMap[key]) monthMap[key] = { key, ca: 0, charges: 0, marge: 0, treso: 0 };
+        const amount = Number(tx.amount) || 0;
+        if (amount >= 0) monthMap[key].ca += amount;
+        else monthMap[key].charges += Math.abs(amount);
       });
-      const finHistory = Object.values(monthMap).sort((a, b) => a.month.localeCompare(b.month));
+      Object.values(monthMap).forEach((r) => {
+        r.marge = r.ca - r.charges;
+        r.result = r.marge;
+      });
+      const finHistory = Object.values(monthMap).sort((a, b) => a.key.localeCompare(b.key));
       if (finHistory.length) store('finHistory', finHistory);
     }
     if (data.events?.length) {
@@ -247,6 +254,18 @@ export default function Settings() {
     }
     if (data.balance) {
       store('stripeBalance', data.balance);
+    }
+    if (data.bankAccounts?.length) {
+      store('bankAccounts', data.bankAccounts);
+      // Update latest treso in finHistory from real bank balances
+      const totalBalance = data.bankAccounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+      if (totalBalance > 0) {
+        const finHistory = load('finHistory') || [];
+        if (finHistory.length > 0) {
+          finHistory[finHistory.length - 1].treso = totalBalance;
+          store('finHistory', finHistory);
+        }
+      }
     }
   }, []);
 
@@ -398,6 +417,8 @@ export default function Settings() {
     try {
       const syncResult = await syncIntegration(name);
       if (syncResult?.data) storeSyncData(syncResult.data);
+      // Also pull fresh data from Supabase to ensure all tables are in sync
+      await fetchAllSyncedData().catch(() => {});
     } catch (err) {
       console.warn(`[resync] ${name}:`, err.message);
     }

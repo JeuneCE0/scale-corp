@@ -306,7 +306,7 @@ export async function listBankAccounts() {
  */
 export async function fetchAllSyncedData() {
   if (!isSupabaseConfigured() || !orgId()) return;
-  const [, , , , adInsights, , transactions] = await Promise.all([
+  const [, , , , adInsights, , transactions, bankAccounts] = await Promise.all([
     listContacts(),
     listFinancialHistory(),
     listEvents(),
@@ -355,6 +355,18 @@ export async function fetchAllSyncedData() {
     });
     const updated = Object.values(monthMap).sort((a, b) => a.key.localeCompare(b.key));
     store('finHistory', updated);
+  }
+
+  // Update latest treso from real bank account balances
+  if (bankAccounts && bankAccounts.length > 0) {
+    const totalBalance = bankAccounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+    if (totalBalance > 0) {
+      const finHistory = load('finHistory') || [];
+      if (finHistory.length > 0) {
+        finHistory[finHistory.length - 1].treso = totalBalance;
+        store('finHistory', finHistory);
+      }
+    }
   }
 }
 
@@ -498,11 +510,15 @@ function normalizeEvent(row) {
     title: row.title,
     description: row.description,
     date: row.date,
-    time: row.time,
-    endTime: row.end_time,
+    time: row.time || (row.start_at ? new Date(row.start_at).toTimeString().slice(0, 5) : undefined),
+    endTime: row.end_time || (row.end_at ? new Date(row.end_at).toTimeString().slice(0, 5) : undefined),
+    startAt: row.start_at,
+    endAt: row.end_at,
+    location: row.location,
     type: row.type,
     source: row.source,
     externalId: row.external_id,
+    metadata: row.metadata,
   };
 }
 

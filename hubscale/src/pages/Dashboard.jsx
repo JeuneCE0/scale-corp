@@ -490,13 +490,19 @@ export default function Dashboard({ onNavigate }) {
       }
     }
 
-    // Bank: last treasury
+    // Bank: real account balance from synced bank_accounts, fallback to finHistory treso
     const bankTools = ['Revolut', 'Qonto', 'Shine', 'Bunq', 'N26'];
     for (const tool of bankTools) {
       if (integrations[tool]) {
-        const lastTreso = finHistory.length > 0 ? finHistory[finHistory.length - 1]?.treso || 0 : 0;
-        if (lastTreso > 0) {
-          kpis.push({ icon: '🏦', label: t('dash.treasury'), value: `${fmt(lastTreso)} €`, trend: null, color: T.blue, source: tool });
+        const bankAccounts = load('bankAccounts') || [];
+        const toolAccounts = bankAccounts.filter((a) => a.source === tool.toLowerCase());
+        let totalBalance = toolAccounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+        if (totalBalance === 0) {
+          totalBalance = finHistory.length > 0 ? finHistory[finHistory.length - 1]?.treso || 0 : 0;
+        }
+        if (totalBalance > 0) {
+          const currency = toolAccounts[0]?.currency?.toUpperCase() || 'EUR';
+          kpis.push({ icon: '🏦', label: t('dash.treasury'), value: `${fmt(totalBalance)} ${currency === 'EUR' ? '€' : currency}`, trend: null, color: T.blue, source: tool });
         }
         break;
       }
