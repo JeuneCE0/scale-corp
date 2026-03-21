@@ -3,6 +3,7 @@
 
 import { getSupabaseAdmin } from './utils/supabase.js';
 import { verifyAuth } from './utils/auth.js';
+import { cors, unauthorized, badRequest, methodNotAllowed, serverError } from './utils/errors.js';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
@@ -248,7 +249,7 @@ async function handleWelcome(req, res, profile) {
 async function handleResetPassword(req, res) {
   // Password reset does not require auth — the user is not logged in
   const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email requis' });
+  if (!email) return badRequest(res, 'Email requis');
 
   const sb = getSupabaseAdmin();
   const redirectTo = `${APP_URL}/reset-password`;
@@ -260,7 +261,6 @@ async function handleResetPassword(req, res) {
   });
 
   if (resetError) {
-    console.error('[email] resetPasswordForEmail error:', resetError.message);
     // Don't expose whether the account exists
     return res.status(200).json({ ok: true });
   }
@@ -275,9 +275,8 @@ async function handleResetPassword(req, res) {
         subject: 'Réinitialisation de votre mot de passe — HubScale',
         html: resetPasswordTemplate(redirectTo),
       });
-    } catch (err) {
+    } catch {
       // Non-blocking: Supabase already sent the real reset link
-      console.error('[email] Resend branded reset email failed:', err.message);
     }
   }
 
@@ -351,12 +350,9 @@ async function handlePlanChange(req, res, profile) {
 // ---------------------------------------------------------------------------
 
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', APP_URL);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  cors(res, 'POST, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') return methodNotAllowed(res);
 
   try {
     const { action } = req.body || {};
@@ -368,7 +364,7 @@ export default async function handler(req, res) {
 
     // All other actions require authentication
     const profile = await verifyAuth(req);
-    if (!profile) return res.status(401).json({ error: 'Non autorisé' });
+    if (!profile) return unauthorized(res);
 
     if (action === 'welcome') {
       return handleWelcome(req, res, profile);
@@ -378,9 +374,8 @@ export default async function handler(req, res) {
       return handlePlanChange(req, res, profile);
     }
 
-    return res.status(400).json({ error: 'Action invalide' });
-  } catch (err) {
-    console.error('[email]', err);
-    return res.status(500).json({ error: 'Erreur serveur' });
+    return badRequest(res, 'Action invalide');
+  } catch {
+    return serverError(res);
   }
 }

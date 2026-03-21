@@ -2,9 +2,9 @@
 // Super-admin panel endpoints for cross-org management
 
 import { getSupabaseAdmin } from './utils/supabase.js';
+import { cors, forbidden, badRequest, notFound, serverError } from './utils/errors.js';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
-const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
 
 const PLAN_MONTHLY = { starter: 49, professional: 149, enterprise: 349 };
 
@@ -53,14 +53,12 @@ async function logAdminAction(sb, adminId, action, targetType, targetId, details
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', APP_URL);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  cors(res, 'GET, POST, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
     const admin = await verifyAdmin(req);
-    if (!admin) return res.status(403).json({ error: 'Acces refuse — droits super_admin requis' });
+    if (!admin) return forbidden(res, 'Acces refuse — droits super_admin requis');
 
     const action = req.method === 'GET'
       ? req.query.action
@@ -103,11 +101,10 @@ export default async function handler(req, res) {
         return getAuditLog(sb, req, res);
 
       default:
-        return res.status(400).json({ error: 'Action invalide' });
+        return badRequest(res, 'Action invalide');
     }
-  } catch (err) {
-    console.error('[admin]', err);
-    return res.status(500).json({ error: 'Erreur serveur' });
+  } catch {
+    return serverError(res);
   }
 }
 
@@ -185,10 +182,10 @@ async function listOrganizations(sb, req, res) {
 
 async function getOrganization(sb, req, res) {
   const orgId = req.query.org_id;
-  if (!orgId) return res.status(400).json({ error: 'org_id requis' });
+  if (!orgId) return badRequest(res, 'org_id requis');
 
   const { data: org, error } = await sb.from('organizations').select('*').eq('id', orgId).single();
-  if (error || !org) return res.status(404).json({ error: 'Organisation introuvable' });
+  if (error || !org) return notFound(res, 'Organisation introuvable');
 
   const { data: members } = await sb.from('profiles').select('id, full_name, email, role, created_at').eq('org_id', orgId);
   const { count: contactCount } = await sb.from('contacts').select('id', { count: 'exact', head: true }).eq('org_id', orgId);
@@ -213,11 +210,11 @@ async function getOrganization(sb, req, res) {
 
 async function updateOrganization(sb, req, res, admin) {
   const { org_id, name, sector, website } = req.body;
-  if (!org_id) return res.status(400).json({ error: 'org_id requis' });
+  if (!org_id) return badRequest(res, 'org_id requis');
 
-  if (name !== undefined && !validateString(name)) return res.status(400).json({ error: 'name must be a string with max length 255' });
-  if (sector !== undefined && !validateString(sector)) return res.status(400).json({ error: 'sector must be a string with max length 255' });
-  if (website !== undefined && !validateString(website)) return res.status(400).json({ error: 'website must be a string with max length 255' });
+  if (name !== undefined && !validateString(name)) return badRequest(res, 'name must be a string with max length 255');
+  if (sector !== undefined && !validateString(sector)) return badRequest(res, 'sector must be a string with max length 255');
+  if (website !== undefined && !validateString(website)) return badRequest(res, 'website must be a string with max length 255');
 
   const updates = {};
   if (name !== undefined) updates.name = name;
@@ -267,10 +264,10 @@ async function listUsers(sb, req, res) {
 
 async function updateUser(sb, req, res, admin) {
   const { user_id, full_name, role } = req.body;
-  if (!user_id) return res.status(400).json({ error: 'user_id requis' });
+  if (!user_id) return badRequest(res, 'user_id requis');
 
-  if (role !== undefined && !VALID_ROLES.includes(role)) return res.status(400).json({ error: 'role must be one of: ' + VALID_ROLES.join(', ') });
-  if (full_name !== undefined && !validateString(full_name, 100)) return res.status(400).json({ error: 'full_name must be a string with max length 100' });
+  if (role !== undefined && !VALID_ROLES.includes(role)) return badRequest(res, 'role must be one of: ' + VALID_ROLES.join(', '));
+  if (full_name !== undefined && !validateString(full_name, 100)) return badRequest(res, 'full_name must be a string with max length 100');
 
   const updates = {};
   if (full_name !== undefined) updates.full_name = full_name;
@@ -287,10 +284,10 @@ async function updateUser(sb, req, res, admin) {
 
 async function resetPassword(sb, req, res, admin) {
   const { user_id } = req.body;
-  if (!user_id) return res.status(400).json({ error: 'user_id requis' });
+  if (!user_id) return badRequest(res, 'user_id requis');
 
   const { data: profile } = await sb.from('profiles').select('email').eq('id', user_id).single();
-  if (!profile) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  if (!profile) return notFound(res, 'Utilisateur introuvable');
 
   const { error } = await sb.auth.admin.generateLink({
     type: 'recovery',
@@ -306,11 +303,11 @@ async function resetPassword(sb, req, res, admin) {
 
 async function changePlan(sb, req, res, admin) {
   const { org_id, plan } = req.body;
-  if (!org_id || !plan) return res.status(400).json({ error: 'org_id et plan requis' });
-  if (!VALID_PLANS.includes(plan)) return res.status(400).json({ error: 'plan must be one of: ' + VALID_PLANS.join(', ') });
+  if (!org_id || !plan) return badRequest(res, 'org_id et plan requis');
+  if (!VALID_PLANS.includes(plan)) return badRequest(res, 'plan must be one of: ' + VALID_PLANS.join(', '));
 
   const { data: org } = await sb.from('organizations').select('*').eq('id', org_id).single();
-  if (!org) return res.status(404).json({ error: 'Organisation introuvable' });
+  if (!org) return notFound(res, 'Organisation introuvable');
 
   const oldPlan = org.plan;
 
@@ -326,8 +323,8 @@ async function changePlan(sb, req, res, admin) {
         items: [{ id: sub.items.data[0].id, price: PLAN_PRICES[plan] }],
         proration_behavior: 'create_prorations',
       });
-    } catch (err) {
-      console.warn('[admin] Stripe plan update failed:', err.message);
+    } catch {
+      // Stripe plan update is best-effort
     }
   }
 

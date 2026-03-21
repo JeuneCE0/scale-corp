@@ -2,6 +2,8 @@
 // Handles Stripe Checkout, Subscriptions, and Billing Portal
 
 import { getSupabaseAdmin } from './utils/supabase.js';
+import { verifyAuth } from './utils/auth.js';
+import { cors, unauthorized, badRequest, serverError } from './utils/errors.js';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
@@ -32,24 +34,8 @@ function getRawBody(req) {
 // Disable Vercel auto body-parsing so we can read the raw body for webhooks
 export const config = { api: { bodyParser: false } };
 
-async function verifyAuth(req) {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return null;
-  const token = auth.slice(7);
-
-  const sb = getSupabaseAdmin();
-  const { data: { user }, error } = await sb.auth.getUser(token);
-  if (error || !user) return null;
-
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
-  return profile;
-}
-
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', APP_URL);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  cors(res, 'GET, POST, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
@@ -68,7 +54,7 @@ export default async function handler(req, res) {
     }
 
     const profile = await verifyAuth(req);
-    if (!profile) return res.status(401).json({ error: 'Non autorisé' });
+    if (!profile) return unauthorized(res);
 
     const action = req.method === 'GET'
       ? req.query.action
@@ -82,10 +68,9 @@ export default async function handler(req, res) {
       return createPortal(req, res, profile);
     }
 
-    return res.status(400).json({ error: 'Action invalide' });
-  } catch (err) {
-    console.error('[billing]', err);
-    return res.status(500).json({ error: 'Erreur serveur' });
+    return badRequest(res, 'Action invalide');
+  } catch {
+    return serverError(res);
   }
 }
 
@@ -94,7 +79,7 @@ const TRIAL_DAYS = 14;
 async function createCheckout(req, res, profile) {
   const { planId, skipTrial } = req.body;
   const priceId = PLAN_PRICES[planId];
-  if (!priceId) return res.status(400).json({ error: 'Plan invalide' });
+  if (!priceId) return badRequest(res, 'Plan invalide');
 
   const stripe = await getStripe();
   const sb = getSupabaseAdmin();
@@ -170,7 +155,7 @@ async function createPortal(req, res, profile) {
   const { data: org } = await sb.from('organizations').select('stripe_customer_id').eq('id', profile.org_id).single();
 
   if (!org?.stripe_customer_id) {
-    return res.status(400).json({ error: 'Aucun abonnement actif' });
+    return badRequest(res, 'Aucun abonnement actif');
   }
 
   const stripe = await getStripe();
@@ -189,9 +174,8 @@ async function handleWebhook(req, res, rawBody) {
 
   try {
     event = stripe.webhooks.constructEvent(rawBody, sig, STRIPE_WEBHOOK_SECRET);
-  } catch (err) {
-    console.error('[webhook] Signature verification failed:', err.message);
-    return res.status(400).json({ error: 'Signature invalide' });
+  } catch {
+    return badRequest(res, 'Signature invalide');
   }
 
   const sb = getSupabaseAdmin();
@@ -264,8 +248,8 @@ async function handleWebhook(req, res, rawBody) {
                 }),
               });
             }
-          } catch (emailErr) {
-            console.error('[billing] Plan change email failed:', emailErr.message);
+          } catch {
+            // Plan change email is non-blocking
           }
         }
 
