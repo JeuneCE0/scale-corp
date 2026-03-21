@@ -2,12 +2,41 @@
 // Syncs data from connected third-party integrations
 
 import { createClient } from '@supabase/supabase-js';
-import { createDecipheriv } from 'node:crypto';
+import { createDecipheriv, createCipheriv, randomBytes } from 'node:crypto';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
 const ENCRYPTION_KEY = process.env.OAUTH_ENCRYPTION_KEY;
+
+// OAuth configs for token refresh (mirrors oauth.js)
+const REFRESH_CONFIGS = {
+  'google calendar': {
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  },
+  gohighlevel: {
+    tokenUrl: 'https://services.leadconnectorhq.com/oauth/token',
+    clientId: process.env.GHL_OAUTH_CLIENT_ID,
+    clientSecret: process.env.GHL_OAUTH_CLIENT_SECRET,
+  },
+  revolut: {
+    tokenUrl: 'https://b2b.revolut.com/api/1.0/auth/token',
+    clientId: process.env.REVOLUT_OAUTH_CLIENT_ID,
+    clientSecret: process.env.REVOLUT_OAUTH_CLIENT_SECRET,
+  },
+  stripe: {
+    tokenUrl: 'https://connect.stripe.com/oauth/token',
+    clientId: process.env.STRIPE_CLIENT_ID,
+    clientSecret: process.env.STRIPE_SECRET_KEY,
+  },
+  hubspot: {
+    tokenUrl: 'https://api.hubapi.com/oauth/v1/token',
+    clientId: process.env.HUBSPOT_CLIENT_ID,
+    clientSecret: process.env.HUBSPOT_CLIENT_SECRET,
+  },
+};
 
 function getSupabaseAdmin() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -27,6 +56,83 @@ function decrypt(encoded) {
   } catch {
     return encoded; // Fallback for unencrypted legacy tokens
   }
+}
+
+function encrypt(plaintext) {
+  if (!plaintext || !ENCRYPTION_KEY) return plaintext;
+  const key = Buffer.from(ENCRYPTION_KEY, 'hex');
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return Buffer.concat([iv, authTag, encrypted]).toString('base64');
+}
+
+// Refresh expired OAuth tokens automatically before syncing
+async function refreshAccessToken(sb, integ) {
+  const config = REFRESH_CONFIGS[integ.name];
+  if (!config || !config.clientId) return null;
+
+  const refreshToken = decrypt(integ.refresh_token_enc);
+  if (!refreshToken) return null;
+
+  // Check if token is still valid (5 min buffer)
+  if (integ.token_expires_at) {
+    const expiresAt = new Date(integ.token_expires_at);
+    if (expiresAt > new Date(Date.now() + 5 * 60 * 1000)) {
+      return null; // Token still valid
+    }
+  }
+
+  console.log(`[sync] Refreshing token for ${integ.name} (org: ${integ.org_id})`);
+
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: refreshToken,
+    client_id: config.clientId,
+    client_secret: config.clientSecret,
+  });
+
+  const tokenRes = await fetch(config.tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+
+  if (!tokenRes.ok) {
+    const err = await tokenRes.text();
+    console.error(`[sync] Token refresh failed for ${integ.name}:`, err);
+    // Mark integration as needing re-auth
+    await sb.from('sync_history').insert({
+      org_id: integ.org_id,
+      integration_name: integ.name,
+      action: 'error',
+      details: 'Token refresh failed — reconnection required',
+    });
+    throw new Error(`Token expired for ${integ.name}. Reconnection required.`);
+  }
+
+  const tokens = await tokenRes.json();
+  const newAccessToken = tokens.access_token;
+
+  // Update stored tokens
+  const updates = {
+    access_token_enc: encrypt(newAccessToken),
+    token_expires_at: tokens.expires_in
+      ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+      : null,
+  };
+  // Some providers rotate refresh tokens
+  if (tokens.refresh_token) {
+    updates.refresh_token_enc = encrypt(tokens.refresh_token);
+  }
+
+  await sb.from('integrations').update(updates)
+    .eq('org_id', integ.org_id)
+    .eq('name', integ.name);
+
+  console.log(`[sync] Token refreshed for ${integ.name}`);
+  return newAccessToken;
 }
 
 async function verifyAuth(req) {
@@ -378,7 +484,53 @@ async function syncGoHighLevel(sb, orgId, accessToken, metadata) {
     }
   }
 
-  return { synced, data: { contacts: contactRows } };
+  // Fetch calendar events from GHL
+  const calRes = await fetch(`${GHL_BASE}/calendars/?locationId=${locationId}`, { headers });
+  let eventRows = [];
+  if (calRes.ok) {
+    const calData = await calRes.json();
+    const calendars = calData.calendars || [];
+
+    const now = new Date();
+    const startTime = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+    const endTime = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
+
+    for (const cal of calendars) {
+      const evtRes = await fetch(
+        `${GHL_BASE}/calendars/events?locationId=${locationId}&calendarId=${cal.id}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`,
+        { headers },
+      );
+      if (!evtRes.ok) continue;
+      const evtData = await evtRes.json();
+
+      const rows = (evtData.events || []).map((ev) => ({
+        org_id: orgId,
+        source: 'gohighlevel',
+        external_id: ev.id,
+        title: ev.title || ev.calendarName || 'RDV GHL',
+        description: ev.notes || '',
+        date: ev.startTime ? new Date(ev.startTime).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        start_at: ev.startTime || null,
+        end_at: ev.endTime || null,
+        location: ev.address || '',
+        metadata: {
+          calendarId: cal.id,
+          calendarName: cal.name,
+          status: ev.appointmentStatus,
+          contactId: ev.contactId,
+        },
+      }));
+
+      eventRows = eventRows.concat(rows);
+    }
+
+    if (eventRows.length > 0) {
+      await sb.from('events').upsert(eventRows, { onConflict: 'org_id,source,external_id' });
+      synced += eventRows.length;
+    }
+  }
+
+  return { synced, data: { contacts: contactRows, events: eventRows } };
 }
 
 // ─── Meta Ads Sync ───
@@ -758,10 +910,22 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: `Intégration ${name} non connectée` });
     }
 
-    // Decrypt access token
-    const accessToken = decrypt(integ.access_token_enc);
+    // Decrypt access token — refresh if expired
+    let accessToken = decrypt(integ.access_token_enc);
     if (!accessToken) {
       return res.status(400).json({ error: 'Token d\'accès manquant' });
+    }
+
+    // Attempt automatic token refresh for OAuth integrations
+    try {
+      const refreshed = await refreshAccessToken(sb, integ);
+      if (refreshed) accessToken = refreshed;
+    } catch (refreshErr) {
+      return res.status(401).json({
+        error: refreshErr.message,
+        code: 'TOKEN_EXPIRED',
+        integration: name,
+      });
     }
 
     // Run the sync handler (some handlers need metadata for account IDs, etc.)
@@ -783,6 +947,22 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, synced: result.synced, source: name, data: result.data || {} });
   } catch (err) {
     console.error('[sync]', err);
-    return res.status(500).json({ error: 'Erreur serveur' });
+
+    // Log sync failure to history
+    try {
+      const sb = getSupabaseAdmin();
+      const profile = await verifyAuth(req);
+      if (profile) {
+        const name = (req.body?.integration || '').toLowerCase();
+        await sb.from('sync_history').insert({
+          org_id: profile.org_id,
+          integration_name: name,
+          action: 'error',
+          details: err.message || 'Unknown sync error',
+        });
+      }
+    } catch { /* best effort logging */ }
+
+    return res.status(500).json({ error: err.message || 'Erreur serveur' });
   }
 }
