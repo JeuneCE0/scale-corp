@@ -410,10 +410,12 @@ function AppInner(){
    }));
    results.forEach(r=>{if(r.status==="fulfilled"&&r.value.d)newData[r.value.id]=r.value.d;});
   }
-  const demo=mkGHLDemo(socs);
-  socs.filter(s=>s.stat==="active"&&s.id!=="eco").forEach(s=>{
-   if(!newData[s.id])newData[s.id]=demo[s.id];
-  });
+  if(!hasKeys||Object.keys(newData).length===0){
+   const demo=mkGHLDemo(socs);
+   socs.filter(s=>s.stat==="active"&&s.id!=="eco").forEach(s=>{
+    if(!newData[s.id])newData[s.id]=demo[s.id];
+   });
+  }
   setGhlData(newData);await sSet("scAg",newData);trackEvent("sync_ghl",{count:Object.keys(newData).length});
   // Merge GHL contacts into clients state
   const ghlSocIds=Object.keys(newData).filter(sid=>newData[sid].ghlClients?.length>0);

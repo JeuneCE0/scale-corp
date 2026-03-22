@@ -28,8 +28,8 @@ export function BankingPanel({revData,onSync,compact,clients:allClients2=[]}){
  }
  const revDataFinal=effectiveData;
  const{accounts,transactions,totalEUR,lastSync,isDemo}=revDataFinal;
- const inflow=transactions.filter(t=>t.legs?.[0]?.amount>0).reduce((s,t)=>s+t.legs?.[0]?.amount||0,0);
- const outflow=Math.abs(transactions.filter(t=>t.legs?.[0]?.amount<0).reduce((s,t)=>s+t.legs?.[0]?.amount||0,0));
+ const inflow=transactions.filter(t=>t.legs?.[0]?.amount>0).reduce((s,t)=>s+(t.legs?.[0]?.amount||0),0);
+ const outflow=Math.abs(transactions.filter(t=>t.legs?.[0]?.amount<0).reduce((s,t)=>s+(t.legs?.[0]?.amount||0),0));
  const cs=v=>CURR_SYMBOLS[v]||v;
  if(compact)return <Card style={{padding:12}} accent={C.g}>{isOffline&&<OfflineBanner/>}
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>

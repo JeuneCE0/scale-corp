@@ -488,7 +488,8 @@ export async function syncAdData(societyId,oauthTokens){
  });
  // TikTok data
  (results.tiktok?.data||[]).forEach(row=>{
-  addToMonth(curM(),"tiktok",{spend:row.spend,impressions:row.impressions,clicks:row.clicks,conversions:row.conversions,cpc:row.cpc,cpm:row.cpm,ctr:row.ctr,reach:row.reach});
+  const month=row.stat_time_day?.slice(0,7)||row.date?.slice(0,7)||curM();
+  addToMonth(month,"tiktok",{spend:row.spend,impressions:row.impressions,clicks:row.clicks,conversions:row.conversions,cpc:row.cpc,cpm:row.cpm,ctr:row.ctr,reach:row.reach});
  });
 
  // Compute ROAS and color codes for each month
@@ -1166,7 +1167,7 @@ export function calcMilestoneData(soc,reps,actions,pulses,allM){
  const hs=healthScore(soc,reps);
  const bestGrade=hs.grade;
  let gradeAStreak=0;
- for(let i=allM.length-1;i>=0;i--){const tmpReps={...reps};const r=gr(reps,soc.id,allM[i]);if(!r)break;const g=healthScore(soc,reps).grade;if(g==="A")gradeAStreak++;else break;}
+ for(let i=allM.length-1;i>=0;i--){const r=gr(reps,soc.id,allM[i]);if(!r)break;const monthReps={};monthReps[soc.id]={};monthReps[soc.id][allM[i]]=r;const g=healthScore(soc,monthReps).grade;if(g==="A")gradeAStreak++;else break;}
  let hasDoubled=false;
  for(let i=1;i<months.length;i++){if(months[i-1].ca>0&&months[i].ca>=months[i-1].ca*2){hasDoubled=true;break;}}
  return{totalCA,bestCA,bestPipeline,bestTreso,incubMonths,growthStreak:maxGrowth,profitableMonths,bestMarginPct,profitStreak:maxProfStreak,reportsCount,pulseCount,doneActions,bestGrade,gradeAStreak,hasDoubled};

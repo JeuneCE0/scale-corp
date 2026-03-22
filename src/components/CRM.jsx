@@ -42,7 +42,7 @@ export function TabCRM({socs,ghlData,onSync}){
  const aggStats=useMemo(()=>{
   const ids=selSoc==="all"?actS.map(s=>s.id):[selSoc];
   let tLeads=0,tOpen=0,tWon=0,tLost=0,pVal=0,wVal=0;
-  ids.forEach(id=>{const d=ghlData[id];if(!d)return;const st=d.stats;tLeads+=st.totalLeads;tOpen+=st.openDeals;tWon+=st.wonDeals;tLost+=st.lostDeals;pVal+=st.pipelineValue;wVal+=st.wonValue;});
+  ids.forEach(id=>{const d=ghlData[id];if(!d||!d.stats)return;const st=d.stats;tLeads+=(st.totalLeads||0);tOpen+=(st.openDeals||0);tWon+=(st.wonDeals||0);tLost+=(st.lostDeals||0);pVal+=(st.pipelineValue||0);wVal+=(st.wonValue||0);});
   return{tLeads,tOpen,tWon,tLost,pVal,wVal,conv:tLeads>0?Math.round(tWon/tLeads*100):0};
  },[ghlData,selSoc,actS]);
  const opps=useMemo(()=>{
@@ -52,7 +52,7 @@ export function TabCRM({socs,ghlData,onSync}){
  },[ghlData,selSoc,actS]);
  const stages=useMemo(()=>{
   const ids=selSoc==="all"?actS.map(s=>s.id):[selSoc];
-  const counts={};ids.forEach(id=>{const d=ghlData[id];if(!d)return;((d.opportunities||[])).forEach(o=>{counts[o.stage]=(counts[o.stage]||0)+1;});});
+  const counts={};ids.forEach(id=>{const d=ghlData[id];if(!d)return;((d.opportunities||[])).forEach(o=>{const st=o.stage||o.stageName||"Inconnu";counts[st]=(counts[st]||0)+1;});});
   // Sort by count desc, show top 6 + group the rest into "Autres"
   const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
   if(sorted.length<=7)return sorted.map(s=>s[0]);
@@ -62,14 +62,14 @@ export function TabCRM({socs,ghlData,onSync}){
  },[ghlData,selSoc,actS]);
  const otherStages=useMemo(()=>{
   const ids=selSoc==="all"?actS.map(s=>s.id):[selSoc];
-  const counts={};ids.forEach(id=>{const d=ghlData[id];if(!d)return;((d.opportunities||[])).forEach(o=>{counts[o.stage]=(counts[o.stage]||0)+1;});});
+  const counts={};ids.forEach(id=>{const d=ghlData[id];if(!d)return;((d.opportunities||[])).forEach(o=>{const st=o.stage||o.stageName||"Inconnu";counts[st]=(counts[st]||0)+1;});});
   const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
   if(sorted.length<=7)return new Set();
   return new Set(sorted.slice(6).map(s=>s[0]));
  },[ghlData,selSoc,actS]);
  const sources=useMemo(()=>{
   const ids=selSoc==="all"?actS.map(s=>s.id):[selSoc];
-  const m={};ids.forEach(id=>{const d=ghlData[id];if(!d)return;((d.opportunities||[])).forEach(o=>{m[o.source]=(m[o.source]||0)+1;});});
+  const m={};ids.forEach(id=>{const d=ghlData[id];if(!d)return;((d.opportunities||[])).forEach(o=>{const src=o.source||"Inconnu";m[src]=(m[src]||0)+1;});});
   return Object.entries(m).map(([s,c])=>({source:s,count:c})).sort((a,b)=>b.count-a.count);
  },[ghlData,selSoc,actS]);
  const isDemo=Object.values(ghlData).some(d=>d.isDemo);
@@ -90,7 +90,7 @@ export function TabCRM({socs,ghlData,onSync}){
    <KPI label="Leads total" value={String(aggStats.tLeads)} accent={C.b} delay={1}/><KPI label="Pipeline ouvert" value={`${fmt(aggStats.pVal)}€`} accent={C.acc} delay={2}/><KPI label="Deals gagnés" value={`${fmt(aggStats.wVal)}€`} accent={C.g} delay={3}/><KPI label="Conversion" value={`${aggStats.conv}%`} accent={aggStats.conv>=30?C.g:aggStats.conv>=15?C.o:C.r} delay={4}/>
   </div>
   <Sect title="Funnel" sub="Répartition par étape">
-   {stages.map((st,i)=>{const stOpps=st==="Autres"?opps.filter(o=>otherStages.has(o.stage)):opps.filter(o=>o.stage===st);const val=stOpps.reduce((a,o)=>a+o.value,0);const w=aggStats.tLeads>0?Math.round(stOpps.length/aggStats.tLeads*100):0;
+   {stages.map((st,i)=>{const stOpps=st==="Autres"?opps.filter(o=>otherStages.has(o.stage||o.stageName||"Inconnu")):opps.filter(o=>(o.stage||o.stageName||"Inconnu")===st);const val=stOpps.reduce((a,o)=>a+pf(o.monetaryValue||o.value),0);const w=aggStats.tLeads>0?Math.round(stOpps.length/aggStats.tLeads*100):0;
     return <div key={st} className={`fu d${Math.min(i+1,8)}`} style={{marginBottom:4}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
     <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:2,background:GHL_STAGES_COLORS[i%GHL_STAGES_COLORS.length]}}/><span style={{fontWeight:600,fontSize:12}}>{st}</span></div>
@@ -103,10 +103,10 @@ export function TabCRM({socs,ghlData,onSync}){
   {selSoc==="all"&&<Sect title="Pipeline par société">
    {actS.map((s,i)=>{const d=ghlData[s.id];if(!d)return null;return <div key={s.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:C.card,borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3}}>
     <span style={{width:6,height:6,borderRadius:3,background:s.color}}/><span style={{flex:1,fontWeight:700,fontSize:12}}>{s.nom}</span>
-    <span style={{fontSize:10,color:C.td}}>{d.stats.totalLeads} leads</span>
-    <span style={{fontSize:10,color:C.b}}>{d.stats.openDeals} ouverts</span>
-    <span style={{fontSize:10,color:C.g}}>{d.stats.wonDeals} gagnés</span>
-    <span style={{fontWeight:700,fontSize:12,color:C.acc}}>{fmt(d.stats.pipelineValue)}€</span>
+    <span style={{fontSize:10,color:C.td}}>{d.stats?.totalLeads||0} leads</span>
+    <span style={{fontSize:10,color:C.b}}>{d.stats?.openDeals||0} ouverts</span>
+    <span style={{fontSize:10,color:C.g}}>{d.stats?.wonDeals||0} gagnés</span>
+    <span style={{fontWeight:700,fontSize:12,color:C.acc}}>{fmt(d.stats?.pipelineValue||0)}€</span>
    </div>;})}
   </Sect>}
   {sources.length>0&&<Sect title="Sources de leads">
@@ -118,7 +118,7 @@ export function TabCRM({socs,ghlData,onSync}){
     return <div key={o.id} className={`fu d${Math.min(i+1,8)}`} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:C.card,borderRadius:8,border:`1px solid ${C.brd}`,marginBottom:3}}>
     {s&&<span style={{width:5,height:5,borderRadius:3,background:s.color,flexShrink:0}}/>}
     <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.name}</div><div style={{fontSize:10,color:C.td}}>{o.stage} · {o.source}</div></div>
-    <span style={{fontWeight:700,fontSize:12,color:o.status==="won"?C.g:C.acc}}>{fmt(o.value)}€</span>
+    <span style={{fontWeight:700,fontSize:12,color:o.status==="won"?C.g:C.acc}}>{fmt(o.monetaryValue||o.value||0)}€</span>
     <span style={{fontSize:9,padding:"2px 6px",borderRadius:10,background:o.status==="won"?C.gD:o.status==="lost"?C.rD:C.bD,color:o.status==="won"?C.g:o.status==="lost"?C.r:C.b,fontWeight:600}}>{o.status==="won"?"Gagné":o.status==="lost"?"Perdu":"Ouvert"}</span>
     </div>;
    })}

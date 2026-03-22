@@ -80,13 +80,13 @@ useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearI
 
  const totalCA=useMemo(()=>actS.reduce((a,s)=>{const excl=EXCLUDED_ACCOUNTS[s.id]||[];return a+(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];if(!leg||excl.includes(leg.account_id))return false;return pf(leg.amount)>0&&inRange(tx.created_at||tx.createdAt||"");}).reduce((x,tx)=>x+pf(tx.legs?.[0]?.amount),0);},0),[actS,sb,timeRange]);
  const prevCA=useMemo(()=>actS.reduce((a,s)=>{const excl=EXCLUDED_ACCOUNTS[s.id]||[];return a+(sb[s.id]?.transactions||[]).filter(tx=>{const leg=tx.legs?.[0];if(!leg||excl.includes(leg.account_id))return false;return pf(leg.amount)>0&&inPrevRange(tx.created_at||tx.createdAt||"");}).reduce((x,tx)=>x+pf(tx.legs?.[0]?.amount),0);},0),[actS,sb,prevRange]);
- const totalPipeline=useMemo(()=>actS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).filter(o=>(o?.status==="open"||!o?.status)&&inRange(o.dateAdded||o.createdAt||o.updatedAt||"")).reduce((x,o)=>x+pf(o?.value),0),0),[actS,gd,timeRange]);
+ const totalPipeline=useMemo(()=>actS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).filter(o=>(o?.status==="open"||!o?.status)&&inRange(o.dateAdded||o.createdAt||o.updatedAt||"")).reduce((x,o)=>x+pf(o?.monetaryValue||o?.value),0),0),[actS,gd,timeRange]);
  const totalMRR=useMemo(()=>actS.reduce((a,s)=>{const r=gr(reps,s.id,cM);return a+pf(r?.mrr);},0),[actS,reps,cM]);
 
  const totalWon=useMemo(()=>actS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="won"&&inRange(o.updatedAt||o.createdAt||"")).length,0),[actS,gd,timeRange]);
  const totalOpps=useMemo(()=>actS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).filter(o=>inRange(o.dateAdded||o.createdAt||o.updatedAt||"")).length,0),[actS,gd,timeRange]);
  const convRate=totalOpps>0?((totalWon/totalOpps)*100).toFixed(1):0;
- const avgDeal=totalWon>0?actS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="won"&&inRange(o.updatedAt||o.createdAt||"")).reduce((x,o)=>x+pf(o?.value),0),0)/totalWon:0;
+ const avgDeal=totalWon>0?actS.reduce((a,s)=>a+(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="won"&&inRange(o.updatedAt||o.createdAt||"")).reduce((x,o)=>x+pf(o?.monetaryValue||o?.value),0),0)/totalWon:0;
 
  // Animated counters
  useEffect(()=>{const targets={ca:totalCA,pipeline:totalPipeline,mrr:totalMRR};const start=Date.now();const dur=1200;const anim=()=>{const t=Math.min((Date.now()-start)/dur,1);const ease=1-Math.pow(1-t,3);setAnimatedVals({ca:Math.round(targets.ca*ease),pipeline:Math.round(targets.pipeline*ease),mrr:Math.round(targets.mrr*ease)});if(t<1)requestAnimationFrame(anim);};requestAnimationFrame(anim);},[totalCA,totalPipeline,totalMRR]);
@@ -100,8 +100,8 @@ useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearI
 
  // New KPIs: Solde actuel, Contrats signés, Contrats en attente, Appels bookés
  const totalSolde=useMemo(()=>actS.reduce((a,s)=>{const excl=EXCLUDED_ACCOUNTS[s.id]||[];const bal=pf(sb[s.id]?.balance);const pockets=(sb[s.id]?.pockets||[]).filter(p=>excl.includes(p.id)).reduce((x,p)=>x+pf(p.balance),0);return a+bal-pockets;},0),[actS,sb]);
- const contratsSigned=useMemo(()=>{const opps=actS.flatMap(s=>(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="won"&&inRange(o.updatedAt||o.createdAt||"")));return{count:opps.length,value:opps.reduce((a,o)=>a+pf(o?.value),0)};},[actS,gd,timeRange]);
- const contratsPending=useMemo(()=>{const opps=actS.flatMap(s=>(gd[s.id]?.opportunities||[]).filter(o=>(o?.status==="open"||!o?.status)&&inRange(o.dateAdded||o.createdAt||o.updatedAt||"")));return{count:opps.length,value:opps.reduce((a,o)=>a+pf(o?.value),0)};},[actS,gd,timeRange]);
+ const contratsSigned=useMemo(()=>{const opps=actS.flatMap(s=>(gd[s.id]?.opportunities||[]).filter(o=>o?.status==="won"&&inRange(o.updatedAt||o.createdAt||"")));return{count:opps.length,value:opps.reduce((a,o)=>a+pf(o?.monetaryValue||o?.value),0)};},[actS,gd,timeRange]);
+ const contratsPending=useMemo(()=>{const opps=actS.flatMap(s=>(gd[s.id]?.opportunities||[]).filter(o=>(o?.status==="open"||!o?.status)&&inRange(o.dateAdded||o.createdAt||o.updatedAt||"")));return{count:opps.length,value:opps.reduce((a,o)=>a+pf(o?.monetaryValue||o?.value),0)};},[actS,gd,timeRange]);
  const totalCallsBooked=useMemo(()=>actS.reduce((a,s)=>a+(gd[s.id]?.calendarEvents||[]).filter(e=>inRange(e?.startTime||"")).length,0),[actS,gd,timeRange]);
 
  // Business weather

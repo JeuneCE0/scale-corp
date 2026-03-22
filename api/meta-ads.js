@@ -100,7 +100,7 @@ export default async function handler(req, res) {
 
         // Default: last 30 days
         const now = new Date();
-        const since = dateRange?.since || new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).toISOString().split('T')[0];
+        const since = dateRange?.since || new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         const until = dateRange?.until || now.toISOString().split('T')[0];
         const timeIncrement = dateRange?.increment || 'monthly';
         const insightsLevel = level || (action === 'campaign_insights' ? 'campaign' : 'account');

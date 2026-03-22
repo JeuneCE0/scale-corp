@@ -77,14 +77,14 @@ export default async function handler(req, res) {
         const advId = advertiserId || tokenData.advertiserIds?.[0];
         if (!advId) return badRequest(res, 'Missing advertiserId');
         const now = new Date();
-        const startDate = dateRange?.since || new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).toISOString().split('T')[0];
+        const startDate = dateRange?.since || new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         const endDate = dateRange?.until || now.toISOString().split('T')[0];
 
         const body = {
           advertiser_id: advId,
           report_type: 'BASIC',
           data_level: 'AUCTION_CAMPAIGN',
-          dimensions: ['campaign_id'],
+          dimensions: ['campaign_id', 'stat_time_day'],
           metrics: ['spend', 'impressions', 'clicks', 'conversion', 'cost_per_conversion', 'conversion_rate', 'cpc', 'cpm', 'ctr', 'reach', 'frequency'],
           start_date: startDate,
           end_date: endDate,
@@ -103,6 +103,7 @@ export default async function handler(req, res) {
           const spend = Number(m.spend) || 0;
           return {
             campaignId: row.dimensions?.campaign_id || '',
+            stat_time_day: row.dimensions?.stat_time_day || '',
             spend,
             impressions: Number(m.impressions) || 0,
             clicks: Number(m.clicks) || 0,

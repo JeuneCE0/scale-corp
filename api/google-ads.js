@@ -103,7 +103,7 @@ export default async function handler(req, res) {
       case 'campaign_insights': {
         if (!customerId) return badRequest(res, 'Missing customerId');
         const now = new Date();
-        const since = dateRange?.since || new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).toISOString().split('T')[0].replace(/-/g, '');
+        const since = dateRange?.since || new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0].replace(/-/g, '');
         const until = dateRange?.until || now.toISOString().split('T')[0].replace(/-/g, '');
 
         // Format dates for Google Ads (YYYY-MM-DD) with validation
