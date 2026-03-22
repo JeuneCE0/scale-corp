@@ -102,11 +102,21 @@ export default async function handler(req, res) {
       return res.status(r.status).json(data);
     }
 
+    // === ADMIN-ONLY ACTIONS: require authenticated admin user ===
+    if (['signup', 'update_password', 'list_users', 'delete_user'].includes(action)) {
+      const auth = await verifyAuth(req);
+      if (!auth?.isAdmin) {
+        apiLog('warn', { api: 'auth', action, reason: 'admin_required', ip });
+        return res.status(403).json({ error: "Admin access required" });
+      }
+    }
+
     // === UPDATE PASSWORD (admin) ===
     if (action === "update_password") {
       if (req.method !== "PUT" && req.method !== "POST") return res.status(405).json({ error: "PUT/POST required" });
       const { user_id, password } = req.body || {};
       if (!user_id || !password) return badRequest(res, "Missing user_id or password");
+      if (password.length < 8) return badRequest(res, "Mot de passe : 8 caractères minimum");
       const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(user_id)}`, {
         method: "PUT",
         headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`, "Content-Type": "application/json" },
