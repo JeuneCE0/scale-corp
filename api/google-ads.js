@@ -1,6 +1,6 @@
 // Vercel Serverless Function - Google Ads API Proxy
 // Fetches campaign data, ad insights, and performance metrics via Google Ads REST API
-import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest } from './_middleware.js';
+import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest, fetchWithTimeout } from './_middleware.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -35,7 +35,7 @@ async function refreshGoogleToken(stored, societyId) {
   const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET;
   if (!clientId || !clientSecret) return null;
   try {
-    const r = await fetch('https://oauth2.googleapis.com/token', {
+    const r = await fetchWithTimeout('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -106,7 +106,7 @@ export default async function handler(req, res) {
     switch (action) {
       case 'customers': {
         // List accessible customer accounts
-        const r = await fetch(`${GADS_BASE}/customers:listAccessibleCustomers`, { headers });
+        const r = await fetchWithTimeout(`${GADS_BASE}/customers:listAccessibleCustomers`, { headers });
         if (!r.ok) return handleGadsError(r, res);
         return res.status(200).json(await r.json());
       }
@@ -114,7 +114,7 @@ export default async function handler(req, res) {
       case 'campaigns': {
         if (!customerId) return badRequest(res, 'Missing customerId');
         const query = `SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.start_date, campaign.end_date FROM campaign WHERE campaign.status != 'REMOVED' ORDER BY campaign.name`;
-        const r = await fetch(`${GADS_BASE}/customers/${customerId}/googleAds:searchStream`, {
+        const r = await fetchWithTimeout(`${GADS_BASE}/customers/${customerId}/googleAds:searchStream`, {
           method: 'POST', headers, body: JSON.stringify({ query }),
         });
         if (!r.ok) return handleGadsError(r, res);
@@ -141,7 +141,7 @@ export default async function handler(req, res) {
         const segmentBy = action === 'campaign_insights' ? 'campaign.name, campaign.id,' : '';
         const query = `SELECT ${segmentBy} metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.conversions_value, metrics.ctr, metrics.average_cpc, metrics.average_cpm, segments.date FROM campaign WHERE segments.date BETWEEN '${sinceFormatted}' AND '${untilFormatted}' AND campaign.status != 'REMOVED' ORDER BY segments.date`;
 
-        const r = await fetch(`${GADS_BASE}/customers/${customerId}/googleAds:searchStream`, {
+        const r = await fetchWithTimeout(`${GADS_BASE}/customers/${customerId}/googleAds:searchStream`, {
           method: 'POST', headers, body: JSON.stringify({ query }),
         });
         if (!r.ok) return handleGadsError(r, res);

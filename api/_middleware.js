@@ -198,9 +198,27 @@ const DANGEROUS_PATTERN = /[;'"\\]|--|\b(drop|alter|insert|update|delete|exec|un
 
 export function sanitizeParam(v) {
   if (typeof v !== 'string') return v;
+  if (v.length > 1000) return null;  // max length guard
   if (DANGEROUS_PATTERN.test(v)) return null;
   return v;
 }
+
+/**
+ * Whitelist validation — returns the value only if it matches the given pattern
+ */
+export function validateParam(value, pattern) {
+  if (typeof value !== 'string') return null;
+  if (value.length > 1000) return null;  // max length guard
+  return pattern.test(value) ? value : null;
+}
+
+/** Common whitelist patterns for validateParam */
+export const PATTERNS = {
+  ID: /^[a-zA-Z0-9_-]{1,128}$/,
+  DATE: /^\d{4}-\d{2}-\d{2}$/,
+  EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+  SLUG: /^[a-z0-9-]{1,64}$/,
+};
 
 export function requireOneOf(val, allowed, name) {
   if (!allowed.includes(val)) {
@@ -217,11 +235,11 @@ export function validateEmail(email) {
 // --- Standard Responses ---
 
 export function unauthorized(res, message = "Unauthorized") {
-  return res.status(401).json({ error: message });
+  return res.status(401).json({ ok: false, error: message });
 }
 
 export function forbidden(res, message = "Forbidden: access denied to this resource") {
-  return res.status(403).json({ error: message });
+  return res.status(403).json({ ok: false, error: message });
 }
 
 export function badRequest(res, message = "Bad request") {

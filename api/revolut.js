@@ -1,5 +1,5 @@
 // Vercel Serverless Function - Revolut Business API Proxy
-import { applyHeaders, verifyAuth, getAllowedRevolutCompany, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest } from './_middleware.js';
+import { applyHeaders, verifyAuth, getAllowedRevolutCompany, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest, fetchWithTimeout } from './_middleware.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -35,7 +35,7 @@ async function refreshRevolutToken(stored, company) {
   const clientSecret = process.env.REVOLUT_OAUTH_CLIENT_SECRET;
   if (!clientId || !clientSecret) return null;
   try {
-    const r = await fetch('https://b2b.revolut.com/api/1.0/auth/token', {
+    const r = await fetchWithTimeout('https://b2b.revolut.com/api/1.0/auth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: stored.refresh_token, client_id: clientId, client_secret: clientSecret }).toString(),
@@ -113,7 +113,7 @@ export default async function handler(req, res) {
         return badRequest(res, `Unknown action: ${action}`);
     }
 
-    const revRes = await fetch(url, { headers });
+    const revRes = await fetchWithTimeout(url, { headers });
     if (!revRes.ok) {
       const text = await revRes.text();
       apiLog('error', { api: 'revolut', action }, { status: revRes.status });

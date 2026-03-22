@@ -12,7 +12,9 @@ function orgId() {
   if (!sb) return null;
   // Cached after first fetch in the session
   if (orgId._cache) return orgId._cache;
-  return null;
+  // Restore from localStorage if not yet cached
+  orgId._cache = load('_orgId');
+  return orgId._cache || null;
 }
 
 /** Set org_id cache (called once after login) */
@@ -503,7 +505,7 @@ function normalizeFinance(row) {
     ca,
     charges,
     marge,
-    result: marge || (ca - charges),
+    result: marge != null ? marge : (ca - charges),
     treso: Number(row.treso),
   };
 }

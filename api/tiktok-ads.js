@@ -1,5 +1,5 @@
 // Vercel Serverless Function - TikTok Ads API Proxy
-import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest } from './_middleware.js';
+import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest, fetchWithTimeout } from './_middleware.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -59,7 +59,7 @@ export default async function handler(req, res) {
         const ids = tokenData.advertiserIds;
         if (!ids.length) return res.status(200).json({ data: { list: [] } });
         const params = new URLSearchParams({ app_id: appId, secret, advertiser_ids: JSON.stringify(ids) });
-        const r = await fetch(`${TIKTOK_BASE}/advertiser/info/?${params}`, { headers });
+        const r = await fetchWithTimeout(`${TIKTOK_BASE}/advertiser/info/?${params}`, { headers });
         if (!r.ok) return handleTikTokError(r, res);
         return res.status(200).json(await r.json());
       }
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       case 'campaigns': {
         const advId = advertiserId || tokenData.advertiserIds?.[0];
         if (!advId) return badRequest(res, 'Missing advertiserId');
-        const r = await fetch(`${TIKTOK_BASE}/campaign/get/?advertiser_id=${advId}&page_size=100`, { headers });
+        const r = await fetchWithTimeout(`${TIKTOK_BASE}/campaign/get/?advertiser_id=${advId}&page_size=100`, { headers });
         if (!r.ok) return handleTikTokError(r, res);
         return res.status(200).json(await r.json());
       }
@@ -90,7 +90,7 @@ export default async function handler(req, res) {
           page_size: 100,
         };
 
-        const r = await fetch(`${TIKTOK_BASE}/report/integrated/get/`, {
+        const r = await fetchWithTimeout(`${TIKTOK_BASE}/report/integrated/get/`, {
           method: 'POST', headers, body: JSON.stringify(body),
         });
         if (!r.ok) return handleTikTokError(r, res);

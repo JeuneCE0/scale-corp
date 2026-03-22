@@ -96,8 +96,10 @@ export function escapeHtml(str) {
 /**
  * Remove common XSS vectors from an HTML string:
  * - `<script>` blocks (including their content)
+ * - `<iframe>`, `<object>`, `<embed>`, `<applet>` tags
  * - Inline event-handler attributes (`on*="…"`)
  * - `javascript:` URLs inside attribute values
+ * - `data:text/html` URLs inside `src` and `href` attributes
  *
  * This is a defence-in-depth helper — prefer `escapeHtml` when outputting
  * user-supplied text.  `stripXSS` is useful when you need to keep *some*
@@ -113,8 +115,21 @@ export function stripXSS(str) {
     .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
     // Remove standalone <script> tags that may not have a closing pair.
     .replace(/<script\b[^>]*\/?>/gi, '')
-    // Remove on* event-handler attributes (onclick, onerror, etc.).
+    // Remove <iframe> … </iframe> blocks.
+    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe\s*>/gi, '')
+    .replace(/<iframe\b[^>]*\/?>/gi, '')
+    // Remove <object> … </object> blocks.
+    .replace(/<object\b[^>]*>[\s\S]*?<\/object\s*>/gi, '')
+    .replace(/<object\b[^>]*\/?>/gi, '')
+    // Remove <embed> tags.
+    .replace(/<embed\b[^>]*\/?>/gi, '')
+    // Remove <applet> … </applet> blocks.
+    .replace(/<applet\b[^>]*>[\s\S]*?<\/applet\s*>/gi, '')
+    .replace(/<applet\b[^>]*\/?>/gi, '')
+    // Remove on* event-handler attributes (onclick, onerror, onload, etc.).
     .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
     // Remove javascript: URLs inside attributes.
-    .replace(/javascript\s*:/gi, '');
+    .replace(/javascript\s*:/gi, '')
+    // Remove data:text/html URLs inside src and href attributes.
+    .replace(/(src|href)\s*=\s*(?:"[^"]*data\s*:\s*text\/html[^"]*"|'[^']*data\s*:\s*text\/html[^']*')/gi, '');
 }

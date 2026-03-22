@@ -1,6 +1,6 @@
 // Vercel Serverless Function - Meta (Facebook) Ads API Proxy
 // Fetches campaign data, ad insights, and performance metrics
-import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest } from './_middleware.js';
+import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest, fetchWithTimeout } from './_middleware.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
   try {
     switch (action) {
       case 'ad_accounts': {
-        const r = await fetch(`${GRAPH_BASE}/me/adaccounts?fields=id,name,account_id,currency,business_name,account_status,amount_spent,balance&access_token=${token}`);
+        const r = await fetchWithTimeout(`${GRAPH_BASE}/me/adaccounts?fields=id,name,account_id,currency,business_name,account_status,amount_spent,balance&access_token=${token}`);
         if (!r.ok) return handleMetaError(r, res);
         return res.status(200).json(await r.json());
       }
@@ -70,7 +70,7 @@ export default async function handler(req, res) {
       case 'campaigns': {
         const acctId = adAccountId || tokenData.adAccounts?.[0]?.id;
         if (!acctId) return badRequest(res, 'Missing adAccountId');
-        const r = await fetch(`${GRAPH_BASE}/${acctId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,created_time,updated_time&limit=100&access_token=${token}`);
+        const r = await fetchWithTimeout(`${GRAPH_BASE}/${acctId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,created_time,updated_time&limit=100&access_token=${token}`);
         if (!r.ok) return handleMetaError(r, res);
         return res.status(200).json(await r.json());
       }
@@ -78,7 +78,7 @@ export default async function handler(req, res) {
       case 'adsets': {
         const acctId = adAccountId || tokenData.adAccounts?.[0]?.id;
         if (!acctId) return badRequest(res, 'Missing adAccountId');
-        const r = await fetch(`${GRAPH_BASE}/${acctId}/adsets?fields=id,name,status,campaign_id,daily_budget,targeting,bid_strategy,optimization_goal&limit=100&access_token=${token}`);
+        const r = await fetchWithTimeout(`${GRAPH_BASE}/${acctId}/adsets?fields=id,name,status,campaign_id,daily_budget,targeting,bid_strategy,optimization_goal&limit=100&access_token=${token}`);
         if (!r.ok) return handleMetaError(r, res);
         return res.status(200).json(await r.json());
       }
@@ -86,7 +86,7 @@ export default async function handler(req, res) {
       case 'ads': {
         const acctId = adAccountId || tokenData.adAccounts?.[0]?.id;
         if (!acctId) return badRequest(res, 'Missing adAccountId');
-        const r = await fetch(`${GRAPH_BASE}/${acctId}/ads?fields=id,name,status,campaign_id,adset_id,creative,created_time&limit=100&access_token=${token}`);
+        const r = await fetchWithTimeout(`${GRAPH_BASE}/${acctId}/ads?fields=id,name,status,campaign_id,adset_id,creative,created_time&limit=100&access_token=${token}`);
         if (!r.ok) return handleMetaError(r, res);
         return res.status(200).json(await r.json());
       }
@@ -122,7 +122,7 @@ export default async function handler(req, res) {
           access_token: token,
         });
 
-        const r = await fetch(`${GRAPH_BASE}/${acctId}/insights?${params}`);
+        const r = await fetchWithTimeout(`${GRAPH_BASE}/${acctId}/insights?${params}`);
         if (!r.ok) return handleMetaError(r, res);
         const data = await r.json();
 

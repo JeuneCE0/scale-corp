@@ -1,5 +1,5 @@
 // Vercel Serverless Function - Stripe API Proxy
-import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest } from './_middleware.js';
+import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest, fetchWithTimeout } from './_middleware.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -70,7 +70,7 @@ export default async function handler(req, res) {
         return badRequest(res, `Unknown action: ${action}`);
     }
 
-    const stripeRes = await fetch(url, { headers });
+    const stripeRes = await fetchWithTimeout(url, { headers });
     if (!stripeRes.ok) {
       apiLog('error', { api: 'stripe', action }, { status: stripeRes.status });
       return res.status(stripeRes.status).json({ ok: false, error: `Stripe API error: ${stripeRes.status}` });

@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   if (!rateLimit('supabase', ip, 60)) return tooManyRequests(res);
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-    return res.status(500).json({ error: "Supabase not configured" });
+    return res.status(500).json({ ok: false, error: "Supabase not configured" });
   }
 
   const { action, table, society_id, id, filters } = req.query || {};
@@ -73,7 +73,7 @@ export default async function handler(req, res) {
     }
 
     if (action === "upsert") {
-      if (req.method !== "POST") return res.status(405).json({ error: "POST required" });
+      if (req.method !== "POST") return res.status(405).json({ ok: false, error: "POST required" });
       const body = req.body;
       if (!body?.table || !body?.data) return badRequest(res, "Missing table or data");
       if (!TABLES.includes(body.table)) return badRequest(res, "Invalid table");
@@ -101,6 +101,6 @@ export default async function handler(req, res) {
     return badRequest(res, `Unknown action: ${action}`);
   } catch (e) {
     apiLog('error', { api: 'supabase', action, table: tbl }, { error: e.message });
-    return res.status(500).json({ error: "Proxy error" });
+    return res.status(500).json({ ok: false, error: "Proxy error" });
   }
 }
