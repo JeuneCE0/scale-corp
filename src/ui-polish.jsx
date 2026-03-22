@@ -150,7 +150,7 @@ let _globalToast = null;
 export function setGlobalToast(api) { _globalToast = api; }
 export function showToast(msg, type = "info") {
   if (_globalToast) _globalToast.add(msg, type);
-  else console.log(`[toast:${type}] ${msg}`);
+  else if (import.meta.env.DEV) console.log(`[toast:${type}] ${msg}`);
 }
 
 // ─── 1. PAGE TRANSITION WRAPPER ───

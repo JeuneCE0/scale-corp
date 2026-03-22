@@ -63,7 +63,7 @@ const VALID_ACTIONS = ['contacts', 'pipelines', 'opportunities', 'contacts_list'
 export default async function handler(req, res) {
   applyHeaders(req, res);
   if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
 
   const ip = getClientIP(req);
   if (!rateLimit('ghl', ip)) return tooManyRequests(res);
@@ -75,10 +75,10 @@ export default async function handler(req, res) {
   const auth = await verifyAuth(req);
   if (!auth) {
     apiLog('warn', { api: 'ghl', action, reason: 'unauthed', ip });
-    return res.status(401).json({ error: 'Authentication required' });
+    return res.status(401).json({ ok: false, error: 'Authentication required' });
   }
   if (locationId && !canAccessGHLLocation(auth, locationId)) {
-    return res.status(403).json({ error: "Access denied to this location" });
+    return res.status(403).json({ ok: false, error: "Access denied to this location" });
   }
 
   // webhook_events doesn't need locationId
@@ -98,7 +98,7 @@ export default async function handler(req, res) {
   if (!apiKey) {
     apiKey = await getOAuthToken(locationId);
   }
-  if (!apiKey) return res.status(500).json({ error: "API key not configured. Connect via OAuth or set environment variable." });
+  if (!apiKey) return res.status(500).json({ ok: false, error: "API key not configured. Connect via OAuth or set environment variable." });
 
   const headers = {
     Authorization: `Bearer ${apiKey}`,
@@ -130,7 +130,7 @@ export default async function handler(req, res) {
           let pUrl = `${GHL_BASE}/contacts/?locationId=${locationId}&limit=100`;
           if (startAfterId) pUrl += `&startAfter=${startAfter}&startAfterId=${startAfterId}`;
           const pRes = await fetch(pUrl, { headers });
-          if (!pRes.ok) { const t = await pRes.text(); return res.status(pRes.status).json({ error: t }); }
+          if (!pRes.ok) { const t = await pRes.text(); return res.status(pRes.status).json({ ok: false, error: t }); }
           const pData = await pRes.json();
           const batch = pData.contacts || [];
           allContacts = allContacts.concat(batch);
@@ -155,7 +155,7 @@ export default async function handler(req, res) {
         const updRes = await fetch(`${GHL_BASE}/contacts/${encodeURIComponent(params.contactId)}`, {
           method: "PUT", headers, body: JSON.stringify(params.data || {})
         });
-        if (!updRes.ok) { const t = await updRes.text(); return res.status(updRes.status).json({ error: t }); }
+        if (!updRes.ok) { const t = await updRes.text(); return res.status(updRes.status).json({ ok: false, error: t }); }
         return res.status(200).json(await updRes.json());
       }
       case "contact_create": {
@@ -163,7 +163,7 @@ export default async function handler(req, res) {
         const crRes = await fetch(`${GHL_BASE}/contacts/`, {
           method: "POST", headers, body: JSON.stringify(createData)
         });
-        if (!crRes.ok) { const t = await crRes.text(); return res.status(crRes.status).json({ error: t }); }
+        if (!crRes.ok) { const t = await crRes.text(); return res.status(crRes.status).json({ ok: false, error: t }); }
         return res.status(200).json(await crRes.json());
       }
       case "contact_delete": {
@@ -171,8 +171,8 @@ export default async function handler(req, res) {
         const delRes = await fetch(`${GHL_BASE}/contacts/${encodeURIComponent(params.contactId)}`, {
           method: "DELETE", headers
         });
-        if (!delRes.ok) { const t = await delRes.text(); return res.status(delRes.status).json({ error: t }); }
-        return res.status(200).json({ success: true });
+        if (!delRes.ok) { const t = await delRes.text(); return res.status(delRes.status).json({ ok: false, error: t }); }
+        return res.status(200).json({ ok: true });
       }
       case "calendar_events": {
         const st = params.startTime || (Date.now() - 365 * 24 * 60 * 60 * 1000);
@@ -180,7 +180,7 @@ export default async function handler(req, res) {
         if (!params.calendarId) {
           // Fetch all calendars then events in parallel (fixes N+1)
           const calRes = await fetch(`${GHL_BASE}/calendars/?locationId=${locationId}`, { headers });
-          if (!calRes.ok) return res.status(calRes.status).json({ error: "Failed to fetch calendars" });
+          if (!calRes.ok) return res.status(calRes.status).json({ ok: false, error: "Failed to fetch calendars" });
           const calData = await calRes.json();
           const calendars = calData.calendars || [];
           const results = await Promise.allSettled(
@@ -194,7 +194,7 @@ export default async function handler(req, res) {
           return res.status(200).json({ events: allEvents, total: allEvents.length });
         }
         const evRes = await fetch(`${GHL_BASE}/calendars/events?locationId=${locationId}&calendarId=${encodeURIComponent(params.calendarId)}&startTime=${st}&endTime=${et}`, { headers });
-        if (!evRes.ok) { const t = await evRes.text(); return res.status(evRes.status).json({ error: t }); }
+        if (!evRes.ok) { const t = await evRes.text(); return res.status(evRes.status).json({ ok: false, error: t }); }
         return res.status(200).json(await evRes.json());
       }
       case "conversations_list":
@@ -210,7 +210,7 @@ export default async function handler(req, res) {
         const sendRes = await fetch(`${GHL_BASE}/conversations/messages`, {
           method: "POST", headers, body: JSON.stringify({ type: params.type || "SMS", contactId: params.contactId, message: params.message })
         });
-        if (!sendRes.ok) { const t = await sendRes.text(); return res.status(sendRes.status).json({ error: t }); }
+        if (!sendRes.ok) { const t = await sendRes.text(); return res.status(sendRes.status).json({ ok: false, error: t }); }
         return res.status(200).json(await sendRes.json());
       }
       case "calendar_slots": {
@@ -231,7 +231,7 @@ export default async function handler(req, res) {
         const noteRes = await fetch(`${GHL_BASE}/contacts/${encodeURIComponent(params.contactId)}/notes`, {
           method: "POST", headers, body: JSON.stringify(params.data || {})
         });
-        if (!noteRes.ok) { const t = await noteRes.text(); return res.status(noteRes.status).json({ error: t }); }
+        if (!noteRes.ok) { const t = await noteRes.text(); return res.status(noteRes.status).json({ ok: false, error: t }); }
         return res.status(200).json(await noteRes.json());
       }
       case "invoice_create": {
@@ -239,7 +239,7 @@ export default async function handler(req, res) {
         const invRes = await fetch(`${GHL_BASE}/invoices/`, {
           method: "POST", headers, body: JSON.stringify(params.invoiceData)
         });
-        if (!invRes.ok) { const t = await invRes.text(); return res.status(invRes.status).json({ error: t }); }
+        if (!invRes.ok) { const t = await invRes.text(); return res.status(invRes.status).json({ ok: false, error: t }); }
         return res.status(200).json(await invRes.json());
       }
       case "invoice_send": {
@@ -247,7 +247,7 @@ export default async function handler(req, res) {
         const sendInvRes = await fetch(`${GHL_BASE}/invoices/${encodeURIComponent(params.invoiceId)}/send`, {
           method: "POST", headers
         });
-        if (!sendInvRes.ok) { const t = await sendInvRes.text(); return res.status(sendInvRes.status).json({ error: t }); }
+        if (!sendInvRes.ok) { const t = await sendInvRes.text(); return res.status(sendInvRes.status).json({ ok: false, error: t }); }
         return res.status(200).json(await sendInvRes.json());
       }
       default:
@@ -258,12 +258,12 @@ export default async function handler(req, res) {
     if (!ghlRes.ok) {
       const text = await ghlRes.text();
       apiLog('error', { api: 'ghl', action }, { status: ghlRes.status });
-      return res.status(ghlRes.status).json({ error: `GHL API error: ${ghlRes.status}` });
+      return res.status(ghlRes.status).json({ ok: false, error: `GHL API error: ${ghlRes.status}` });
     }
 
     return res.status(200).json(await ghlRes.json());
   } catch (e) {
     apiLog('error', { api: 'ghl', action }, { error: e.message });
-    return res.status(500).json({ error: "Internal proxy error" });
+    return res.status(500).json({ ok: false, error: "Internal proxy error" });
   }
 }

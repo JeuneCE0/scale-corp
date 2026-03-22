@@ -37,7 +37,7 @@ async function setData(key, value) {
 export default async function handler(req, res) {
   applyHeaders(req, res);
   if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
 
   const ip = getClientIP(req);
   if (!rateLimit('store', ip, 60)) return tooManyRequests(res);
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
   const auth = (req.headers.authorization || '').replace('Bearer ', '');
   const validTokens = getValidTokens();
   if (!auth || validTokens.size === 0 || !validTokens.has(auth)) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
 
   const { action, key, value } = req.body || {};
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
     switch (action) {
       case "get": {
         const data = await getData(key);
-        return res.status(200).json({ key, value: data });
+        return res.status(200).json({ ok: true, key, value: data });
       }
       case "set": {
         await setData(key, value);
@@ -66,13 +66,13 @@ export default async function handler(req, res) {
         await ensureDir();
         const files = await readdir(STORE_DIR);
         const keys = files.filter(f => f.endsWith('.json')).map(f => f.replace('.json', ''));
-        return res.status(200).json({ keys });
+        return res.status(200).json({ ok: true, keys });
       }
       default:
         return badRequest(res, `Unknown action: ${action}`);
     }
   } catch (e) {
     apiLog('error', { api: 'store', action }, { error: e.message });
-    return res.status(500).json({ error: "Internal store error" });
+    return res.status(500).json({ ok: false, error: "Internal store error" });
   }
 }

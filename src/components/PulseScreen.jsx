@@ -35,7 +35,8 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
  const audioCtxRef=useRef(null);
  const prevFeedLen=useRef(0);
 
- useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);
+ // eslint-disable-next-line react-hooks/exhaustive-deps — setNow is a stable state setter
+useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);
 
  // Keyboard shortcuts
  useEffect(()=>{const h=e=>{
@@ -107,7 +108,8 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
  const bizWeather=useMemo(()=>{const score=totalCA>0&&prevCA>0?(totalCA/prevCA)*100:50;if(score>=120)return{emoji:"☀️",label:"Excellent",color:"#34d399"};if(score>=100)return{emoji:"🌤️",label:"Bien",color:"#60a5fa"};if(score>=80)return{emoji:"⛅",label:"Correct",color:"#FFAA00"};if(score>=60)return{emoji:"🌧️",label:"Attention",color:"#f87171"};return{emoji:"⛈️",label:"Critique",color:"#f87171"};},[totalCA,prevCA]);
 
  // Detect new prospects → +1 animation + sound
- useEffect(()=>{const cur={};allActS.forEach(s=>{cur[s.id]=getProspects(s.id).length;});const prev=prevProspRef.current;if(Object.keys(prev).length>0){allActS.forEach(s=>{const diff=(cur[s.id]||0)-(prev[s.id]||0);if(diff>0){playDing();triggerPulseRing();for(let i=0;i<diff;i++){const pid=Date.now()+Math.random();setPlusOnes(p=>[...p,{id:pid,socId:s.id}]);setTimeout(()=>setPlusOnes(p=>p.filter(x=>x.id!==pid)),1200);}addToast(`+${diff} prospect(s) — ${s?.name||""}`,`#60a5fa`,s);}});}prevProspRef.current=cur;},[gd]);
+ // eslint-disable-next-line react-hooks/exhaustive-deps — allActS is intentionally excluded (not memoized, would cause excessive re-runs)
+useEffect(()=>{const cur={};allActS.forEach(s=>{cur[s.id]=getProspects(s.id).length;});const prev=prevProspRef.current;if(Object.keys(prev).length>0){allActS.forEach(s=>{const diff=(cur[s.id]||0)-(prev[s.id]||0);if(diff>0){playDing();triggerPulseRing();for(let i=0;i<diff;i++){const pid=Date.now()+Math.random();setPlusOnes(p=>[...p,{id:pid,socId:s.id}]);setTimeout(()=>setPlusOnes(p=>p.filter(x=>x.id!==pid)),1200);}addToast(`+${diff} prospect(s) — ${s?.name||""}`,`#60a5fa`,s);}});}prevProspRef.current=cur;},[ghlData,playDing,triggerPulseRing,addToast]);
 
  // Detect new payments
  useEffect(()=>{const snap=JSON.stringify(Object.keys(sb).map(k=>(sb[k]?.transactions||[]).length));if(prevDataRef.current&&prevDataRef.current!==snap){playCash();triggerPulseRing();addToast("💰 Nouveau mouvement bancaire","#34d399");}prevDataRef.current=snap;},[sb]);

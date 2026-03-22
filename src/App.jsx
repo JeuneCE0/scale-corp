@@ -43,6 +43,22 @@ const AICoPilot = lazy(() => import("./components/AI.jsx").then(m => ({ default:
 const TabCRM = lazy(() => import("./components/CRM.jsx").then(m => ({ default: m.TabCRM })));
 const BankingPanel = lazy(() => import("./components/Banking.jsx").then(m => ({ default: m.BankingPanel })));
 
+/* Error boundary for lazy-loaded components */
+class LazyErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(err) { console.warn('[LazyErrorBoundary]', err?.message); }
+  render() {
+    if (this.state.hasError) {
+      return <div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>
+        <p>Erreur de chargement du module.</p>
+        <button onClick={() => this.setState({ hasError: false })}>Réessayer</button>
+      </div>;
+    }
+    return this.props.children;
+  }
+}
+
 /* Suspense fallback with skeleton loader */
 function LazyFallback() {
   return <SkeletonDashboard />;
@@ -521,7 +537,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
  /* HASH-BASED ROUTES: War Room & Widget (public, no login) */
  const hash=window.location.hash;
  if(hash.startsWith("#widget/")){const wSocId=hash.replace("#widget/","");return <><style>{CSS}{POLISH_CSS}</style><WidgetRenderer socId={wSocId} socs={socs} clients={clients}/></>;}
- if(hash==="#pulse")return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>{window.location.hash="";window.location.reload();}}/></Suspense></>;
+ if(hash==="#pulse")return <><style>{CSS}{POLISH_CSS}</style><LazyErrorBoundary><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>{window.location.hash="";window.location.reload();}}/></Suspense></LazyErrorBoundary></>;
  if(hash.startsWith("#portal/")){const parts=hash.replace("#portal/","").split("/");return <><style>{CSS}{POLISH_CSS}</style><ClientPortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients} ghlData={ghlData}/></>;}
  if(hash.startsWith("#affiliate/")){const parts=hash.replace("#affiliate/","").split("/");return <><style>{CSS}{POLISH_CSS}</style><AffiliatePortal socId={parts[0]} clientId={parts[1]} socs={socs} clients={clients}/></>;}
  if(hash.startsWith("#ref/")){
@@ -609,7 +625,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </div>
    </div>
   </div>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData} oauthTokens={oauthTokens} onSyncGHL={syncGHL} onSyncRevolut={async()=>{await Promise.all([syncRev(),syncAllSocBanks()]);}} onSyncStripe={async()=>{const sd=await syncStripeData();if(sd)setStripeData(sd);}} onSyncAds={async(socId)=>{const d=await syncAdData(socId,oauthTokens);return d;}}/></></ErrorBoundary>;}
- if(showPulse)return <><style>{CSS}{POLISH_CSS}</style><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>setShowPulse(false)}/></Suspense></>;
+ if(showPulse)return <><style>{CSS}{POLISH_CSS}</style><LazyErrorBoundary><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>setShowPulse(false)}/></Suspense></LazyErrorBoundary></>;
  if(meeting)return <MeetingMode socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} clients={clients} onExit={()=>setMeeting(false)}/>;
  /* ADMIN → Porteur View Override */
  if(adminSocView){const asoc=socs.find(s=>s.id===adminSocView);if(asoc)return <SocieteView key={asoc.id} soc={asoc} reps={reps} allM={allM} save={save} onLogout={()=>setAdminSocView(null)} onTour={()=>{}} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[asoc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData} adminBack={()=>setAdminSocView(null)} oauthTokens={oauthTokens} onSyncGHL={syncGHL} onSyncRevolut={async()=>{await Promise.all([syncRev(),syncAllSocBanks()]);}} onSyncStripe={async()=>{const sd=await syncStripeData();if(sd)setStripeData(sd);}} onSyncAds={async(socId)=>{const d=await syncAdData(socId,oauthTokens);return d;}}/>;}
@@ -725,7 +741,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     <Sect title="⚡ Pulse" sub={curW()}><PulseOverview socs={socs} pulses={pulses}/></Sect>
     </div>
     <div data-tour="admin-leaderboard">
-    <Suspense fallback={<LazyFallback/>}><BankingPanel revData={revData} onSync={syncRev} compact clients={clients}/></Suspense>
+    <LazyErrorBoundary><Suspense fallback={<LazyFallback/>}><BankingPanel revData={revData} onSync={syncRev} compact clients={clients}/></Suspense></LazyErrorBoundary>
     <Card style={{padding:14,marginTop:10,position:"relative",overflow:"hidden"}}>
     <div style={{position:"absolute",top:-20,right:-20,width:60,height:60,borderRadius:"50%",background:`radial-gradient(circle,${C.acc}08,transparent)`,pointerEvents:"none"}}/>
     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
@@ -1138,10 +1154,10 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
     </div>}
    </Sect>
   </>;})()}
-  {tab===5&&<Suspense fallback={<LazyFallback/>}><AICoPilot socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} revData={revData} socBank={socBank} okrs={okrs} synergies={synergies} clients={clients}/></Suspense>}
+  {tab===5&&<LazyErrorBoundary><Suspense fallback={<LazyFallback/>}><AICoPilot socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} revData={revData} socBank={socBank} okrs={okrs} synergies={synergies} clients={clients}/></Suspense></LazyErrorBoundary>}
   {tab===6&&<DealFlow deals={deals} saveDeals={saveDeals}/>}
-  {tab===7&&<Suspense fallback={<LazyFallback/>}><TabCRM socs={socs} ghlData={ghlData} onSync={syncGHL}/></Suspense>}
-  {tab===8&&<Suspense fallback={<LazyFallback/>}><BankingPanel revData={revData} onSync={syncRev} clients={clients}/></Suspense>}
+  {tab===7&&<LazyErrorBoundary><Suspense fallback={<LazyFallback/>}><TabCRM socs={socs} ghlData={ghlData} onSync={syncGHL}/></Suspense></LazyErrorBoundary>}
+  {tab===8&&<LazyErrorBoundary><Suspense fallback={<LazyFallback/>}><BankingPanel revData={revData} onSync={syncRev} clients={clients}/></Suspense></LazyErrorBoundary>}
   {tab===10&&<SynergiesPanel socs={socs} synergies={synergies} saveSynergies={saveSynergies}/>}
   {tab===11&&<KnowledgeBase socs={socs} kb={kb} saveKb={saveKb}/>}
   {tab===13&&<SubsTeamPanel socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} socId="all" reps={reps} revData={revData}/>}

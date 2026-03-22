@@ -225,11 +225,11 @@ export function forbidden(res, message = "Forbidden: access denied to this resou
 }
 
 export function badRequest(res, message = "Bad request") {
-  return res.status(400).json({ error: message });
+  return res.status(400).json({ ok: false, error: message });
 }
 
 export function tooManyRequests(res) {
-  return res.status(429).json({ error: "Too many requests. Please try again later." });
+  return res.status(429).json({ ok: false, error: "Too many requests. Please try again later." });
 }
 
 /**

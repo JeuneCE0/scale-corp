@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-    return res.status(500).json({ error: "Supabase not configured" });
+    return res.status(500).json({ ok: false, error: "Supabase not configured" });
   }
 
   const { action } = req.query || {};
@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   try {
     // === SIGNUP (admin creates user) ===
     if (action === "signup") {
-      if (req.method !== "POST") return res.status(405).json({ error: "POST required" });
+      if (req.method !== "POST") return res.status(405).json({ ok: false, error: "POST required" });
       const { email, password, name, role, society_id } = req.body || {};
       if (!email || !password) return badRequest(res, "Missing email or password");
       if (!validateEmail(email)) return badRequest(res, "Format email invalide");
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
 
     // === LOGIN ===
     if (action === "login") {
-      if (req.method !== "POST") return res.status(405).json({ error: "POST required" });
+      if (req.method !== "POST") return res.status(405).json({ ok: false, error: "POST required" });
       const { email, password } = req.body || {};
       if (!email || !password) return badRequest(res, "Email ou mot de passe incorrect");
       if (!validateEmail(email)) return badRequest(res, "Email ou mot de passe incorrect");
@@ -56,11 +56,11 @@ export default async function handler(req, res) {
       // Brute force: 5 attempts per email per 15 min + 20 per IP per 15 min
       if (!rateLimit('auth_email', email, 5, 15 * 60_000)) {
         apiLog('warn', { api: 'auth', action: 'login', reason: 'brute_blocked', ip });
-        return res.status(429).json({ error: "Trop de tentatives. Réessayez dans 15 minutes." });
+        return res.status(429).json({ ok: false, error: "Trop de tentatives. Réessayez dans 15 minutes." });
       }
       if (!rateLimit('auth_ip', ip, 20, 15 * 60_000)) {
         apiLog('warn', { api: 'auth', action: 'login', reason: 'ip_blocked', ip });
-        return res.status(429).json({ error: "Trop de tentatives. Réessayez dans 15 minutes." });
+        return res.status(429).json({ ok: false, error: "Trop de tentatives. Réessayez dans 15 minutes." });
       }
 
       const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
@@ -71,12 +71,13 @@ export default async function handler(req, res) {
       const data = await r.json();
       if (r.ok) {
         return res.status(200).json({
+          ok: true,
           access_token: data.access_token,
           refresh_token: data.refresh_token,
           user: data.user,
         });
       }
-      return res.status(401).json({ error: "Email ou mot de passe incorrect" });
+      return res.status(401).json({ ok: false, error: "Email ou mot de passe incorrect" });
     }
 
     // === LOGOUT ===
@@ -94,7 +95,7 @@ export default async function handler(req, res) {
     // === ME ===
     if (action === "me") {
       const token = (req.headers.authorization || "").replace("Bearer ", "");
-      if (!token) return res.status(401).json({ error: "No token" });
+      if (!token) return res.status(401).json({ ok: false, error: "No token" });
       const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
         headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` },
       });
@@ -107,13 +108,13 @@ export default async function handler(req, res) {
       const auth = await verifyAuth(req);
       if (!auth?.isAdmin) {
         apiLog('warn', { api: 'auth', action, reason: 'admin_required', ip });
-        return res.status(403).json({ error: "Admin access required" });
+        return res.status(403).json({ ok: false, error: "Admin access required" });
       }
     }
 
     // === UPDATE PASSWORD (admin) ===
     if (action === "update_password") {
-      if (req.method !== "PUT" && req.method !== "POST") return res.status(405).json({ error: "PUT/POST required" });
+      if (req.method !== "PUT" && req.method !== "POST") return res.status(405).json({ ok: false, error: "PUT/POST required" });
       const { user_id, password } = req.body || {};
       if (!user_id || !password) return badRequest(res, "Missing user_id or password");
       if (password.length < 8) return badRequest(res, "Mot de passe : 8 caractères minimum");
@@ -137,7 +138,7 @@ export default async function handler(req, res) {
 
     // === DELETE USER (admin) ===
     if (action === "delete_user") {
-      if (req.method !== "DELETE" && req.method !== "POST") return res.status(405).json({ error: "DELETE/POST required" });
+      if (req.method !== "DELETE" && req.method !== "POST") return res.status(405).json({ ok: false, error: "DELETE/POST required" });
       const user_id = req.query.user_id || req.body?.user_id;
       if (!user_id) return badRequest(res, "Missing user_id");
       const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(user_id)}`, {
@@ -152,6 +153,6 @@ export default async function handler(req, res) {
     return badRequest(res, `Unknown action: ${action}`);
   } catch (e) {
     apiLog('error', { api: 'auth', action }, { error: e.message });
-    return res.status(500).json({ error: "Auth proxy error" });
+    return res.status(500).json({ ok: false, error: "Auth proxy error" });
   }
 }

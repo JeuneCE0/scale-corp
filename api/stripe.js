@@ -24,7 +24,7 @@ async function getStripeOAuthToken(societyId) {
 export default async function handler(req, res) {
   applyHeaders(req, res);
   if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
 
   const ip = getClientIP(req);
   if (!rateLimit('stripe', ip)) return tooManyRequests(res);
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
   const auth = await verifyAuth(req);
   if (!auth) {
     apiLog('warn', { api: 'stripe', reason: 'unauthed', ip });
-    return res.status(401).json({ error: 'Authentication required' });
+    return res.status(401).json({ ok: false, error: 'Authentication required' });
   }
 
   const { action, customer, societyId } = req.body || {};
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
   if (!key && societyId) {
     key = await getStripeOAuthToken(societyId);
   }
-  if (!key) return res.status(500).json({ error: "Stripe not configured. Connect via OAuth or set STRIPE_SECRET_KEY." });
+  if (!key) return res.status(500).json({ ok: false, error: "Stripe not configured. Connect via OAuth or set STRIPE_SECRET_KEY." });
 
   const headers = { Authorization: `Bearer ${key}` };
 
@@ -73,12 +73,12 @@ export default async function handler(req, res) {
     const stripeRes = await fetch(url, { headers });
     if (!stripeRes.ok) {
       apiLog('error', { api: 'stripe', action }, { status: stripeRes.status });
-      return res.status(stripeRes.status).json({ error: `Stripe API error: ${stripeRes.status}` });
+      return res.status(stripeRes.status).json({ ok: false, error: `Stripe API error: ${stripeRes.status}` });
     }
 
     return res.status(200).json(await stripeRes.json());
   } catch (e) {
     apiLog('error', { api: 'stripe', action }, { error: e.message });
-    return res.status(500).json({ error: "Internal proxy error" });
+    return res.status(500).json({ ok: false, error: "Internal proxy error" });
   }
 }

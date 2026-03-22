@@ -8,6 +8,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
  */
 export function useUndoStack(onRestore, maxSize = 20) {
   const [stack, setStack] = useState([]);
+  const stackRef = useRef(stack);
+  stackRef.current = stack;
   const onRestoreRef = useRef(onRestore);
   onRestoreRef.current = onRestore;
 
@@ -32,7 +34,7 @@ export function useUndoStack(onRestore, maxSize = 20) {
         // Only undo if not in an input/textarea
         const tag = document.activeElement?.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-        if (stack.length > 0) {
+        if (stackRef.current.length > 0) {
           e.preventDefault();
           undo();
         }
@@ -40,7 +42,7 @@ export function useUndoStack(onRestore, maxSize = 20) {
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [undo, stack.length]);
+  }, [undo]);
 
   return { push, undo, canUndo, stackSize: stack.length };
 }
