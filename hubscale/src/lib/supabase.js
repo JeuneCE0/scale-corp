@@ -27,6 +27,8 @@ export function getSupabase() {
         storageKey: 'hs_supabase_auth',
         detectSessionInUrl: true,
       },
+      // Throttle realtime events to 2/sec to reduce bandwidth on mobile.
+      // Increase to 10 if realtime updates feel sluggish.
       realtime: { params: { eventsPerSecond: 2 } },
     });
   }

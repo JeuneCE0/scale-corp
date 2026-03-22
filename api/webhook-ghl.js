@@ -88,6 +88,9 @@ export default async function handler(req, res) {
   }
 
   const body = req.body || {};
+  if (typeof body !== 'object') {
+    return res.status(400).json({ ok: false, error: 'Invalid webhook body' });
+  }
 
   const event = {
     type: body.type || body.event || body.workflow?.name || 'unknown',

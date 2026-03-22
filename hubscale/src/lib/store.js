@@ -37,6 +37,7 @@ export function loadWithTTL(key, maxAgeMs = 86400000) {
     const raw = localStorage.getItem(PREFIX + key);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
+    if (!parsed.ts || typeof parsed.ts !== 'number') return null;
     if (parsed.v !== CACHE_VERSION || Date.now() - parsed.ts > maxAgeMs) {
       localStorage.removeItem(PREFIX + key);
       return null;
