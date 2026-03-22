@@ -30,7 +30,10 @@ export default async function handler(req, res) {
   if (!rateLimit('stripe', ip)) return tooManyRequests(res);
 
   const auth = await verifyAuth(req);
-  if (!auth) apiLog('warn', { api: 'stripe', reason: 'unauthed', ip });
+  if (!auth) {
+    apiLog('warn', { api: 'stripe', reason: 'unauthed', ip });
+    return res.status(401).json({ error: 'Authentication required' });
+  }
 
   const { action, customer, societyId } = req.body || {};
   if (!action) return badRequest(res, "Missing action");
