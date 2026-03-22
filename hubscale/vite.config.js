@@ -18,11 +18,19 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 700,
+    target: 'es2020',
+    cssCodeSplit: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-recharts': ['recharts'],
+        manualChunks(id) {
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
+            return 'vendor-react';
+          }
+          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) {
+            return 'vendor-recharts';
+          }
+          // @supabase and @stripe are already lazy-loaded via dynamic imports
+          // so they naturally get their own chunks
         },
       },
     },

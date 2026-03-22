@@ -162,18 +162,21 @@ export default function Dashboard({ onNavigate }) {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
-    // 1. Contacts to follow up: prospects > 14 days
-    const staleProspects = contacts.filter((c) => (c.status === 'prospect' || c.status === 'lead') && daysSince(c.createdAt) > 14);
-    const followUpCount = staleProspects.length;
+    // 1. Contacts to follow up: prospects/leads > 14 days
+    const staleProspects = contacts.filter((c) => c.status === 'prospect' && daysSince(c.createdAt) > 14);
+    const staleLeads = contacts.filter((c) => c.status === 'lead' && daysSince(c.createdAt) > 14);
+    const followUpCount = staleProspects.length + staleLeads.length;
     if (followUpCount > 0) {
+      const detailParts = [];
+      if (staleProspects.length > 0) detailParts.push(t('dash.prospectsOverdue', { count: staleProspects.length, s: staleProspects.length > 1 ? 's' : '' }));
+      if (staleLeads.length > 0) detailParts.push(t('dash.leadsOverdue', { count: staleLeads.length, s: staleLeads.length > 1 ? 's' : '' }));
       actions.push({
         id: 'followup',
         icon: NOTIFICATION_TYPES.relance.icon,
         color: NOTIFICATION_TYPES.relance.color,
         bg: NOTIFICATION_TYPES.relance.bg,
         text: t('dash.contactsToFollowUp', { count: followUpCount, s: followUpCount > 1 ? 's' : '' }),
-        detail: staleProspects.length > 0 ? t('dash.prospectsOverdue', { count: staleProspects.length, s: staleProspects.length > 1 ? 's' : '' }) : '' +
-          (staleLeads.length > 0 ? `${staleProspects.length > 0 ? ', ' : ''}${t('dash.leadsOverdue', { count: staleLeads.length, s: staleLeads.length > 1 ? 's' : '' })}` : ''),
+        detail: detailParts.join(', '),
         tab: 'crm',
         priority: 1,
       });

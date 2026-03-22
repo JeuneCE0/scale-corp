@@ -155,6 +155,9 @@ export default function Settings() {
           try { await setIntegrationConnected(integrationName, true); } catch {}
         } catch (err) {
           console.warn(`[sync] ${integrationName}:`, err.message);
+          setSyncStatus((prev) => ({ ...prev, [integrationName]: { status: 'error', message: err.message } }));
+          setTimeout(() => setSyncStatus((prev) => ({ ...prev, [integrationName]: null })), 5000);
+          return;
         }
         setSyncStatus((prev) => ({ ...prev, [integrationName]: 'done' }));
         setSyncHistory((prev) => {
@@ -299,9 +302,17 @@ export default function Settings() {
     setTimeout(() => setSyncStatus((prev) => ({ ...prev, [name]: null })), 2000);
   }, []);
 
+  // Integrations that require a URL alongside the API key
+  const URL_REQUIRED_INTEGRATIONS = ['ActiveCampaign', 'Shopify', 'Salesforce'];
+
   // Submit API key connection from modal
   const submitApiKeyConnection = useCallback(async (name) => {
     if (!connectKey.trim()) { setConnectError('Veuillez entrer votre clé API'); return; }
+    if (URL_REQUIRED_INTEGRATIONS.includes(name) && !connectUrl.trim()) {
+      const labels = { ActiveCampaign: 'l\'URL API ActiveCampaign', Shopify: 'le domaine de votre boutique Shopify', Salesforce: 'l\'URL d\'instance Salesforce' };
+      setConnectError(`Veuillez renseigner ${labels[name] || 'l\'URL requise'}`);
+      return;
+    }
     setConnectLoading(true);
     setConnectError('');
     try {
@@ -415,6 +426,9 @@ export default function Settings() {
       await fetchAllSyncedData().catch(() => {});
     } catch (err) {
       console.warn(`[resync] ${name}:`, err.message);
+      setSyncStatus((prev) => ({ ...prev, [name]: { status: 'error', message: err.message } }));
+      setTimeout(() => setSyncStatus((prev) => ({ ...prev, [name]: null })), 5000);
+      return;
     }
 
     setSyncStatus((prev) => ({ ...prev, [name]: 'done' }));
@@ -982,26 +996,28 @@ export default function Settings() {
                       const connected = !!integrations[ig.name];
                       const timestamp = integrationTimestamps[ig.name];
                       const isBouncing = bouncingIntegration === ig.name;
-                      const syncing = syncStatus[ig.name] === 'syncing';
-                      const justSynced = syncStatus[ig.name] === 'done';
+                      const rawStatus = syncStatus[ig.name];
+                      const syncing = rawStatus === 'syncing';
+                      const justSynced = rawStatus === 'done';
+                      const syncError = rawStatus && typeof rawStatus === 'object' && rawStatus.status === 'error' ? rawStatus.message : null;
                       const meta = connected ? getIntegrationMeta(ig.name) : null;
                       return (
                         <Card key={ig.name} style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', cursor: connected ? 'pointer' : 'default' }}
                           onClick={connected ? () => setDetailModal(ig.name) : undefined}>
                           <div style={{
                             width: 40, height: 40, borderRadius: 10,
-                            background: connected ? T.greenBg : T.surface2,
-                            border: connected ? `1px solid ${T.green}22` : 'none',
+                            background: syncError ? T.redBg : connected ? T.greenBg : T.surface2,
+                            border: syncError ? `1px solid ${T.red}22` : connected ? `1px solid ${T.green}22` : 'none',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0,
                             transition: 'all .3s ease',
                           }}>{ig.icon}</div>
                           <div style={{ flex: 1, minWidth: 120 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                               <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{ig.name}</div>
                               {ig.tier === 'demo' && !connected && (
                                 <Badge label="Demo" color={T.textSecondary} bg={T.bgSecondary || 'rgba(255,255,255,.06)'} />
                               )}
-                              {connected && !syncing && (
+                              {connected && !syncing && !syncError && (
                                 <Badge label={t('settings.connectBtn')} color={T.green} bg={T.greenBg} />
                               )}
                               {syncing && (
@@ -1010,15 +1026,26 @@ export default function Settings() {
                               {justSynced && (
                                 <Badge label={t('settings.saved')} color={T.green} bg={T.greenBg} />
                               )}
+                              {syncError && (
+                                <Badge label="Erreur sync" color={T.red} bg={T.redBg} />
+                              )}
                             </div>
                             <div style={{ fontSize: 11, color: T.textSecondary }}>{ig.desc}</div>
-                            {connected && timestamp && (
+                            {syncError && (
+                              <div style={{ fontSize: 10, color: T.red, marginTop: 3, lineHeight: 1.3 }}>
+                                {syncError}
+                              </div>
+                            )}
+                            {connected && timestamp && !syncError && (
                               <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>
                                 {t('settings.connectedAt', { date: new Date(timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) })}
                                 {meta && meta.accountId && <> — ID: {meta.accountId}</>}
                                 {meta && meta.syncedContacts && <> — {meta.syncedContacts} contacts importés</>}
                                 {meta && meta.syncedEvents && <> — {meta.syncedEvents} événements synchronisés</>}
                                 {meta && meta.syncedItems && <> — {meta.syncedItems} éléments synchronisés</>}
+                                {meta && meta.ordersImported && <> — {meta.ordersImported} commandes importées</>}
+                                {meta && meta.subscribers && <> — {meta.subscribers} abonnés</>}
+                                {meta && meta.openTickets && <> — {meta.openTickets} tickets ouverts</>}
                               </div>
                             )}
                           </div>
@@ -1026,7 +1053,7 @@ export default function Settings() {
                             transition: 'transform .15s ease',
                             transform: isBouncing ? 'scale(1.2)' : 'scale(1)',
                           }} onClick={(e) => e.stopPropagation()}>
-                            <Btn v={connected ? 'success' : 'secondary'} small onClick={() => toggleIntegration(ig.name)} disabled={syncing}>
+                            <Btn v={connected ? 'success' : 'secondary'} small onClick={() => toggleIntegration(ig.name)} disabled={syncing} aria-label={`${connected ? 'Déconnecter' : 'Connecter'} ${ig.name}`}>
                               {syncing ? '⟳ Sync...' : connected ? `✓ ${t('settings.connectBtn')}` : t('settings.connectBtn')}
                             </Btn>
                           </div>
@@ -1178,6 +1205,22 @@ export default function Settings() {
                     );
                   })()}
 
+                  {/* Sync error in detail modal */}
+                  {(() => {
+                    const rawSt = syncStatus[ig.name];
+                    const errMsg = rawSt && typeof rawSt === 'object' && rawSt.status === 'error' ? rawSt.message : null;
+                    if (!errMsg) return null;
+                    return (
+                      <div style={{
+                        padding: '8px 12px', borderRadius: 8, marginBottom: 12,
+                        background: T.redBg, border: `1px solid ${T.red}22`,
+                        fontSize: 11, color: T.red, fontWeight: 600,
+                      }}>
+                        Erreur de synchronisation : {errMsg}
+                      </div>
+                    );
+                  })()}
+
                   {/* Actions */}
                   <div style={{ display: 'flex', gap: 8 }}>
                     {connected ? (
@@ -1218,7 +1261,7 @@ export default function Settings() {
               Revolut: { label: 'Access Token Revolut Business', placeholder: 'oa_prod_...' },
               Qonto: { label: 'Clé API Qonto', placeholder: 'Votre clé API Qonto', hasUrl: true, urlLabel: 'URL API (optionnel)', urlPlaceholder: 'https://thirdparty.qonto.com/v2' },
               HubSpot: { label: 'Clé API privée HubSpot', placeholder: 'pat-na1-...' },
-              Salesforce: { label: 'Access Token Salesforce', placeholder: 'Votre access token', hasUrl: true, urlLabel: 'URL instance Salesforce', urlPlaceholder: 'https://votreinstance.salesforce.com' },
+              Salesforce: { label: 'Access Token Salesforce', placeholder: 'Votre access token', hasUrl: true, urlLabel: 'URL instance Salesforce (requis)', urlPlaceholder: 'https://votreinstance.salesforce.com', urlRequired: true },
               Pipedrive: { label: 'Token API Pipedrive', placeholder: 'Votre token API Pipedrive' },
               Mailchimp: { label: 'Clé API Mailchimp', placeholder: 'xxxx-us21' },
               Brevo: { label: 'Clé API Brevo', placeholder: 'xkeysib-...' },
@@ -1229,7 +1272,11 @@ export default function Settings() {
               GoHighLevel: { label: 'Clé API GoHighLevel', placeholder: 'Votre clé API GHL' },
               PayPal: { label: 'Client Secret PayPal', placeholder: 'Votre client secret' },
               Zoho: { label: 'Clé API Zoho CRM', placeholder: 'Votre clé API Zoho' },
-              ActiveCampaign: { label: 'Clé API ActiveCampaign', placeholder: 'Votre clé API', hasUrl: true, urlLabel: 'URL API ActiveCampaign', urlPlaceholder: 'https://votrecompte.api-us1.com' },
+              ActiveCampaign: { label: 'Clé API ActiveCampaign', placeholder: 'Votre clé API', hasUrl: true, urlLabel: 'URL API ActiveCampaign (requis)', urlPlaceholder: 'https://votrecompte.api-us1.com', urlRequired: true },
+              Shopify: { label: 'Access Token Shopify', placeholder: 'shpat_...', hasUrl: true, urlLabel: 'Domaine de la boutique (requis)', urlPlaceholder: 'monshop.myshopify.com', urlRequired: true },
+              'LinkedIn Ads': { label: 'Access Token LinkedIn Ads', placeholder: 'Votre access token' },
+              Notion: { label: 'Token d\'intégration Notion', placeholder: 'ntn_...' },
+              Slack: { label: 'Bot Token Slack', placeholder: 'xoxb-...' },
             };
             const field = ig ? (keyFields[ig.name] || { label: `Clé API ${ig.name}`, placeholder: 'Votre clé API' }) : {};
             return (
@@ -1286,7 +1333,7 @@ export default function Settings() {
                     {/* Actions */}
                     <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                       <Btn v="primary" small onClick={() => submitApiKeyConnection(ig.name)}
-                        disabled={connectLoading || !connectKey.trim()}
+                        disabled={connectLoading || !connectKey.trim() || (field.urlRequired && !connectUrl.trim())}
                         style={{ flex: 1, background: 'linear-gradient(135deg, #f97316, #f59e0b)', opacity: connectLoading ? 0.7 : 1 }}>
                         {connectLoading ? '⟳ Connexion...' : 'Connecter'}
                       </Btn>

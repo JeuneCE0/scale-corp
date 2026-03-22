@@ -1,0 +1,8 @@
+# HubScale robots.txt
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /assets/*.map
+
+# Sitemap
+Sitemap: https://hubscale.app/sitemap.xml

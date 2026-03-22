@@ -275,8 +275,8 @@ async function handleResetPassword(req, res) {
         subject: 'Réinitialisation de votre mot de passe — HubScale',
         html: resetPasswordTemplate(redirectTo),
       });
-    } catch {
-      // Non-blocking: Supabase already sent the real reset link
+    } catch (err) {
+      console.error('[email] Resend password reset email failed (non-blocking):', err.message);
     }
   }
 
@@ -375,7 +375,8 @@ export default async function handler(req, res) {
     }
 
     return badRequest(res, 'Action invalide');
-  } catch {
+  } catch (err) {
+    console.error('[email] Unhandled error:', err);
     return serverError(res);
   }
 }

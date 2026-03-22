@@ -4,30 +4,43 @@
 // Dashboard endpoints require auth.
 
 import { getSupabaseAdmin } from './utils/supabase.js';
-
-function cors(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-}
+import { cors, badRequest, serverError } from './utils/errors.js';
 
 function getIP(req) {
   return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '';
 }
 
-export default async function handler(req, res) {
-  cors(res);
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-    return res.status(500).json({ error: 'Supabase not configured' });
+// Simple in-memory rate limiter for public affiliate endpoints
+const _rateLimitMap = new Map();
+function checkRateLimit(key, maxRequests = 30, windowMs = 60000) {
+  const now = Date.now();
+  const entry = _rateLimitMap.get(key);
+  if (!entry || now - entry.start > windowMs) {
+    _rateLimitMap.set(key, { start: now, count: 1 });
+    return true;
   }
+  entry.count++;
+  if (entry.count > maxRequests) return false;
+  return true;
+}
+
+export default async function handler(req, res) {
+  cors(res, 'GET, POST, OPTIONS');
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   const sb = getSupabaseAdmin();
   const action = req.query.action;
   if (!action) return res.status(400).json({ error: 'Missing action' });
 
   try {
+    // Rate limit public endpoints by IP
+    const ip = getIP(req);
+    if (['track-click', 'record-referral', 'register-slug'].includes(action)) {
+      if (!checkRateLimit(`aff_${ip}`, 20, 60000)) {
+        return res.status(429).json({ error: 'Trop de requêtes. Réessayez dans quelques instants.' });
+      }
+    }
+
     // ── PUBLIC: Track a click on an affiliate link ──
     if (action === 'track-click') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });

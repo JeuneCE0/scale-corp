@@ -13,6 +13,12 @@ function validateString(val, maxLen = 255) {
   if (val.length > maxLen) return false;
   return true;
 }
+
+// Sanitize search input for ilike queries — escape Postgres wildcards
+function sanitizeSearch(val) {
+  if (typeof val !== 'string') return '';
+  return val.replace(/[%_\\]/g, (c) => '\\' + c).slice(0, 100);
+}
 const VALID_ROLES = ['owner', 'admin', 'member', 'viewer'];
 const VALID_PLANS = ['starter', 'professional', 'enterprise'];
 
@@ -103,7 +109,8 @@ export default async function handler(req, res) {
       default:
         return badRequest(res, 'Action invalide');
     }
-  } catch {
+  } catch (err) {
+    console.error('[admin] Unhandled error:', err);
     return serverError(res);
   }
 }
@@ -143,17 +150,18 @@ async function platformStats(sb, res) {
 
 async function listOrganizations(sb, req, res) {
   const { search = '', plan = '', page = '1', limit = '20' } = req.query;
-  const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
-  const lim = parseInt(limit, 10);
+  const lim = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+  const pg = Math.max(parseInt(page, 10) || 1, 1);
+  const offset = (pg - 1) * lim;
 
   let query = sb.from('organizations').select('*', { count: 'exact' });
 
-  if (search) query = query.ilike('name', `%${search}%`);
-  if (plan && plan !== 'all') query = query.eq('plan', plan);
+  if (search) query = query.ilike('name', `%${sanitizeSearch(search)}%`);
+  if (plan && plan !== 'all' && VALID_PLANS.includes(plan)) query = query.eq('plan', plan);
 
   query = query.order('created_at', { ascending: false }).range(offset, offset + lim - 1);
   const { data: orgs, count, error } = await query;
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: 'Erreur lors de la récupération des organisations' });
 
   // Fetch member counts and contacts counts per org
   const orgIds = (orgs || []).map((o) => o.id);
@@ -232,16 +240,18 @@ async function updateOrganization(sb, req, res, admin) {
 
 async function listUsers(sb, req, res) {
   const { search = '', page = '1', limit = '20' } = req.query;
-  const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
-  const lim = parseInt(limit, 10);
+  const lim = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+  const pg = Math.max(parseInt(page, 10) || 1, 1);
+  const offset = (pg - 1) * lim;
 
   let query = sb.from('profiles').select('id, full_name, email, role, org_id, created_at', { count: 'exact' });
   if (search) {
-    query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
+    const s = sanitizeSearch(search);
+    query = query.or(`full_name.ilike.%${s}%,email.ilike.%${s}%`);
   }
   query = query.order('created_at', { ascending: false }).range(offset, offset + lim - 1);
   const { data: users, count, error } = await query;
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: 'Erreur lors de la récupération des utilisateurs' });
 
   // Fetch org names
   const orgIds = [...new Set((users || []).map((u) => u.org_id).filter(Boolean))];
@@ -323,8 +333,8 @@ async function changePlan(sb, req, res, admin) {
         items: [{ id: sub.items.data[0].id, price: PLAN_PRICES[plan] }],
         proration_behavior: 'create_prorations',
       });
-    } catch {
-      // Stripe plan update is best-effort
+    } catch (err) {
+      console.error('[admin] Stripe plan update failed (best-effort):', err.message);
     }
   }
 

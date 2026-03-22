@@ -69,7 +69,8 @@ export default async function handler(req, res) {
     }
 
     return badRequest(res, 'Action invalide');
-  } catch {
+  } catch (err) {
+    console.error('[billing] Unhandled error:', err);
     return serverError(res);
   }
 }
@@ -174,7 +175,8 @@ async function handleWebhook(req, res, rawBody) {
 
   try {
     event = stripe.webhooks.constructEvent(rawBody, sig, STRIPE_WEBHOOK_SECRET);
-  } catch {
+  } catch (err) {
+    console.error('[billing] Webhook signature verification failed:', err.message);
     return badRequest(res, 'Signature invalide');
   }
 
@@ -248,8 +250,8 @@ async function handleWebhook(req, res, rawBody) {
                 }),
               });
             }
-          } catch {
-            // Plan change email is non-blocking
+          } catch (err) {
+            console.error('[billing] Plan change email failed (non-blocking):', err.message);
           }
         }
 

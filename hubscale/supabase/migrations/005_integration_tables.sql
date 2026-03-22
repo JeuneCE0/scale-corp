@@ -14,7 +14,7 @@ SECURITY DEFINER
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM profiles
-    WHERE id = auth.uid() AND role = 'owner'
+    WHERE id = auth.uid() AND role = 'super_admin'
   )
 $$;
 

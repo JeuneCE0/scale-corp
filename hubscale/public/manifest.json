@@ -1,13 +1,16 @@
 {
-  "name": "HubScale",
+  "name": "HubScale — Pilotez votre groupe de sociétés",
   "short_name": "HubScale",
-  "description": "Espace client B2B — Pilotez votre activité",
+  "description": "Dashboard temps réel pour piloter votre holding et vos sociétés. CA, charges, pipeline, CRM, trésorerie — tout en un.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#09090b",
   "theme_color": "#f97316",
   "orientation": "any",
+  "lang": "fr-FR",
   "categories": ["business", "finance", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/favicon.svg",
@@ -20,6 +23,21 @@
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/?view=overview",
+      "icons": []
+    },
+    {
+      "name": "CRM",
+      "short_name": "CRM",
+      "url": "/?view=crm",
+      "icons": []
     }
   ]
 }

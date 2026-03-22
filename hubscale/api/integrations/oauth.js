@@ -2,6 +2,7 @@
 // Handles OAuth flows for third-party integrations
 
 import { getSupabaseAdmin } from '../utils/supabase.js';
+import { verifyAuth } from '../utils/auth.js';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
 const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
@@ -166,6 +167,71 @@ const OAUTH_CONFIGS = {
     clientSecret: process.env.SLACK_CLIENT_SECRET,
     scopes: 'channels:read chat:write incoming-webhook',
   },
+  // --- E-commerce ---
+  woocommerce: {
+    authorizeUrl: null, // WooCommerce uses REST API with consumer key/secret, not standard OAuth
+    tokenUrl: null,
+    clientId: process.env.WOOCOMMERCE_CONSUMER_KEY,
+    clientSecret: process.env.WOOCOMMERCE_CONSUMER_SECRET,
+    scopes: 'read',
+    requiresApiKey: true, // Connected via API key (consumer key + store URL)
+  },
+  // --- Gestion de projet ---
+  asana: {
+    authorizeUrl: 'https://app.asana.com/-/oauth_authorize',
+    tokenUrl: 'https://app.asana.com/-/oauth_token',
+    clientId: process.env.ASANA_CLIENT_ID,
+    clientSecret: process.env.ASANA_CLIENT_SECRET,
+    scopes: '',
+  },
+  trello: {
+    authorizeUrl: 'https://trello.com/1/authorize',
+    tokenUrl: null, // Trello uses API key + token (not standard OAuth token exchange)
+    clientId: process.env.TRELLO_API_KEY,
+    clientSecret: process.env.TRELLO_API_SECRET,
+    scopes: 'read',
+    requiresApiKey: true, // Connected via API key + token
+    extraParams: { expiration: 'never', name: 'HubScale', response_type: 'token' },
+  },
+  monday: {
+    authorizeUrl: 'https://auth.monday.com/oauth2/authorize',
+    tokenUrl: 'https://auth.monday.com/oauth2/token',
+    clientId: process.env.MONDAY_CLIENT_ID,
+    clientSecret: process.env.MONDAY_CLIENT_SECRET,
+    scopes: 'boards:read workspaces:read users:read',
+  },
+  jira: {
+    authorizeUrl: 'https://auth.atlassian.com/authorize',
+    tokenUrl: 'https://auth.atlassian.com/oauth/token',
+    clientId: process.env.JIRA_CLIENT_ID,
+    clientSecret: process.env.JIRA_CLIENT_SECRET,
+    scopes: 'read:jira-work read:jira-user offline_access',
+    extraParams: { audience: 'api.atlassian.com', prompt: 'consent' },
+  },
+  // --- Support Client ---
+  zendesk: {
+    authorizeUrl: null, // Per-subdomain URL: https://{subdomain}.zendesk.com/oauth/authorizations/new
+    tokenUrl: null, // Per-subdomain URL: https://{subdomain}.zendesk.com/oauth/tokens
+    clientId: process.env.ZENDESK_CLIENT_ID,
+    clientSecret: process.env.ZENDESK_CLIENT_SECRET,
+    scopes: 'read tickets:read users:read',
+    requiresSubdomain: true,
+  },
+  freshdesk: {
+    authorizeUrl: null, // Freshdesk uses API key authentication, not OAuth
+    tokenUrl: null,
+    clientId: null,
+    clientSecret: null,
+    scopes: '',
+    requiresApiKey: true, // Connected via API key + domain
+  },
+  intercom: {
+    authorizeUrl: 'https://app.intercom.com/oauth',
+    tokenUrl: 'https://api.intercom.io/auth/eagle/token',
+    clientId: process.env.INTERCOM_CLIENT_ID,
+    clientSecret: process.env.INTERCOM_CLIENT_SECRET,
+    scopes: '',
+  },
 };
 
 const ENCRYPTION_KEY = process.env.OAUTH_ENCRYPTION_KEY;
@@ -196,14 +262,21 @@ function decrypt(encoded) {
   }
 }
 
-async function verifyAuth(req) {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return null;
-  const sb = getSupabaseAdmin();
-  const { data: { user }, error } = await sb.auth.getUser(auth.slice(7));
-  if (error || !user) return null;
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
-  return profile;
+// In-memory rate limiter for OAuth endpoints
+const _oauthRateMap = new Map();
+function checkOAuthRateLimit(key, maxRequests = 10, windowMs = 60000) {
+  const now = Date.now();
+  const entry = _oauthRateMap.get(key);
+  if (!entry || now - entry.start > windowMs) {
+    _oauthRateMap.set(key, { start: now, count: 1 });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= maxRequests;
+}
+
+function getClientIP(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
 }
 
 export default async function handler(req, res) {
@@ -211,6 +284,12 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // Rate limit OAuth requests (10/min per IP)
+  const ip = getClientIP(req);
+  if (!checkOAuthRateLimit(`oauth_${ip}`, 10, 60000)) {
+    return res.status(429).json({ error: 'Trop de requêtes. Réessayez dans quelques instants.' });
+  }
 
   // GET: OAuth provider redirects here with ?code=...&state=...
   if (req.method === 'GET') {
@@ -228,6 +307,10 @@ export default async function handler(req, res) {
       const userId = stateData.user_id;
       if (!name || !orgId) {
         return res.redirect(302, `${APP_URL}?tab=settings&oauth=error&error=invalid_state`);
+      }
+      // Reject state tokens older than 10 minutes to prevent replay attacks
+      if (stateData.ts && (Date.now() - stateData.ts) > 10 * 60 * 1000) {
+        return res.redirect(302, `${APP_URL}?tab=settings&oauth=error&error=state_expired`);
       }
       // Build a fake profile for handleCallback
       const profile = { org_id: orgId, id: userId };
@@ -550,19 +633,57 @@ async function handleConnectWithKey(res, profile, name, apiKey, apiUrl) {
       if (!r.ok) throw new Error('Token Shopify invalide');
       return { shop_domain: shopDomain };
     },
+    woocommerce: async () => {
+      if (!apiUrl) throw new Error('URL de boutique WooCommerce requise (ex: https://monshop.com)');
+      const storeUrl = apiUrl.replace(/\/$/, '');
+      const r = await fetch(`${storeUrl}/wp-json/wc/v3/system_status`, {
+        headers: { Authorization: 'Basic ' + Buffer.from(`${apiKey}:${apiUrl.includes(':') ? '' : process.env.WOOCOMMERCE_CONSUMER_SECRET || ''}`).toString('base64') },
+      });
+      if (!r.ok) throw new Error('Clé WooCommerce invalide');
+      return { store_url: storeUrl };
+    },
+    trello: async () => {
+      const r = await fetch(`https://api.trello.com/1/members/me?key=${process.env.TRELLO_API_KEY || ''}&token=${apiKey}`);
+      if (!r.ok) throw new Error('Token Trello invalide');
+      return {};
+    },
+    freshdesk: async () => {
+      if (!apiUrl) throw new Error('Domaine Freshdesk requis (ex: monentreprise.freshdesk.com)');
+      const domain = apiUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      const r = await fetch(`https://${domain}/api/v2/tickets?per_page=1`, {
+        headers: { Authorization: 'Basic ' + Buffer.from(`${apiKey}:X`).toString('base64') },
+      });
+      if (!r.ok) throw new Error('Clé Freshdesk invalide');
+      return { domain };
+    },
+    zendesk: async () => {
+      if (!apiUrl) throw new Error('Sous-domaine Zendesk requis (ex: monentreprise.zendesk.com)');
+      const subdomain = apiUrl.replace(/^https?:\/\//, '').replace(/\.zendesk\.com.*$/, '');
+      const r = await fetch(`https://${subdomain}.zendesk.com/api/v2/tickets?per_page=1`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!r.ok) throw new Error('Token Zendesk invalide');
+      return { subdomain };
+    },
+    intercom: async () => {
+      const r = await fetch('https://api.intercom.io/me', {
+        headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
+      });
+      if (!r.ok) throw new Error('Token Intercom invalide');
+      return {};
+    },
   };
 
+  let metadata = { connection_method: 'api_key' };
   const validator = validators[name];
   if (validator) {
     try {
       const extra = await validator();
       // Store metadata if validator returned extra info
-      var metadata = { ...extra, connection_method: 'api_key' };
+      metadata = { ...extra, connection_method: 'api_key' };
     } catch (err) {
       return res.status(400).json({ error: err.message });
     }
-  } else {
-    var metadata = { connection_method: 'api_key' };
   }
 
   // Store the API key securely

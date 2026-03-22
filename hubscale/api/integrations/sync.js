@@ -86,6 +86,31 @@ const REFRESH_CONFIGS = {
     clientId: process.env.QONTO_OAUTH_CLIENT_ID,
     clientSecret: process.env.QONTO_OAUTH_CLIENT_SECRET,
   },
+  asana: {
+    tokenUrl: 'https://app.asana.com/-/oauth_token',
+    clientId: process.env.ASANA_CLIENT_ID,
+    clientSecret: process.env.ASANA_CLIENT_SECRET,
+  },
+  monday: {
+    tokenUrl: 'https://auth.monday.com/oauth2/token',
+    clientId: process.env.MONDAY_CLIENT_ID,
+    clientSecret: process.env.MONDAY_CLIENT_SECRET,
+  },
+  jira: {
+    tokenUrl: 'https://auth.atlassian.com/oauth/token',
+    clientId: process.env.JIRA_CLIENT_ID,
+    clientSecret: process.env.JIRA_CLIENT_SECRET,
+  },
+  zendesk: {
+    tokenUrl: null, // Per-subdomain: https://{subdomain}.zendesk.com/oauth/tokens
+    clientId: process.env.ZENDESK_CLIENT_ID,
+    clientSecret: process.env.ZENDESK_CLIENT_SECRET,
+  },
+  intercom: {
+    tokenUrl: 'https://api.intercom.io/auth/eagle/token',
+    clientId: process.env.INTERCOM_CLIENT_ID,
+    clientSecret: process.env.INTERCOM_CLIENT_SECRET,
+  },
 };
 
 function decrypt(encoded) {
@@ -199,17 +224,23 @@ async function syncStripe(sb, orgId, accessToken) {
 
   // Fetch customers as contacts
   const customers = await stripe.customers.list({ limit: 100 });
-  const contacts = (customers.data || []).map((cu) => ({
-    org_id: orgId,
-    source: 'stripe',
-    external_id: cu.id,
-    name: cu.name || cu.email || 'Sans nom',
-    email: cu.email || '',
-    phone: cu.phone || '',
-    company: cu.metadata?.company || '',
-    status: 'client',
-    created_at: new Date(cu.created * 1000).toISOString(),
-  }));
+  const contacts = (customers.data || []).map((cu) => {
+    const fullName = cu.name || cu.email || 'Sans nom';
+    const nameParts = fullName.split(' ');
+    return {
+      org_id: orgId,
+      source: 'stripe',
+      external_id: cu.id,
+      name: fullName,
+      first_name: nameParts[0] || '',
+      last_name: nameParts.slice(1).join(' ') || '',
+      email: cu.email || '',
+      phone: cu.phone || '',
+      company: cu.metadata?.company || '',
+      status: 'client',
+      created_at: new Date(cu.created * 1000).toISOString(),
+    };
+  });
 
   // Fetch balance
   const balance = await stripe.balance.retrieve();
@@ -872,14 +903,20 @@ async function syncMailchimp(sb, orgId, accessToken) {
     if (!membersRes.ok) continue;
     const membersData = await membersRes.json();
 
-    const rows = (membersData.members || []).map((m) => ({
-      org_id: orgId,
-      source: 'mailchimp',
-      external_id: m.id,
-      name: m.full_name || '',
-      email: m.email_address || '',
-      metadata: { list_id: list.id, list_name: list.name, status: m.status },
-    }));
+    const rows = (membersData.members || []).map((m) => {
+      const fullName = m.full_name || '';
+      const nameParts = fullName.split(' ');
+      return {
+        org_id: orgId,
+        source: 'mailchimp',
+        external_id: m.id,
+        name: fullName,
+        first_name: nameParts[0] || '',
+        last_name: nameParts.slice(1).join(' ') || '',
+        email: m.email_address || '',
+        metadata: { list_id: list.id, list_name: list.name, status: m.status },
+      };
+    });
 
     if (rows.length > 0) {
       await sb.from('contacts').upsert(rows, { onConflict: 'org_id,source,external_id' });
@@ -938,11 +975,15 @@ async function syncPayPal(sb, orgId, accessToken) {
   (txData.transaction_details || []).forEach((tx) => {
     const payer = tx.payer_info || {};
     if (payer.email_address && !contactMap.has(payer.email_address)) {
+      const fullName = payer.payer_name?.alternate_full_name || payer.email_address;
+      const nameParts = fullName.split(' ');
       contactMap.set(payer.email_address, {
         org_id: orgId,
         source: 'paypal',
         external_id: payer.account_id || payer.email_address,
-        name: payer.payer_name?.alternate_full_name || payer.email_address,
+        name: fullName,
+        first_name: nameParts[0] || '',
+        last_name: nameParts.slice(1).join(' ') || '',
         email: payer.email_address,
         phone: '',
         company: '',
@@ -1420,6 +1461,19 @@ const SYNC_HANDLERS = {
   slack: syncSlack,
 };
 
+// In-memory rate limiter for sync endpoint (heavy operations)
+const _syncRateMap = new Map();
+function checkSyncRateLimit(key, maxRequests = 5, windowMs = 60000) {
+  const now = Date.now();
+  const entry = _syncRateMap.get(key);
+  if (!entry || now - entry.start > windowMs) {
+    _syncRateMap.set(key, { start: now, count: 1 });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= maxRequests;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', APP_URL);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -1430,6 +1484,11 @@ export default async function handler(req, res) {
   try {
     const profile = await verifyAuth(req);
     if (!profile) return res.status(401).json({ error: 'Non autorisé' });
+
+    // Rate limit syncs per org (5 per minute — syncs are expensive)
+    if (!checkSyncRateLimit(`sync_${profile.org_id}`, 5, 60000)) {
+      return res.status(429).json({ error: 'Trop de synchronisations. Réessayez dans quelques instants.' });
+    }
 
     const { integration } = req.body;
     const name = (integration || '').toLowerCase();
