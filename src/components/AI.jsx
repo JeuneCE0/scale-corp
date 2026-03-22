@@ -34,9 +34,9 @@ export function AICoPilot({socs,reps,hold,actions,pulses,allM,revData,socBank,ok
  };
  useEffect(()=>{ref.current?.scrollTo({top:ref.current.scrollHeight,behavior:"smooth"});},[msgs]);
  return <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 120px)"}}>
-  <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:8}}>{PRESETS.map((p,i)=><button key={i} onClick={()=>send(p)} style={{padding:"5px 10px",borderRadius:20,fontSize:10,fontWeight:600,border:`1px solid ${C.brd}`,background:C.card,color:C.td,cursor:"pointer",fontFamily:FONT,transition:"all .2s"}} onMouseEnter={e=>{e.target.style.borderColor=C.acc;e.target.style.color=C.acc;}} onMouseLeave={e=>{e.target.style.borderColor=C.brd;e.target.style.color=C.td;}}>{p}</button>)}</div>
+  <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:8}}>{PRESETS.map((p,i)=><button key={`${p}-${i}`} onClick={()=>send(p)} style={{padding:"5px 10px",borderRadius:20,fontSize:10,fontWeight:600,border:`1px solid ${C.brd}`,background:C.card,color:C.td,cursor:"pointer",fontFamily:FONT,transition:"all .2s"}} onMouseEnter={e=>{e.target.style.borderColor=C.acc;e.target.style.color=C.acc;}} onMouseLeave={e=>{e.target.style.borderColor=C.brd;e.target.style.color=C.td;}}>{p}</button>)}</div>
   <div ref={ref} style={{flex:1,overflowY:"auto",padding:"4px 0"}}>
-   {msgs.map((m,i)=><div key={i} className="fu" style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:8}}>
+   {msgs.map((m,i)=><div key={`${m.role}-${i}`} className="fu" style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:8}}>
     <div style={{maxWidth:"85%",padding:"10px 14px",borderRadius:12,background:m.role==="user"?C.acc+"22":C.card,border:`1px solid ${m.role==="user"?C.acc+"44":C.brd}`,fontSize:12,lineHeight:1.7,color:C.t,whiteSpace:"pre-wrap"}}>
     {m.role==="assistant"&&<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}><span style={{fontSize:14}}>🤖</span><span style={{fontWeight:700,fontSize:10,color:C.v}}>CO-PILOTE</span></div>}
     {m.content}
@@ -85,7 +85,7 @@ export function AIWeeklyCoach({soc,reps,allM,actions,pulses,milestones}){
   </div>
   {insights.length===0&&<div style={{color:C.td,fontSize:11,textAlign:"center",padding:10}}>Soumets un rapport pour activer le coaching</div>}
   {insights.map((ins,i)=>{const st=typeStyles[ins.type]||typeStyles.info;
-   return <div key={i} className={`fu d${Math.min(i+1,6)}`} style={{display:"flex",alignItems:"flex-start",gap:6,padding:"6px 8px",background:st.bg,borderRadius:6,marginBottom:4}}>
+   return <div key={`${ins.type}-${i}`} className={`fu d${Math.min(i+1,6)}`} style={{display:"flex",alignItems:"flex-start",gap:6,padding:"6px 8px",background:st.bg,borderRadius:6,marginBottom:4}}>
     <span style={{fontSize:12,flexShrink:0,marginTop:1}}>{ins.icon}</span>
     <div style={{fontSize:10,color:C.t,lineHeight:1.4}}>{ins.text}</div>
    </div>;

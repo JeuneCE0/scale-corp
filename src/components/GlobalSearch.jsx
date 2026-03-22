@@ -160,7 +160,7 @@ export function GlobalSearch({ open, onClose, clients, socs, socBank, ghlData, o
           )}
           {results.map((r, i) => (
             <div
-              key={i}
+              key={`${r.type}-${r.title}-${i}`}
               onClick={() => { r.action(); onClose(); }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '10px 18px',

@@ -10,7 +10,7 @@ const BASE_URL = process.env.TEST_URL || 'http://localhost:5173';
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function loginWithPin(page, pin = '0000') {
+async function loginWithPin(page, pin = process.env.TEST_PIN || '0000') {
   await page.goto(BASE_URL, { waitUntil: 'networkidle', timeout: 30000 });
 
   // Wait for app to load
@@ -33,10 +33,10 @@ async function loginWithPin(page, pin = '0000') {
   }
 
   // Wait for dashboard to appear (admin sees sidebar or dashboard content)
-  await page.waitForTimeout(2000);
+  await page.waitForSelector('nav, [class*="sidebar"], [class*="dashboard"], [class*="Sidebar"], [class*="Dashboard"]', { timeout: 10000 }).catch(() => {});
 }
 
-async function loginWithEmail(page, email = 'admin@scale-corp.fr', password = 'admin123') {
+async function loginWithEmail(page, email = process.env.TEST_EMAIL || 'admin@scale-corp.fr', password = process.env.TEST_PASSWORD || 'admin123') {
   await page.goto(BASE_URL, { waitUntil: 'networkidle', timeout: 30000 });
 
   // Switch to email login mode
@@ -58,7 +58,7 @@ async function loginWithEmail(page, email = 'admin@scale-corp.fr', password = 'a
     await submitBtn.first().click();
   }
 
-  await page.waitForTimeout(2000);
+  await page.waitForSelector('nav, [class*="sidebar"], [class*="dashboard"], [class*="Sidebar"], [class*="Dashboard"]', { timeout: 10000 }).catch(() => {});
 }
 
 // ---------------------------------------------------------------------------
@@ -95,7 +95,7 @@ test.describe('App load', () => {
     });
 
     await page.goto(BASE_URL, { waitUntil: 'networkidle', timeout: 30000 });
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('domcontentloaded');
 
     // Filter out expected API errors (unauthenticated calls)
     const real = consoleErrors.filter(e =>
@@ -151,7 +151,8 @@ test.describe('Email login', () => {
       const submitBtn = page.locator('button[type="submit"], button:has-text("Connexion"), button:has-text("Se connecter")');
       await submitBtn.first().click();
 
-      await page.waitForTimeout(2000);
+      // Wait for error message to appear after failed login
+      await page.waitForSelector('text=/incorrect|erreur|invalid|introuvable/i', { timeout: 10000 }).catch(() => {});
 
       // Should show error message
       const body = await page.textContent('body');
@@ -170,7 +171,8 @@ test.describe('Keyboard shortcuts', () => {
 
     // Press Ctrl+K
     await page.keyboard.press('Control+k');
-    await page.waitForTimeout(500);
+    // Brief wait for search overlay animation
+    await page.waitForTimeout(300);
 
     // Search overlay should appear (look for search input)
     const searchInput = page.locator('input[placeholder*="Rechercher"], input[placeholder*="Search"]');
@@ -286,7 +288,7 @@ test.describe('Monitoring', () => {
     page.on('pageerror', err => errors.push(err.message));
 
     await page.goto(BASE_URL, { waitUntil: 'networkidle', timeout: 30000 });
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
 
     // No monitoring-related crashes
     const monitorErrors = errors.filter(e =>

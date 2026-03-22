@@ -271,3 +271,56 @@ create policy "Allow all via service key" on public.affiliate_pending_referrals 
 create policy "Allow all via service key" on public.affiliate_referrals for all using (true);
 create policy "Allow all via service key" on public.affiliate_commissions for all using (true);
 create policy "Allow all via service key" on public.affiliate_payouts for all using (true);
+
+-- ============================================================================
+-- SCHEMA ADDITIONS: Performance indexes, CHECK constraints, NOT NULL constraints
+-- Added 2026-03-22 — appended as non-breaking changes (no existing DDL modified)
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- 1. Performance indexes for common query patterns
+-- ---------------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_affiliate_clicks_society_created ON public.affiliate_clicks(society_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_affiliate_referrals_referrer ON public.affiliate_referrals(referrer_client_id);
+CREATE INDEX IF NOT EXISTS idx_affiliate_commissions_affiliate_month ON public.affiliate_commissions(affiliate_client_id, month);
+CREATE INDEX IF NOT EXISTS idx_api_tokens_provider_society ON public.api_tokens(provider, society_id);
+CREATE INDEX IF NOT EXISTS idx_meta_ads_society_month ON public.meta_ads(society_id, month);
+CREATE INDEX IF NOT EXISTS idx_sales_data_society_month ON public.sales_data(society_id, month);
+CREATE INDEX IF NOT EXISTS idx_client_data_society ON public.client_data(society_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_society ON public.transactions(society_id);
+
+-- ---------------------------------------------------------------------------
+-- 2. CHECK constraints for data validation (idempotent with exception handling)
+-- ---------------------------------------------------------------------------
+DO $$
+BEGIN
+  ALTER TABLE public.societies ADD CONSTRAINT chk_monthly_goal_positive CHECK (monthly_goal >= 0);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER TABLE public.affiliate_commissions ADD CONSTRAINT chk_commission_rate_valid CHECK (commission_rate > 0 AND commission_rate <= 1);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER TABLE public.affiliate_payouts ADD CONSTRAINT chk_payout_amount_positive CHECK (amount > 0);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- 3. NOT NULL constraints on critical foreign keys (idempotent with exception handling)
+-- ---------------------------------------------------------------------------
+DO $$
+BEGIN
+  ALTER TABLE public.client_data ALTER COLUMN society_id SET NOT NULL;
+EXCEPTION WHEN others THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER TABLE public.transactions ALTER COLUMN society_id SET NOT NULL;
+EXCEPTION WHEN others THEN NULL;
+END $$;

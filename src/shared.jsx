@@ -987,7 +987,7 @@ export async function syncFromSupabase(socId){
   // Also pull global settings
   const globalData=await sbList('user_settings','global');
   if(Array.isArray(globalData)){globalData.forEach(row=>{if(row.key&&row.value!==undefined){const existing=localStorage.getItem(row.key);if(!existing)localStorage.setItem(row.key,JSON.stringify(row.value));}});}
- }catch(e){}
+ }catch(err){console.warn('[syncFromSupabase] failed:',err?.message||err);}
 }
 // Fetch holding config from Supabase
 export async function fetchHoldingFromSB(){

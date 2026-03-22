@@ -123,22 +123,24 @@ export function initMonitoring() {
   }
 
   // Global error handler
-  window.addEventListener('error', (event) => {
+  const onError = (event) => {
     reportError(event.error || new Error(event.message), {
       source: event.filename,
       line: event.lineno,
       col: event.colno,
       type: 'uncaught',
     });
-  });
+  };
+  window.addEventListener('error', onError);
 
   // Unhandled promise rejections
-  window.addEventListener('unhandledrejection', (event) => {
+  const onUnhandledRejection = (event) => {
     const error = event.reason instanceof Error
       ? event.reason
       : new Error(String(event.reason));
     reportError(error, { type: 'unhandledrejection' });
-  });
+  };
+  window.addEventListener('unhandledrejection', onUnhandledRejection);
 
   // Track initial page view
   trackEvent('page_view', { path: window.location.pathname });
@@ -146,4 +148,10 @@ export function initMonitoring() {
   if (import.meta.env.DEV) {
     console.debug('[HubScale] Monitoring initialized', sentryKey ? '(Sentry active)' : '(local only)');
   }
+
+  // Return cleanup function to remove global listeners
+  return function cleanupMonitoring() {
+    window.removeEventListener('error', onError);
+    window.removeEventListener('unhandledrejection', onUnhandledRejection);
+  };
 }

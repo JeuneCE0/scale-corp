@@ -32,8 +32,8 @@ test('no console errors on load', async ({ page }) => {
   });
   
   await page.goto(URL, { waitUntil: 'networkidle', timeout: 30000 });
-  await page.waitForTimeout(2000);
-  
+  await page.waitForLoadState('domcontentloaded');
+
   // Filter out expected API errors (unauthenticated calls)
   const real = consoleErrors.filter(e => !e.includes('GHL') && !e.includes('Revolut') && !e.includes('Stripe') && !e.includes('sync'));
   expect(real).toHaveLength(0);

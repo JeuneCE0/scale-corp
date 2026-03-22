@@ -46,7 +46,7 @@ export function PredictionsCard({soc,reps,allM,clients,ghlData,socBank}){
    </div>
    {churnRisks.length>0&&<div style={{padding:10,background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`}}>
     <div style={{fontWeight:700,fontSize:11,color:C.t,marginBottom:6}}>Risque churn</div>
-    {churnRisks.slice(0,5).map((c,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",borderBottom:`1px solid ${C.brd}08`}}>
+    {churnRisks.slice(0,5).map((c,i)=><div key={c.name} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",borderBottom:`1px solid ${C.brd}08`}}>
      <span>{c.confidence}</span>
      <span style={{flex:1,fontSize:10,color:C.t}}>{c.name}</span>
      <span style={{fontSize:10,fontWeight:700,color:c.risk>50?C.r:c.risk>25?C.o:C.g}}>{c.risk}%</span>

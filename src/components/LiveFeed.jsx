@@ -25,7 +25,7 @@ export function LiveFeed({socs,reps,allM,ghlData,socBank,clients,maxEvents=50}){
   return evts.filter(e=>e.ts).sort((a,b)=>new Date(b.ts)-new Date(a.ts)).slice(0,maxEvents);
  },[socs,ghlData,socBank]);
  if(events.length===0)return <div style={{color:C.td,fontSize:11,textAlign:"center",padding:20}}>Aucune activité récente</div>;
- return <div style={{maxHeight:400,overflowY:"auto"}}>{events.map((e,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderBottom:`1px solid ${C.brd}08`,animation:`slideInRight .3s ease ${i*0.03}s both`}}>
+ return <div style={{maxHeight:400,overflowY:"auto"}}>{events.map((e,i)=><div key={`${e.type}-${e.desc}-${i}`} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderBottom:`1px solid ${C.brd}08`,animation:`slideInRight .3s ease ${i*0.03}s both`}}>
   <span style={{fontSize:16,flexShrink:0}}>{e.icon}</span>
   <div style={{flex:1,minWidth:0}}>
    <div style={{fontSize:11,color:C.t,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.desc}</div>

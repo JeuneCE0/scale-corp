@@ -65,7 +65,7 @@ export function SkeletonTable({ rows = 5, cols = 4, style }) {
       {/* Header */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
         {Array.from({ length: cols }).map((_, i) => (
-          <div key={i} style={{ ...shimmerBg, height: 10, flex: 1, borderRadius: 3 }} />
+          <div key={`header-${i}`} style={{ ...shimmerBg, height: 10, flex: 1, borderRadius: 3 }} />
         ))}
       </div>
       {/* Rows */}
@@ -92,7 +92,7 @@ export function SkeletonDashboard() {
       <SkeletonStyles />
       {/* KPI row */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-        {[0,1,2,3,4].map(i => <SkeletonKPI key={i} />)}
+        {[0,1,2,3,4].map(i => <SkeletonKPI key={`kpi-${i}`} />)}
       </div>
       {/* Cards row */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>

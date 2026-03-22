@@ -286,7 +286,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
   </div>
   <div ref={feedRef} style={{flex:1,overflow:"auto",padding:"8px 12px"}}>
    {filteredFeed.length===0&&<div style={{color:"#71717a",fontSize:11,textAlign:"center",padding:20}}>Aucune activité récente</div>}
-   {filteredFeed.map((f,i)=><div key={i} className={`pulse-feed-item${i===0?" pulse-feed-new":""}`} style={{padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,.03)",display:"flex",gap:8,alignItems:"flex-start",fontSize:11}}>
+   {filteredFeed.map((f,i)=><div key={`${f.type}-${f.desc}-${i}`} className={`pulse-feed-item${i===0?" pulse-feed-new":""}`} style={{padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,.03)",display:"flex",gap:8,alignItems:"flex-start",fontSize:11}}>
     {(()=>{const fs=allActS.find(x=>x.id===f.socId);return fs?.logoUrl?<img loading="lazy" src={fs.logoUrl} alt="" style={{width:16,height:16,borderRadius:5,objectFit:"contain",flexShrink:0,marginTop:1}}/>:<div style={{width:16,height:16,borderRadius:5,background:(fs?.brandColor||fs?.color||f.color)+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:900,color:fs?.brandColor||fs?.color||f.color,flexShrink:0,marginTop:1}}>{(fs?.nom||"?")[0]}</div>;})()}
     <span>{f.icon}</span>
     <div style={{flex:1}}>
@@ -354,7 +354,7 @@ export function PulseScreen({socs,reps,allM,ghlData,socBank,hold,clients,onClose
    <div style={{fontSize:12,fontWeight:800,color:"#FFAA00",fontFamily:FONT_TITLE,marginBottom:16}}>📅 TIMELINE</div>
    <div style={{position:"relative",paddingLeft:24}}>
     <div style={{position:"absolute",left:8,top:0,bottom:0,width:2,background:"rgba(255,170,0,.15)"}}/>
-    {timelineEvents.map((ev,i)=><div key={i} style={{position:"relative",marginBottom:16,paddingLeft:20,animation:`slide-in .3s ease ${i*0.05}s both`}}>
+    {timelineEvents.map((ev,i)=><div key={`${ev.label}-${i}`} style={{position:"relative",marginBottom:16,paddingLeft:20,animation:`slide-in .3s ease ${i*0.05}s both`}}>
      <div style={{position:"absolute",left:-4,top:4,width:12,height:12,borderRadius:"50%",background:ev.dotColor,border:"2px solid #030308",zIndex:1}}/>
      <div style={{fontSize:9,color:"#71717a",fontFamily:"monospace",marginBottom:2}}>{ev.ts?new Date(ev.ts).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):""}</div>
      <div style={{fontSize:12,color:"#e4e4e7",fontWeight:600}}>{ev.label}</div>
@@ -464,7 +464,7 @@ export function LiveFeed({socs,reps,allM,ghlData,socBank,clients,maxEvents=50}){
   return evts.filter(e=>e.ts).sort((a,b)=>new Date(b.ts)-new Date(a.ts)).slice(0,maxEvents);
  },[socs,ghlData,socBank]);
  if(events.length===0)return <div style={{color:C.td,fontSize:11,textAlign:"center",padding:20}}>Aucune activité récente</div>;
- return <div style={{maxHeight:400,overflowY:"auto"}}>{events.map((e,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderBottom:`1px solid ${C.brd}08`,animation:`slideInRight .3s ease ${i*0.03}s both`}}>
+ return <div style={{maxHeight:400,overflowY:"auto"}}>{events.map((e,i)=><div key={`${e.type}-${e.desc}-${i}`} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderBottom:`1px solid ${C.brd}08`,animation:`slideInRight .3s ease ${i*0.03}s both`}}>
   <span style={{fontSize:16,flexShrink:0}}>{e.icon}</span>
   <div style={{flex:1,minWidth:0}}>
    <div style={{fontSize:11,color:C.t,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.desc}</div>
@@ -528,7 +528,7 @@ export function PredictionsCard({soc,reps,allM,clients,ghlData,socBank}){
    </div>
    {churnRisks.length>0&&<div style={{padding:10,background:C.bg,borderRadius:10,border:`1px solid ${C.brd}`}}>
     <div style={{fontWeight:700,fontSize:11,color:C.t,marginBottom:6}}>Risque churn</div>
-    {churnRisks.slice(0,5).map((c,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",borderBottom:`1px solid ${C.brd}08`}}>
+    {churnRisks.slice(0,5).map((c,i)=><div key={c.name} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",borderBottom:`1px solid ${C.brd}08`}}>
      <span>{c.confidence}</span>
      <span style={{flex:1,fontSize:10,color:C.t}}>{c.name}</span>
      <span style={{fontSize:10,fontWeight:700,color:c.risk>50?C.r:c.risk>25?C.o:C.g}}>{c.risk}%</span>

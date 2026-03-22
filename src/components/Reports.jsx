@@ -222,12 +222,12 @@ export function RapportsPanel({ soc, socBankData, ghlData, clients, reps, allM, 
           <div style={{ width: 100, height: 100, flexShrink: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart><Pie data={d.catData.map(([n, v]) => ({ name: n, value: v }))} dataKey="value" cx="50%" cy="50%" outerRadius={45} innerRadius={20} strokeWidth={0}>
-                {d.catData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                {d.catData.map(([n], i) => <Cell key={`cat-${n}`} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
               </Pie></PieChart>
             </ResponsiveContainer>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            {d.catData.map(([n, v], i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", fontSize: 10 }}>
+            {d.catData.map(([n, v], i) => <div key={`catdata-${n}`} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", fontSize: 10 }}>
               <span style={{ width: 8, height: 8, borderRadius: 2, background: PIE_COLORS[i % PIE_COLORS.length], flexShrink: 0 }} />
               <span style={{ color: C.t, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n}</span>
               <span style={{ fontWeight: 700, color: C.td }}>{fmt(v)}€</span>
@@ -240,11 +240,11 @@ export function RapportsPanel({ soc, socBankData, ghlData, clients, reps, allM, 
       <div className="rg2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
         <div>
           <div style={{ fontSize: 9, fontWeight: 700, color: C.g, marginBottom: 6 }}>TOP ENCAISSEMENTS</div>
-          {d.topEncaissements.length === 0 ? <div style={{ fontSize: 10, color: C.td }}>—</div> : d.topEncaissements.map(([n, v], i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", borderBottom: `1px solid ${C.brd}08` }}><span style={{ fontSize: 10, color: C.t, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "70%" }}>{n}</span><span style={{ fontSize: 10, fontWeight: 700, color: C.g }}>{fmt(v)}€</span></div>)}
+          {d.topEncaissements.length === 0 ? <div style={{ fontSize: 10, color: C.td }}>—</div> : d.topEncaissements.map(([n, v], i) => <div key={`enc-${n}-${i}`} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", borderBottom: `1px solid ${C.brd}08` }}><span style={{ fontSize: 10, color: C.t, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "70%" }}>{n}</span><span style={{ fontSize: 10, fontWeight: 700, color: C.g }}>{fmt(v)}€</span></div>)}
         </div>
         <div>
           <div style={{ fontSize: 9, fontWeight: 700, color: C.r, marginBottom: 6 }}>TOP DÉPENSES</div>
-          {d.topDepenses.length === 0 ? <div style={{ fontSize: 10, color: C.td }}>—</div> : d.topDepenses.map(([n, v], i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", borderBottom: `1px solid ${C.brd}08` }}><span style={{ fontSize: 10, color: C.t, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "70%" }}>{n}</span><span style={{ fontSize: 10, fontWeight: 700, color: C.r }}>{fmt(v)}€</span></div>)}
+          {d.topDepenses.length === 0 ? <div style={{ fontSize: 10, color: C.td }}>—</div> : d.topDepenses.map(([n, v], i) => <div key={`dep-${n}-${i}`} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", borderBottom: `1px solid ${C.brd}08` }}><span style={{ fontSize: 10, color: C.t, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "70%" }}>{n}</span><span style={{ fontSize: 10, fontWeight: 700, color: C.r }}>{fmt(v)}€</span></div>)}
         </div>
       </div>
 
@@ -300,7 +300,7 @@ export function RapportsPanel({ soc, socBankData, ghlData, clients, reps, allM, 
             <th style={{ textAlign: "right", padding: "4px 6px", borderBottom: `1px solid ${C.brd}`, color: C.td, fontSize: 8 }}>Durée</th>
             <th style={{ textAlign: "right", padding: "4px 6px", borderBottom: `1px solid ${C.brd}`, color: C.td, fontSize: 8 }}>Avg/mois</th>
           </tr></thead>
-          <tbody>{d.top5Clients.map((cl, i) => <tr key={i}>
+          <tbody>{d.top5Clients.map((cl, i) => <tr key={cl.name}>
             <td style={{ padding: "4px 6px", borderBottom: `1px solid ${C.brd}08`, color: C.t, fontWeight: 600 }}>{cl.name}</td>
             <td style={{ padding: "4px 6px", borderBottom: `1px solid ${C.brd}08`, textAlign: "right", color: C.g, fontWeight: 700 }}>{fmt(cl.cumule)}€</td>
             <td style={{ padding: "4px 6px", borderBottom: `1px solid ${C.brd}08`, textAlign: "right", color: C.td }}>{cl.duree} mois</td>
@@ -647,7 +647,7 @@ ${d.hasAds ? `<h2>📣 Publicité</h2>
 
       return <div className="glass-card-static" style={{ padding: 20, marginTop: 16 }}>
         <div style={{ fontSize: 9, fontWeight: 700, color: C.o, letterSpacing: 1, marginBottom: 12, fontFamily: FONT_TITLE }}>💡 RECOMMANDATIONS</div>
-        {recs.map((r2, i) => <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", background: `${r2.color}06`, borderRadius: 10, border: `1px solid ${r2.color}15`, marginBottom: 6 }}>
+        {recs.map((r2, i) => <div key={`rec-${r2.icon}-${i}`} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", background: `${r2.color}06`, borderRadius: 10, border: `1px solid ${r2.color}15`, marginBottom: 6 }}>
           <span style={{ fontSize: 16, flexShrink: 0 }}>{r2.icon}</span>
           <div style={{ fontSize: 11, color: C.t, lineHeight: 1.4 }}>{r2.text}</div>
         </div>)}
@@ -683,10 +683,10 @@ export function ReplayMensuel({soc,reps,allM,socBank,clients,ghlData}){
  },[ca,activeCl,mrr,allM,reps,soc,clients]);
  const proj=project(reps,soc?.id,allM);
  const slides=[
-  {title:"📊 Ton mois en chiffres",bg:"linear-gradient(135deg,#1a1a4e,#0a0a2e)",render:()=><div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginTop:20}}>{[{l:"CA",v:fmt(ca)+"€",c:C.g},{l:"Charges",v:fmt(ch)+"€",c:C.r},{l:"Leads",v:String(leads),c:C.b},{l:"Clients",v:String(activeCl.length),c:C.acc}].map((k,i)=><div key={i} style={{textAlign:"center",animation:`celebIn .5s ease ${i*0.1}s both`}}><div style={{fontSize:36,fontWeight:900,color:k.c,fontFamily:FONT_TITLE}}>{k.v}</div><div style={{fontSize:12,color:C.td,marginTop:4}}>{k.l}</div></div>)}</div>},
+  {title:"📊 Ton mois en chiffres",bg:"linear-gradient(135deg,#1a1a4e,#0a0a2e)",render:()=><div className="rg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginTop:20}}>{[{l:"CA",v:fmt(ca)+"€",c:C.g},{l:"Charges",v:fmt(ch)+"€",c:C.r},{l:"Leads",v:String(leads),c:C.b},{l:"Clients",v:String(activeCl.length),c:C.acc}].map((k,i)=><div key={k.l} style={{textAlign:"center",animation:`celebIn .5s ease ${i*0.1}s both`}}><div style={{fontSize:36,fontWeight:900,color:k.c,fontFamily:FONT_TITLE}}>{k.v}</div><div style={{fontSize:12,color:C.td,marginTop:4}}>{k.l}</div></div>)}</div>},
   {title:"🏆 Ton meilleur client",bg:"linear-gradient(135deg,#2d1a00,#1a0a00)",render:()=><div style={{textAlign:"center",marginTop:30}}>{topClient?<><div style={{fontSize:48,marginBottom:10,animation:"celebIn .5s ease both"}}>🏆</div><div style={{fontSize:24,fontWeight:900,color:C.acc}}>{topClient.name}</div><div style={{fontSize:18,color:C.g,fontWeight:700,marginTop:8}}>{fmt(topClient.rev)}€/mois</div><div style={{marginTop:12,display:"inline-block",padding:"4px 14px",borderRadius:20,background:C.accD,color:C.acc,fontSize:11,fontWeight:700}}>⭐ MVP du mois</div></>:<div style={{color:C.td,fontSize:14}}>Pas encore de client ce mois</div>}</div>},
   {title:"📈 Ta croissance",bg:"linear-gradient(135deg,#001a2d,#000a1a)",render:()=><div style={{textAlign:"center",marginTop:30}}><div style={{fontSize:56,fontWeight:900,color:growth>=0?C.g:C.r,animation:"celebIn .5s ease both"}}>{growth>=0?"+":""}{growth}%</div><div style={{fontSize:13,color:C.td,marginTop:8}}>vs {ml(pm)}</div><div style={{marginTop:16,display:"flex",justifyContent:"center",gap:20}}><div><div style={{fontSize:14,fontWeight:700,color:C.td}}>Avant</div><div style={{fontSize:20,fontWeight:800,color:C.t}}>{fmt(prevCa)}€</div></div><div style={{fontSize:24,color:C.td}}>→</div><div><div style={{fontSize:14,fontWeight:700,color:C.td}}>Maintenant</div><div style={{fontSize:20,fontWeight:800,color:C.g}}>{fmt(ca)}€</div></div></div></div>},
-  {title:"🔥 Tes records battus",bg:"linear-gradient(135deg,#2d0a00,#1a0500)",render:()=><div style={{marginTop:20}}>{records.length>0?records.map((r2,i)=><div key={i} style={{padding:"14px 18px",background:"rgba(255,255,255,.05)",borderRadius:12,marginBottom:10,fontSize:14,color:C.t,animation:`slideInRight .3s ease ${i*0.1}s both`}}>{r2}</div>):<div style={{textAlign:"center",color:C.td,fontSize:14,marginTop:30}}>Continue comme ça, les records arrivent ! 💪</div>}</div>},
+  {title:"🔥 Tes records battus",bg:"linear-gradient(135deg,#2d0a00,#1a0500)",render:()=><div style={{marginTop:20}}>{records.length>0?records.map((r2,i)=><div key={`record-${i}`} style={{padding:"14px 18px",background:"rgba(255,255,255,.05)",borderRadius:12,marginBottom:10,fontSize:14,color:C.t,animation:`slideInRight .3s ease ${i*0.1}s both`}}>{r2}</div>):<div style={{textAlign:"center",color:C.td,fontSize:14,marginTop:30}}>Continue comme ça, les records arrivent ! 💪</div>}</div>},
   {title:"⭐ Score du mois",bg:"linear-gradient(135deg,#1a0a2d,#0a051a)",render:()=>{
    if(score>80&&!confetti)setConfetti(true);
    return <div style={{textAlign:"center",marginTop:20}}><svg width="160" height="160" viewBox="0 0 160 160"><circle cx="80" cy="80" r="70" fill="none" stroke={C.brd} strokeWidth="8"/><circle cx="80" cy="80" r="70" fill="none" stroke={score>=80?C.g:score>=50?C.acc:C.r} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${score/100*440} 440`} transform="rotate(-90 80 80)" style={{transition:"stroke-dasharray 1.5s ease"}}/><text x="80" y="75" textAnchor="middle" fill={C.t} fontSize="36" fontWeight="900" fontFamily={FONT_TITLE}>{score}</text><text x="80" y="95" textAnchor="middle" fill={C.td} fontSize="11">/100</text></svg><div style={{marginTop:12,fontSize:14,color:score>=80?C.g:score>=50?C.acc:C.r,fontWeight:700}}>{score>=80?"🔥 Exceptionnel !":score>=60?"👍 Bon mois !":score>=40?"📊 Peut mieux faire":"⚠️ Mois difficile"}</div></div>;
@@ -698,9 +698,9 @@ export function ReplayMensuel({soc,reps,allM,socBank,clients,ghlData}){
  const copyShare=()=>{const txt=`📊 Replay ${soc?.nom} — ${ml(cm)}\nCA: ${fmt(ca)}€ | Marge: ${fmt(marge)}€ (${margePct}%)\nClients: ${activeCl.length} | MRR: ${fmt(mrr)}€\nCroissance: ${growth>=0?"+":""}${growth}%\nScore: ${score}/100`;navigator.clipboard?.writeText(txt);};
  if(!open)return <button onClick={()=>{setOpen(true);setSlide(0);setConfetti(false);}} style={{padding:"8px 16px",borderRadius:10,border:`1px solid ${C.acc}44`,background:C.accD,color:C.acc,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:6}}>🎬 Replay du mois</button>;
  return <div style={{position:"fixed",inset:0,zIndex:9999,background:"#06060b",fontFamily:FONT,display:"flex",flexDirection:"column",animation:"fi .3s ease"}}>
-  {confetti&&<div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:10}}>{Array.from({length:40}).map((_,i)=><div key={i} style={{position:"absolute",left:`${Math.random()*100}%`,top:-20,width:8,height:8,borderRadius:i%2?4:0,background:["#FFAA00","#34d399","#f87171","#60a5fa","#a78bfa","#fb923c"][i%6],animation:`confetti ${2+Math.random()*2}s ease ${Math.random()}s both`}}/>)}</div>}
+  {confetti&&<div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:10}}>{Array.from({length:40}).map((_,i)=><div key={`confetti-${i}`} style={{position:"absolute",left:`${Math.random()*100}%`,top:-20,width:8,height:8,borderRadius:i%2?4:0,background:["#FFAA00","#34d399","#f87171","#60a5fa","#a78bfa","#fb923c"][i%6],animation:`confetti ${2+Math.random()*2}s ease ${Math.random()}s both`}}/>)}</div>}
   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 24px"}}>
-   <div style={{display:"flex",gap:6}}>{slides.map((_,i)=><div key={i} onClick={()=>{clearInterval(timerRef.current);setSlide(i);}} style={{width:i===slide?24:8,height:8,borderRadius:4,background:i===slide?C.acc:C.brd,cursor:"pointer",transition:"all .3s"}}/>)}</div>
+   <div style={{display:"flex",gap:6}}>{slides.map((_,i)=><div key={`slide-${i}`} onClick={()=>{clearInterval(timerRef.current);setSlide(i);}} style={{width:i===slide?24:8,height:8,borderRadius:4,background:i===slide?C.acc:C.brd,cursor:"pointer",transition:"all .3s"}}/>)}</div>
    <div style={{display:"flex",gap:8}}>
     <button onClick={copyShare} style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:"transparent",color:C.t,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>📋 Partager</button>
     <button onClick={()=>setOpen(false)} style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${C.brd}`,background:"transparent",color:C.t,fontSize:11,cursor:"pointer",fontFamily:FONT}}>✕ Fermer</button>
