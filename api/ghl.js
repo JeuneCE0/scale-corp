@@ -172,7 +172,7 @@ export default async function handler(req, res) {
                 .then(d => (d.events || []).map(e => ({ ...e, calendarName: cal.name })))
             )
           );
-          const allEvents = results.filter(r => r.status === 'fulfilled').flatMap(r => r.value);
+          const allEvents = results.filter(r => r.status === 'fulfilled' && Array.isArray(r.value)).flatMap(r => r.value);
           return res.status(200).json({ events: allEvents, total: allEvents.length });
         }
         const evRes = await fetch(`${GHL_BASE}/calendars/events?locationId=${locationId}&calendarId=${encodeURIComponent(params.calendarId)}&startTime=${st}&endTime=${et}`, { headers });

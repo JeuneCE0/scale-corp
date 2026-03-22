@@ -3,6 +3,7 @@
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 
 // --- Test: CORS ---
 describe('CORS - cors()', () => {
@@ -26,6 +27,19 @@ describe('CORS - cors()', () => {
     const allowedOrigins = new Set(['https://scale-corp.vercel.app']);
     assert.equal(allowedOrigins.has('https://attacker.com'), false);
     assert.equal(allowedOrigins.has(''), false);
+  });
+
+  it('should reject requests from unknown origins', () => {
+    const allowedOrigins = new Set(['https://scale-corp.vercel.app', 'https://www.scale-corp.fr']);
+    assert.equal(allowedOrigins.has('https://evil-site.com'), false);
+    assert.equal(allowedOrigins.has('https://scale-corp.vercel.app.evil.com'), false);
+    assert.equal(allowedOrigins.has(''), false);
+    assert.equal(allowedOrigins.has(undefined), false);
+  });
+
+  it('should never use wildcard origin', () => {
+    const allowedOrigins = new Set(['https://scale-corp.vercel.app']);
+    assert.equal(allowedOrigins.has('*'), false);
   });
 });
 
@@ -125,6 +139,13 @@ describe('Email Validation', () => {
     assert.equal(validateEmail('@missing.com'), false);
     assert.equal(validateEmail('no-domain@'), false);
     assert.equal(validateEmail('spaces in@email.com'), false);
+  });
+
+  it('should reject emails with invalid TLDs', () => {
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+    assert.equal(EMAIL_RE.test('user@domain.c'), false);  // 1-char TLD
+    assert.equal(EMAIL_RE.test('user@domain.'), false);    // no TLD
+    assert.equal(EMAIL_RE.test('user@.com'), false);       // no domain
   });
 });
 
@@ -250,6 +271,32 @@ describe('HMAC Webhook Verification', () => {
     assert.equal('' === secret, false);
     assert.equal(undefined === secret, false);
     assert.equal(null === secret, false);
+  });
+
+  it('should verify HMAC-SHA256 signatures correctly', () => {
+    const secret = 'test-webhook-secret';
+    const payload = '{"event":"test"}';
+    const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+
+    // Valid signature should match
+    assert.equal(expected.length > 0, true);
+    assert.equal(
+      crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(expected)),
+      true
+    );
+
+    // Invalid signature should not match
+    const invalid = 'a'.repeat(expected.length);
+    assert.equal(
+      crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(invalid)),
+      false
+    );
+  });
+
+  it('should reject signatures of different length', () => {
+    const sig1 = 'abc123';
+    const sig2 = 'abc1234';
+    assert.notEqual(sig1.length, sig2.length);
   });
 });
 

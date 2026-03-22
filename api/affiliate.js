@@ -147,6 +147,9 @@ export default async function handler(req, res) {
       if (!society_id) return badRequest(res, "Missing society_id");
       if (!ref_code) return badRequest(res, "Missing ref_code");
       if (!lead_email && !lead_phone) return badRequest(res, "Email ou téléphone requis");
+      if (lead_name && lead_name.length > 200) return badRequest(res, 'lead_name too long');
+      if (lead_email && lead_email.length > 254) return badRequest(res, 'lead_email too long');
+      if (lead_phone && lead_phone.length > 30) return badRequest(res, 'lead_phone too long');
       if (lead_email && !rateLimit('aff_lead', lead_email, 5, 60_000 * 15)) return tooManyRequests(res);
 
       const pending = {

@@ -78,6 +78,15 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  // Replay protection: reject webhooks older than 5 minutes
+  const timestamp = req.headers['x-ghl-timestamp'] || req.headers['x-webhook-timestamp'];
+  if (timestamp) {
+    const age = Date.now() - new Date(timestamp).getTime();
+    if (isNaN(age) || age > 5 * 60 * 1000 || age < -60 * 1000) {
+      return res.status(401).json({ ok: false, error: 'Webhook timestamp expired or invalid' });
+    }
+  }
+
   const body = req.body || {};
 
   const event = {
