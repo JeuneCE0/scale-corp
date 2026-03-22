@@ -23,7 +23,8 @@ export default async function handler(req, res) {
     }
 
     return badRequest(res, 'Action invalide');
-  } catch {
+  } catch (err) {
+    console.error('[gdpr] Unhandled error:', err);
     return serverError(res);
   }
 }

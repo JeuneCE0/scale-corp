@@ -6,7 +6,8 @@ import { Card, Section, Btn, Inp, Badge, PremiumGate } from '../../components/ui
 
 export default function PubliciteTab() {
   const integrations = useMemo(() => load('integrations') || {}, []);
-  const metaConnected = !!integrations.meta;
+  const metaConnected = !!integrations['Meta Ads'];
+  const metaAds = useMemo(() => load('metaAds') || null, []);
   const [simMode, setSimMode] = useState(false);
   const [adSpend, setAdSpend] = useState('');
   const [cpc, setCpc] = useState('');
@@ -25,14 +26,28 @@ export default function PubliciteTab() {
     return { clicks, impressions, ctr, conversions, cpa };
   }, [adSpend, cpc, convRate]);
 
-  const demoStats = [
-    { l: 'Budget dépensé', v: '3 240€', c: T.orange, icon: '💸' },
-    { l: 'Impressions', v: '125.4K', c: T.blue, icon: '👁️' },
-    { l: 'Clics', v: '4 832', c: T.purple, icon: '👆' },
-    { l: 'CTR', v: '3.85%', c: T.green, icon: '📈' },
-    { l: 'CPC moyen', v: '0.67€', c: T.accent, icon: '🎯' },
-    { l: 'Conversions', v: '142', c: T.green, icon: '✅' },
-  ];
+  // Use real synced data if available, otherwise fallback to demo stats
+  const adStats = useMemo(() => {
+    if (metaAds && typeof metaAds === 'object' && metaAds.spend != null) {
+      return [
+        { l: 'Budget dépensé', v: fmt(metaAds.spend) + '€', c: T.orange, icon: '💸' },
+        { l: 'Impressions', v: fK(metaAds.impressions || 0), c: T.blue, icon: '👁️' },
+        { l: 'Clics', v: fmt(metaAds.clicks || 0), c: T.purple, icon: '👆' },
+        { l: 'CTR', v: (metaAds.ctr || 0).toFixed(2) + '%', c: T.green, icon: '📈' },
+        { l: 'CPA', v: metaAds.cpa != null ? fmt(metaAds.cpa) + '€' : '—', c: T.accent, icon: '🎯' },
+        { l: 'Conversions', v: fmt(metaAds.conversions || 0), c: T.green, icon: '✅' },
+        { l: 'ROAS', v: metaAds.roas != null ? metaAds.roas.toFixed(2) + 'x' : '—', c: T.blue, icon: '📊' },
+      ];
+    }
+    return [
+      { l: 'Budget dépensé', v: '3 240€', c: T.orange, icon: '💸' },
+      { l: 'Impressions', v: '125.4K', c: T.blue, icon: '👁️' },
+      { l: 'Clics', v: '4 832', c: T.purple, icon: '👆' },
+      { l: 'CTR', v: '3.85%', c: T.green, icon: '📈' },
+      { l: 'CPC moyen', v: '0.67€', c: T.accent, icon: '🎯' },
+      { l: 'Conversions', v: '142', c: T.green, icon: '✅' },
+    ];
+  }, [metaAds]);
 
   return (
     <>
@@ -48,7 +63,8 @@ export default function PubliciteTab() {
             </div>
             <Btn v="primary" onClick={() => {
               const current = load('integrations') || {};
-              store('integrations', { ...current, meta: true });
+              store('integrations', { ...current, 'Meta Ads': true });
+              window.dispatchEvent(new CustomEvent('hs:integration-sync', { detail: { name: 'Meta Ads', action: 'connect' } }));
               window.location.reload();
             }}>
               Connecter Meta Ads
@@ -60,9 +76,9 @@ export default function PubliciteTab() {
       {metaConnected && (
         <Card style={{ marginBottom: 16 }}>
           <Section title="META ADS" sub="Performance des campagnes publicitaires">
-            <Badge label="Données de démonstration" color={T.orange} bg={T.orangeBg} />
+            <Badge label={metaAds && metaAds.spend != null ? "Données synchronisées" : "Données de démonstration"} color={metaAds && metaAds.spend != null ? T.green : T.orange} bg={metaAds && metaAds.spend != null ? T.greenBg : T.orangeBg} />
             <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginTop: 12 }}>
-              {demoStats.map((m) => (
+              {adStats.map((m) => (
                 <div key={m.l} className="glass-static" style={{ padding: 14, textAlign: 'center' }}>
                   <div style={{ fontSize: 18, marginBottom: 4 }}>{m.icon}</div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: m.c }}>{m.v}</div>

@@ -8,6 +8,16 @@ import { createDecipheriv, createCipheriv, randomBytes } from 'node:crypto';
 const APP_URL = process.env.VITE_APP_URL || 'https://hubscale.app';
 const ENCRYPTION_KEY = process.env.OAUTH_ENCRYPTION_KEY;
 
+// Batch upsert helper — splits large arrays into chunks to avoid payload limits
+const BATCH_SIZE = 200;
+async function batchUpsert(sb, table, rows, onConflict) {
+  if (!rows || rows.length === 0) return;
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const chunk = rows.slice(i, i + BATCH_SIZE);
+    await sb.from(table).upsert(chunk, { onConflict });
+  }
+}
+
 // OAuth configs for token refresh (mirrors oauth.js)
 const REFRESH_CONFIGS = {
   'google calendar': {
@@ -158,13 +168,21 @@ async function refreshAccessToken(sb, integ) {
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
     refresh_token: refreshToken,
-    client_id: config.clientId,
-    client_secret: config.clientSecret,
   });
+
+  const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+
+  // Some providers (PayPal) use HTTP Basic Auth for token refresh
+  if (config.tokenExchangeMethod === 'basic_auth') {
+    headers.Authorization = 'Basic ' + Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64');
+  } else {
+    body.set('client_id', config.clientId);
+    body.set('client_secret', config.clientSecret);
+  }
 
   const tokenRes = await fetch(config.tokenUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers,
     body: body.toString(),
   });
 
@@ -416,27 +434,30 @@ async function syncQonto(sb, orgId, accessToken) {
   const orgData = await orgRes.json();
   const bankAccounts = orgData.organization?.bank_accounts || [];
 
-  // Fetch transactions for each bank account
+  // Fetch transactions for all bank accounts in parallel (batch)
+  const txResults = await Promise.allSettled(
+    bankAccounts.map((acct) =>
+      fetch(
+        `https://thirdparty.qonto.com/v2/transactions?slug=${encodeURIComponent(acct.slug)}&iban=${encodeURIComponent(acct.iban)}&per_page=100`,
+        { headers },
+      ).then((r) => r.ok ? r.json() : { transactions: [] })
+    )
+  );
   let allTx = [];
-  for (const acct of bankAccounts) {
-    const txRes = await fetch(
-      `https://thirdparty.qonto.com/v2/transactions?slug=${encodeURIComponent(acct.slug)}&iban=${encodeURIComponent(acct.iban)}&per_page=100`,
-      { headers },
-    );
-    if (txRes.ok) {
-      const txData = await txRes.json();
-      allTx = allTx.concat((txData.transactions || []).map((tx) => ({
-        org_id: orgId,
-        source: 'qonto',
-        external_id: tx.transaction_id,
-        amount: tx.side === 'credit' ? tx.amount : -tx.amount,
-        currency: tx.currency,
-        status: tx.status,
-        description: tx.label || '',
-        created_at: tx.settled_at || tx.emitted_at || new Date().toISOString(),
-        metadata: { category: tx.category, operation_type: tx.operation_type },
-      })));
-    }
+  for (const result of txResults) {
+    if (result.status !== 'fulfilled') continue;
+    const txData = result.value;
+    allTx = allTx.concat((txData.transactions || []).map((tx) => ({
+      org_id: orgId,
+      source: 'qonto',
+      external_id: tx.transaction_id,
+      amount: tx.side === 'credit' ? tx.amount : -tx.amount,
+      currency: tx.currency,
+      status: tx.status,
+      description: tx.label || '',
+      created_at: tx.settled_at || tx.emitted_at || new Date().toISOString(),
+      metadata: { category: tx.category, operation_type: tx.operation_type },
+    })));
   }
 
   if (allTx.length > 0) {
@@ -506,7 +527,7 @@ async function syncGoHighLevel(sb, orgId, accessToken, metadata) {
   }));
 
   if (contactRows.length > 0) {
-    await sb.from('contacts').upsert(contactRows, { onConflict: 'org_id,source,external_id' });
+    await batchUpsert(sb, 'contacts', contactRows, 'org_id,source,external_id');
     synced += contactRows.length;
   }
 
@@ -558,33 +579,44 @@ async function syncGoHighLevel(sb, orgId, accessToken, metadata) {
     const startTime = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
     const endTime = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
 
-    for (const cal of calendars) {
-      const evtRes = await fetch(
-        `${GHL_BASE}/calendars/events?locationId=${locationId}&calendarId=${cal.id}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`,
-        { headers },
+    // Fetch events from all calendars in parallel (batch, max 5 concurrent)
+    const calBatches = [];
+    for (let i = 0; i < calendars.length; i += 5) {
+      calBatches.push(calendars.slice(i, i + 5));
+    }
+
+    for (const batch of calBatches) {
+      const results = await Promise.allSettled(
+        batch.map((cal) =>
+          fetch(
+            `${GHL_BASE}/calendars/events?locationId=${locationId}&calendarId=${cal.id}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`,
+            { headers },
+          )
+            .then((r) => r.ok ? r.json() : { events: [] })
+            .then((evtData) =>
+              (evtData.events || []).map((ev) => ({
+                org_id: orgId,
+                source: 'gohighlevel',
+                external_id: ev.id,
+                title: ev.title || ev.calendarName || 'RDV GHL',
+                description: ev.notes || '',
+                date: ev.startTime ? new Date(ev.startTime).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                start_at: ev.startTime || null,
+                end_at: ev.endTime || null,
+                location: ev.address || '',
+                metadata: {
+                  calendarId: cal.id,
+                  calendarName: cal.name,
+                  status: ev.appointmentStatus,
+                  contactId: ev.contactId,
+                },
+              }))
+            )
+        ),
       );
-      if (!evtRes.ok) continue;
-      const evtData = await evtRes.json();
-
-      const rows = (evtData.events || []).map((ev) => ({
-        org_id: orgId,
-        source: 'gohighlevel',
-        external_id: ev.id,
-        title: ev.title || ev.calendarName || 'RDV GHL',
-        description: ev.notes || '',
-        date: ev.startTime ? new Date(ev.startTime).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        start_at: ev.startTime || null,
-        end_at: ev.endTime || null,
-        location: ev.address || '',
-        metadata: {
-          calendarId: cal.id,
-          calendarName: cal.name,
-          status: ev.appointmentStatus,
-          contactId: ev.contactId,
-        },
-      }));
-
-      eventRows = eventRows.concat(rows);
+      for (const r of results) {
+        if (r.status === 'fulfilled') eventRows = eventRows.concat(r.value);
+      }
     }
 
     if (eventRows.length > 0) {

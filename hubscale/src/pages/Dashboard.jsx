@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
 import { t } from '../lib/i18n.js';
-import { T, FONT } from '../lib/theme.js';
+import { T } from '../lib/theme.js';
 import { fK, fmt, ago, businessHealth, businessWeather, getStreak, forecastCA, daysSince, daysUntil, leadScore } from '../lib/utils.js';
 import { load, store } from '../lib/store.js';
 import { KPI, Card, Badge, ProgressBar, Spinner, Btn, Inp, HelpTip, ScoreRing, StreakBadge, WeatherWidget, ChecklistItem, AnimatedNumber, Sparkline, PremiumGate, UpgradeBanner, ErrorBoundary, EmptyState } from '../components/ui.jsx';
-import { ONBOARDING_CHECKLIST, CRM_STATUSES, NOTIFICATION_TYPES, INTEGRATIONS, EXPENSE_CATEGORIES, INVOICE_STATUSES } from '../lib/constants.js';
+import { ONBOARDING_CHECKLIST, CRM_STATUSES, NOTIFICATION_TYPES, INTEGRATIONS, EXPENSE_CATEGORIES } from '../lib/constants.js';
 import { getIntegrationMeta } from '../lib/integrationData.js';
 
 /* ------------------------------------------------------------------ */

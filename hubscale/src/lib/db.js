@@ -495,11 +495,15 @@ function toContactRow(c) {
 }
 
 function normalizeFinance(row) {
+  const ca = Number(row.ca);
+  const charges = Number(row.charges);
+  const marge = Number(row.marge);
   return {
     key: row.period_key,
-    ca: Number(row.ca),
-    charges: Number(row.charges),
-    marge: Number(row.marge),
+    ca,
+    charges,
+    marge,
+    result: marge || (ca - charges),
     treso: Number(row.treso),
   };
 }

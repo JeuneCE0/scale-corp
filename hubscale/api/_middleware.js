@@ -17,7 +17,7 @@ const WINDOW_MS = 60 * 1000;   // 1 minute window
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // purge expired entries every 5 min
 
 // Sensitive path prefixes that receive the stricter limit.
-const STRICT_PATHS = ['/api/auth', '/api/billing', '/api/email', '/api/gdpr'];
+const STRICT_PATHS = ['/api/auth', '/api/billing', '/api/email', '/api/gdpr', '/api/integrations/oauth', '/api/integrations/sync', '/api/admin'];
 
 // --- Periodic cleanup --------------------------------------------------------
 let lastCleanup = Date.now();

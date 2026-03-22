@@ -19,7 +19,7 @@ function sanitizeSearch(val) {
   if (typeof val !== 'string') return '';
   return val.replace(/[%_\\]/g, (c) => '\\' + c).slice(0, 100);
 }
-const VALID_ROLES = ['owner', 'admin', 'member', 'viewer'];
+const VALID_ROLES = ['owner', 'admin', 'member', 'readonly'];
 const VALID_PLANS = ['starter', 'professional', 'enterprise'];
 
 const PLAN_PRICES = {

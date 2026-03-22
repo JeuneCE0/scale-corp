@@ -120,7 +120,8 @@ export default async function handler(req, res) {
     }
 
     return methodNotAllowed(res);
-  } catch {
+  } catch (err) {
+    console.error('[notifications] Unhandled error:', err);
     return serverError(res);
   }
 }

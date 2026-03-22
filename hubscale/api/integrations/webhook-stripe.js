@@ -28,6 +28,10 @@ export default async function handler(req, res) {
     const rawBody = await getRawBody(req);
     const sig = req.headers['stripe-signature'];
 
+    if (!sig) {
+      return res.status(400).json({ error: 'Missing stripe-signature header' });
+    }
+
     if (!STRIPE_INTEGRATION_WEBHOOK_SECRET) {
       console.error('[webhook-stripe] Missing STRIPE_INTEGRATION_WEBHOOK_SECRET');
       return res.status(500).json({ error: 'Webhook not configured' });

@@ -79,6 +79,11 @@ export default async function handler(req, res) {
   if (!action || !VALID_ACTIONS.includes(action)) return badRequest(res, 'Invalid action');
   if (!societyId) return badRequest(res, 'Missing societyId');
 
+  // Validate customerId format (must be numeric) to prevent path injection
+  if (customerId && !/^\d+$/.test(customerId)) {
+    return badRequest(res, 'Invalid customerId format');
+  }
+
   const token = await getGoogleAdsToken(societyId);
   if (!token) {
     return res.status(500).json({ error: 'Google Ads not connected. Connect via OAuth in Settings.' });
@@ -120,9 +125,15 @@ export default async function handler(req, res) {
         const since = dateRange?.since || new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).toISOString().split('T')[0].replace(/-/g, '');
         const until = dateRange?.until || now.toISOString().split('T')[0].replace(/-/g, '');
 
-        // Format dates for Google Ads (YYYY-MM-DD)
+        // Format dates for Google Ads (YYYY-MM-DD) with validation
         const sinceFormatted = since.length === 8 ? `${since.slice(0,4)}-${since.slice(4,6)}-${since.slice(6,8)}` : since;
         const untilFormatted = until.length === 8 ? `${until.slice(0,4)}-${until.slice(4,6)}-${until.slice(6,8)}` : until;
+
+        // Validate date format to prevent GAQL injection
+        const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRe.test(sinceFormatted) || !dateRe.test(untilFormatted)) {
+          return badRequest(res, 'Invalid date format. Expected YYYY-MM-DD or YYYYMMDD.');
+        }
 
         const segmentBy = action === 'campaign_insights' ? 'campaign.name, campaign.id,' : '';
         const query = `SELECT ${segmentBy} metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.conversions_value, metrics.ctr, metrics.average_cpc, metrics.average_cpm, segments.date FROM campaign WHERE segments.date BETWEEN '${sinceFormatted}' AND '${untilFormatted}' AND campaign.status != 'REMOVED' ORDER BY segments.date`;

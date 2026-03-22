@@ -124,7 +124,8 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${scope}_export.csv"`);
     return res.status(200).send(csv);
-  } catch {
+  } catch (err) {
+    console.error('[export] Unhandled error:', err);
     return serverError(res);
   }
 }
