@@ -58,4 +58,24 @@ describe('store.js — localStorage persistence', () => {
     store('fresh', 'data');
     expect(loadWithTTL('fresh', 86400000)).toBe('data');
   });
+
+  it('should handle corrupted JSON in localStorage gracefully', () => {
+    localStorage.setItem('hs_corrupt', 'not-json{{{');
+    // load and loadWithTTL catch JSON.parse errors and return null
+    expect(load('corrupt')).toBeNull();
+    expect(loadWithTTL('corrupt', 86400000)).toBeNull();
+  });
+
+  it('should handle missing timestamp in stored data', () => {
+    localStorage.setItem('hs_nots', JSON.stringify({ v: 1, data: 'test' }));
+    // ts is undefined → Date.now() - undefined = NaN → NaN > maxAgeMs is false
+    // so loadWithTTL actually returns the data (does NOT treat as expired)
+    expect(loadWithTTL('nots', 86400000)).toBe('test');
+  });
+
+  it('should handle version mismatch by returning null', () => {
+    localStorage.setItem('hs_oldver', JSON.stringify({ v: 999, ts: Date.now(), data: 'stale' }));
+    expect(load('oldver')).toBeNull();
+    expect(loadWithTTL('oldver', 86400000)).toBeNull();
+  });
 });

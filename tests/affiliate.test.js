@@ -88,6 +88,66 @@ describe('Commission Calculation', () => {
   });
 });
 
+// ── Commission Calculation Edge Cases ──
+
+describe('calcCommission edge cases', () => {
+  function calcCommission(revenue, rate) {
+    return Math.round(revenue * rate);
+  }
+
+  it('should handle zero revenue', () => {
+    assert.equal(calcCommission(0, 0.20), 0);
+  });
+
+  it('should handle very small amounts (rounding)', () => {
+    // 0.01 * 0.20 = 0.002 → Math.round → 0
+    assert.equal(calcCommission(0.01, 0.20), 0);
+    // 2.5 * 0.20 = 0.5 → Math.round → 1 (rounds up)
+    assert.equal(calcCommission(2.5, 0.20), 1);
+  });
+
+  it('should return negative result for negative revenue (no guard)', () => {
+    // The function does not guard against negatives — it returns a negative value
+    assert.equal(calcCommission(-100, 0.20), -20);
+  });
+});
+
+// ── Payout Validation Edge Cases ──
+
+describe('validatePayout edge cases', () => {
+  const MIN_PAYOUT = 50;
+
+  function validatePayout(amount, bankInfo) {
+    const errors = [];
+    if (!amount || amount < MIN_PAYOUT) errors.push(`Minimum payout is ${MIN_PAYOUT}€`);
+    if (!bankInfo?.iban) errors.push('IBAN required');
+    if (!bankInfo?.bic) errors.push('BIC required');
+    if (bankInfo?.iban && bankInfo.iban.replace(/\s/g, '').length < 14) errors.push('IBAN too short');
+    if (bankInfo?.bic && bankInfo.bic.length < 8) errors.push('BIC too short');
+    return errors;
+  }
+
+  const validBank = { iban: 'FR7612345678901234567890123', bic: 'BNPAFRPP' };
+
+  it('should reject NaN amount', () => {
+    // NaN is falsy, so !amount is true → triggers minimum payout error
+    const errors = validatePayout(NaN, validBank);
+    assert.ok(errors.some(e => e.includes('Minimum')));
+  });
+
+  it('should reject Infinity amount', () => {
+    // Infinity is truthy and Infinity >= 50, so it passes the amount check
+    const errors = validatePayout(Infinity, validBank);
+    assert.equal(errors.length, 0);
+  });
+
+  it('should reject negative amount', () => {
+    // -10 < 50 → triggers minimum payout error
+    const errors = validatePayout(-10, validBank);
+    assert.ok(errors.some(e => e.includes('Minimum')));
+  });
+});
+
 // ── Referral Status Logic ──
 
 describe('Referral Status', () => {

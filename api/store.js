@@ -1,18 +1,9 @@
 // Vercel Serverless — JSON KV Store (file-based for /tmp)
 import { readFile, writeFile, mkdir, readdir } from 'fs/promises';
 import { join } from 'path';
-import { applyHeaders, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest } from './_middleware.js';
+import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest } from './_middleware.js';
 
 const STORE_DIR = '/tmp/scale-store';
-const STORE_SECRET = process.env.STORE_SECRET || '';
-
-function getValidTokens() {
-  const tokens = new Set();
-  if (STORE_SECRET) tokens.add(STORE_SECRET);
-  const allPins = (process.env.SOC_PINS || '').split(',').filter(Boolean);
-  allPins.forEach(p => tokens.add(p));
-  return tokens;
-}
 
 async function ensureDir() {
   try { await mkdir(STORE_DIR, { recursive: true }); } catch { /* dir exists */ }
@@ -42,11 +33,11 @@ export default async function handler(req, res) {
   const ip = getClientIP(req);
   if (!rateLimit('store', ip, 60)) return tooManyRequests(res);
 
-  // Auth: check token against env-configured valid tokens
-  const auth = (req.headers.authorization || '').replace('Bearer ', '');
-  const validTokens = getValidTokens();
-  if (!auth || validTokens.size === 0 || !validTokens.has(auth)) {
-    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  // Auth: verify authenticated user via Supabase JWT (consistent with other handlers)
+  const auth = await verifyAuth(req);
+  if (!auth) {
+    apiLog('warn', { api: 'store', reason: 'unauthed', ip });
+    return res.status(401).json({ ok: false, error: 'Authentication required' });
   }
 
   const { action, key, value } = req.body || {};
