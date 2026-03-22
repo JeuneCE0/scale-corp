@@ -68,9 +68,8 @@ describe('store.js — localStorage persistence', () => {
 
   it('should handle missing timestamp in stored data', () => {
     localStorage.setItem('hs_nots', JSON.stringify({ v: 1, data: 'test' }));
-    // ts is undefined → Date.now() - undefined = NaN → NaN > maxAgeMs is false
-    // so loadWithTTL actually returns the data (does NOT treat as expired)
-    expect(loadWithTTL('nots', 86400000)).toBe('test');
+    // ts is undefined → guard rejects entries without a valid numeric timestamp
+    expect(loadWithTTL('nots', 86400000)).toBeNull();
   });
 
   it('should handle version mismatch by returning null', () => {
