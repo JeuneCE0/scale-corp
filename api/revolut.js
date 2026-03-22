@@ -88,8 +88,9 @@ export default async function handler(req, res) {
         break;
       case "transactions": {
         const now = new Date();
-        const from = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split("T")[0];
-        url = `${REV_BASE}/transactions?from=${from}&count=100`;
+        const from = req.body.from || new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+        const count = Math.min(req.body.count || 500, 1000);
+        url = `${REV_BASE}/transactions?from=${from}&count=${count}`;
         break;
       }
       default:

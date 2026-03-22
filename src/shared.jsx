@@ -429,19 +429,19 @@ export const TIKTOK_ADS_PROXY="/api/tiktok-ads";
 export async function fetchMetaAds(action,societyId,params={}){
  try{
   const r=await fetch(META_ADS_PROXY,{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,societyId,...params})});
-  if(!r.ok)return null;return await r.json();
+  if(!r.ok){if(r.status===401)return{_error:"token_expired",provider:"meta"};return null;}return await r.json();
  }catch(e){console.warn("Meta Ads fetch failed:",e.message);return null;}
 }
 export async function fetchGoogleAds(action,societyId,params={}){
  try{
   const r=await fetch(GOOGLE_ADS_PROXY,{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,societyId,...params})});
-  if(!r.ok)return null;return await r.json();
+  if(!r.ok){if(r.status===401)return{_error:"token_expired",provider:"google_ads"};return null;}return await r.json();
  }catch(e){console.warn("Google Ads fetch failed:",e.message);return null;}
 }
 export async function fetchTikTokAds(action,societyId,params={}){
  try{
   const r=await fetch(TIKTOK_ADS_PROXY,{method:"POST",headers:sbAuthHeaders(),body:JSON.stringify({action,societyId,...params})});
-  if(!r.ok)return null;return await r.json();
+  if(!r.ok){if(r.status===401)return{_error:"token_expired",provider:"tiktok"};return null;}return await r.json();
  }catch(e){console.warn("TikTok Ads fetch failed:",e.message);return null;}
 }
 
@@ -454,12 +454,12 @@ export async function syncAdData(societyId,oauthTokens){
  const now=new Date();const since=new Date(now.getFullYear(),now.getMonth()-2,1).toISOString().split("T")[0];
  const until=now.toISOString().split("T")[0];
 
- const results={meta:null,google:null,tiktok:null,unified:[]};
+ const results={meta:null,google:null,tiktok:null,unified:[],_errors:[]};
  const fetches=[];
 
- if(hasMeta)fetches.push(fetchMetaAds("account_insights",societyId,{dateRange:{since,until,increment:"monthly"}}).then(d=>{results.meta=d;}));
- if(hasGoogle)fetches.push(fetchGoogleAds("campaign_insights",societyId,{dateRange:{since,until}}).then(d=>{results.google=d;}));
- if(hasTiktok)fetches.push(fetchTikTokAds("insights",societyId,{dateRange:{since,until}}).then(d=>{results.tiktok=d;}));
+ if(hasMeta)fetches.push(fetchMetaAds("account_insights",societyId,{dateRange:{since,until,increment:"monthly"}}).then(d=>{if(d?._error)results._errors.push(d);else results.meta=d;}));
+ if(hasGoogle)fetches.push(fetchGoogleAds("campaign_insights",societyId,{dateRange:{since,until}}).then(d=>{if(d?._error)results._errors.push(d);else results.google=d;}));
+ if(hasTiktok)fetches.push(fetchTikTokAds("insights",societyId,{dateRange:{since,until}}).then(d=>{if(d?._error)results._errors.push(d);else results.tiktok=d;}));
 
  await Promise.allSettled(fetches);
 
@@ -571,7 +571,7 @@ export async function fetchGHL(action,locationId,params={}){
    headers:sbAuthHeaders(),
    body:JSON.stringify({action,locationId,...params})
   });
-  if(!r.ok)throw new Error(`GHL proxy ${r.status}`);return await r.json();
+  if(!r.ok){if(r.status===401)return{_error:"token_expired",provider:"ghl"};throw new Error(`GHL proxy ${r.status}`);}return await r.json();
  }catch(e){console.warn("GHL fetch failed:",e.message);return null;}
 }
 export async function syncGHLForSoc(soc){
@@ -930,7 +930,7 @@ export async function storeCall(action,key,value){
 // Auth header helper
 export function sbAuthHeaders(){
  const h={'Content-Type':'application/json'};
- try{const t=localStorage.getItem('sc_auth_token');if(t){const v=JSON.parse(t);if(v)h['Authorization']=`Bearer ${v}`;}}catch{}
+ try{const t=localStorage.getItem('sc_auth_token');if(t){let v;try{v=JSON.parse(t);}catch{v=t;}if(v)h['Authorization']=`Bearer ${v}`;}}catch{}
  return h;
 }
 // Supabase helper — fire-and-forget upsert

@@ -2,7 +2,7 @@
 import { writeFile, readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { createHmac, timingSafeEqual } from 'crypto';
-import { applyHeaders, getClientIP, rateLimit, apiLog, tooManyRequests } from './_middleware.js';
+import { applyHeaders, verifyAuth, getClientIP, rateLimit, apiLog, tooManyRequests } from './_middleware.js';
 
 // Note: /tmp is ephemeral in Vercel serverless. Events are lost on cold starts.
 // For persistent storage, consider using Supabase or another database.
@@ -60,9 +60,14 @@ export default async function handler(req, res) {
 
   const ip = getClientIP(req);
 
-  // GET = read recent events
+  // GET = read recent events (auth required — contains PII)
   if (req.method === 'GET') {
     if (!rateLimit('webhook_read', ip, 30)) return tooManyRequests(res);
+    const auth = await verifyAuth(req);
+    if (!auth) {
+      apiLog('warn', { api: 'webhook-ghl', reason: 'unauthed GET', ip });
+      return res.status(401).json({ error: 'Authentication required' });
+    }
     if (recentEvents.length === 0) {
       recentEvents = await loadEvents();
       globalThis.__ghlEvents = recentEvents;

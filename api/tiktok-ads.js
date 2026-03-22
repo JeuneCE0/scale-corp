@@ -59,8 +59,11 @@ export default async function handler(req, res) {
         const secret = process.env.TIKTOK_APP_SECRET;
         const ids = tokenData.advertiserIds;
         if (!ids.length) return res.status(200).json({ data: { list: [] } });
-        const params = new URLSearchParams({ app_id: appId, secret, advertiser_ids: JSON.stringify(ids) });
-        const r = await fetchWithTimeout(`${TIKTOK_BASE}/advertiser/info/?${params}`, { headers });
+        const r = await fetchWithTimeout(`${TIKTOK_BASE}/advertiser/info/`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ app_id: appId, secret, advertiser_ids: ids }),
+        });
         if (!r.ok) return handleAdsApiResponse(r, res, 'tiktok-ads');
         return res.status(200).json(await r.json());
       }

@@ -22,21 +22,25 @@ async function getOAuthToken(locationId) {
     const token = rows[0];
     // Check expiration — refresh if needed
     if (token.expires_at && new Date(token.expires_at) < new Date()) {
-      return await refreshOAuthToken(token);
+      const refreshed = await refreshOAuthToken(token);
+      if (!refreshed) apiLog('error', { api: 'ghl', reason: 'token_refresh_failed', locationId });
+      return refreshed;
     }
     return token.access_token;
-  } catch { return null; }
+  } catch (e) { apiLog('error', { api: 'ghl', reason: 'token_fetch_error', locationId, error: e.message }); return null; }
 }
 
 async function refreshOAuthToken(stored) {
-  const result = await refreshToken({
-    provider: 'ghl',
-    stored,
-    tokenUrl: 'https://services.leadconnectorhq.com/oauth/token',
-    clientId: process.env.GHL_OAUTH_CLIENT_ID,
-    clientSecret: process.env.GHL_OAUTH_CLIENT_SECRET,
-  });
-  return result?.access_token || null;
+  try {
+    const result = await refreshToken({
+      provider: 'ghl',
+      stored,
+      tokenUrl: 'https://services.leadconnectorhq.com/oauth/token',
+      clientId: process.env.GHL_OAUTH_CLIENT_ID,
+      clientSecret: process.env.GHL_OAUTH_CLIENT_SECRET,
+    });
+    return result?.access_token || null;
+  } catch (e) { apiLog('error', { api: 'ghl', reason: 'token_refresh_error', error: e.message }); return null; }
 }
 
 const GHL_BASE = "https://services.leadconnectorhq.com";
