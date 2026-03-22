@@ -324,3 +324,11 @@ BEGIN
   ALTER TABLE public.transactions ALTER COLUMN society_id SET NOT NULL;
 EXCEPTION WHEN others THEN NULL;
 END $$;
+
+-- Rename societies.pin to pin_hash for consistency (migration)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='societies' AND column_name='pin') THEN
+    ALTER TABLE public.societies RENAME COLUMN pin TO pin_hash;
+  END IF;
+EXCEPTION WHEN others THEN NULL;
+END $$;

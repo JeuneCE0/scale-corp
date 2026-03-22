@@ -227,7 +227,7 @@ export function requireOneOf(val, allowed, name) {
   return null;
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
 export function validateEmail(email) {
   return EMAIL_RE.test(email);
 }
