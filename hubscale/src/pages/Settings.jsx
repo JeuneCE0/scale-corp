@@ -5,7 +5,7 @@ import { isValidEmail } from '../lib/utils.js';
 import { Card, Section, Btn, Inp, Sel, TabBar, Toggle, ConfirmDialog, Badge, ProgressBar, PremiumGate, Modal } from '../components/ui.jsx';
 import { canAccessPro, getPlan, isPaid, getTrialInfo } from '../lib/plan.js';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
-import { SECTORS, PLANS, INTEGRATIONS, AUTOMATION_RULES } from '../lib/constants.js';
+import { SECTORS, PLANS, INTEGRATIONS, AUTOMATION_RULES, INTEGRATION_GUIDES } from '../lib/constants.js';
 import { onIntegrationConnect, getIntegrationMeta } from '../lib/integrationData.js';
 import { isSupabaseConfigured } from '../lib/supabase.js';
 import { t } from '../lib/i18n.js';
@@ -1221,6 +1221,61 @@ export default function Settings() {
                     );
                   })()}
 
+                  {/* Tutorial Guide for non-connected integrations */}
+                  {!connected && (() => {
+                    const guide = INTEGRATION_GUIDES[ig.name];
+                    if (!guide) return null;
+                    return (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{
+                          fontSize: 10, fontWeight: 700, color: T.textSecondary,
+                          textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8,
+                        }}>
+                          Comment se connecter
+                        </div>
+                        <div style={{
+                          display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 10,
+                          padding: '10px 12px', borderRadius: 10, background: T.surface2,
+                          border: `1px solid ${T.border}`,
+                        }}>
+                          {guide.steps.slice(0, 3).map((step, i) => (
+                            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                              <span style={{
+                                minWidth: 18, height: 18, borderRadius: '50%', fontSize: 9, fontWeight: 800,
+                                background: 'linear-gradient(135deg, #f97316, #f59e0b)', color: '#fff',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                              }}>{i + 1}</span>
+                              <span style={{ fontSize: 10, color: T.text, lineHeight: 1.4 }}>{step}</span>
+                            </div>
+                          ))}
+                          {guide.steps.length > 3 && (
+                            <span style={{ fontSize: 9, color: T.textMuted, paddingLeft: 26 }}>
+                              + {guide.steps.length - 3} étape(s) — voir le guide complet à la connexion
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {guide.links.slice(0, 2).map((link, i) => (
+                            <a
+                              key={i}
+                              href={link.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                padding: '4px 10px', borderRadius: 6, background: T.surface2,
+                                border: `1px solid ${T.border}`, textDecoration: 'none',
+                                fontSize: 10, color: T.accent, fontWeight: 600,
+                              }}
+                            >
+                              🔗 {link.label} ↗
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Actions */}
                   <div style={{ display: 'flex', gap: 8 }}>
                     {connected ? (
@@ -1299,6 +1354,86 @@ export default function Settings() {
                     }}>
                       Entrez votre clé API pour connecter {ig.name} et synchroniser vos données automatiquement.
                     </div>
+
+                    {/* Tutorial Guide */}
+                    {(() => {
+                      const guide = INTEGRATION_GUIDES[ig.name];
+                      if (!guide) return null;
+                      return (
+                        <div style={{ marginBottom: 16 }}>
+                          {/* Steps */}
+                          <div style={{
+                            fontSize: 10, fontWeight: 700, color: T.textSecondary,
+                            textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8,
+                          }}>
+                            Marche à suivre
+                          </div>
+                          <div style={{
+                            display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12,
+                            padding: '10px 12px', borderRadius: 10, background: T.surface2,
+                            border: `1px solid ${T.border}`,
+                          }}>
+                            {guide.steps.map((step, i) => (
+                              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                                <span style={{
+                                  minWidth: 20, height: 20, borderRadius: '50%', fontSize: 10, fontWeight: 800,
+                                  background: 'linear-gradient(135deg, #f97316, #f59e0b)', color: '#fff',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                  marginTop: 1,
+                                }}>{i + 1}</span>
+                                <span style={{ fontSize: 11, color: T.text, lineHeight: 1.5 }}>{step}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Links */}
+                          <div style={{
+                            fontSize: 10, fontWeight: 700, color: T.textSecondary,
+                            textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8,
+                          }}>
+                            Liens utiles & documentation
+                          </div>
+                          <div style={{
+                            display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12,
+                          }}>
+                            {guide.links.map((link, i) => (
+                              <a
+                                key={i}
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 8,
+                                  padding: '8px 12px', borderRadius: 8, background: T.surface2,
+                                  border: `1px solid ${T.border}`, textDecoration: 'none',
+                                  fontSize: 11, color: T.accent, fontWeight: 600,
+                                  transition: 'all .15s ease',
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = T.accentBg; e.currentTarget.style.borderColor = T.accent + '44'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = T.surface2; e.currentTarget.style.borderColor = T.border; }}
+                              >
+                                <span style={{ fontSize: 13 }}>🔗</span>
+                                <span style={{ flex: 1 }}>{link.label}</span>
+                                <span style={{ fontSize: 10, color: T.textMuted }}>↗</span>
+                              </a>
+                            ))}
+                          </div>
+
+                          {/* Tip */}
+                          {guide.tip && (
+                            <div style={{
+                              padding: '8px 12px', borderRadius: 8,
+                              background: T.orangeBg, border: `1px solid ${T.orange}22`,
+                              fontSize: 10, color: T.orange, lineHeight: 1.5,
+                              display: 'flex', alignItems: 'flex-start', gap: 6,
+                            }}>
+                              <span style={{ fontSize: 12, flexShrink: 0 }}>💡</span>
+                              <span>{guide.tip}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* API Key Input */}
                     <Inp
