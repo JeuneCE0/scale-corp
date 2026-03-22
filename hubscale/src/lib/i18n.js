@@ -49,7 +49,7 @@ const FR = {
   'dash.noFinData': 'Aucune donnée financière',
   'dash.threshold': 'Seuil: {value} €',
   'dash.goal': 'Objectif: {value} €',
-  'dash.forecast': 'Prevision',
+  'dash.forecast': 'Prévision',
   'dash.contactsToFollowUp': '{count} contact{s} à relancer',
   'dash.prospectsOverdue': '{count} prospect{s} > 14j',
   'dash.leadsOverdue': '{count} lead{s} > 21j',

@@ -6,11 +6,19 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
+let _warnedMissing = false;
+
 // Singleton client — only created if credentials are configured
 let _client = null;
 
 export function getSupabase() {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    if (!_warnedMissing) {
+      console.warn('[Supabase] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY not configured — using local auth fallback');
+      _warnedMissing = true;
+    }
+    return null;
+  }
   if (!_client) {
     _client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {

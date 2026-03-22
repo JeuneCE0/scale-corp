@@ -511,6 +511,8 @@ function normalizeFinance(row) {
 }
 
 function normalizeEvent(row) {
+  // DB provides both legacy (time/end_time) and normalized (start_at/end_at) columns.
+  // Legacy columns take precedence for backward compatibility.
   return {
     id: row.id,
     title: row.title,
