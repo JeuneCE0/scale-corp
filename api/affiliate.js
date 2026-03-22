@@ -36,6 +36,7 @@ export default async function handler(req, res) {
       const { ref_code, referrer_client_id } = req.body || {};
       if (!society_id) return badRequest(res, "Missing society_id");
       if (!ref_code) return badRequest(res, "Missing ref_code");
+      if (!rateLimit('aff_click', ref_code, 30, 60_000)) return tooManyRequests(res);
 
       const click = {
         society_id,
@@ -64,6 +65,7 @@ export default async function handler(req, res) {
       if (!referrer_client_id) return badRequest(res, "Missing referrer_client_id");
       if (!referred_client_id) return badRequest(res, "Missing referred_client_id");
       if (!ref_code) return badRequest(res, "Missing ref_code");
+      if (!rateLimit('aff_referral', ref_code, 10, 60_000)) return tooManyRequests(res);
 
       // Check if referral already exists
       const existR = await sbFetch(`affiliate_referrals?society_id=eq.${encodeURIComponent(society_id)}&referred_client_id=eq.${encodeURIComponent(referred_client_id)}`);
@@ -145,6 +147,7 @@ export default async function handler(req, res) {
       if (!society_id) return badRequest(res, "Missing society_id");
       if (!ref_code) return badRequest(res, "Missing ref_code");
       if (!lead_email && !lead_phone) return badRequest(res, "Email ou téléphone requis");
+      if (lead_email && !rateLimit('aff_lead', lead_email, 5, 60_000 * 15)) return tooManyRequests(res);
 
       const pending = {
         society_id,
@@ -271,6 +274,13 @@ export default async function handler(req, res) {
       const netAvailable = available - pendingTotal;
       if (amount > netAvailable) {
         return badRequest(res, `Insufficient balance. Available: ${netAvailable}€, requested: ${amount}€`);
+      }
+
+      // Check for duplicate payout request (idempotency)
+      const dupCheck = await sbFetch(`affiliate_payouts?affiliate_client_id=eq.${affiliate_client_id}&status=eq.pending&society_id=eq.${society_id}&select=id`);
+      const dupData = await dupCheck.json();
+      if (dupData?.length > 0) {
+        return res.status(409).json({ ok: false, error: 'A pending payout request already exists' });
       }
 
       // Create payout record

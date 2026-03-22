@@ -1,6 +1,7 @@
 // Vercel Serverless Function - GHL API v2 Proxy
 import { readFileSync, existsSync } from 'fs';
-import { applyHeaders, verifyAuth, canAccessGHLLocation, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest, fetchWithTimeout } from './_middleware.js';
+import { applyHeaders, verifyAuth, canAccessGHLLocation, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest } from './_middleware.js';
+import { refreshToken } from './lib/token-refresh.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -28,33 +29,14 @@ async function getOAuthToken(locationId) {
 }
 
 async function refreshOAuthToken(stored) {
-  if (!stored.refresh_token) return null;
-  const clientId = process.env.GHL_OAUTH_CLIENT_ID;
-  const clientSecret = process.env.GHL_OAUTH_CLIENT_SECRET;
-  if (!clientId || !clientSecret) return null;
-  try {
-    const r = await fetchWithTimeout('https://services.leadconnectorhq.com/oauth/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: stored.refresh_token, client_id: clientId, client_secret: clientSecret }).toString(),
-    });
-    if (!r.ok) return null;
-    const data = await r.json();
-    // Store updated token
-    const payload = {
-      id: `ghl_${stored.society_id}`,
-      access_token: data.access_token,
-      refresh_token: data.refresh_token || stored.refresh_token,
-      expires_at: data.expires_in ? new Date(Date.now() + data.expires_in * 1000).toISOString() : null,
-      updated_at: new Date().toISOString(),
-    };
-    await fetch(`${SUPABASE_URL}/rest/v1/api_tokens`, {
-      method: 'POST',
-      headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
-      body: JSON.stringify([payload]),
-    }).catch(() => {});
-    return data.access_token;
-  } catch { return null; }
+  const result = await refreshToken({
+    provider: 'ghl',
+    stored,
+    tokenUrl: 'https://services.leadconnectorhq.com/oauth/token',
+    clientId: process.env.GHL_OAUTH_CLIENT_ID,
+    clientSecret: process.env.GHL_OAUTH_CLIENT_SECRET,
+  });
+  return result?.access_token || null;
 }
 
 const GHL_BASE = "https://services.leadconnectorhq.com";
