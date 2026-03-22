@@ -519,6 +519,37 @@ async function handleConnectWithKey(res, profile, name, apiKey, apiUrl) {
       if (!r.ok) throw new Error('Token Salesforce invalide');
       return {};
     },
+    zoho: async () => {
+      const r = await fetch('https://www.zohoapis.eu/crm/v2/org', {
+        headers: { Authorization: `Zoho-oauthtoken ${apiKey}` },
+      });
+      if (!r.ok) throw new Error('Token Zoho invalide');
+      return {};
+    },
+    activecampaign: async () => {
+      if (!apiUrl) throw new Error('URL ActiveCampaign requise (ex: https://moncompte.api-us1.com)');
+      const r = await fetch(`${apiUrl}/api/3/contacts?limit=1`, {
+        headers: { 'Api-Token': apiKey },
+      });
+      if (!r.ok) throw new Error('Clé ActiveCampaign invalide');
+      return { api_url: apiUrl };
+    },
+    notion: async () => {
+      const r = await fetch('https://api.notion.com/v1/users/me', {
+        headers: { Authorization: `Bearer ${apiKey}`, 'Notion-Version': '2022-06-28' },
+      });
+      if (!r.ok) throw new Error('Token Notion invalide');
+      return {};
+    },
+    shopify: async () => {
+      if (!apiUrl) throw new Error('URL de boutique Shopify requise (ex: monshop.myshopify.com)');
+      const shopDomain = apiUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      const r = await fetch(`https://${shopDomain}/admin/api/2024-01/shop.json`, {
+        headers: { 'X-Shopify-Access-Token': apiKey },
+      });
+      if (!r.ok) throw new Error('Token Shopify invalide');
+      return { shop_domain: shopDomain };
+    },
   };
 
   const validator = validators[name];

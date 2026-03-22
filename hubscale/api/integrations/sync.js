@@ -35,6 +35,57 @@ const REFRESH_CONFIGS = {
     clientId: process.env.HUBSPOT_CLIENT_ID,
     clientSecret: process.env.HUBSPOT_CLIENT_SECRET,
   },
+  paypal: {
+    tokenUrl: 'https://api-m.paypal.com/v1/oauth2/token',
+    clientId: process.env.PAYPAL_CLIENT_ID,
+    clientSecret: process.env.PAYPAL_CLIENT_SECRET,
+    tokenExchangeMethod: 'basic_auth',
+  },
+  zoho: {
+    tokenUrl: 'https://accounts.zoho.eu/oauth/v2/token',
+    clientId: process.env.ZOHO_CLIENT_ID,
+    clientSecret: process.env.ZOHO_CLIENT_SECRET,
+  },
+  brevo: {
+    tokenUrl: 'https://app.brevo.com/oauth2/token',
+    clientId: process.env.BREVO_CLIENT_ID,
+    clientSecret: process.env.BREVO_CLIENT_SECRET,
+  },
+  activecampaign: {
+    tokenUrl: 'https://app.activecampaign.com/oauth2/token',
+    clientId: process.env.ACTIVECAMPAIGN_CLIENT_ID,
+    clientSecret: process.env.ACTIVECAMPAIGN_CLIENT_SECRET,
+  },
+  'linkedin ads': {
+    tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
+    clientId: process.env.LINKEDIN_CLIENT_ID,
+    clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
+  },
+  'google ads': {
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    clientId: process.env.GOOGLE_ADS_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_ADS_CLIENT_SECRET,
+  },
+  pipedrive: {
+    tokenUrl: 'https://oauth.pipedrive.com/oauth/token',
+    clientId: process.env.PIPEDRIVE_CLIENT_ID,
+    clientSecret: process.env.PIPEDRIVE_CLIENT_SECRET,
+  },
+  salesforce: {
+    tokenUrl: 'https://login.salesforce.com/services/oauth2/token',
+    clientId: process.env.SALESFORCE_CLIENT_ID,
+    clientSecret: process.env.SALESFORCE_CLIENT_SECRET,
+  },
+  mailchimp: {
+    tokenUrl: 'https://login.mailchimp.com/oauth2/token',
+    clientId: process.env.MAILCHIMP_CLIENT_ID,
+    clientSecret: process.env.MAILCHIMP_CLIENT_SECRET,
+  },
+  qonto: {
+    tokenUrl: 'https://connect.qonto.com/oauth2/token',
+    clientId: process.env.QONTO_OAUTH_CLIENT_ID,
+    clientSecret: process.env.QONTO_OAUTH_CLIENT_SECRET,
+  },
 };
 
 function decrypt(encoded) {
@@ -840,6 +891,510 @@ async function syncMailchimp(sb, orgId, accessToken) {
   return { synced, data: { contacts: allRows } };
 }
 
+// ─── PayPal Sync ───
+
+async function syncPayPal(sb, orgId, accessToken) {
+  const PAYPAL_BASE = 'https://api-m.paypal.com/v1';
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+  };
+
+  // Fetch transactions (last 30 days)
+  const now = new Date();
+  const startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).toISOString().split('.')[0] + '-0000';
+  const endDate = now.toISOString().split('.')[0] + '-0000';
+
+  const txRes = await fetch(
+    `${PAYPAL_BASE}/reporting/transactions?start_date=${startDate}&end_date=${endDate}&fields=all&page_size=100`,
+    { headers },
+  );
+  if (!txRes.ok) throw new Error(`PayPal transactions error: ${txRes.status}`);
+  const txData = await txRes.json();
+
+  const transactions = (txData.transaction_details || []).map((tx) => {
+    const info = tx.transaction_info || {};
+    const payer = tx.payer_info || {};
+    return {
+      org_id: orgId,
+      source: 'paypal',
+      external_id: info.transaction_id,
+      amount: Number(info.transaction_amount?.value || 0),
+      currency: info.transaction_amount?.currency_code || 'EUR',
+      status: info.transaction_status || 'S',
+      description: info.transaction_subject || info.transaction_note || '',
+      date: info.transaction_initiation_date ? new Date(info.transaction_initiation_date).toISOString().split('T')[0] : now.toISOString().split('T')[0],
+      created_at: info.transaction_initiation_date || now.toISOString(),
+      metadata: {
+        payer_email: payer.email_address,
+        payer_name: payer.payer_name?.alternate_full_name,
+        fee: info.fee_amount?.value,
+      },
+    };
+  });
+
+  // Extract contacts from payer info
+  const contactMap = new Map();
+  (txData.transaction_details || []).forEach((tx) => {
+    const payer = tx.payer_info || {};
+    if (payer.email_address && !contactMap.has(payer.email_address)) {
+      contactMap.set(payer.email_address, {
+        org_id: orgId,
+        source: 'paypal',
+        external_id: payer.account_id || payer.email_address,
+        name: payer.payer_name?.alternate_full_name || payer.email_address,
+        email: payer.email_address,
+        phone: '',
+        company: '',
+        status: 'client',
+      });
+    }
+  });
+  const contacts = Array.from(contactMap.values());
+
+  if (transactions.length > 0) {
+    await sb.from('transactions').upsert(transactions, { onConflict: 'org_id,source,external_id' });
+  }
+  if (contacts.length > 0) {
+    await sb.from('contacts').upsert(contacts, { onConflict: 'org_id,source,external_id' });
+  }
+
+  return { synced: transactions.length + contacts.length, data: { transactions, contacts } };
+}
+
+// ─── Shopify Sync ───
+
+async function syncShopify(sb, orgId, accessToken, metadata) {
+  const shopDomain = metadata?.shop_domain;
+  if (!shopDomain) throw new Error('Shopify shop domain not configured');
+  const SHOP_BASE = `https://${shopDomain}/admin/api/2024-01`;
+  const headers = { 'X-Shopify-Access-Token': accessToken, 'Content-Type': 'application/json' };
+
+  // Fetch orders (last 60 days)
+  const sinceDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+  const ordersRes = await fetch(
+    `${SHOP_BASE}/orders.json?status=any&created_at_min=${sinceDate}&limit=250`,
+    { headers },
+  );
+  if (!ordersRes.ok) throw new Error(`Shopify orders error: ${ordersRes.status}`);
+  const ordersData = await ordersRes.json();
+
+  const transactions = (ordersData.orders || []).map((o) => ({
+    org_id: orgId,
+    source: 'shopify',
+    external_id: String(o.id),
+    amount: Number(o.total_price || 0),
+    currency: o.currency || 'EUR',
+    status: o.financial_status || 'paid',
+    description: `Commande #${o.order_number || o.name || o.id}`,
+    date: o.created_at ? new Date(o.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    created_at: o.created_at || new Date().toISOString(),
+    metadata: { fulfillment_status: o.fulfillment_status, gateway: o.gateway },
+  }));
+
+  // Fetch customers
+  const custRes = await fetch(`${SHOP_BASE}/customers.json?limit=250`, { headers });
+  let contacts = [];
+  if (custRes.ok) {
+    const custData = await custRes.json();
+    contacts = (custData.customers || []).map((c) => ({
+      org_id: orgId,
+      source: 'shopify',
+      external_id: String(c.id),
+      name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email || 'Sans nom',
+      first_name: c.first_name || '',
+      last_name: c.last_name || '',
+      email: c.email || '',
+      phone: c.phone || '',
+      company: c.default_address?.company || '',
+      status: c.orders_count > 0 ? 'client' : 'prospect',
+      metadata: { orders_count: c.orders_count, total_spent: c.total_spent },
+    }));
+  }
+
+  // Fetch products count for metadata
+  const prodRes = await fetch(`${SHOP_BASE}/products/count.json`, { headers });
+  let productsCount = 0;
+  if (prodRes.ok) {
+    const prodData = await prodRes.json();
+    productsCount = prodData.count || 0;
+  }
+
+  if (transactions.length > 0) {
+    await sb.from('transactions').upsert(transactions, { onConflict: 'org_id,source,external_id' });
+  }
+  if (contacts.length > 0) {
+    await sb.from('contacts').upsert(contacts, { onConflict: 'org_id,source,external_id' });
+  }
+
+  return {
+    synced: transactions.length + contacts.length,
+    data: { transactions, contacts, meta: { productsCount } },
+  };
+}
+
+// ─── Zoho CRM Sync ───
+
+async function syncZoho(sb, orgId, accessToken) {
+  const ZOHO_BASE = 'https://www.zohoapis.eu/crm/v2';
+  const headers = { Authorization: `Zoho-oauthtoken ${accessToken}` };
+
+  // Fetch contacts
+  const contactsRes = await fetch(`${ZOHO_BASE}/Contacts?per_page=200`, { headers });
+  if (!contactsRes.ok) throw new Error(`Zoho Contacts error: ${contactsRes.status}`);
+  const contactsData = await contactsRes.json();
+
+  const contactRows = (contactsData.data || []).map((c) => ({
+    org_id: orgId,
+    source: 'zoho',
+    external_id: c.id,
+    name: c.Full_Name || `${c.First_Name || ''} ${c.Last_Name || ''}`.trim() || 'Sans nom',
+    first_name: c.First_Name || '',
+    last_name: c.Last_Name || '',
+    email: c.Email || '',
+    phone: c.Phone || c.Mobile || '',
+    company: c.Account_Name?.name || '',
+    metadata: { lead_source: c.Lead_Source, owner: c.Owner?.name },
+  }));
+
+  // Fetch deals
+  const dealsRes = await fetch(`${ZOHO_BASE}/Deals?per_page=200`, { headers });
+  let dealRows = [];
+  if (dealsRes.ok) {
+    const dealsData = await dealsRes.json();
+    dealRows = (dealsData.data || []).map((d) => ({
+      org_id: orgId,
+      source: 'zoho',
+      external_id: d.id,
+      pipeline_name: d.Pipeline || 'Standard',
+      stage: d.Stage || '',
+      value: Number(d.Amount || 0),
+      status: d.Stage === 'Closed Won' ? 'won' : d.Stage === 'Closed Lost' ? 'lost' : 'open',
+      contact_external_id: d.Contact_Name?.id || null,
+      metadata: { closing_date: d.Closing_Date, probability: d.Probability, owner: d.Owner?.name },
+    }));
+  }
+
+  if (contactRows.length > 0) {
+    await sb.from('contacts').upsert(contactRows, { onConflict: 'org_id,source,external_id' });
+  }
+  if (dealRows.length > 0) {
+    await sb.from('deals').upsert(dealRows, { onConflict: 'org_id,source,external_id' });
+  }
+
+  return { synced: contactRows.length + dealRows.length, data: { contacts: contactRows, deals: dealRows } };
+}
+
+// ─── Brevo Sync ───
+
+async function syncBrevo(sb, orgId, accessToken) {
+  const BREVO_BASE = 'https://api.brevo.com/v3';
+  const headers = { 'api-key': accessToken, 'Content-Type': 'application/json' };
+
+  // Fetch contacts
+  const contactsRes = await fetch(`${BREVO_BASE}/contacts?limit=200&offset=0`, { headers });
+  if (!contactsRes.ok) throw new Error(`Brevo contacts error: ${contactsRes.status}`);
+  const contactsData = await contactsRes.json();
+
+  const rows = (contactsData.contacts || []).map((c) => {
+    const attrs = c.attributes || {};
+    return {
+      org_id: orgId,
+      source: 'brevo',
+      external_id: String(c.id),
+      name: `${attrs.PRENOM || attrs.FIRSTNAME || ''} ${attrs.NOM || attrs.LASTNAME || ''}`.trim() || c.email || 'Sans nom',
+      first_name: attrs.PRENOM || attrs.FIRSTNAME || '',
+      last_name: attrs.NOM || attrs.LASTNAME || '',
+      email: c.email || '',
+      phone: attrs.SMS || attrs.PHONE || '',
+      company: attrs.SOCIETE || attrs.COMPANY || '',
+      metadata: {
+        lists: c.listIds,
+        email_blacklisted: c.emailBlacklisted,
+        sms_blacklisted: c.smsBlacklisted,
+      },
+    };
+  });
+
+  // Fetch email campaign stats
+  const campaignsRes = await fetch(`${BREVO_BASE}/emailCampaigns?limit=50&offset=0&status=sent`, { headers });
+  let campaignMeta = [];
+  if (campaignsRes.ok) {
+    const campaignsData = await campaignsRes.json();
+    campaignMeta = (campaignsData.campaigns || []).slice(0, 20).map((c) => ({
+      id: c.id,
+      name: c.name,
+      subject: c.subject,
+      sent: c.statistics?.globalStats?.sent || 0,
+      opened: c.statistics?.globalStats?.uniqueOpens || 0,
+      clicked: c.statistics?.globalStats?.uniqueClicks || 0,
+    }));
+  }
+
+  if (rows.length > 0) {
+    await sb.from('contacts').upsert(rows, { onConflict: 'org_id,source,external_id' });
+  }
+
+  return { synced: rows.length, data: { contacts: rows, campaigns: campaignMeta } };
+}
+
+// ─── ActiveCampaign Sync ───
+
+async function syncActiveCampaign(sb, orgId, accessToken, metadata) {
+  const baseUrl = metadata?.api_url || metadata?.apiUrl;
+  if (!baseUrl) throw new Error('ActiveCampaign API URL not configured');
+  const headers = { 'Api-Token': accessToken };
+
+  // Fetch contacts
+  const contactsRes = await fetch(`${baseUrl}/api/3/contacts?limit=100`, { headers });
+  if (!contactsRes.ok) throw new Error(`ActiveCampaign contacts error: ${contactsRes.status}`);
+  const contactsData = await contactsRes.json();
+
+  const rows = (contactsData.contacts || []).map((c) => ({
+    org_id: orgId,
+    source: 'activecampaign',
+    external_id: c.id,
+    name: `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.email || 'Sans nom',
+    first_name: c.firstName || '',
+    last_name: c.lastName || '',
+    email: c.email || '',
+    phone: c.phone || '',
+    company: '',
+    metadata: { created_timestamp: c.cdate, updated_timestamp: c.udate },
+  }));
+
+  // Fetch deals
+  const dealsRes = await fetch(`${baseUrl}/api/3/deals?limit=100`, { headers });
+  let dealRows = [];
+  if (dealsRes.ok) {
+    const dealsData = await dealsRes.json();
+    dealRows = (dealsData.deals || []).map((d) => ({
+      org_id: orgId,
+      source: 'activecampaign',
+      external_id: d.id,
+      pipeline_name: d.group || d.pipeline || '',
+      stage: d.stage || '',
+      value: Number(d.value || 0) / 100, // AC stores values in cents
+      status: d.status === '1' ? 'won' : d.status === '2' ? 'lost' : 'open',
+      metadata: { title: d.title, currency: d.currency, owner: d.owner },
+    }));
+  }
+
+  if (rows.length > 0) {
+    await sb.from('contacts').upsert(rows, { onConflict: 'org_id,source,external_id' });
+  }
+  if (dealRows.length > 0) {
+    await sb.from('deals').upsert(dealRows, { onConflict: 'org_id,source,external_id' });
+  }
+
+  return { synced: rows.length + dealRows.length, data: { contacts: rows, deals: dealRows } };
+}
+
+// ─── LinkedIn Ads Sync ───
+
+async function syncLinkedInAds(sb, orgId, accessToken) {
+  const LI_BASE = 'https://api.linkedin.com/rest';
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    'LinkedIn-Version': '202401',
+    'X-Restli-Protocol-Version': '2.0.0',
+  };
+
+  // Fetch ad accounts
+  const acctRes = await fetch(`${LI_BASE}/adAccounts?q=search&search=(status:(values:List(ACTIVE)))&count=10`, { headers });
+  if (!acctRes.ok) throw new Error(`LinkedIn Ads accounts error: ${acctRes.status}`);
+  const acctData = await acctRes.json();
+  const adAccounts = acctData.elements || [];
+
+  let synced = 0;
+  let allRows = [];
+  const now = new Date();
+  const startDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+
+  for (const acct of adAccounts.slice(0, 5)) {
+    const accountId = acct.id;
+
+    // Fetch campaigns
+    const campRes = await fetch(
+      `${LI_BASE}/adAccounts/${accountId}/adCampaigns?q=search&search=(status:(values:List(ACTIVE)))&count=100`,
+      { headers },
+    );
+    if (!campRes.ok) continue;
+    const campData = await campRes.json();
+
+    // Fetch analytics for each campaign
+    for (const camp of (campData.elements || []).slice(0, 20)) {
+      const campaignId = camp.id;
+      const dateRange = `dateRange=(start:(year:${startDate.getFullYear()},month:${startDate.getMonth() + 1},day:1),end:(year:${now.getFullYear()},month:${now.getMonth() + 1},day:${now.getDate()}))`;
+
+      const analyticsRes = await fetch(
+        `${LI_BASE}/adAnalytics?q=analytics&pivot=CAMPAIGN&${dateRange}&timeGranularity=MONTHLY&campaigns=List(urn%3Ali%3AsponsoredCampaign%3A${campaignId})`,
+        { headers },
+      );
+      if (!analyticsRes.ok) continue;
+      const analyticsData = await analyticsRes.json();
+
+      const rows = (analyticsData.elements || []).map((row) => {
+        const period = row.dateRange?.start;
+        const dateStr = period ? `${period.year}-${String(period.month).padStart(2, '0')}-01` : startDate.toISOString().split('T')[0];
+        return {
+          org_id: orgId,
+          source: 'linkedin_ads',
+          external_id: `${campaignId}_${dateStr}`,
+          campaign_name: camp.name || '',
+          campaign_id: String(campaignId),
+          date: dateStr,
+          impressions: Number(row.impressions || 0),
+          clicks: Number(row.clicks || 0),
+          spend: Number(row.costInLocalCurrency || 0) / 100,
+          conversions: Number(row.externalWebsiteConversions || 0),
+          leads: Number(row.oneClickLeads || row.leadGenerationMailContactInfoShares || 0),
+          revenue: 0,
+          metadata: {
+            account_id: accountId,
+            video_views: row.videoViews,
+            social_actions: row.totalEngagements,
+          },
+        };
+      });
+
+      if (rows.length > 0) {
+        await sb.from('ad_insights').upsert(rows, { onConflict: 'org_id,source,external_id' });
+        synced += rows.length;
+        allRows = allRows.concat(rows);
+      }
+    }
+  }
+
+  return { synced, data: { adInsights: allRows } };
+}
+
+// ─── Notion Sync ───
+
+async function syncNotion(sb, orgId, accessToken) {
+  const NOTION_BASE = 'https://api.notion.com/v1';
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    'Notion-Version': '2022-06-28',
+    'Content-Type': 'application/json',
+  };
+
+  // Search for all pages and databases
+  const searchRes = await fetch(`${NOTION_BASE}/search`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ page_size: 100 }),
+  });
+  if (!searchRes.ok) throw new Error(`Notion search error: ${searchRes.status}`);
+  const searchData = await searchRes.json();
+
+  const events = (searchData.results || []).map((item) => {
+    const titleProp = item.properties?.title || item.properties?.Name || item.properties?.Nom;
+    let title = '';
+    if (titleProp?.title) {
+      title = titleProp.title.map((t) => t.plain_text).join('');
+    } else if (item.title) {
+      title = item.title.map((t) => t.plain_text).join('');
+    }
+
+    const lastEdited = item.last_edited_time || item.created_time || new Date().toISOString();
+    return {
+      org_id: orgId,
+      source: 'notion',
+      external_id: item.id,
+      title: title || (item.object === 'database' ? 'Base de données' : 'Page sans titre'),
+      description: item.object === 'database' ? 'Base de données Notion' : 'Page Notion',
+      date: new Date(lastEdited).toISOString().split('T')[0],
+      start_at: lastEdited,
+      end_at: null,
+      location: '',
+      metadata: {
+        type: item.object,
+        url: item.url,
+        created_time: item.created_time,
+        last_edited_time: item.last_edited_time,
+        archived: item.archived,
+      },
+    };
+  });
+
+  if (events.length > 0) {
+    await sb.from('events').upsert(events, { onConflict: 'org_id,source,external_id' });
+  }
+
+  return { synced: events.length, data: { events } };
+}
+
+// ─── Slack Sync ───
+
+async function syncSlack(sb, orgId, accessToken) {
+  const SLACK_BASE = 'https://slack.com/api';
+  const headers = { Authorization: `Bearer ${accessToken}` };
+
+  // Fetch channels list
+  const channelsRes = await fetch(`${SLACK_BASE}/conversations.list?types=public_channel,private_channel&limit=100`, { headers });
+  if (!channelsRes.ok) throw new Error(`Slack channels error: ${channelsRes.status}`);
+  const channelsData = await channelsRes.json();
+  if (!channelsData.ok) throw new Error(`Slack API error: ${channelsData.error}`);
+
+  const channels = channelsData.channels || [];
+
+  // Store channels as events (for project management visibility)
+  const events = channels.map((ch) => ({
+    org_id: orgId,
+    source: 'slack',
+    external_id: ch.id,
+    title: `#${ch.name}`,
+    description: ch.purpose?.value || ch.topic?.value || '',
+    date: ch.created ? new Date(ch.created * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    start_at: ch.created ? new Date(ch.created * 1000).toISOString() : null,
+    end_at: null,
+    location: '',
+    metadata: {
+      num_members: ch.num_members,
+      is_private: ch.is_private,
+      is_archived: ch.is_archived,
+    },
+  }));
+
+  // Fetch team members as contacts
+  const usersRes = await fetch(`${SLACK_BASE}/users.list?limit=200`, { headers });
+  let contacts = [];
+  if (usersRes.ok) {
+    const usersData = await usersRes.json();
+    if (usersData.ok) {
+      contacts = (usersData.members || [])
+        .filter((u) => !u.is_bot && !u.deleted && u.id !== 'USLACKBOT')
+        .map((u) => ({
+          org_id: orgId,
+          source: 'slack',
+          external_id: u.id,
+          name: u.real_name || u.name || 'Sans nom',
+          first_name: u.profile?.first_name || '',
+          last_name: u.profile?.last_name || '',
+          email: u.profile?.email || '',
+          phone: u.profile?.phone || '',
+          company: '',
+          metadata: {
+            display_name: u.profile?.display_name,
+            title: u.profile?.title,
+            is_admin: u.is_admin,
+            tz: u.tz,
+          },
+        }));
+    }
+  }
+
+  if (events.length > 0) {
+    await sb.from('events').upsert(events, { onConflict: 'org_id,source,external_id' });
+  }
+  if (contacts.length > 0) {
+    await sb.from('contacts').upsert(contacts, { onConflict: 'org_id,source,external_id' });
+  }
+
+  return { synced: events.length + contacts.length, data: { events, contacts } };
+}
+
 // ─── Sync Dispatcher ───
 
 const SYNC_HANDLERS = {
@@ -855,6 +1410,14 @@ const SYNC_HANDLERS = {
   salesforce: syncSalesforce,
   pipedrive: syncPipedrive,
   mailchimp: syncMailchimp,
+  paypal: syncPayPal,
+  shopify: syncShopify,
+  zoho: syncZoho,
+  brevo: syncBrevo,
+  activecampaign: syncActiveCampaign,
+  'linkedin ads': syncLinkedInAds,
+  notion: syncNotion,
+  slack: syncSlack,
 };
 
 export default async function handler(req, res) {
