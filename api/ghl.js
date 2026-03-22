@@ -80,7 +80,9 @@ export default async function handler(req, res) {
   const auth = await verifyAuth(req);
   if (!auth) {
     apiLog('warn', { api: 'ghl', action, reason: 'unauthed', ip });
-  } else if (locationId && !canAccessGHLLocation(auth, locationId)) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  if (locationId && !canAccessGHLLocation(auth, locationId)) {
     return res.status(403).json({ error: "Access denied to this location" });
   }
 
