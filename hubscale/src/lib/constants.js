@@ -56,7 +56,7 @@ export const INTEGRATIONS = [
   { name: 'Stripe', desc: 'Paiements et facturation', icon: '💳', category: 'paiements', tier: 'live' },
   { name: 'PayPal', desc: 'Paiements en ligne', icon: '🅿️', category: 'paiements', tier: 'live' },
   { name: 'Shopify', desc: 'E-commerce & paiements', icon: '🛍️', category: 'paiements', tier: 'live' },
-  { name: 'WooCommerce', desc: 'E-commerce WordPress', icon: '🛒', category: 'paiements', tier: 'demo' },
+  { name: 'WooCommerce', desc: 'E-commerce WordPress', icon: '🛒', category: 'paiements', tier: 'live' },
   // Banque & Comptabilité
   { name: 'Revolut', desc: 'Données bancaires', icon: '🏦', category: 'banque', tier: 'live' },
   { name: 'Qonto', desc: 'Banque pro & comptabilité', icon: '🏛️', category: 'banque', tier: 'live' },
@@ -84,11 +84,11 @@ export const INTEGRATIONS = [
   { name: 'SystemeIO', desc: 'Tunnel de vente & formation', icon: '🚀', category: 'marketing', tier: 'demo' },
   { name: 'ClickFunnels', desc: 'Funnels de vente', icon: '🔻', category: 'marketing', tier: 'demo' },
   // Gestion de projet
-  { name: 'Monday', desc: 'Gestion de projet & workflow', icon: '📋', category: 'projet', tier: 'demo' },
-  { name: 'Asana', desc: 'Gestion de projet & tâches', icon: '🎯', category: 'projet', tier: 'demo' },
+  { name: 'Monday', desc: 'Gestion de projet & workflow', icon: '📋', category: 'projet', tier: 'live' },
+  { name: 'Asana', desc: 'Gestion de projet & tâches', icon: '🎯', category: 'projet', tier: 'live' },
   { name: 'Notion', desc: 'Wiki, docs & gestion de projet', icon: '📝', category: 'projet', tier: 'live' },
-  { name: 'Trello', desc: 'Tableaux kanban', icon: '📌', category: 'projet', tier: 'demo' },
-  { name: 'Jira', desc: 'Gestion de projet technique', icon: '🔷', category: 'projet', tier: 'demo' },
+  { name: 'Trello', desc: 'Tableaux kanban', icon: '📌', category: 'projet', tier: 'live' },
+  { name: 'Jira', desc: 'Gestion de projet technique', icon: '🔷', category: 'projet', tier: 'live' },
   { name: 'Slack', desc: 'Communication d\'équipe', icon: '💬', category: 'projet', tier: 'live' },
   // Publicité
   { name: 'Meta Ads', desc: 'Publicité Facebook/Instagram', icon: '📣', category: 'publicite', tier: 'live' },
@@ -96,9 +96,9 @@ export const INTEGRATIONS = [
   { name: 'TikTok Ads', desc: 'Publicité TikTok', icon: '🎵', category: 'publicite', tier: 'live' },
   { name: 'LinkedIn Ads', desc: 'Publicité LinkedIn B2B', icon: '💼', category: 'publicite', tier: 'live' },
   // Support Client
-  { name: 'Zendesk', desc: 'Support client & ticketing', icon: '🎧', category: 'support', tier: 'demo' },
-  { name: 'Freshdesk', desc: 'Helpdesk & support', icon: '🟩', category: 'support', tier: 'demo' },
-  { name: 'Intercom', desc: 'Messagerie client & support', icon: '💬', category: 'support', tier: 'demo' },
+  { name: 'Zendesk', desc: 'Support client & ticketing', icon: '🎧', category: 'support', tier: 'live' },
+  { name: 'Freshdesk', desc: 'Helpdesk & support', icon: '🟩', category: 'support', tier: 'live' },
+  { name: 'Intercom', desc: 'Messagerie client & support', icon: '💬', category: 'support', tier: 'live' },
 ];
 
 export const EXPENSE_CATEGORIES = [
