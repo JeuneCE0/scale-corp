@@ -4,6 +4,8 @@ import { existsSync } from 'fs';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { applyHeaders, getClientIP, rateLimit, apiLog, tooManyRequests } from './_middleware.js';
 
+// Note: /tmp is ephemeral in Vercel serverless. Events are lost on cold starts.
+// For persistent storage, consider using Supabase or another database.
 const EVENTS_FILE = '/tmp/ghl-events.json';
 const MAX_EVENTS = 50;
 

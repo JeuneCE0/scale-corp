@@ -157,6 +157,7 @@ async function hashPassword(password) {
   return 'sha256_' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// 32 bytes = 256 bits of entropy, hex-encoded to 64 chars
 function generateToken() {
   const arr = new Uint8Array(32);
   crypto.getRandomValues(arr);

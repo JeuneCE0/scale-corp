@@ -196,7 +196,7 @@ export function canAccessGHLLocation(auth, locationId) {
 
 // --- Input Validation ---
 
-const DANGEROUS_PATTERN = /[;'"\\]|--|\b(drop|alter|insert|update|delete|exec|union|select)\b/i;
+const DANGEROUS_PATTERN = /[;'"\\]|--|\b(drop|alter|insert|update|delete|exec|truncate|union|select)\b/i;
 
 export function sanitizeParam(v) {
   if (typeof v !== 'string') return v;
