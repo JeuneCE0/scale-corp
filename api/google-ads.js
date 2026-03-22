@@ -132,10 +132,15 @@ export default async function handler(req, res) {
         const sinceFormatted = since.length === 8 ? `${since.slice(0,4)}-${since.slice(4,6)}-${since.slice(6,8)}` : since;
         const untilFormatted = until.length === 8 ? `${until.slice(0,4)}-${until.slice(4,6)}-${until.slice(6,8)}` : until;
 
-        // Validate date format to prevent GAQL injection
-        const dateRe = /^\d{4}-\d{2}-\d{2}$/;
-        if (!dateRe.test(sinceFormatted) || !dateRe.test(untilFormatted)) {
-          return badRequest(res, 'Invalid date format. Expected YYYY-MM-DD or YYYYMMDD.');
+        // Validate date format to prevent GAQL injection (strict YYYY-MM-DD)
+        const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+        if (!DATE_RE.test(sinceFormatted) || !DATE_RE.test(untilFormatted)) {
+          return badRequest(res, 'Invalid date format');
+        }
+
+        // Ensure since <= until
+        if (sinceFormatted > untilFormatted) {
+          return badRequest(res, 'since date must be before or equal to until date');
         }
 
         const segmentBy = action === 'campaign_insights' ? 'campaign.name, campaign.id,' : '';

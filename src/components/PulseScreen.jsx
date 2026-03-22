@@ -258,7 +258,7 @@ useEffect(()=>{const cur={};allActS.forEach(s=>{cur[s.id]=getProspects(s.id).len
     <div style={{display:"flex",alignItems:"center",gap:8}}>
      {/* Status pulsing dot */}
      <div style={{width:8,height:8,borderRadius:"50%",background:s.statusRaw==="active"?"#34d399":s.statusRaw==="lancement"?"#FFAA00":"#f87171",animation:"status-pulse 2s ease infinite",color:s.statusRaw==="active"?"#34d39944":s.statusRaw==="lancement"?"#FFAA0044":"#f8717144",flexShrink:0}}/>
-     {s.logoUrl?<img loading="lazy" src={s.logoUrl} alt="" style={{width:24,height:24,borderRadius:8,objectFit:"contain"}}/>:<div style={{width:24,height:24,borderRadius:8,background:(s.brandColor||s.color||"#FFAA00")+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:s.brandColor||s.color||"#FFAA00"}}>{(s.name||"?")[0]}</div>}
+     {s.logoUrl?<img loading="lazy" src={s.logoUrl} alt={`Logo ${s.name||"société"}`} style={{width:24,height:24,borderRadius:8,objectFit:"contain"}}/>:<div style={{width:24,height:24,borderRadius:8,background:(s.brandColor||s.color||"#FFAA00")+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:s.brandColor||s.color||"#FFAA00"}}>{(s.name||"?")[0]}</div>}
      <div style={{fontWeight:800,fontSize:13,fontFamily:FONT_TITLE,color:"#e4e4e7"}}>{s.name}</div>
     </div>
     <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -289,7 +289,7 @@ useEffect(()=>{const cur={};allActS.forEach(s=>{cur[s.id]=getProspects(s.id).len
   <div ref={feedRef} style={{flex:1,overflow:"auto",padding:"8px 12px"}}>
    {filteredFeed.length===0&&<div style={{color:"#71717a",fontSize:11,textAlign:"center",padding:20}}>Aucune activité récente</div>}
    {filteredFeed.map((f,i)=><div key={`${f.type}-${f.desc}-${i}`} className={`pulse-feed-item${i===0?" pulse-feed-new":""}`} style={{padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,.03)",display:"flex",gap:8,alignItems:"flex-start",fontSize:11}}>
-    {(()=>{const fs=allActS.find(x=>x.id===f.socId);return fs?.logoUrl?<img loading="lazy" src={fs.logoUrl} alt="" style={{width:16,height:16,borderRadius:5,objectFit:"contain",flexShrink:0,marginTop:1}}/>:<div style={{width:16,height:16,borderRadius:5,background:(fs?.brandColor||fs?.color||f.color)+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:900,color:fs?.brandColor||fs?.color||f.color,flexShrink:0,marginTop:1}}>{(fs?.nom||"?")[0]}</div>;})()}
+    {(()=>{const fs=allActS.find(x=>x.id===f.socId);return fs?.logoUrl?<img loading="lazy" src={fs.logoUrl} alt={`Logo ${fs.nom||"société"}`} style={{width:16,height:16,borderRadius:5,objectFit:"contain",flexShrink:0,marginTop:1}}/>:<div style={{width:16,height:16,borderRadius:5,background:(fs?.brandColor||fs?.color||f.color)+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:900,color:fs?.brandColor||fs?.color||f.color,flexShrink:0,marginTop:1}}>{(fs?.nom||"?")[0]}</div>;})()}
     <span>{f.icon}</span>
     <div style={{flex:1}}>
      <div style={{color:"#e4e4e7",lineHeight:1.3}}>{f.desc}</div>

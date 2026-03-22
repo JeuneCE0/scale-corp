@@ -140,6 +140,7 @@ export function GlobalSearch({ open, onClose, clients, socs, socBank, ghlData, o
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Rechercher clients, sociétés, transactions…"
+            aria-label="Rechercher"
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
               color: C.t, fontSize: 15, fontFamily: FONT, fontWeight: 500,
@@ -152,7 +153,7 @@ export function GlobalSearch({ open, onClose, clients, socs, socBank, ghlData, o
         </div>
 
         {/* Results */}
-        <div style={{ overflowY: 'auto', maxHeight: 'calc(60vh - 56px)', padding: '6px 0' }}>
+        <div role="listbox" aria-label="Résultats de recherche" style={{ overflowY: 'auto', maxHeight: 'calc(60vh - 56px)', padding: '6px 0' }}>
           {query.length >= 2 && results.length === 0 && (
             <div style={{ padding: '24px 18px', textAlign: 'center', color: C.td, fontSize: 12 }}>
               Aucun résultat pour « {query} »

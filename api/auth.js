@@ -129,6 +129,8 @@ export default async function handler(req, res) {
 
     // === LIST USERS (admin) ===
     if (action === "list_users") {
+      const rl = !rateLimit('admin_list_users', ip, 10, 60_000);
+      if (rl) return tooManyRequests(res);
       const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users?per_page=100`, {
         headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` },
       });
@@ -138,6 +140,8 @@ export default async function handler(req, res) {
 
     // === DELETE USER (admin) ===
     if (action === "delete_user") {
+      const rl = !rateLimit('admin_delete_user', ip, 5, 60_000);
+      if (rl) return tooManyRequests(res);
       if (req.method !== "DELETE" && req.method !== "POST") return res.status(405).json({ ok: false, error: "DELETE/POST required" });
       const user_id = req.query.user_id || req.body?.user_id;
       if (!user_id) return badRequest(res, "Missing user_id");

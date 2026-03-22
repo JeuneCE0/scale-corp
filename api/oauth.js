@@ -92,7 +92,8 @@ function getProviderConfig(provider, baseUrl) {
     stripe: {
       name: 'Stripe',
       clientId: process.env.STRIPE_CONNECT_CLIENT_ID,
-      clientSecret: process.env.STRIPE_SECRET_KEY,
+      // In production, use a dedicated STRIPE_CONNECT_CLIENT_SECRET env var instead of STRIPE_SECRET_KEY
+      clientSecret: process.env.STRIPE_CONNECT_CLIENT_SECRET || process.env.STRIPE_SECRET_KEY,
       authorizeUrl: 'https://connect.stripe.com/oauth/authorize',
       tokenUrl: 'https://connect.stripe.com/oauth/token',
       scopes: ['read_write'],
