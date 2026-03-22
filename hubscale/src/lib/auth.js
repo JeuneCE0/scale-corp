@@ -332,7 +332,8 @@ export function isAuthenticated() {
       const raw = localStorage.getItem(key);
       if (!raw) return false;
       const session = JSON.parse(raw);
-      return !!(session?.access_token || session?.currentSession?.access_token);
+      // Supabase v2 stores access_token at top level
+      return !!(session?.access_token);
     } catch { return false; }
   }
   return localIsAuthenticated();

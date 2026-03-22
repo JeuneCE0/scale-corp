@@ -2,6 +2,7 @@
 // Fetches campaign data, ad insights, and performance metrics via Google Ads REST API
 import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest, fetchWithTimeout } from './_middleware.js';
 import { refreshToken } from './lib/token-refresh.js';
+import { handleAdsApiResponse, handleAdsError } from './lib/ads-error-handler.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -84,7 +85,7 @@ export default async function handler(req, res) {
       case 'customers': {
         // List accessible customer accounts
         const r = await fetchWithTimeout(`${GADS_BASE}/customers:listAccessibleCustomers`, { headers });
-        if (!r.ok) return handleGadsError(r, res);
+        if (!r.ok) return handleAdsApiResponse(r, res, 'google-ads');
         return res.status(200).json(await r.json());
       }
 
@@ -94,7 +95,7 @@ export default async function handler(req, res) {
         const r = await fetchWithTimeout(`${GADS_BASE}/customers/${customerId}/googleAds:searchStream`, {
           method: 'POST', headers, body: JSON.stringify({ query }),
         });
-        if (!r.ok) return handleGadsError(r, res);
+        if (!r.ok) return handleAdsApiResponse(r, res, 'google-ads');
         return res.status(200).json(await r.json());
       }
 
@@ -126,7 +127,7 @@ export default async function handler(req, res) {
         const r = await fetchWithTimeout(`${GADS_BASE}/customers/${customerId}/googleAds:searchStream`, {
           method: 'POST', headers, body: JSON.stringify({ query }),
         });
-        if (!r.ok) return handleGadsError(r, res);
+        if (!r.ok) return handleAdsApiResponse(r, res, 'google-ads');
         const raw = await r.json();
 
         // Post-process: flatten and compute derived metrics
@@ -157,13 +158,6 @@ export default async function handler(req, res) {
         return badRequest(res, `Unknown action: ${action}`);
     }
   } catch (e) {
-    apiLog('error', { api: 'google-ads', action }, { error: e.message });
-    return res.status(500).json({ error: 'Internal proxy error' });
+    return handleAdsError(res, 'google-ads', action, e);
   }
-}
-
-async function handleGadsError(r, res) {
-  const text = await r.text();
-  apiLog('error', { api: 'google-ads' }, { status: r.status, error: text.slice(0, 200) });
-  return res.status(r.status).json({ error: `Google Ads API error: ${r.status}` });
 }

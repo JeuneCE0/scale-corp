@@ -332,3 +332,28 @@ DO $$ BEGIN
   END IF;
 EXCEPTION WHEN others THEN NULL;
 END $$;
+
+-- ---------------------------------------------------------------------------
+-- 4. Cascade deletes for dependent tables (avoid orphaned data)
+-- ---------------------------------------------------------------------------
+DO $$ BEGIN
+  -- When a society is deleted, remove its data
+  ALTER TABLE public.client_data DROP CONSTRAINT IF EXISTS client_data_society_id_fkey;
+  ALTER TABLE public.client_data ADD CONSTRAINT client_data_society_id_fkey
+    FOREIGN KEY (society_id) REFERENCES public.societies(id) ON DELETE CASCADE;
+EXCEPTION WHEN others THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE public.transactions DROP CONSTRAINT IF EXISTS transactions_society_id_fkey;
+  ALTER TABLE public.transactions ADD CONSTRAINT transactions_society_id_fkey
+    FOREIGN KEY (society_id) REFERENCES public.societies(id) ON DELETE CASCADE;
+EXCEPTION WHEN others THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE public.sales_data DROP CONSTRAINT IF EXISTS sales_data_society_id_fkey;
+  ALTER TABLE public.sales_data ADD CONSTRAINT sales_data_society_id_fkey
+    FOREIGN KEY (society_id) REFERENCES public.societies(id) ON DELETE CASCADE;
+EXCEPTION WHEN others THEN NULL;
+END $$;

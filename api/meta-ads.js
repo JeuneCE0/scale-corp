@@ -1,6 +1,7 @@
 // Vercel Serverless Function - Meta (Facebook) Ads API Proxy
 // Fetches campaign data, ad insights, and performance metrics
 import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest, fetchWithTimeout } from './_middleware.js';
+import { handleAdsApiResponse, handleAdsError } from './lib/ads-error-handler.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -63,7 +64,7 @@ export default async function handler(req, res) {
     switch (action) {
       case 'ad_accounts': {
         const r = await fetchWithTimeout(`${GRAPH_BASE}/me/adaccounts?fields=id,name,account_id,currency,business_name,account_status,amount_spent,balance&access_token=${token}`);
-        if (!r.ok) return handleMetaError(r, res);
+        if (!r.ok) return handleAdsApiResponse(r, res, 'meta-ads');
         return res.status(200).json(await r.json());
       }
 
@@ -71,7 +72,7 @@ export default async function handler(req, res) {
         const acctId = adAccountId || tokenData.adAccounts?.[0]?.id;
         if (!acctId) return badRequest(res, 'Missing adAccountId');
         const r = await fetchWithTimeout(`${GRAPH_BASE}/${acctId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,created_time,updated_time&limit=100&access_token=${token}`);
-        if (!r.ok) return handleMetaError(r, res);
+        if (!r.ok) return handleAdsApiResponse(r, res, 'meta-ads');
         return res.status(200).json(await r.json());
       }
 
@@ -79,7 +80,7 @@ export default async function handler(req, res) {
         const acctId = adAccountId || tokenData.adAccounts?.[0]?.id;
         if (!acctId) return badRequest(res, 'Missing adAccountId');
         const r = await fetchWithTimeout(`${GRAPH_BASE}/${acctId}/adsets?fields=id,name,status,campaign_id,daily_budget,targeting,bid_strategy,optimization_goal&limit=100&access_token=${token}`);
-        if (!r.ok) return handleMetaError(r, res);
+        if (!r.ok) return handleAdsApiResponse(r, res, 'meta-ads');
         return res.status(200).json(await r.json());
       }
 
@@ -87,7 +88,7 @@ export default async function handler(req, res) {
         const acctId = adAccountId || tokenData.adAccounts?.[0]?.id;
         if (!acctId) return badRequest(res, 'Missing adAccountId');
         const r = await fetchWithTimeout(`${GRAPH_BASE}/${acctId}/ads?fields=id,name,status,campaign_id,adset_id,creative,created_time&limit=100&access_token=${token}`);
-        if (!r.ok) return handleMetaError(r, res);
+        if (!r.ok) return handleAdsApiResponse(r, res, 'meta-ads');
         return res.status(200).json(await r.json());
       }
 
@@ -123,7 +124,7 @@ export default async function handler(req, res) {
         });
 
         const r = await fetchWithTimeout(`${GRAPH_BASE}/${acctId}/insights?${params}`);
-        if (!r.ok) return handleMetaError(r, res);
+        if (!r.ok) return handleAdsApiResponse(r, res, 'meta-ads');
         const data = await r.json();
 
         // Post-process: extract key metrics from actions array
@@ -165,15 +166,6 @@ export default async function handler(req, res) {
         return badRequest(res, `Unknown action: ${action}`);
     }
   } catch (e) {
-    apiLog('error', { api: 'meta-ads', action }, { error: e.message });
-    return res.status(500).json({ error: 'Internal proxy error' });
+    return handleAdsError(res, 'meta-ads', action, e);
   }
-}
-
-async function handleMetaError(r, res) {
-  const text = await r.text();
-  apiLog('error', { api: 'meta-ads' }, { status: r.status, error: text.slice(0, 200) });
-  let msg = `Meta API error: ${r.status}`;
-  try { const j = JSON.parse(text); msg = j.error?.message || msg; } catch {}
-  return res.status(r.status).json({ error: msg });
 }

@@ -1,5 +1,6 @@
 // Vercel Serverless Function - TikTok Ads API Proxy
 import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest, fetchWithTimeout } from './_middleware.js';
+import { handleAdsApiResponse, handleAdsError } from './lib/ads-error-handler.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -60,7 +61,7 @@ export default async function handler(req, res) {
         if (!ids.length) return res.status(200).json({ data: { list: [] } });
         const params = new URLSearchParams({ app_id: appId, secret, advertiser_ids: JSON.stringify(ids) });
         const r = await fetchWithTimeout(`${TIKTOK_BASE}/advertiser/info/?${params}`, { headers });
-        if (!r.ok) return handleTikTokError(r, res);
+        if (!r.ok) return handleAdsApiResponse(r, res, 'tiktok-ads');
         return res.status(200).json(await r.json());
       }
 
@@ -68,7 +69,7 @@ export default async function handler(req, res) {
         const advId = advertiserId || tokenData.advertiserIds?.[0];
         if (!advId) return badRequest(res, 'Missing advertiserId');
         const r = await fetchWithTimeout(`${TIKTOK_BASE}/campaign/get/?advertiser_id=${advId}&page_size=100`, { headers });
-        if (!r.ok) return handleTikTokError(r, res);
+        if (!r.ok) return handleAdsApiResponse(r, res, 'tiktok-ads');
         return res.status(200).json(await r.json());
       }
 
@@ -93,7 +94,7 @@ export default async function handler(req, res) {
         const r = await fetchWithTimeout(`${TIKTOK_BASE}/report/integrated/get/`, {
           method: 'POST', headers, body: JSON.stringify(body),
         });
-        if (!r.ok) return handleTikTokError(r, res);
+        if (!r.ok) return handleAdsApiResponse(r, res, 'tiktok-ads');
         const data = await r.json();
 
         // Post-process
@@ -121,13 +122,6 @@ export default async function handler(req, res) {
         return badRequest(res, `Unknown action: ${action}`);
     }
   } catch (e) {
-    apiLog('error', { api: 'tiktok-ads', action }, { error: e.message });
-    return res.status(500).json({ error: 'Internal proxy error' });
+    return handleAdsError(res, 'tiktok-ads', action, e);
   }
-}
-
-async function handleTikTokError(r, res) {
-  const text = await r.text();
-  apiLog('error', { api: 'tiktok-ads' }, { status: r.status, error: text.slice(0, 200) });
-  return res.status(r.status).json({ error: `TikTok Ads API error: ${r.status}` });
 }
