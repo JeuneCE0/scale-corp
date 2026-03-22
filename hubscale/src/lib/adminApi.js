@@ -240,3 +240,11 @@ export async function getAdminAuditLog({ page = 1, limit = 50 } = {}) {
   const params = new URLSearchParams({ action: 'audit_log', page, limit });
   return adminCall(`/admin?${params}`);
 }
+
+export async function clearUserData(email) {
+  if (!isSupabaseConfigured()) return { ok: false, error: 'Supabase non configuré' };
+  return adminCall('/admin', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'clear_user_data', email }),
+  });
+}

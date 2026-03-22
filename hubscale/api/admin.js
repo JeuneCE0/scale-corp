@@ -106,6 +106,9 @@ export default async function handler(req, res) {
       case 'audit_log':
         return getAuditLog(sb, req, res);
 
+      case 'clear_user_data':
+        return clearUserData(sb, req, res, admin);
+
       default:
         return badRequest(res, 'Action invalide');
     }
@@ -400,4 +403,66 @@ async function getAuditLog(sb, req, res) {
   }));
 
   return res.status(200).json({ entries: enriched, total: count || 0, page: parseInt(page, 10), limit: lim });
+}
+
+// ─── Clear User Data (purge demo/sample data for a specific account) ───
+
+async function clearUserData(sb, req, res, admin) {
+  const { email } = req.body;
+  if (!email || !validateString(email)) return badRequest(res, 'email requis');
+
+  // Find the user's profile and org
+  const { data: profile } = await sb.from('profiles').select('id, org_id, full_name').eq('email', email.toLowerCase().trim()).single();
+  if (!profile) return notFound(res, `Aucun utilisateur trouvé avec l'email: ${email}`);
+
+  const orgId = profile.org_id;
+
+  // Delete all org-scoped data (preserves the org, profile, and preferences)
+  const tables = [
+    'contact_comments',
+    'contacts',
+    'financial_history',
+    'events',
+    'sync_history',
+    'notifications',
+    'audit_log',
+    'transactions',
+    'bank_accounts',
+    'deals',
+    'ad_insights',
+  ];
+
+  const results = {};
+  for (const table of tables) {
+    const { count, error } = await sb.from(table).delete({ count: 'exact' }).eq('org_id', orgId);
+    results[table] = error ? `error: ${error.message}` : (count || 0);
+  }
+
+  // Clear affiliate data if exists
+  const { data: affiliates } = await sb.from('affiliates').select('id').eq('org_id', orgId);
+  if (affiliates && affiliates.length > 0) {
+    const affIds = affiliates.map((a) => a.id);
+    await sb.from('affiliate_payouts').delete().in('affiliate_id', affIds);
+    await sb.from('affiliate_referrals').delete().in('affiliate_id', affIds);
+    await sb.from('affiliate_clicks').delete().in('affiliate_id', affIds);
+    const { count } = await sb.from('affiliates').delete({ count: 'exact' }).eq('org_id', orgId);
+    results.affiliates = count || 0;
+  }
+
+  // Reset integrations (disconnect but keep records)
+  await sb.from('integrations').update({
+    connected: false,
+    access_token_enc: null,
+    refresh_token_enc: null,
+    last_synced_at: null,
+  }).eq('org_id', orgId);
+
+  await logAdminAction(sb, admin.id, 'clear_user_data', 'organization', orgId, { email, deleted: results });
+
+  return res.status(200).json({
+    ok: true,
+    message: `Données purgées pour ${profile.full_name} (${email})`,
+    org_id: orgId,
+    deleted: results,
+  });
 }
