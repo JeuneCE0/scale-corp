@@ -1468,6 +1468,489 @@ async function syncSlack(sb, orgId, accessToken) {
   return { synced: events.length + contacts.length, data: { events, contacts } };
 }
 
+
+// ─── WooCommerce Sync ───
+
+async function syncWooCommerce(sb, orgId, accessToken, metadata) {
+  const storeUrl = metadata?.store_url;
+  if (!storeUrl) throw new Error('URL de boutique WooCommerce non configurée');
+  const WC_BASE = `${storeUrl}/wp-json/wc/v3`;
+  const wcHeaders = {
+    Authorization: 'Basic ' + Buffer.from(`${accessToken}:${metadata?.consumer_secret || ''}`).toString('base64'),
+  };
+
+  const sinceDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+  const ordersRes = await fetch(
+    `${WC_BASE}/orders?per_page=100&after=${sinceDate}&orderby=date&order=desc`,
+    { headers: wcHeaders },
+  );
+  if (!ordersRes.ok) throw new Error(`WooCommerce orders error: ${ordersRes.status}`);
+  const orders = await ordersRes.json();
+
+  const transactions = (orders || []).map((o) => ({
+    org_id: orgId,
+    source: 'woocommerce',
+    external_id: String(o.id),
+    amount: Number(o.total || 0),
+    currency: (o.currency || 'EUR').toLowerCase(),
+    status: o.status || 'completed',
+    description: `Commande #${o.number || o.id}`,
+    date: o.date_created ? new Date(o.date_created).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    created_at: o.date_created || new Date().toISOString(),
+    metadata: { payment_method: o.payment_method_title, status: o.status },
+  }));
+
+  const custRes = await fetch(`${WC_BASE}/customers?per_page=100&orderby=registered_date&order=desc`, { headers: wcHeaders });
+  let wcContacts = [];
+  if (custRes.ok) {
+    const customers = await custRes.json();
+    wcContacts = (customers || []).map((c) => ({
+      org_id: orgId,
+      source: 'woocommerce',
+      external_id: String(c.id),
+      name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email || 'Sans nom',
+      first_name: c.first_name || '',
+      last_name: c.last_name || '',
+      email: c.email || '',
+      phone: c.billing?.phone || '',
+      company: c.billing?.company || '',
+      status: c.orders_count > 0 ? 'client' : 'prospect',
+      metadata: { orders_count: c.orders_count, total_spent: c.total_spent },
+    }));
+  }
+
+  if (transactions.length > 0) {
+    await sb.from('transactions').upsert(transactions, { onConflict: 'org_id,source,external_id' });
+  }
+  if (wcContacts.length > 0) {
+    await sb.from('contacts').upsert(wcContacts, { onConflict: 'org_id,source,external_id' });
+  }
+
+  return { synced: transactions.length + wcContacts.length, data: { transactions, contacts: wcContacts } };
+}
+
+// ─── Asana Sync ───
+
+async function syncAsana(sb, orgId, accessToken) {
+  const ASANA_BASE = 'https://app.asana.com/api/1.0';
+  const asanaHeaders = { Authorization: `Bearer ${accessToken}` };
+
+  const wsRes = await fetch(`${ASANA_BASE}/workspaces?limit=10`, { headers: asanaHeaders });
+  if (!wsRes.ok) throw new Error(`Asana workspaces error: ${wsRes.status}`);
+  const wsData = await wsRes.json();
+  const workspaces = wsData.data || [];
+
+  let synced = 0;
+  let allEvents = [];
+
+  for (const ws of workspaces.slice(0, 3)) {
+    const projRes = await fetch(`${ASANA_BASE}/workspaces/${ws.gid}/projects?limit=50&opt_fields=name,due_on,created_at,modified_at,current_status,notes`, { headers: asanaHeaders });
+    if (!projRes.ok) continue;
+    const projData = await projRes.json();
+
+    for (const proj of (projData.data || []).slice(0, 10)) {
+      const tasksRes = await fetch(
+        `${ASANA_BASE}/projects/${proj.gid}/tasks?limit=100&opt_fields=name,completed,due_on,assignee.name,created_at,modified_at,notes`,
+        { headers: asanaHeaders },
+      );
+      if (!tasksRes.ok) continue;
+      const tasksData = await tasksRes.json();
+
+      const taskEvents = (tasksData.data || []).map((t) => ({
+        org_id: orgId,
+        source: 'asana',
+        external_id: t.gid,
+        title: t.name || 'Tâche sans titre',
+        description: t.notes || '',
+        date: t.due_on || (t.created_at ? new Date(t.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+        start_at: t.created_at || null,
+        end_at: t.due_on ? `${t.due_on}T23:59:59Z` : null,
+        location: '',
+        metadata: {
+          project: proj.name,
+          workspace: ws.name,
+          completed: t.completed,
+          assignee: t.assignee?.name || null,
+        },
+      }));
+
+      allEvents = allEvents.concat(taskEvents);
+    }
+  }
+
+  if (allEvents.length > 0) {
+    await sb.from('events').upsert(allEvents, { onConflict: 'org_id,source,external_id' });
+    synced = allEvents.length;
+  }
+
+  return { synced, data: { events: allEvents } };
+}
+
+// ─── Trello Sync ───
+
+async function syncTrello(sb, orgId, accessToken) {
+  const TRELLO_KEY = process.env.TRELLO_API_KEY || '';
+  const baseParams = `key=${TRELLO_KEY}&token=${accessToken}`;
+
+  const boardsRes = await fetch(`https://api.trello.com/1/members/me/boards?${baseParams}&fields=name,desc,dateLastActivity,closed`);
+  if (!boardsRes.ok) throw new Error(`Trello boards error: ${boardsRes.status}`);
+  const boards = await boardsRes.json();
+
+  let synced = 0;
+  let allEvents = [];
+
+  for (const board of (boards || []).filter((b) => !b.closed).slice(0, 10)) {
+    const cardsRes = await fetch(
+      `https://api.trello.com/1/boards/${board.id}/cards?${baseParams}&fields=name,desc,due,dateLastActivity,closed,idList,labels&members=true&member_fields=fullName`,
+    );
+    if (!cardsRes.ok) continue;
+    const cards = await cardsRes.json();
+
+    const cardEvents = (cards || []).filter((c) => !c.closed).map((c) => ({
+      org_id: orgId,
+      source: 'trello',
+      external_id: c.id,
+      title: c.name || 'Carte sans titre',
+      description: c.desc || '',
+      date: c.due ? new Date(c.due).toISOString().split('T')[0] : new Date(c.dateLastActivity || Date.now()).toISOString().split('T')[0],
+      start_at: c.dateLastActivity || null,
+      end_at: c.due || null,
+      location: '',
+      metadata: {
+        board: board.name,
+        list_id: c.idList,
+        labels: (c.labels || []).map((l) => l.name || l.color),
+        members: (c.members || []).map((m) => m.fullName),
+      },
+    }));
+
+    allEvents = allEvents.concat(cardEvents);
+  }
+
+  if (allEvents.length > 0) {
+    await sb.from('events').upsert(allEvents, { onConflict: 'org_id,source,external_id' });
+    synced = allEvents.length;
+  }
+
+  return { synced, data: { events: allEvents } };
+}
+
+// ─── Monday Sync ───
+
+async function syncMonday(sb, orgId, accessToken) {
+  const MONDAY_BASE = 'https://api.monday.com/v2';
+  const mondayHeaders = {
+    Authorization: accessToken,
+    'Content-Type': 'application/json',
+  };
+
+  const query = `{
+    boards(limit: 20) {
+      id name
+      items_page(limit: 100) {
+        items {
+          id name created_at updated_at
+          column_values { id text type value }
+          group { title }
+        }
+      }
+    }
+  }`;
+
+  const mondayRes = await fetch(MONDAY_BASE, {
+    method: 'POST',
+    headers: mondayHeaders,
+    body: JSON.stringify({ query }),
+  });
+  if (!mondayRes.ok) throw new Error(`Monday API error: ${mondayRes.status}`);
+  const mondayData = await mondayRes.json();
+
+  const boards = mondayData.data?.boards || [];
+  let allEvents = [];
+
+  for (const board of boards) {
+    const items = board.items_page?.items || [];
+    const boardEvents = items.map((item) => {
+      const dateCol = item.column_values?.find((c) => c.type === 'date');
+      const statusCol = item.column_values?.find((c) => c.type === 'status' || c.type === 'color');
+      const personCol = item.column_values?.find((c) => c.type === 'people' || c.type === 'person');
+
+      return {
+        org_id: orgId,
+        source: 'monday',
+        external_id: item.id,
+        title: item.name || 'Élément sans titre',
+        description: '',
+        date: dateCol?.text || (item.created_at ? new Date(item.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+        start_at: item.created_at || null,
+        end_at: dateCol?.text ? `${dateCol.text}T23:59:59Z` : null,
+        location: '',
+        metadata: {
+          board: board.name,
+          group: item.group?.title || '',
+          status: statusCol?.text || '',
+          assignee: personCol?.text || '',
+        },
+      };
+    });
+
+    allEvents = allEvents.concat(boardEvents);
+  }
+
+  if (allEvents.length > 0) {
+    await sb.from('events').upsert(allEvents, { onConflict: 'org_id,source,external_id' });
+  }
+
+  return { synced: allEvents.length, data: { events: allEvents } };
+}
+
+// ─── Jira Sync ───
+
+async function syncJira(sb, orgId, accessToken) {
+  const resourcesRes = await fetch('https://api.atlassian.com/oauth/token/accessible-resources', {
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
+  });
+  if (!resourcesRes.ok) throw new Error(`Jira resources error: ${resourcesRes.status}`);
+  const resources = await resourcesRes.json();
+
+  let synced = 0;
+  let allEvents = [];
+
+  for (const site of (resources || []).slice(0, 3)) {
+    const cloudId = site.id;
+    const JIRA_BASE = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3`;
+    const jiraHeaders = { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' };
+
+    const jql = encodeURIComponent('order by updated DESC');
+    const issuesRes = await fetch(
+      `${JIRA_BASE}/search?jql=${jql}&maxResults=100&fields=summary,description,status,assignee,priority,created,updated,duedate,project`,
+      { headers: jiraHeaders },
+    );
+    if (!issuesRes.ok) continue;
+    const issuesData = await issuesRes.json();
+
+    const issueEvents = (issuesData.issues || []).map((issue) => {
+      const fields = issue.fields || {};
+      return {
+        org_id: orgId,
+        source: 'jira',
+        external_id: issue.id,
+        title: `${issue.key}: ${fields.summary || 'Sans titre'}`,
+        description: typeof fields.description === 'string' ? fields.description : (fields.description?.content?.[0]?.content?.[0]?.text || ''),
+        date: fields.duedate || (fields.updated ? new Date(fields.updated).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+        start_at: fields.created || null,
+        end_at: fields.duedate ? `${fields.duedate}T23:59:59Z` : null,
+        location: '',
+        metadata: {
+          site: site.name,
+          project: fields.project?.name || '',
+          status: fields.status?.name || '',
+          priority: fields.priority?.name || '',
+          assignee: fields.assignee?.displayName || '',
+          key: issue.key,
+        },
+      };
+    });
+
+    allEvents = allEvents.concat(issueEvents);
+  }
+
+  if (allEvents.length > 0) {
+    await sb.from('events').upsert(allEvents, { onConflict: 'org_id,source,external_id' });
+    synced = allEvents.length;
+  }
+
+  return { synced, data: { events: allEvents } };
+}
+
+// ─── Zendesk Sync ───
+
+async function syncZendesk(sb, orgId, accessToken, metadata) {
+  const subdomain = metadata?.subdomain;
+  if (!subdomain) throw new Error('Sous-domaine Zendesk non configuré');
+  const ZD_BASE = `https://${subdomain}.zendesk.com/api/v2`;
+  const zdHeaders = { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' };
+
+  const ticketsRes = await fetch(`${ZD_BASE}/tickets?per_page=100&sort_by=updated_at&sort_order=desc`, { headers: zdHeaders });
+  if (!ticketsRes.ok) throw new Error(`Zendesk tickets error: ${ticketsRes.status}`);
+  const ticketsData = await ticketsRes.json();
+
+  const zdEvents = (ticketsData.tickets || []).map((t) => ({
+    org_id: orgId,
+    source: 'zendesk',
+    external_id: String(t.id),
+    title: t.subject || `Ticket #${t.id}`,
+    description: t.description || '',
+    date: t.updated_at ? new Date(t.updated_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    start_at: t.created_at || null,
+    end_at: t.updated_at || null,
+    location: '',
+    metadata: {
+      status: t.status,
+      priority: t.priority,
+      type: t.type,
+      requester_id: t.requester_id,
+      assignee_id: t.assignee_id,
+      tags: t.tags,
+    },
+  }));
+
+  const usersRes = await fetch(`${ZD_BASE}/users?per_page=100&role=end-user`, { headers: zdHeaders });
+  let zdContacts = [];
+  if (usersRes.ok) {
+    const usersData = await usersRes.json();
+    zdContacts = (usersData.users || []).map((u) => ({
+      org_id: orgId,
+      source: 'zendesk',
+      external_id: String(u.id),
+      name: u.name || u.email || 'Sans nom',
+      email: u.email || '',
+      phone: u.phone || '',
+      company: u.organization_id ? `Org ${u.organization_id}` : '',
+      metadata: { role: u.role, active: u.active, tags: u.tags },
+    }));
+  }
+
+  if (zdEvents.length > 0) {
+    await sb.from('events').upsert(zdEvents, { onConflict: 'org_id,source,external_id' });
+  }
+  if (zdContacts.length > 0) {
+    await sb.from('contacts').upsert(zdContacts, { onConflict: 'org_id,source,external_id' });
+  }
+
+  return { synced: zdEvents.length + zdContacts.length, data: { events: zdEvents, contacts: zdContacts } };
+}
+
+// ─── Freshdesk Sync ───
+
+async function syncFreshdesk(sb, orgId, accessToken, metadata) {
+  const fdDomain = metadata?.domain;
+  if (!fdDomain) throw new Error('Domaine Freshdesk non configuré');
+  const FD_BASE = `https://${fdDomain}/api/v2`;
+  const fdHeaders = {
+    Authorization: 'Basic ' + Buffer.from(`${accessToken}:X`).toString('base64'),
+    'Content-Type': 'application/json',
+  };
+
+  const ticketsRes = await fetch(`${FD_BASE}/tickets?per_page=100&order_by=updated_at&order_type=desc`, { headers: fdHeaders });
+  if (!ticketsRes.ok) throw new Error(`Freshdesk tickets error: ${ticketsRes.status}`);
+  const fdTickets = await ticketsRes.json();
+
+  const fdStatusMap = { 2: 'open', 3: 'pending', 4: 'resolved', 5: 'closed' };
+  const fdPriorityMap = { 1: 'low', 2: 'medium', 3: 'high', 4: 'urgent' };
+
+  const fdEvents = (fdTickets || []).map((t) => ({
+    org_id: orgId,
+    source: 'freshdesk',
+    external_id: String(t.id),
+    title: t.subject || `Ticket #${t.id}`,
+    description: t.description_text || '',
+    date: t.updated_at ? new Date(t.updated_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    start_at: t.created_at || null,
+    end_at: t.updated_at || null,
+    location: '',
+    metadata: {
+      status: fdStatusMap[t.status] || t.status,
+      priority: fdPriorityMap[t.priority] || t.priority,
+      type: t.type,
+      requester_id: t.requester_id,
+      tags: t.tags,
+    },
+  }));
+
+  const fdContactsRes = await fetch(`${FD_BASE}/contacts?per_page=100&order_by=updated_at&order_type=desc`, { headers: fdHeaders });
+  let fdContacts = [];
+  if (fdContactsRes.ok) {
+    const fdContactsData = await fdContactsRes.json();
+    fdContacts = (fdContactsData || []).map((c) => ({
+      org_id: orgId,
+      source: 'freshdesk',
+      external_id: String(c.id),
+      name: c.name || c.email || 'Sans nom',
+      email: c.email || '',
+      phone: c.phone || c.mobile || '',
+      company: c.company_id ? `Company ${c.company_id}` : '',
+      metadata: { active: c.active, tags: c.tags, language: c.language },
+    }));
+  }
+
+  if (fdEvents.length > 0) {
+    await sb.from('events').upsert(fdEvents, { onConflict: 'org_id,source,external_id' });
+  }
+  if (fdContacts.length > 0) {
+    await sb.from('contacts').upsert(fdContacts, { onConflict: 'org_id,source,external_id' });
+  }
+
+  return { synced: fdEvents.length + fdContacts.length, data: { events: fdEvents, contacts: fdContacts } };
+}
+
+// ─── Intercom Sync ───
+
+async function syncIntercom(sb, orgId, accessToken) {
+  const IC_BASE = 'https://api.intercom.io';
+  const icHeaders = {
+    Authorization: `Bearer ${accessToken}`,
+    Accept: 'application/json',
+    'Intercom-Version': '2.10',
+  };
+
+  const icContactsRes = await fetch(`${IC_BASE}/contacts?per_page=100`, { headers: icHeaders });
+  if (!icContactsRes.ok) throw new Error(`Intercom contacts error: ${icContactsRes.status}`);
+  const icContactsData = await icContactsRes.json();
+
+  const icContacts = (icContactsData.data || []).map((c) => ({
+    org_id: orgId,
+    source: 'intercom',
+    external_id: c.id,
+    name: c.name || c.email || 'Sans nom',
+    email: c.email || '',
+    phone: c.phone || '',
+    company: '',
+    status: c.role === 'user' ? 'client' : 'prospect',
+    metadata: {
+      role: c.role,
+      created_at: c.created_at,
+      last_seen_at: c.last_seen_at,
+      signed_up_at: c.signed_up_at,
+      browser: c.browser,
+      os: c.os,
+    },
+  }));
+
+  const convoRes = await fetch(`${IC_BASE}/conversations?per_page=50&order=updated_at&sort=desc`, { headers: icHeaders });
+  let icEvents = [];
+  if (convoRes.ok) {
+    const convoData = await convoRes.json();
+    icEvents = (convoData.conversations || []).map((cv) => ({
+      org_id: orgId,
+      source: 'intercom',
+      external_id: cv.id,
+      title: cv.title || cv.source?.subject || `Conversation #${cv.id}`,
+      description: cv.source?.body || '',
+      date: cv.updated_at ? new Date(cv.updated_at * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      start_at: cv.created_at ? new Date(cv.created_at * 1000).toISOString() : null,
+      end_at: cv.updated_at ? new Date(cv.updated_at * 1000).toISOString() : null,
+      location: '',
+      metadata: {
+        state: cv.state,
+        open: cv.open,
+        read: cv.read,
+        priority: cv.priority,
+        tags: (cv.tags?.tags || []).map((tag) => tag.name),
+      },
+    }));
+  }
+
+  if (icContacts.length > 0) {
+    await sb.from('contacts').upsert(icContacts, { onConflict: 'org_id,source,external_id' });
+  }
+  if (icEvents.length > 0) {
+    await sb.from('events').upsert(icEvents, { onConflict: 'org_id,source,external_id' });
+  }
+
+  return { synced: icContacts.length + icEvents.length, data: { contacts: icContacts, events: icEvents } };
+}
+
 // ─── Sync Dispatcher ───
 
 const SYNC_HANDLERS = {
@@ -1491,6 +1974,14 @@ const SYNC_HANDLERS = {
   'linkedin ads': syncLinkedInAds,
   notion: syncNotion,
   slack: syncSlack,
+  woocommerce: syncWooCommerce,
+  asana: syncAsana,
+  trello: syncTrello,
+  monday: syncMonday,
+  jira: syncJira,
+  zendesk: syncZendesk,
+  freshdesk: syncFreshdesk,
+  intercom: syncIntercom,
 };
 
 // In-memory rate limiter for sync endpoint (heavy operations)
