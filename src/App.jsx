@@ -460,19 +460,20 @@ function AppInner(){
   const nb={...socBank,[socId]:data};setSocBank(nb);await sSet("scAb",nb);
  },[socs,socBank]);
  const syncAllSocBanks=useCallback(async()=>{
-  const entries=await Promise.all(socs.filter(x=>["active","lancement"].includes(x.stat)&&x.id!=="eco").map(async s=>{
+  const results=await Promise.allSettled(socs.filter(x=>["active","lancement"].includes(x.stat)&&x.id!=="eco").map(async s=>{
    let data=null;
    if(s.revolutCompany){data=await syncSocRevolut(s);}
    if(!data)data=mkSocRevDemo(s);
    return[s.id,data];
   }));
+  const entries=results.filter(r=>r.status==="fulfilled").map(r=>r.value);
   const nb=Object.fromEntries(entries);
   setSocBank(nb);await sSet("scAb",nb);
  },[socs]);
  useEffect(()=>{
   if(!loaded||!role)return;
   let fails=0,id;
-  const doSync=async()=>{try{await Promise.all([syncRev(),syncAllSocBanks(),syncStripeData().then(sd=>{if(sd)setStripeData(sd);})]);fails=0;} catch(e){fails=Math.min(fails+1,4);console.warn("Auto-sync failed:",e);}};
+  const doSync=async()=>{try{const sr=await Promise.allSettled([syncRev(),syncAllSocBanks(),syncStripeData().then(sd=>{if(sd)setStripeData(sd);})]);const anyFailed=sr.some(r=>r.status==="rejected");if(anyFailed){fails=Math.min(fails+1,4);sr.filter(r=>r.status==="rejected").forEach(r=>console.warn("Auto-sync partial failure:",r.reason));}else{fails=0;}} catch(e){fails=Math.min(fails+1,4);console.warn("Auto-sync failed:",e);}};
   const schedule=()=>{const ms=Math.min(60000*Math.pow(2,fails),600000);id=setTimeout(tick,ms);};
   const tick=()=>{if(document.hidden){id=setTimeout(tick,5000);return;}doSync().finally(schedule);};
   doSync();schedule();
@@ -624,11 +625,11 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
      <button onClick={()=>setMissedRecap(null)} style={{padding:"8px 24px",borderRadius:10,border:"none",background:`linear-gradient(135deg,${C.acc},#FF9D00)`,color:"#000",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:FONT}}>C'est noté 👊</button>
     </div>
    </div>
-  </div>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData} oauthTokens={oauthTokens} onSyncGHL={syncGHL} onSyncRevolut={async()=>{await Promise.all([syncRev(),syncAllSocBanks()]);}} onSyncStripe={async()=>{const sd=await syncStripeData();if(sd)setStripeData(sd);}} onSyncAds={async(socId)=>{const d=await syncAdData(socId,oauthTokens);return d;}}/></></ErrorBoundary>;}
+  </div>}<SocieteView key={soc.id} soc={soc} reps={reps} allM={allM} save={save} onLogout={()=>{setRole(null);setShowTour(false);setAuthUser(null);localStorage.removeItem("sc_auth_token");localStorage.removeItem("sc_auth_refresh");try{fetch("/api/auth?action=logout",{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("sc_auth_token")||"")}});}catch{}}} onTour={()=>setShowTour(true)} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[soc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData} oauthTokens={oauthTokens} onSyncGHL={syncGHL} onSyncRevolut={async()=>{await Promise.allSettled([syncRev(),syncAllSocBanks()]);}} onSyncStripe={async()=>{const sd=await syncStripeData();if(sd)setStripeData(sd);}} onSyncAds={async(socId)=>{const d=await syncAdData(socId,oauthTokens);return d;}}/></></ErrorBoundary>;}
  if(showPulse)return <><style>{CSS}{POLISH_CSS}</style><LazyErrorBoundary><Suspense fallback={<LazyFallback/>}><PulseScreen socs={socs} reps={reps} allM={allM} ghlData={ghlData} socBank={socBank} hold={hold} clients={clients} onClose={()=>setShowPulse(false)}/></Suspense></LazyErrorBoundary></>;
  if(meeting)return <MeetingMode socs={socs} reps={reps} hold={hold} actions={actions} pulses={pulses} allM={allM} clients={clients} onExit={()=>setMeeting(false)}/>;
  /* ADMIN → Porteur View Override */
- if(adminSocView){const asoc=socs.find(s=>s.id===adminSocView);if(asoc)return <SocieteView key={asoc.id} soc={asoc} reps={reps} allM={allM} save={save} onLogout={()=>setAdminSocView(null)} onTour={()=>{}} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[asoc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData} adminBack={()=>setAdminSocView(null)} oauthTokens={oauthTokens} onSyncGHL={syncGHL} onSyncRevolut={async()=>{await Promise.all([syncRev(),syncAllSocBanks()]);}} onSyncStripe={async()=>{const sd=await syncStripeData();if(sd)setStripeData(sd);}} onSyncAds={async(socId)=>{const d=await syncAdData(socId,oauthTokens);return d;}}/>;}
+ if(adminSocView){const asoc=socs.find(s=>s.id===adminSocView);if(asoc)return <SocieteView key={asoc.id} soc={asoc} reps={reps} allM={allM} save={save} onLogout={()=>setAdminSocView(null)} onTour={()=>{}} actions={actions} journal={journal} pulses={pulses} saveAJ={saveAJ} savePulse={savePulse} socBankData={socBank[asoc.id]||null} syncSocBank={syncSocBank} okrs={okrs} saveOkrs={saveOkrs} kb={kb} saveKb={saveKb} socs={socs} subs={subs} saveSubs={saveSubs} team={team} saveTeam={saveTeam} clients={clients} saveClients={saveClients} ghlData={ghlData} invoices={invoices} saveInvoices={saveInvoices} hold={hold} onThemeToggle={toggleTheme} stripeData={stripeData} adminBack={()=>setAdminSocView(null)} oauthTokens={oauthTokens} onSyncGHL={syncGHL} onSyncRevolut={async()=>{await Promise.allSettled([syncRev(),syncAllSocBanks()]);}} onSyncStripe={async()=>{const sd=await syncStripeData();if(sd)setStripeData(sd);}} onSyncAds={async(socId)=>{const d=await syncAdData(socId,oauthTokens);return d;}}/>;}
  let hc;try{hc=calcH(socs,reps,hold,cM2);}catch(e){hc={tIn:0,dispo:0,pf:0};console.error("calcH error:",e);}const pending=socs.filter(s=>{const r=gr(reps,s.id,cM2);return r&&!r.ok;});
  const missing=actS.filter(s=>!gr(reps,s.id,cM2));const lateActions=actions.filter(a=>!a.done&&a.deadline<cM2);
  return <div className="glass-bg" style={{display:"flex",minHeight:"100vh",fontFamily:FONT,color:C.t}}>
@@ -1271,7 +1272,7 @@ setLErr("Code incorrect");setShake(true);setTimeout(()=>setShake(false),500);},[
    </Sect>
    <div style={{marginTop:12}}><Btn onClick={()=>{save(null,null,hold);}}>💾 Sauvegarder les paramètres</Btn></div>
   </>}
-  {tab===19&&<IntegrationsPanel socs={socs} oauthTokens={oauthTokens} isAdmin onSyncGHL={syncGHL} onSyncRevolut={async()=>{await Promise.all([syncRev(),syncAllSocBanks()]);}} onSyncStripe={async()=>{const sd=await syncStripeData();if(sd)setStripeData(sd);}} onSyncAds={async(socId)=>{const d=await syncAdData(socId,oauthTokens);if(d){try{localStorage.setItem("sc_adData_"+socId,JSON.stringify({data:d,ts:Date.now()}));}catch{}}return d;}}/>}
+  {tab===19&&<IntegrationsPanel socs={socs} oauthTokens={oauthTokens} isAdmin onSyncGHL={syncGHL} onSyncRevolut={async()=>{await Promise.allSettled([syncRev(),syncAllSocBanks()]);}} onSyncStripe={async()=>{const sd=await syncStripeData();if(sd)setStripeData(sd);}} onSyncAds={async(socId)=>{const d=await syncAdData(socId,oauthTokens);if(d){try{localStorage.setItem("sc_adData_"+socId,JSON.stringify({data:d,ts:Date.now()}));}catch{}}return d;}}/>}
   </PageTransition>
   </div>
   </main>

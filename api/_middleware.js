@@ -98,7 +98,9 @@ export function rateLimit(storeName, key, maxRequests = 30, windowMs = 60000) {
  * Get client IP from request
  */
 export function getClientIP(req) {
-  return req.headers["x-forwarded-for"]?.split(',')[0]?.trim()
+  // Prefer x-real-ip (set by Vercel, harder to spoof) over x-forwarded-for
+  return req.headers["x-real-ip"]
+    || req.headers["x-forwarded-for"]?.split(',')[0]?.trim()
     || req.socket?.remoteAddress
     || "unknown";
 }

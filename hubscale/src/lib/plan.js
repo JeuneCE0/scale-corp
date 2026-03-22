@@ -18,9 +18,11 @@ export function getPlan() {
   return load('plan') || 'starter';
 }
 
-/** Returns true if user plan meets the minimum required plan */
+/** Returns true if user plan meets the minimum required plan (including active trial) */
 export function hasPlan(minPlan) {
-  if (!isPaid()) return false;
+  const trial = getTrialInfo();
+  const onActiveTrial = trial && !trial.expired;
+  if (!isPaid() && !onActiveTrial) return false;
   const current = getPlan();
   return (PLAN_RANK[current] || 0) >= (PLAN_RANK[minPlan] || 0);
 }

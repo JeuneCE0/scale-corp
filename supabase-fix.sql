@@ -1,3 +1,8 @@
+-- ⚠️  WARNING: This migration replaces normalized columns with a single JSONB 'data' column.
+-- It is DESTRUCTIVE and will cause data loss if applied to a populated database.
+-- Only use for fresh database initialization or after a full data export.
+-- The main application schema is defined in supabase-schema.sql.
+
 -- Run this in Supabase Dashboard > SQL Editor
 -- Recreates societies and holding tables with JSONB storage
 
