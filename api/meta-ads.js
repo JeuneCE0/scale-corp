@@ -42,7 +42,10 @@ export default async function handler(req, res) {
   if (!rateLimit('meta-ads', ip, 20)) return tooManyRequests(res);
 
   const auth = await verifyAuth(req);
-  if (!auth) apiLog('warn', { api: 'meta-ads', reason: 'unauthed', ip });
+  if (!auth) {
+    apiLog('warn', { api: 'meta-ads', reason: 'unauthed', ip });
+    return res.status(401).json({ error: 'Authentication required' });
+  }
 
   const { action, societyId, adAccountId, dateRange, level } = req.body || {};
   if (!action || !VALID_ACTIONS.includes(action)) return badRequest(res, 'Invalid action');

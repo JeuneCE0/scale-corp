@@ -75,7 +75,9 @@ export default async function handler(req, res) {
   const auth = await verifyAuth(req);
   if (!auth) {
     apiLog('warn', { api: 'revolut', action, reason: 'unauthed', ip });
-  } else if (company && !getAllowedRevolutCompany(auth, company)) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  if (company && !getAllowedRevolutCompany(auth, company)) {
     return res.status(403).json({ error: "Access denied to this company" });
   }
 
