@@ -5,6 +5,7 @@ import { t } from '../lib/i18n.js';
 
 export function useNotifications() {
   const compute = useCallback(() => {
+    try {
     const notifs = [];
     const now = new Date();
 
@@ -164,6 +165,10 @@ export function useNotifications() {
     }
 
     return notifs;
+    } catch (err) {
+      console.warn('[useNotifications] Failed to compute notifications:', err);
+      return [];
+    }
   }, []);
 
   return compute;

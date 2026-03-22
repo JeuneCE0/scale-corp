@@ -16,7 +16,7 @@ export default function Login({ onAuth, initialMode, onBack, onForgotPassword })
   const emailRef = useRef(null);
 
   // Ensure demo account exists on mount (only in local mode)
-  useEffect(() => { ensureDemoAccount(); }, []);
+  useEffect(() => { ensureDemoAccount().catch(() => {}); }, []);
 
   // Autofocus email field
   useEffect(() => {

@@ -8,6 +8,7 @@
 
 import crypto from 'crypto';
 import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest, fetchWithTimeout } from './_middleware.js';
+import { sbHeaders } from './lib/supabase-helpers.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -115,14 +116,6 @@ const VALID_PROVIDERS = ['ghl', 'revolut', 'qonto', 'meta', 'google_ads', 'tikto
 const VALID_ACTIONS = ['authorize', 'callback', 'disconnect', 'status'];
 
 // --- Supabase token storage ---
-
-function sbHeaders() {
-  return {
-    apikey: SUPABASE_SERVICE_KEY,
-    Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-    'Content-Type': 'application/json',
-  };
-}
 
 async function storeToken(provider, societyId, tokenData) {
   const payload = {

@@ -143,7 +143,7 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
 
   const cardRef = useRef(null);
 
-  useEffect(() => { ensureDemoAccount(); }, []);
+  useEffect(() => { ensureDemoAccount().catch(() => {}); }, []);
 
   // Focus first field on step change
   useEffect(() => {

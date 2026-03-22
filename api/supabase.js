@@ -1,5 +1,6 @@
 // Vercel Serverless — Supabase REST API Proxy (Hardened)
 import { applyHeaders, rateLimit, getClientIP, apiLog, sanitizeParam, tooManyRequests, badRequest } from './_middleware.js';
+import { sbHeaders } from './lib/supabase-helpers.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -7,15 +8,6 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 // Whitelist of allowed tables — must be updated manually when new tables are added to the schema
 const TABLES = ['users', 'societies', 'client_data', 'meta_ads', 'sales_data', 'reports', 'tx_categories', 'user_settings', 'holding', 'api_tokens', 'ad_attribution', 'affiliate_clicks', 'affiliate_pending_referrals', 'affiliate_referrals', 'affiliate_commissions', 'affiliate_payouts'];
 const ACTIONS = ['get', 'list', 'upsert', 'delete'];
-
-function sbHeaders(extra = {}) {
-  return {
-    apikey: SUPABASE_SERVICE_KEY,
-    Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-    "Content-Type": "application/json",
-    ...extra,
-  };
-}
 
 export default async function handler(req, res) {
   applyHeaders(req, res);

@@ -1,21 +1,13 @@
 // Vercel Serverless — Affiliate Payout API
 // Handles payout requests, status updates, and affiliate stats
 import { applyHeaders, verifyAuth, canAccessSociety, rateLimit, getClientIP, apiLog, badRequest, unauthorized, forbidden, tooManyRequests } from './_middleware.js';
+import { sbHeaders } from './lib/supabase-helpers.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 const MIN_PAYOUT = 50; // minimum 50€
 const COMMISSION_RATE = 0.20; // 20%
-
-function sbHeaders(extra = {}) {
-  return {
-    apikey: SUPABASE_SERVICE_KEY,
-    Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-    "Content-Type": "application/json",
-    ...extra,
-  };
-}
 
 async function sbFetch(path, opts = {}) {
   const url = `${SUPABASE_URL}/rest/v1/${path}`;
