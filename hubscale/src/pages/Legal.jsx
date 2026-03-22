@@ -135,7 +135,7 @@ function CGU() {
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', margin: '16px 0' }}>
         {[
-          { name: 'Essentiel', price: '49', features: ['1 utilisateur', 'CRM (100 contacts)', 'Dashboard complet', 'Données financières', 'Export PDF & FEC', 'Support email'] },
+          { name: 'Essentiel', price: '49', features: ['1 utilisateur', 'CRM (100 contacts)', 'Dashboard complet', 'Données financières', 'Export PDF & FEC', 'Accès API & Intégrations', 'Support email'] },
           { name: 'Business', price: '149', features: ['5 utilisateurs', 'CRM illimité', 'Analytics & rapports', 'Prévisions IA', 'Simulateur publicitaire', 'Intégrations API (60+)', 'Tous les exports', 'Support prioritaire'] },
           { name: 'Scale', price: '349', features: ['Utilisateurs illimités', 'Tout Business +', 'KPI personnalisés', 'Backup automatique 24h', 'Webhooks avancés', 'Onboarding dédié', 'Account manager', 'SLA 99.9%'] },
         ].map((plan) => (

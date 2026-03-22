@@ -923,7 +923,6 @@ export default function Settings() {
       {/* -------- INTÉGRATIONS -------- */}
       {subTab === 'integrations' && (
         <Section title={t('settings.integrations').toUpperCase()} sub={t('settings.searchIntegrations')}>
-          <PremiumGate label={t('settings.integrations')} blur>
           {/* Search bar + Category filter */}
           <Card style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1548,7 +1547,6 @@ export default function Settings() {
               </div>
             )}
           </Card>
-          </PremiumGate>
         </Section>
       )}
 

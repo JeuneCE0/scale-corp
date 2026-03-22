@@ -1,8 +1,7 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { T } from '../lib/theme.js';
-import { store, load } from '../lib/store.js';
-import { Card, Btn, Inp, Sel, ProgressBar, ChecklistItem, Badge } from '../components/ui.jsx';
-import { generateDemoContacts, generateDemoEvents, generateDemoFinHistory } from '../lib/utils.js';
+import { store } from '../lib/store.js';
+import { Card, Btn, Inp, Sel, ProgressBar, ChecklistItem } from '../components/ui.jsx';
 import { ONBOARDING_CHECKLIST } from '../lib/constants.js';
 
 const STEPS = [
@@ -49,7 +48,6 @@ export default function Onboarding({ onComplete }) {
   const [selectedTools, setSelectedTools] = useState([]);
   const [apiKeys, setApiKeys] = useState({ stripe: '', revolut: '', ghl: '', meta: '' });
   const [dataSources, setDataSources] = useState([]);
-  const [prefillDemo, setPrefillDemo] = useState(true);
 
   const progress = (step / STEPS.length) * 100;
   const toggleTool = useCallback((id) => setSelectedTools((prev) => prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]), []);
@@ -57,39 +55,14 @@ export default function Onboarding({ onComplete }) {
   const next = useCallback(() => setStep((s) => Math.min(s + 1, 5)), []);
   const prev = useCallback(() => setStep((s) => Math.max(s - 1, 1)), []);
 
-  // Compute demo data summary for the celebration step
-  const demoSummary = useMemo(() => {
-    const existingContacts = load('contacts');
-    const existingEvents = load('events');
-    const existingFin = load('finHistory');
-    const demoContacts = generateDemoContacts();
-    const demoEvents = generateDemoEvents();
-    const demoFin = generateDemoFinHistory();
-    return {
-      contacts: existingContacts ? existingContacts.length : demoContacts.length,
-      events: existingEvents ? existingEvents.length : demoEvents.length,
-      months: existingFin ? existingFin.length : demoFin.length,
-      hasExistingContacts: !!existingContacts && existingContacts.length > 0,
-      hasExistingEvents: !!existingEvents && existingEvents.length > 0,
-      hasExistingFin: !!existingFin && existingFin.length > 0,
-    };
-  }, []);
-
   const finish = useCallback(() => {
     store('company', company);
     store('tools', selectedTools);
     // API keys are not stored in localStorage for security — they should be sent to a secure backend
     store('dataSources', dataSources);
 
-    // Populate demo data if toggle is on and no existing data
-    if (prefillDemo) {
-      if (!demoSummary.hasExistingContacts) store('contacts', generateDemoContacts());
-      if (!demoSummary.hasExistingEvents) store('events', generateDemoEvents());
-      if (!demoSummary.hasExistingFin) store('finHistory', generateDemoFinHistory());
-    }
-
     if (onComplete) onComplete();
-  }, [company, selectedTools, dataSources, onComplete, prefillDemo, demoSummary]);
+  }, [company, selectedTools, dataSources, onComplete]);
 
   const skip = useCallback(() => { if (onComplete) onComplete(); }, [onComplete]);
 
@@ -212,13 +185,6 @@ export default function Onboarding({ onComplete }) {
               Votre espace client est configuré. Découvrez les fonctionnalités principales de HubScale.
             </p>
 
-            {/* Summary badge row */}
-            <div className="fade-up d2" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
-              <Badge label={`${demoSummary.contacts} contacts`} color={T.accent} bg={T.accentBg} />
-              <Badge label={`${demoSummary.events} événements`} color={T.blue} bg={T.blueBg} />
-              <Badge label={`${demoSummary.months} mois de données`} color={T.green} bg={T.greenBg} />
-            </div>
-
             {/* Feature preview grid */}
             <div className="kpi-grid fade-up d3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, maxWidth: 500, margin: '0 auto' }}>
               {[
@@ -246,35 +212,6 @@ export default function Onboarding({ onComplete }) {
             </div>
           </div>
 
-          {/* Demo data toggle */}
-          <div className="fade-up d5" style={{
-            marginTop: 20, padding: 14, borderRadius: 10,
-            background: T.accentBg, border: `1px solid ${T.accent}22`,
-            display: 'flex', alignItems: 'center', gap: 12,
-          }}>
-            <div
-              onClick={() => setPrefillDemo((v) => !v)}
-              role="checkbox"
-              aria-checked={prefillDemo}
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPrefillDemo((v) => !v); } }}
-              style={{
-                width: 20, height: 20, borderRadius: 6, flexShrink: 0,
-                border: `2px solid ${prefillDemo ? T.accent : T.border}`,
-                background: prefillDemo ? T.accent : 'transparent',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', transition: 'all .15s',
-              }}
-            >
-              {prefillDemo && <span style={{ color: '#fff', fontSize: 11, fontWeight: 700, lineHeight: 1 }}>✓</span>}
-            </div>
-            <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setPrefillDemo((v) => !v)}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: T.accent }}>Pré-remplir avec des données de démonstration</div>
-              <div style={{ fontSize: 10, color: T.textSecondary, marginTop: 2 }}>
-                Votre espace sera prêt avec {demoSummary.contacts} contacts, {demoSummary.events} événements et {demoSummary.months} mois de données
-              </div>
-            </div>
-          </div>
         </Card>
       )}
 

@@ -2,8 +2,8 @@
 import { load } from './store.js';
 
 /**
- * Plan hierarchy: trial (no payment) < starter < professional < enterprise
- * During the 14-day trial, premium features are locked to push conversion.
+ * Plan hierarchy: starter < professional < enterprise
+ * During the 14-day free trial, all starter features (including API access) are unlocked.
  */
 
 const PLAN_RANK = { starter: 1, professional: 2, enterprise: 3 };
@@ -22,7 +22,10 @@ export function getPlan() {
 export function hasPlan(minPlan) {
   const trial = getTrialInfo();
   const onActiveTrial = trial && !trial.expired;
+  // Starter features (including API) are available during active trial
   if (!isPaid() && !onActiveTrial) return false;
+  // During active trial, grant at least starter-level access
+  if (onActiveTrial && !isPaid() && (PLAN_RANK[minPlan] || 0) <= PLAN_RANK.starter) return true;
   const current = getPlan();
   return (PLAN_RANK[current] || 0) >= (PLAN_RANK[minPlan] || 0);
 }
