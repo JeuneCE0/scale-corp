@@ -6,7 +6,8 @@
 //    → stores token in Supabase api_tokens table
 //    → redirects back to app with success/error
 
-import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest } from './_middleware.js';
+import crypto from 'crypto';
+import { applyHeaders, verifyAuth, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest, fetchWithTimeout } from './_middleware.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -194,7 +195,7 @@ async function refreshProviderToken(provider, config, storedToken) {
     client_secret: config.clientSecret,
   });
 
-  const r = await fetch(config.tokenUrl, {
+  const r = await fetchWithTimeout(config.tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
@@ -219,7 +220,7 @@ async function refreshProviderToken(provider, config, storedToken) {
 // --- State parameter (CSRF protection) ---
 
 function generateState(societyId, provider) {
-  const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const nonce = crypto.randomBytes(24).toString('hex');
   // Encode society + nonce in state; we'll verify nonce format on callback
   return Buffer.from(JSON.stringify({ societyId, provider, nonce })).toString('base64url');
 }
@@ -369,7 +370,7 @@ export default async function handler(req, res) {
 
       if (provider === 'tiktok') {
         // TikTok uses JSON body, not form-encoded
-        const tiktokRes = await fetch(config.tokenUrl, {
+        const tiktokRes = await fetchWithTimeout(config.tokenUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ app_id: config.clientId, secret: config.clientSecret, auth_code: code }),
@@ -403,7 +404,7 @@ export default async function handler(req, res) {
           body.set('grant_type', 'authorization_code');
         }
 
-        const tokenRes = await fetch(config.tokenUrl, {
+        const tokenRes = await fetchWithTimeout(config.tokenUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: body.toString(),
@@ -420,7 +421,17 @@ export default async function handler(req, res) {
         // Meta: exchange short-lived token for long-lived token (60 days)
         if (provider === 'meta' && config.exchangeLongLived && tokenData.access_token) {
           try {
-            const llRes = await fetch(`https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${config.clientId}&client_secret=${config.clientSecret}&fb_exchange_token=${tokenData.access_token}`);
+            const llParams = new URLSearchParams({
+              grant_type: 'fb_exchange_token',
+              client_id: config.clientId,
+              client_secret: config.clientSecret,
+              fb_exchange_token: tokenData.access_token,
+            });
+            const llRes = await fetch('https://graph.facebook.com/v21.0/oauth/access_token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: llParams.toString(),
+            });
             if (llRes.ok) {
               const llData = await llRes.json();
               tokenData.access_token = llData.access_token;

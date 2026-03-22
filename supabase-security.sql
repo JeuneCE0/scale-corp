@@ -23,3 +23,20 @@ CREATE POLICY "service_only" ON public.reports FOR ALL USING (auth.role() = 'ser
 CREATE POLICY "service_only" ON public.tx_categories FOR ALL USING (auth.role() = 'service_role');
 CREATE POLICY "service_only" ON public.user_settings FOR ALL USING (auth.role() = 'service_role');
 CREATE POLICY "service_only" ON public.holding FOR ALL USING (auth.role() = 'service_role');
+
+-- Affiliate & API tables
+DROP POLICY IF EXISTS "allow_all" ON public.affiliate_clicks;
+DROP POLICY IF EXISTS "allow_all" ON public.affiliate_pending_referrals;
+DROP POLICY IF EXISTS "allow_all" ON public.affiliate_referrals;
+DROP POLICY IF EXISTS "allow_all" ON public.affiliate_commissions;
+DROP POLICY IF EXISTS "allow_all" ON public.affiliate_payouts;
+DROP POLICY IF EXISTS "allow_all" ON public.api_tokens;
+DROP POLICY IF EXISTS "allow_all" ON public.ad_attribution;
+
+CREATE POLICY "service_only" ON public.affiliate_clicks FOR ALL USING (auth.role() = 'service_role');
+CREATE POLICY "service_only" ON public.affiliate_pending_referrals FOR ALL USING (auth.role() = 'service_role');
+CREATE POLICY "service_only" ON public.affiliate_referrals FOR ALL USING (auth.role() = 'service_role');
+CREATE POLICY "service_only" ON public.affiliate_commissions FOR ALL USING (auth.role() = 'service_role');
+CREATE POLICY "service_only" ON public.affiliate_payouts FOR ALL USING (auth.role() = 'service_role');
+CREATE POLICY "service_only" ON public.api_tokens FOR ALL USING (auth.role() = 'service_role');
+CREATE POLICY "service_only" ON public.ad_attribution FOR ALL USING (auth.role() = 'service_role');

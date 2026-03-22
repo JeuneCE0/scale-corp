@@ -1,16 +1,11 @@
 // Vercel Serverless Function - GHL API v2 Proxy
 import { readFileSync, existsSync } from 'fs';
-import { applyHeaders, verifyAuth, canAccessGHLLocation, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest } from './_middleware.js';
+import { applyHeaders, verifyAuth, canAccessGHLLocation, rateLimit, getClientIP, apiLog, tooManyRequests, badRequest, fetchWithTimeout } from './_middleware.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
-const LOCATION_KEY_MAP = {
-  "NsV7HI2MbE6qHtRp410y": "GHL_ECO_KEY",
-  "BjQ4DxmWrLl3nCNcjmhE": "GHL_LEADX_KEY",
-  "2lB0paK192CFU1cLz5eT": "GHL_BCS_KEY",
-  "nTgok0v3cxvVLOLXyR11": "GHL_MODERMA_KEY",
-};
+const LOCATION_KEY_MAP = JSON.parse(process.env.GHL_LOCATION_MAP || '{}');
 
 // Try to get OAuth token from Supabase api_tokens table
 async function getOAuthToken(locationId) {
@@ -38,7 +33,7 @@ async function refreshOAuthToken(stored) {
   const clientSecret = process.env.GHL_OAUTH_CLIENT_SECRET;
   if (!clientId || !clientSecret) return null;
   try {
-    const r = await fetch('https://services.leadconnectorhq.com/oauth/token', {
+    const r = await fetchWithTimeout('https://services.leadconnectorhq.com/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: stored.refresh_token, client_id: clientId, client_secret: clientSecret }).toString(),

@@ -262,7 +262,8 @@ export default async function handler(req, res) {
       const { affiliate_client_id, amount, bank_info } = req.body || {};
       if (!society_id) return badRequest(res, "Missing society_id");
       if (!affiliate_client_id) return badRequest(res, "Missing affiliate_client_id");
-      if (!amount || amount < MIN_PAYOUT) return badRequest(res, `Minimum payout is ${MIN_PAYOUT}€`);
+      if (!Number.isFinite(amount) || amount <= 0) return badRequest(res, "Invalid payout amount");
+      if (amount < MIN_PAYOUT) return badRequest(res, `Minimum payout is ${MIN_PAYOUT}€`);
       if (!bank_info?.iban || !bank_info?.bic) return badRequest(res, "Bank info (IBAN + BIC) required");
 
       // Verify the affiliate has enough confirmed commissions

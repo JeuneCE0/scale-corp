@@ -149,14 +149,12 @@ async function supabaseUpdateProfile(updates) {
 
 // ─── Local Auth (fallback for dev/demo when Supabase is not configured) ───
 
-function hashPassword(password) {
-  let hash = 0;
-  for (let i = 0; i < password.length; i++) {
-    const ch = password.charCodeAt(i);
-    hash = ((hash << 5) - hash) + ch;
-    hash |= 0;
-  }
-  return 'h_' + Math.abs(hash).toString(36) + '_' + password.length;
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return 'sha256_' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 function generateToken() {
@@ -193,7 +191,7 @@ function saveSession(session) {
   localStorage.setItem(AUTH_KEY, JSON.stringify(session));
 }
 
-function localSignup({ name, email, password }) {
+async function localSignup({ name, email, password }) {
   if (!name || !name.trim()) return { ok: false, error: 'Le nom est requis' };
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: 'Email invalide' };
   if (!password || password.length < 6) return { ok: false, error: 'Le mot de passe doit faire au moins 6 caractères' };
@@ -207,7 +205,7 @@ function localSignup({ name, email, password }) {
     id: generateToken().slice(0, 12),
     name: name.trim(),
     email: email.toLowerCase().trim(),
-    passwordHash: hashPassword(password),
+    passwordHash: await hashPassword(password),
     createdAt: new Date().toISOString(),
     avatar: null,
     role: 'owner',
@@ -227,14 +225,14 @@ function localSignup({ name, email, password }) {
   return { ok: true, user: session.user };
 }
 
-function localLogin(email, password) {
+async function localLogin(email, password) {
   if (!email || !password) return { ok: false, error: 'Email et mot de passe requis' };
 
   const users = getStoredUsers();
   const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase().trim());
 
   if (!user) return { ok: false, error: 'Aucun compte trouvé avec cet email' };
-  if (user.passwordHash !== hashPassword(password)) return { ok: false, error: 'Mot de passe incorrect' };
+  if (user.passwordHash !== await hashPassword(password)) return { ok: false, error: 'Mot de passe incorrect' };
 
   const session = {
     token: generateToken(),
@@ -366,7 +364,7 @@ export async function getAuthToken() {
 /**
  * Seed a demo account if none exists (for dev/demo mode).
  */
-export function ensureDemoAccount() {
+export async function ensureDemoAccount() {
   if (isSupabaseConfigured()) return; // Not needed with real auth
   const users = getStoredUsers();
   if (users.length === 0) {
@@ -374,7 +372,7 @@ export function ensureDemoAccount() {
       id: 'demo_user_001',
       name: 'Admin Demo',
       email: 'demo@hubscale.fr',
-      passwordHash: hashPassword('demo123'),
+      passwordHash: await hashPassword('demo123'),
       createdAt: new Date().toISOString(),
       avatar: null,
       role: 'super_admin',

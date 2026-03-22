@@ -1,7 +1,7 @@
 // GHL Webhook receiver — with HMAC signature verification
 import { writeFile, readFile } from 'fs/promises';
 import { existsSync } from 'fs';
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { applyHeaders, getClientIP, rateLimit, apiLog, tooManyRequests } from './_middleware.js';
 
 const EVENTS_FILE = '/tmp/ghl-events.json';
@@ -29,11 +29,9 @@ function verifyWebhookSignature(req) {
       const expected = createHmac('sha256', secret).update(payload).digest('hex');
       // Timing-safe comparison
       if (signature.length === expected.length) {
-        let match = true;
-        for (let i = 0; i < signature.length; i++) {
-          if (signature[i] !== expected[i]) match = false;
-        }
-        if (match) return true;
+        try {
+          if (timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return true;
+        } catch { /* invalid signature format */ }
       }
     } catch { /* invalid signature format */ }
   }

@@ -231,3 +231,12 @@ export function badRequest(res, message = "Bad request") {
 export function tooManyRequests(res) {
   return res.status(429).json({ error: "Too many requests. Please try again later." });
 }
+
+/**
+ * Fetch with timeout — wraps native fetch with an AbortController
+ */
+export function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
