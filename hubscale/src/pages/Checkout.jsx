@@ -7,6 +7,7 @@ import { store, load } from '../lib/store.js';
 import { PLANS } from '../lib/constants.js';
 import { Btn, Inp } from '../components/ui.jsx';
 import { broadcast } from '../lib/sync.js';
+import { trackSignup, trackCheckoutStart, trackPurchase } from '../lib/analytics.js';
 
 // ─── Referral attribution helper ────────────────────────────────────────────
 // Records the referral SERVER-SIDE so the affiliate sees it on their dashboard
@@ -199,6 +200,9 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
         recordReferral(refSlug, name, email, selectedPlan, price);
       }
 
+      trackSignup(selectedPlan);
+      trackCheckoutStart(selectedPlan, price);
+
       // Create Stripe Checkout session with timeout protection (10s)
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Le serveur de paiement ne répond pas. Veuillez réessayer.')), 10000)
@@ -270,6 +274,9 @@ export default function Checkout({ onAuth, onBack, preselectedPlan }) {
         store('referred_by', { slug: refSlug, signedUpAt: new Date().toISOString() });
         recordReferral(refSlug, name, email, selectedPlan, price);
       }
+
+      trackSignup(selectedPlan);
+      trackPurchase(selectedPlan, price);
 
       setLoading(false);
       setSuccessMsg('Paiement réussi ! Redirection...');

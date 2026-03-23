@@ -206,6 +206,25 @@ async function handleWebhook(req, res, rawBody) {
         entity_id: orgId,
         details: { plan, subscription_id: subscriptionId },
       });
+
+      // Send welcome email to org owner (fire-and-forget)
+      try {
+        const { data: owner } = await sb.from('profiles')
+          .select('email, full_name')
+          .eq('org_id', orgId)
+          .eq('role', 'owner')
+          .single();
+
+        if (owner?.email) {
+          await fetch(`${APP_URL}/api/email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'welcome', email: owner.email, name: owner.full_name }),
+          }).catch(() => {});
+        }
+      } catch (err) {
+        console.error('[billing] Welcome email failed (non-blocking):', err.message);
+      }
       break;
     }
 

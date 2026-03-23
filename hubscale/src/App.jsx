@@ -12,6 +12,7 @@ import { getIntegrationMeta } from './lib/integrationData.js';
 import { isAuthenticated, getCurrentUser, logout as authLogout, initAuth, onAuthChange } from './lib/auth.js';
 import { listNotifications as fetchServerNotifications, markNotificationRead, markAllNotificationsRead } from './lib/api.js';
 import { isSupabaseConfigured } from './lib/supabase.js';
+import { trackPageView } from './lib/analytics.js';
 
 const Landing = lazy(() => import('./pages/Landing.jsx'));
 const Login = lazy(() => import('./pages/Login.jsx'));
@@ -646,6 +647,7 @@ export default function App() {
     setTab(tabId);
     setPageKey((k) => k + 1);
     mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    trackPageView(`/app/${tabId}`);
   }, []);
 
   // Listen for checkout event from PremiumGate / TrialBanner

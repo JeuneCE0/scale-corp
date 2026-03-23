@@ -3,9 +3,13 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import { ErrorBoundary } from './components/ui.jsx';
 import { initMonitoring } from './lib/monitoring.js';
+import { initAnalytics } from './lib/analytics.js';
 
 // Initialize error monitoring
 initMonitoring();
+
+// Initialize analytics (GA4, Meta Pixel, UTM capture)
+initAnalytics();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
