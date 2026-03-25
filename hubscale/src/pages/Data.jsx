@@ -5,18 +5,8 @@ import { KPI, Card, Section, Btn, Inp } from '../components/ui.jsx';
 
 const SUB_TABS = ['Finances', 'Sales', 'Publicité'];
 
-// Demo financial history
 function generateHistory() {
-  const rows = [];
-  const now = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const ca = 18000 + Math.round(Math.random() * 15000);
-    const charges = 10000 + Math.round(Math.random() * 8000);
-    rows.push({ key, ca, charges, result: ca - charges });
-  }
-  return rows;
+  return [];
 }
 
 export default function Data() {
@@ -58,9 +48,9 @@ export default function Data() {
           {/* KPI cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
             <KPI label="CA MENSUEL" value={`${fK(lastRow.ca || 0)}€`} sub="Ce mois-ci" accent={T.green} icon="💰" delay={1} />
-            <KPI label="CHARGES FIXES" value={`${fK(pf(formFixed) || 8500)}€`} sub="Loyer, salaires, abonnements" accent={T.red} icon="🏢" delay={2} />
-            <KPI label="CHARGES VARIABLES" value={`${fK(pf(formVar) || 4200)}€`} sub="Pub, freelances, outils" accent={T.orange} icon="📊" delay={3} />
-            <KPI label="TRÉSORERIE" value={`${fK(pf(formTreso) || 42000)}€`} sub="Solde disponible" accent={T.blue} icon="🏦" delay={4} />
+            <KPI label="CHARGES FIXES" value={`${fK(pf(formFixed) || 0)}€`} sub="Loyer, salaires, abonnements" accent={T.red} icon="🏢" delay={2} />
+            <KPI label="CHARGES VARIABLES" value={`${fK(pf(formVar) || 0)}€`} sub="Pub, freelances, outils" accent={T.orange} icon="📊" delay={3} />
+            <KPI label="TRÉSORERIE" value={`${fK(pf(formTreso) || 0)}€`} sub="Solde disponible" accent={T.blue} icon="🏦" delay={4} />
           </div>
 
           {/* Saisie */}
@@ -91,7 +81,9 @@ export default function Data() {
                   </tr>
                 </thead>
                 <tbody>
-                  {history.map((r) => (
+                  {history.length === 0 ? (
+                    <tr><td colSpan={4} style={{ padding: '20px 14px', textAlign: 'center', color: T.textMuted, fontSize: 11 }}>Aucune donnée — saisissez vos données ci-dessus</td></tr>
+                  ) : history.map((r) => (
                     <tr key={r.key} style={{ borderBottom: `1px solid ${T.border}22` }}>
                       <td style={{ padding: '10px 14px', fontWeight: 600, color: T.text }}>{monthLabel(r.key)}</td>
                       <td style={{ padding: '10px 14px', color: T.green, fontWeight: 600 }}>{fmt(r.ca)}€</td>
@@ -111,11 +103,11 @@ export default function Data() {
           <Section title="PIPELINE SALES" sub="Suivi des ventes et conversions">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginTop: 12 }}>
               {[
-                { l: 'Prospects', v: 24, c: T.orange },
-                { l: 'En cours', v: 12, c: T.blue },
-                { l: 'Propositions', v: 8, c: T.purple },
-                { l: 'Gagnés', v: 18, c: T.green },
-                { l: 'Perdus', v: 5, c: T.red },
+                { l: 'Prospects', v: 0, c: T.orange },
+                { l: 'En cours', v: 0, c: T.blue },
+                { l: 'Propositions', v: 0, c: T.purple },
+                { l: 'Gagnés', v: 0, c: T.green },
+                { l: 'Perdus', v: 0, c: T.red },
               ].map((s) => (
                 <div key={s.l} style={{ textAlign: 'center', padding: 12, borderRadius: 10, background: s.c + '10', border: `1px solid ${s.c}22` }}>
                   <div style={{ fontSize: 28, fontWeight: 800, color: s.c }}>{s.v}</div>
@@ -132,12 +124,12 @@ export default function Data() {
           <Section title="META ADS" sub="Performance des campagnes publicitaires">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginTop: 12 }}>
               {[
-                { l: 'Budget dépensé', v: '3 240€', c: T.orange, icon: '💸' },
-                { l: 'Impressions', v: '125.4K', c: T.blue, icon: '👁️' },
-                { l: 'Clics', v: '4 832', c: T.purple, icon: '👆' },
-                { l: 'CTR', v: '3.85%', c: T.green, icon: '📈' },
-                { l: 'CPC moyen', v: '0.67€', c: T.accent, icon: '🎯' },
-                { l: 'Conversions', v: '142', c: T.green, icon: '✅' },
+                { l: 'Budget dépensé', v: '0€', c: T.textMuted, icon: '💸' },
+                { l: 'Impressions', v: '0', c: T.textMuted, icon: '👁️' },
+                { l: 'Clics', v: '0', c: T.textMuted, icon: '👆' },
+                { l: 'CTR', v: '—', c: T.textMuted, icon: '📈' },
+                { l: 'CPC moyen', v: '—', c: T.textMuted, icon: '🎯' },
+                { l: 'Conversions', v: '0', c: T.textMuted, icon: '✅' },
               ].map((m) => (
                 <div key={m.l} className="glass-static" style={{ padding: 14, textAlign: 'center' }}>
                   <div style={{ fontSize: 18, marginBottom: 4 }}>{m.icon}</div>

@@ -90,20 +90,8 @@ button:focus-visible{outline:2px solid ${C.acc}44;outline-offset:2px}
 .glow-accent-strong{box-shadow:0 0 30px rgba(255,170,0,.25),0 4px 16px rgba(0,0,0,.3)}
 .glass-btn-ghost{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .glass-btn-ghost:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12)}`;
-export const DS=[
- {id:"leadx",nom:"LEADX",porteur:"Dayyaan",act:"Media Buying",pT:"benefices",pP:30,stat:"active",color:"#FFAA00",pin:"1001",rec:true,obj:10000,objQ:28000,ghlKey:"",ghlLocationId:"BjQ4DxmWrLl3nCNcjmhE",revToken:"",revEnv:"sandbox",revolutCompany:"leadx",incub:"2025-06-01",slackId:""},
- {id:"copy",nom:"Copywriting",porteur:"Sol",act:"Copywriting",pT:"benefices",pP:20,stat:"active",color:"#60a5fa",pin:"1002",rec:false,obj:15000,objQ:42000,ghlKey:"",ghlLocationId:"2lB0paK192CFU1cLz5eT",revToken:"",revEnv:"sandbox",revolutCompany:"bcs",incub:"2025-03-15",slackId:""},
- {id:"bbp",nom:"BourbonBonsPlans",porteur:"Siméon",act:"Vidéo",pT:"benefices",pP:20,stat:"active",color:"#34d399",pin:"1003",rec:true,obj:8000,objQ:22000,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2025-08-01",slackId:""},
- {id:"studio",nom:"Studio Branding",porteur:"Pablo",act:"Design",pT:"benefices",pP:20,stat:"active",color:"#fb923c",pin:"1004",rec:false,obj:5000,objQ:14000,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2025-09-01",slackId:""},
- {id:"eco",nom:"L'Écosystème",porteur:"Scale Corp",act:"Consulting",pT:"ca",pP:100,stat:"active",color:"#a78bfa",pin:"admin",rec:false,obj:7000,objQ:20000,ghlKey:"",ghlLocationId:"NsV7HI2MbE6qHtRp410y",revToken:"",revEnv:"sandbox",revolutCompany:"eco",incub:"2024-01-01",slackId:""},
- {id:"padel",nom:"Padel Académie",porteur:"Louis",act:"Formation",pT:"benefices",pP:20,stat:"lancement",color:"#14b8a6",pin:"1005",rec:false,obj:3000,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2026-01-15",slackId:""},
- {id:"iphone",nom:"Formation iPhone",porteur:"À définir",act:"Contenu",pT:"benefices",pP:20,stat:"lancement",color:"#8b5cf6",pin:"1006",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"2026-02-01",slackId:""},
- {id:"import",nom:"Import Auto",porteur:"À définir",act:"Import",pT:"benefices",pP:20,stat:"lancement",color:"#ec4899",pin:"1007",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
- {id:"tennis",nom:"Formation Tennis",porteur:"À définir",act:"Tennis",pT:"benefices",pP:20,stat:"signature",color:"#06b6d4",pin:"1008",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
- {id:"virale",nom:"Vidéo Virale",porteur:"À définir",act:"Vidéo",pT:"benefices",pP:20,stat:"signature",color:"#f43f5e",pin:"1009",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
- {id:"mindset",nom:"Coaching Mindset",porteur:"À définir",act:"Mindset",pT:"benefices",pP:20,stat:"signature",color:"#eab308",pin:"1010",rec:false,obj:0,objQ:0,ghlKey:"",revToken:"",revEnv:"sandbox",incub:"",slackId:""},
-];
-export const DH={logiciels:1200,equipe:300,service:500,cabinet:280,remun:3000,reservePct:30,crm:150,treso:2000,revolutToken:"",revolutEnv:"sandbox",slack:{enabled:false,mode:"bob",webhookUrl:"",botToken:"",channel:"",bobWebhook:"",notifyPulse:true,notifyReport:true,notifyValidation:true,notifyReminders:true},brand:{name:"L'INCUBATEUR ECS",sub:"Plateforme de pilotage",logoUrl:"/logo-ecs.png",logoLetter:"E",accentColor:"#FFAA00",gradientFrom:"#FFBF00",gradientTo:"#FF9D00"}};
+export const DS=[];
+export const DH={logiciels:0,equipe:0,service:0,cabinet:0,remun:0,reservePct:0,crm:0,treso:0,revolutToken:"",revolutEnv:"sandbox",slack:{enabled:false,mode:"bob",webhookUrl:"",botToken:"",channel:"",bobWebhook:"",notifyPulse:true,notifyReport:true,notifyValidation:true,notifyReminders:true},brand:{name:"",sub:"",logoUrl:"",logoLetter:"",accentColor:"#FFAA00",gradientFrom:"#FFBF00",gradientTo:"#FF9D00"}};
 export const DEAL_STAGES=["Idée","Contact","Négociation","Due Diligence","Signature"];
 export function mkPrefill(){ return {}; }
 
@@ -372,14 +360,7 @@ export function deduplicatedCharges(totalChargesFromReport,matchedSubs){
  return{raw:totalChargesFromReport,matchedSubsTotal:matchedTotal,deduped:totalChargesFromReport,note:matchedTotal>0?`${fmt(matchedTotal)}€ d'abos déjà comptés dans Revolut`:""};
 }
 export const KB_CATS={playbook:{label:"📘 Playbooks",color:C.b},template:{label:"📄 Templates",color:C.g},contact:{label:"👤 Contacts",color:C.o},tool:{label:"🔧 Outils",color:C.v},tip:{label:"💡 Tips",color:C.acc}};
-export const DEMO_KB=[
- {id:"kb1",title:"Playbook Cold Outreach B2B",cat:"playbook",author:"leadx",content:"1. Identifier ICP via LinkedIn Sales Nav\n2. Scraper avec Phantombuster\n3. Séquence 3 emails (J0, J3, J7)\n4. Follow-up LinkedIn J10\n5. Call si ouverture > 40%",tags:["prospection","b2b","email"],date:"2026-01-05",likes:3},
- {id:"kb2",title:"Template Proposition Commerciale",cat:"template",author:"copy",content:"Structure gagnante :\n• Contexte client (montrer qu'on a compris)\n• Problème identifié\n• Solution proposée (3 options)\n• Pricing avec ancrage\n• Garantie + urgence\n• CTA clair",tags:["vente","pricing","template"],date:"2026-01-12",likes:5},
- {id:"kb3",title:"Contact Imprimeur fiable",cat:"contact",author:"bbp",content:"Jean-Marc Dubois — Imprim'Express\njm@imprimexpress.re — 0692 XX XX XX\nTarifs compétitifs, délais 48h, livraison gratuite > 200€",tags:["print","fournisseur"],date:"2026-01-20",likes:2},
- {id:"kb4",title:"Stack Outils recommandée",cat:"tool",author:"eco",content:"• CRM: GoHighLevel (déjà intégré)\n• Compta: Pennylane\n• Design: Figma + Canva Pro\n• Vidéo: CapCut Pro + DaVinci\n• Emailing: Brevo\n• Analytics: Plausible\n• Paiement: Stripe + Revolut Business",tags:["outils","stack","setup"],date:"2025-12-15",likes:7},
- {id:"kb5",title:"Méthode pricing \"Value-Based\"",cat:"tip",author:"copy",content:"Ne jamais pricer au temps passé. Toujours pricer à la valeur créée.\n\nFormule : Prix = 10% de la valeur annuelle que tu génères pour le client.\n\nExemple : tu gères 50K€/an de pub → facture 5K€/mois minimum.",tags:["pricing","mindset"],date:"2026-02-01",likes:4},
- {id:"kb6",title:"Script Appel Découverte",cat:"playbook",author:"leadx",content:"Intro (2min) : Contexte, pourquoi cet appel\nDouleur (5min) : Quel est le plus gros frein à ta croissance ?\nImpact (3min) : Combien ça te coûte de ne rien faire ?\nSolution (5min) : Voici comment on résout ça\nClose (2min) : On démarre quand ?",tags:["vente","appel","closing"],date:"2026-02-08",likes:6},
-];
+export const DEMO_KB=[];
 export const GHL_STAGES_COLORS=["#60a5fa","#FFAA00","#fb923c","#34d399","#a78bfa","#f43f5e","#14b8a6","#eab308"];
 export const GHL_BASE="/api/ghl";
 export function mkGHLDemo(){ return {}; }

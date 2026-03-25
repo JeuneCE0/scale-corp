@@ -240,10 +240,10 @@ export default function DataHealth() {
       {subTab === 'KPI & Business' && (
         <Section title="KPI PERSONNALISÉS" sub="Suivez vos indicateurs clés de performance">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
-            <KPI label="MRR" value="2 490€" sub="Monthly Recurring Revenue" accent={T.green} icon="💰" />
-            <KPI label="CHURN RATE" value="2.1%" sub="Taux d'attrition mensuel" accent={T.orange} icon="📉" />
-            <KPI label="LTV" value="14 940€" sub="Lifetime Value client" accent={T.blue} icon="⭐" />
-            <KPI label="CAC" value="120€" sub="Coût d'acquisition client" accent={T.purple} icon="🎯" />
+            <KPI label="MRR" value="0€" sub="Monthly Recurring Revenue" accent={T.textMuted} icon="💰" />
+            <KPI label="CHURN RATE" value="—" sub="Taux d'attrition mensuel" accent={T.textMuted} icon="📉" />
+            <KPI label="LTV" value="0€" sub="Lifetime Value client" accent={T.textMuted} icon="⭐" />
+            <KPI label="CAC" value="—" sub="Coût d'acquisition client" accent={T.textMuted} icon="🎯" />
           </div>
           <Card>
             <div style={{ fontSize: 11, color: T.textSecondary, textAlign: 'center', padding: 20 }}>
