@@ -4,38 +4,25 @@ import { fmt, fK, MONTHS_FR } from '../lib/utils.js';
 import { KPI, Card, Section, Btn, Badge, ProgressBar, EmptyState } from '../components/ui.jsx';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-// Demo data
-const CA_DATA = [
-  { month: 'Sep', ca: 18500 }, { month: 'Oct', ca: 22000 }, { month: 'Nov', ca: 19800 },
-  { month: 'Déc', ca: 27500 }, { month: 'Jan', ca: 24000 }, { month: 'Fév', ca: 31200 },
-];
+const CA_DATA = [];
 
 const PIPELINE = [
-  { stage: 'Prospect', count: 12, color: T.orange },
-  { stage: 'Lead', count: 8, color: T.blue },
-  { stage: 'Négociation', count: 5, color: T.purple },
-  { stage: 'Gagné', count: 15, color: T.green },
-  { stage: 'Perdu', count: 3, color: T.red },
+  { stage: 'Prospect', count: 0, color: T.orange },
+  { stage: 'Lead', count: 0, color: T.blue },
+  { stage: 'Négociation', count: 0, color: T.purple },
+  { stage: 'Gagné', count: 0, color: T.green },
+  { stage: 'Perdu', count: 0, color: T.red },
 ];
 
-const ACTIVITY = [
-  { text: 'Nouveau contact ajouté : Dupont SARL', time: 'il y a 2h', icon: '👤' },
-  { text: 'Facture #1042 payée — 2 400€', time: 'il y a 5h', icon: '💰' },
-  { text: 'Pipeline mis à jour : Lead → Négociation', time: 'il y a 1j', icon: '📈' },
-  { text: 'Backup automatique effectué', time: 'il y a 1j', icon: '💾' },
-];
+const ACTIVITY = [];
 
-const TASKS = [
-  { text: 'Relancer prospect TechVision', due: 'Aujourd\'hui', done: false },
-  { text: 'Vérifier intégration Stripe', due: 'Demain', done: false },
-  { text: 'Envoyer devis client Nexus', due: '22 Fév', done: true },
-];
+const TASKS = [];
 
 const HEALTH_ITEMS = [
-  { label: 'Stripe API', status: 'ok' },
-  { label: 'Revolut API', status: 'ok' },
-  { label: 'GoHighLevel', status: 'warning' },
-  { label: 'Meta Ads', status: 'error' },
+  { label: 'Stripe API', status: 'pending' },
+  { label: 'Revolut API', status: 'pending' },
+  { label: 'GoHighLevel', status: 'pending' },
+  { label: 'Meta Ads', status: 'pending' },
 ];
 
 const QUICK_ACTIONS = [
@@ -63,24 +50,24 @@ export default function Dashboard() {
           <div style={{ position: 'relative', width: 48, height: 48 }}>
             <svg width="48" height="48" viewBox="0 0 48 48">
               <circle cx="24" cy="24" r="20" fill="none" stroke={T.border} strokeWidth="4" />
-              <circle cx="24" cy="24" r="20" fill="none" stroke={T.green} strokeWidth="4"
-                strokeDasharray={`${0.75 * 125.6} ${125.6}`} strokeLinecap="round"
+              <circle cx="24" cy="24" r="20" fill="none" stroke={T.textMuted} strokeWidth="4"
+                strokeDasharray={`${0 * 125.6} ${125.6}`} strokeLinecap="round"
                 transform="rotate(-90 24 24)" style={{ transition: 'stroke-dasharray .8s ease' }} />
             </svg>
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: T.green }}>75%</div>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: T.textMuted }}>0%</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.green }}>Santé globale</div>
-            <div style={{ fontSize: 9, color: T.textMuted }}>3/4 APIs connectées</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted }}>Santé globale</div>
+            <div style={{ fontSize: 9, color: T.textMuted }}>0/4 APIs connectées</div>
           </div>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <KPI label="CA MENSUEL" value={`${fK(31200)}€`} sub="+12.4% vs mois dernier" accent={T.green} icon="💰" delay={1} />
-        <KPI label="CHARGES" value={`${fK(18600)}€`} sub="Fixes + Variables" accent={T.red} icon="📉" delay={2} />
-        <KPI label="RÉSULTAT NET" value={`${fK(12600)}€`} sub="Marge: 40.4%" accent={T.orange} icon="📊" delay={3} />
+        <KPI label="CA MENSUEL" value={`${fK(0)}€`} sub="Aucune donnée" accent={T.textMuted} icon="💰" delay={1} />
+        <KPI label="CHARGES" value={`${fK(0)}€`} sub="Aucune donnée" accent={T.textMuted} icon="📉" delay={2} />
+        <KPI label="RÉSULTAT NET" value={`${fK(0)}€`} sub="Aucune donnée" accent={T.textMuted} icon="📊" delay={3} />
       </div>
 
       {/* Quick Actions */}
@@ -155,9 +142,9 @@ export default function Dashboard() {
               <div key={h.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 12, color: T.text }}>{h.label}</span>
                 <Badge
-                  label={h.status === 'ok' ? 'Connecté' : h.status === 'warning' ? 'Attention' : 'Erreur'}
-                  color={h.status === 'ok' ? T.green : h.status === 'warning' ? T.orange : T.red}
-                  bg={h.status === 'ok' ? T.greenBg : h.status === 'warning' ? T.orangeBg : T.redBg}
+                  label={h.status === 'ok' ? 'Connecté' : h.status === 'warning' ? 'Attention' : h.status === 'pending' ? 'Non connecté' : 'Erreur'}
+                  color={h.status === 'ok' ? T.green : h.status === 'warning' ? T.orange : h.status === 'pending' ? T.textMuted : T.red}
+                  bg={h.status === 'ok' ? T.greenBg : h.status === 'warning' ? T.orangeBg : h.status === 'pending' ? T.surface2 : T.redBg}
                 />
               </div>
             ))}
@@ -169,6 +156,9 @@ export default function Dashboard() {
           <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
             ⚡ Activité récente
           </div>
+          {ACTIVITY.length === 0 ? (
+            <div style={{ fontSize: 11, color: T.textMuted, textAlign: 'center', padding: 16 }}>Aucune activité pour le moment</div>
+          ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {ACTIVITY.map((a, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
@@ -180,6 +170,7 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+          )}
         </Card>
 
         {/* Tâches */}
@@ -187,6 +178,9 @@ export default function Dashboard() {
           <div style={{ fontSize: 11, fontWeight: 700, color: T.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: .5 }}>
             ✅ Tâches
           </div>
+          {TASKS.length === 0 ? (
+            <div style={{ fontSize: 11, color: T.textMuted, textAlign: 'center', padding: 16 }}>Aucune tâche pour le moment</div>
+          ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {TASKS.map((t, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -204,6 +198,7 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+          )}
         </Card>
       </div>
 
@@ -214,7 +209,7 @@ export default function Dashboard() {
             👥 Contacts CRM
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-            {[{ l: 'Prospects', n: 12, c: T.orange }, { l: 'Leads', n: 8, c: T.blue }, { l: 'Clients', n: 15, c: T.green }].map((s) => (
+            {[{ l: 'Prospects', n: 0, c: T.orange }, { l: 'Leads', n: 0, c: T.blue }, { l: 'Clients', n: 0, c: T.green }].map((s) => (
               <div key={s.l} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, background: s.c + '15' }}>
                 <div style={{ width: 8, height: 8, borderRadius: 4, background: s.c }} />
                 <span style={{ fontSize: 11, fontWeight: 600, color: s.c }}>{s.n}</span>
@@ -222,7 +217,7 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 11, color: T.textMuted }}>35 contacts au total — Dernière synchro il y a 2h</div>
+          <div style={{ fontSize: 11, color: T.textMuted }}>Connectez votre CRM pour voir vos contacts</div>
         </Card>
 
         <Card delay={6}>
@@ -231,10 +226,10 @@ export default function Dashboard() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {[
-              { l: 'Dépenses', v: '1 240€', c: T.orange },
-              { l: 'Impressions', v: '45.2K', c: T.blue },
-              { l: 'Clics', v: '1 832', c: T.purple },
-              { l: 'CPA', v: '12.40€', c: T.green },
+              { l: 'Dépenses', v: '0€', c: T.textMuted },
+              { l: 'Impressions', v: '0', c: T.textMuted },
+              { l: 'Clics', v: '0', c: T.textMuted },
+              { l: 'CPA', v: '—', c: T.textMuted },
             ].map((m) => (
               <div key={m.l} style={{ padding: 8, borderRadius: 8, background: m.c + '10' }}>
                 <div style={{ fontSize: 9, color: T.textMuted, textTransform: 'uppercase', fontWeight: 600 }}>{m.l}</div>
